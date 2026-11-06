@@ -11,18 +11,27 @@ public abstract partial class OrderingTrackerTests
     )
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
-        await using var setup = new TrackerContext(await OptionsAsync(database));
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await using var setup = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var input = new TrackerAddition { Value = "unchanged application payload" };
         await setup.AddAsync(input, CancellationToken.None);
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new TrackerFailureProbe();
-        await using var context = new TrackerContext(await OptionsAsync(database, probe));
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe));
+
         var payload = await context
             .Set<TrackerAddition>()
             .SingleAsync(CancellationToken.None);
 
-        var node = await LoadNodeAsync(context, 3);
+        var node = await LoadNodeAsync(context, 3, cancellationToken: TestContext.Current.CancellationToken);
         node.Name = "Zulu";
         context.ChangeTracker.DetectChanges();
         var before = Capture(context, payload);
@@ -37,7 +46,11 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(EntityState.Unchanged, before.State);
         AssertSnapshot(before, Capture(context, payload));
         Assert.Equal("unchanged application payload", payload.Value);
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             "unchanged application payload",
             await verification

@@ -9,7 +9,8 @@ public sealed partial class AncestorIndexTests
     public void MissingGeneratedBagEntryUsesNaturalSentinel()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
                 ConfigureBag(model)
                     .HasNestedSet(builder => builder.HasAncestorIndex("Branch")));
@@ -39,8 +40,10 @@ public sealed partial class AncestorIndexTests
         Assert.Null(flag.Metadata.Sentinel);
         Assert.False(row.ContainsKey("Branch"));
         Assert.Equal(EntityState.Added, entry.State);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>
@@ -50,13 +53,15 @@ public sealed partial class AncestorIndexTests
     public void ExplicitNonNullBagSentinelIsRejected()
     {
         // Arrange
-        using var context = new AncestorContext("Sqlite",
+        using var context = new AncestorContext(
+            "Sqlite",
             model =>
             {
                 var entity = ConfigureBag(model);
                 entity
                     .Property<bool>("Branch")
                     .HasSentinel(false);
+
                 entity.HasNestedSet(builder => builder.HasAncestorIndex("Branch"));
             });
 

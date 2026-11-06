@@ -31,7 +31,10 @@ public sealed partial class IndexConventionTests
             });
 
         // Act
-        var type = binary ? typeof(VariableNode<byte[]>) : typeof(VariableNode<string>);
+        var type = binary
+            ? typeof(VariableNode<byte[]>)
+            : typeof(VariableNode<string>);
+
         var entity = context
             .GetService<IDesignTimeModel>()
             .Model
@@ -45,18 +48,26 @@ public sealed partial class IndexConventionTests
             entity
                 .GetIndexes()
                 .Count());
+
         Assert.All(
             entity
                 .GetIndexes()
                 .SelectMany(index => index.Properties)
                 .Where(property => property.ClrType == typeof(string) || property.ClrType == typeof(byte[])),
             property => Assert.Equal(255, property.GetMaxLength()));
+
         Assert.All(
             entity
                 .GetIndexes()
                 .Where(index => index.Properties.Count > 2),
             index => Assert.Equal(nameof(VariableNode<string>.TreeId), index.Properties[1].Name));
-        Assert.Contains(binary ? "varbinary(255)" : "varchar(255)", script, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains(
+            binary
+                ? "varbinary(255)"
+                : "varchar(255)",
+            script,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>PostgreSQL index methods and comparison overrides are not mistaken for an ordinary B-tree.</summary>
@@ -123,6 +134,7 @@ public sealed partial class IndexConventionTests
             entity
                 .GetIndexes()
                 .Count());
+
         Assert.Contains(leftIndexes, index => index.Name == "SpecializedLeft");
         Assert.Contains(leftIndexes, index => index.Name is null);
     }
@@ -153,14 +165,17 @@ public sealed partial class IndexConventionTests
                     .Property(node => node.Key)
                     .HasMaxLength(96)
                     .UseCollation(collation);
+
                 entity
                     .Property(node => node.Parent)
                     .HasMaxLength(96)
                     .UseCollation(collation);
+
                 entity
                     .Property(node => node.Scope)
                     .HasMaxLength(48)
                     .UseCollation(collation);
+
                 ConfigureVariableNode<string>(model);
             });
 
@@ -193,6 +208,7 @@ public sealed partial class IndexConventionTests
             .HasBounds(node => node.Left, node => node.Right)
             .HasDepth(node => node.Depth)
             .HasPosition(node => node.Position));
+
         entity.HasKey(node => node.Key);
     }
 

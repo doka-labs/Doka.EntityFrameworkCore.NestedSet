@@ -87,6 +87,7 @@ internal sealed partial class MySqlNestedSetProvider
                     mapping.Scope,
                     request.ScopeValue,
                     "scope" + index);
+
                 rows
                     .Append(" AS ")
                     .Append(aliases.Scope)
@@ -100,6 +101,7 @@ internal sealed partial class MySqlNestedSetProvider
                 mapping.TreeId,
                 request.TreeIdValue,
                 "treeId" + index);
+
             rows
                 .Append(" AS ")
                 .Append(aliases.TreeId)

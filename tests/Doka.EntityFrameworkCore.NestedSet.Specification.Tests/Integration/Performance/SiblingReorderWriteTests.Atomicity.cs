@@ -11,7 +11,10 @@ public abstract partial class SiblingReorderWriteTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var sizes = Enumerable
             .Repeat(1, 70)
             .ToArray();
@@ -21,18 +24,25 @@ public abstract partial class SiblingReorderWriteTests
             .Select(index => $"Sibling-{69 - index:D3}")
             .ToArray();
 
-        await SeedAsync(setup, sizes, names);
+        await SeedAsync(setup, sizes, names, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         var probe = new StructuralWriteProbe("OrderingNodes", "Left", "Right")
         {
             CancelAfterBounds = cancellation,
         };
 
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
-        var before = await SnapshotAsync(context);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
+        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -41,21 +51,26 @@ public abstract partial class SiblingReorderWriteTests
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
-        Assert.Equal(64, Assert.Single(probe.BoundsWrites).Rows);
-        Assert.Equal(before, await SnapshotAsync(context));
+        Assert.Equal(
+            64,
+            Assert.Single(probe.BoundsWrites)
+                .Rows);
+
+        Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(callerTransaction, context.Database.CurrentTransaction is not null);
     }
 
     /// <summary>Reads all scopes to expose both incomplete staging rollback and accidental scope leakage.</summary>
     private static async Task<(int Id, long Left, long Right, int Depth, long Position, int? Parent)[]> SnapshotAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<OrderingNode>()
             .AsNoTracking()
             .OrderBy(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(node => (node.Id, node.Left, node.Right, node.Depth, node.Position, node.ParentId))

@@ -5,6 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks exact-bound reuse and conservative traversal of external query expressions.</summary>
 /// <param name="output">Captures allocation evidence outside the measured operation.</param>
+
 // WHY: Concurrent collections can perturb thread allocation counters. Use the existing isolated
 // measurement collection without relaxing the budget or serializing unrelated regression tests.
 [Collection("Allocation measurements")]
@@ -44,7 +45,8 @@ public sealed partial class CompositionVisibilityTraversalTests(
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < operations; index++)
         {
-            visible &= NestedSetQueryEndpoint.Require(source, node => node, entityType, bound, "node").IsVisible;
+            visible &= NestedSetQueryEndpoint.Require(source, node => node, entityType, bound, "node")
+                .IsVisible;
         }
 
         // Assert
@@ -74,7 +76,8 @@ public sealed partial class CompositionVisibilityTraversalTests(
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < depth; index++)
         {
-            shared = Expression.Call(typeof(Queryable),
+            shared = Expression.Call(
+                typeof(Queryable),
                 nameof(Queryable.Concat),
                 [typeof(CompositionGuardNode)],
                 shared,
@@ -119,8 +122,10 @@ public sealed partial class CompositionVisibilityTraversalTests(
         var nodes = Nodes(context);
         var sources = Enumerable
             .Range(0, queries)
-            .Select(index => Where(unsafeLastQuery && index == queries - 1
-                    ? nodes.IgnoreQueryFilters().Expression
+            .Select(index => Where(
+                unsafeLastQuery && index == queries - 1
+                    ? nodes.IgnoreQueryFilters()
+                        .Expression
                     : nodes.Expression,
                 Expression.Constant(true)))
             .ToArray();
@@ -151,9 +156,15 @@ public sealed partial class CompositionVisibilityTraversalTests(
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
-        var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+        var forbidden = Any(
+            nodes.IgnoreQueryFilters()
+                .Expression);
 
-        var extension = new ChangingPredicate(rejectSecondVisit ? forbidden : Expression.Constant(true));
+        var extension = new ChangingPredicate(
+            rejectSecondVisit
+                ? forbidden
+                : Expression.Constant(true));
+
         var shared = Where(nodes.Expression, extension);
         var source = Source(nodes, [shared, shared]);
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
@@ -182,9 +193,15 @@ public sealed partial class CompositionVisibilityTraversalTests(
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
-        var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+        var forbidden = Any(
+            nodes.IgnoreQueryFilters()
+                .Expression);
 
-        var extension = new ChangingDispatch(rejectSecondVisit ? forbidden : Expression.Constant(true));
+        var extension = new ChangingDispatch(
+            rejectSecondVisit
+                ? forbidden
+                : Expression.Constant(true));
+
         var shared = Where(nodes.Expression, extension);
         var source = Source(nodes, [shared, shared]);
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
@@ -272,7 +289,9 @@ public sealed partial class CompositionVisibilityTraversalTests(
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
         var safe = Where(nodes.Expression, Expression.Constant(true));
-        var unsafeQuery = Where(nodes.IgnoreQueryFilters().Expression,
+        var unsafeQuery = Where(
+            nodes.IgnoreQueryFilters()
+                .Expression,
             Expression.Constant(true));
 
         var safeSource = Source(nodes, [safe, safe]);
@@ -391,7 +410,8 @@ public sealed partial class CompositionVisibilityTraversalTests(
     {
         var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
 
-        return Expression.Call(s_where,
+        return Expression.Call(
+            s_where,
             source,
             Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
     }

@@ -13,6 +13,12 @@ The facade validates NodeKey, Scope, and TreeId argument types against the
 final EF model. It is not thread-safe and is not an authorization boundary.
 Await each operation before using the context again.
 
+Owned asynchronous operations require an explicit `CancellationToken`. Forward
+the caller's token through the operation, or pass `CancellationToken.None` when
+the entry point has no token. Explicit None remains supported; requiring the
+argument does not require a cancelable token. EF/.NET framework contracts keep
+their original optional signatures.
+
 For an unscoped hierarchy, omit `ForScope(...)`:
 
 ```csharp
@@ -71,11 +77,11 @@ Child and sibling operations infer TreeId from their database anchor:
 
 | Method | Placement |
 | --- | --- |
-| `InsertChildAsync(entity, parent)` | Configured order, or last manual child |
-| `InsertAsFirstChildAsync(entity, parent)` | Explicit first child |
-| `InsertAsLastChildAsync(entity, parent)` | Explicit last child |
-| `InsertBeforeAsync(entity, sibling)` | Immediately before sibling |
-| `InsertAfterAsync(entity, sibling)` | Immediately after sibling |
+| `InsertChildAsync(entity, parent, cancellationToken)` | Configured order, or last manual child |
+| `InsertAsFirstChildAsync(entity, parent, cancellationToken)` | Explicit first child |
+| `InsertAsLastChildAsync(entity, parent, cancellationToken)` | Explicit last child |
+| `InsertBeforeAsync(entity, sibling, cancellationToken)` | Immediately before sibling |
+| `InsertAfterAsync(entity, sibling, cancellationToken)` | Immediately after sibling |
 
 The entity must be detached and must not carry populated non-owned
 navigations. NestedSet assigns Scope, TreeId, Parent, bounds, depth, and
@@ -89,10 +95,10 @@ Strict configured ordering rejects explicit placement methods. Use
 
 | Method | Result |
 | --- | --- |
-| `MoveToAsync(node, parent)` | Move complete subtree beneath parent using configured/default order |
-| `MoveBeforeAsync(node, sibling)` | Move before same-tree sibling in manual/flexible mode |
-| `MoveAfterAsync(node, sibling)` | Move after same-tree sibling in manual/flexible mode |
-| `DetachAsTreeAsync(node, newTreeId)` | Normalize subtree as the root of a new tree |
+| `MoveToAsync(node, parent, cancellationToken)` | Move complete subtree beneath parent using configured/default order |
+| `MoveBeforeAsync(node, sibling, cancellationToken)` | Move before same-tree sibling in manual/flexible mode |
+| `MoveAfterAsync(node, sibling, cancellationToken)` | Move after same-tree sibling in manual/flexible mode |
+| `DetachAsTreeAsync(node, newTreeId, cancellationToken)` | Normalize subtree as the root of a new tree |
 
 `MoveToAsync` may cross TreeIds inside the same Scope. It locks source and
 destination, updates TreeId on the complete subtree, closes and opens the
@@ -106,14 +112,14 @@ types may remain tracked when they have no pending incompatible changes.
 
 ## Delete nodes and trees
 
-`DeleteAsync(nodeKey)` deletes one non-root node and promotes its direct
+`DeleteAsync(nodeKey, cancellationToken)` deletes one non-root node and promotes its direct
 children into its sibling group. It rejects a root because promoting its
 children would create multiple roots under one TreeId.
 
-`DeleteSubtreeAsync(nodeKey)` removes one complete branch. When the selected
+`DeleteSubtreeAsync(nodeKey, cancellationToken)` removes one complete branch. When the selected
 node is the root, it deletes the tree and tombstones its registry identity.
 
-`DeleteTreeAsync(treeId)` is the explicit identity-based whole-tree operation.
+`DeleteTreeAsync(treeId, cancellationToken)` is the explicit identity-based whole-tree operation.
 It does not require loading the root.
 
 For TPT and split table mappings, deletion removes the dependent physical
@@ -147,8 +153,8 @@ transaction.
 ## Bulk import
 
 `NestedSetBranch<TEntity>` describes detached adjacency.
-`InsertSubtreeAsync(branch, parentNodeKey)` imports beneath an existing parent.
-`InsertForestAsync(trees)` creates multiple explicit trees atomically:
+`InsertSubtreeAsync(branch, parentNodeKey, cancellationToken)` imports beneath an existing parent.
+`InsertForestAsync(trees, cancellationToken)` creates multiple explicit trees atomically:
 
 ```csharp
 var imports = new[]

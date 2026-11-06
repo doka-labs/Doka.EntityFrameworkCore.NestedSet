@@ -10,9 +10,9 @@ public sealed class CompositionPostgreSqlPlanWorkTests
         // Arrange
         const long budget = 320_448;
         const string plan = """
-            [{"Plan":{"Actual Rows":1000,"Actual Loops":1,"Rows Removed by Join Filter":1999000,
-                "Plans":[{"Actual Rows":2000,"Actual Loops":1000}]}}]
-            """;
+                            [{"Plan":{"Actual Rows":1000,"Actual Loops":1,"Rows Removed by Join Filter":1999000,
+                                "Plans":[{"Actual Rows":2000,"Actual Loops":1000}]}}]
+                            """;
 
         // Act
         var actual = CompositionPlanWork.ReadPostgreSqlJson(plan);
@@ -31,11 +31,11 @@ public sealed class CompositionPostgreSqlPlanWorkTests
     {
         // Arrange
         const string plan = """
-            [{"Plan":{"Actual Rows":5,"Actual Loops":1,"Plan Rows":1e20,
-                "Plans":[{"Actual Rows":2.5,"Actual Loops":4,"Rows Removed by Join Filter":1.25},
-                    {"Actual Rows":1e20,"Actual Loops":0}]},
-                "JIT":{"Actual Rows":1e20,"Actual Loops":1e20}}]
-            """;
+                            [{"Plan":{"Actual Rows":5,"Actual Loops":1,"Plan Rows":1e20,
+                                "Plans":[{"Actual Rows":2.5,"Actual Loops":4,"Rows Removed by Join Filter":1.25},
+                                    {"Actual Rows":1e20,"Actual Loops":0}]},
+                                "JIT":{"Actual Rows":1e20,"Actual Loops":1e20}}]
+                            """;
 
         // Act
         var actual = CompositionPlanWork.ReadPostgreSqlJson(plan);

@@ -50,9 +50,11 @@ internal sealed class TemporalContext : DbContext
                 temporal.HasPeriodEnd("ValidTo");
                 temporal.UseHistoryTable("TemporalNodesHistory");
             }));
+
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.Property(entity => entity.Name);
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)

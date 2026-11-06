@@ -31,11 +31,11 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
         // Assert
         Assert.Equal(300000D, work.OperatorTuples);
-        Assert.Equal((double?)300000, work.PostIndexTuples);
-        Assert.Equal((double?)25001, work.MaterializedOutput);
+        Assert.Equal(300000, work.PostIndexTuples);
+        Assert.Equal(25001, work.MaterializedOutput);
         Assert.Equal(0, work.UnknownMaterializedOutputs);
         Assert.Equal(2, work.ExecutedOperators);
-        Assert.Equal((double?)2, work.RootRows);
+        Assert.Equal(2, work.RootRows);
         Assert.Null(work.FullPrefixLoops);
         Assert.Contains("\\x00", plan, StringComparison.Ordinal);
     }
@@ -54,7 +54,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
         // Assert
         Assert.Equal(4000D, work.OperatorTuples);
-        Assert.Equal((double?)8, work.PostIndexTuples);
+        Assert.Equal(8, work.PostIndexTuples);
         Assert.Null(work.MaterializedOutput);
         Assert.Equal(0, work.UnknownMaterializedOutputs);
     }
@@ -96,7 +96,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
         var work = DensePathNativeWork.MariaDb(plan);
 
         // Assert
-        Assert.Equal((double?)25001, work.MaterializedOutput);
+        Assert.Equal(25001, work.MaterializedOutput);
         Assert.Equal(1, work.UnknownMaterializedOutputs);
     }
 
@@ -116,7 +116,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
         // Assert
         Assert.Equal(1D, work.OperatorTuples);
-        Assert.Equal((double?)1, work.PostIndexTuples);
+        Assert.Equal(1, work.PostIndexTuples);
         Assert.Null(work.MaterializedOutput);
         Assert.Equal(1, work.UnknownMaterializedOutputs);
         Assert.Equal(1, work.ExecutedOperators);

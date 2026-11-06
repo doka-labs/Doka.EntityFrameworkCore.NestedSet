@@ -90,7 +90,9 @@ internal static partial class NestedSetQueryEndpoint
             sourceBindingMethod,
             orderedJoinMethod);
 
-        return sourceAllowsVisibility.Value ? resolved : resolved with { IsVisible = false };
+        return sourceAllowsVisibility.Value
+            ? resolved
+            : resolved with { IsVisible = false };
     }
 
     /// <summary>Trusts only the validated runtime method identity, never a matching name or assembly label.</summary>
@@ -98,7 +100,9 @@ internal static partial class NestedSetQueryEndpoint
         MethodCallExpression call,
         MethodInfo? method
     ) => method is not null
-        && call.Method.GetType().Assembly == typeof(MethodInfo).Assembly
+        && call.Method.GetType()
+            .Assembly
+        == typeof(MethodInfo).Assembly
         && call.Method.IsGenericMethod
         && call.Method.GetGenericMethodDefinition() == method;
 
@@ -113,7 +117,9 @@ internal static partial class NestedSetQueryEndpoint
         }
 
         if (expression is MemberExpression { Member: FieldInfo { IsStatic: false } field, Expression: { } owner }
-            && field.GetType().Assembly == typeof(FieldInfo).Assembly
+            && field.GetType()
+                .Assembly
+            == typeof(FieldInfo).Assembly
             && ReadCapture(owner) is { } target)
         {
             return field.GetValue(target);
@@ -154,8 +160,8 @@ internal static partial class NestedSetQueryEndpoint
     {
         private bool _allowed = true;
         private bool _boundProved;
-        private bool _checkingBound;
         private bool _canReuseBound = true;
+        private bool _checkingBound;
 
         /// <summary>Checks every source leg while proving the exact repeated hierarchy binding only once.</summary>
         internal static bool Allows(
@@ -193,13 +199,17 @@ internal static partial class NestedSetQueryEndpoint
             // expressions that can change children through Accept or VisitChildren on another visit.
             if (_canReuseBound
                 && (_checkingBound || bound)
-                && node.GetType().Assembly != typeof(Expression).Assembly
+                && node.GetType()
+                    .Assembly
+                != typeof(Expression).Assembly
                 && node.GetType() != typeof(EntityQueryRootExpression))
             {
                 _canReuseBound = false;
             }
 
-            return bound ? VisitBound(node) : base.Visit(node);
+            return bound
+                ? VisitBound(node)
+                : base.Visit(node);
         }
 
         /// <summary>Inspects the candidate once without extending purity checks to unrelated payload syntax.</summary>
@@ -247,7 +257,9 @@ internal static partial class NestedSetQueryEndpoint
             // A candidate containing it retains the original inspection for every occurrence.
             if (_checkingBound
                 && _canReuseBound
-                && node.Member.GetType().Assembly != typeof(MemberInfo).Assembly)
+                && node.Member.GetType()
+                    .Assembly
+                != typeof(MemberInfo).Assembly)
             {
                 _canReuseBound = false;
             }
@@ -296,7 +308,9 @@ internal static partial class NestedSetQueryEndpoint
             // WHY: MethodInfo is extensible too; only runtime-owned metadata proves stable modifiers.
             if (_checkingBound
                 && _canReuseBound
-                && node.Method.GetType().Assembly != typeof(MethodInfo).Assembly)
+                && node.Method.GetType()
+                    .Assembly
+                != typeof(MethodInfo).Assembly)
             {
                 _canReuseBound = false;
             }
@@ -315,17 +329,17 @@ internal static partial class NestedSetQueryEndpoint
                     or nameof(RelationalQueryableExtensions.AsSplitQuery);
             }
             else if (declaring == typeof(Queryable)
-                     && node.Method.Name == nameof(Queryable.AsQueryable)
-                     && !typeof(IQueryable).IsAssignableFrom(node.Arguments[0].Type))
+                && node.Method.Name == nameof(Queryable.AsQueryable)
+                && !typeof(IQueryable).IsAssignableFrom(node.Arguments[0].Type))
             {
                 // WHY: AsQueryable preserves an existing query hidden behind IEnumerable, including
                 // its filter modifiers. Only an already query-typed input has inspectable provenance.
                 _allowed = false;
             }
             else if (declaring != typeof(Queryable)
-                     && typeof(IQueryable).IsAssignableFrom(node.Type)
-                     && !IsValidatedProviderMethod(node, sourceBindingMethod)
-                     && !IsValidatedProviderMethod(node, orderedJoinMethod))
+                && typeof(IQueryable).IsAssignableFrom(node.Type)
+                && !IsValidatedProviderMethod(node, sourceBindingMethod)
+                && !IsValidatedProviderMethod(node, orderedJoinMethod))
             {
                 _allowed = false;
             }

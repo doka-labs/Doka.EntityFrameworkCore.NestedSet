@@ -12,31 +12,48 @@ public abstract partial class SaveChangesTests
         string navigation,
         bool automaticDetection,
         bool pendingPayload,
-        bool normalizeAutomatic
+        bool normalizeAutomatic,
+        CancellationToken cancellationToken
     )
     {
-        var nodes = await context.Set<NavigationNode>().Include(node => node.Children).Include(node => node.ScopeOwner)
-            .ToArrayAsync(CancellationToken.None);
+        var nodes = await context
+            .Set<NavigationNode>()
+            .Include(node => node.Children)
+            .Include(node => node.ScopeOwner)
+            .ToArrayAsync(cancellationToken);
 
         var root = nodes.Single(node => node.Id == 1);
         var child = nodes.Single(node => node.Id == 2);
         var target = nodes.Single(node => node.Id == 3);
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
-        var updates = context.GetService<IUpdateAdapterFactory>().Create();
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(cancellationToken);
+
+        var updates = context
+            .GetService<IUpdateAdapterFactory>()
+            .Create();
 
         // WHY: Warm native dependent indexes while keys are unchanged, before any caller-side raw FK edit.
         foreach (var entry in updates.Entries)
         {
             foreach (var foreignKey in entry.EntityType.GetReferencingForeignKeys())
             {
-                _ = updates.GetDependents(entry, foreignKey).ToArray();
+                _ = updates
+                    .GetDependents(entry, foreignKey)
+                    .ToArray();
             }
         }
 
         context.ChangeTracker.AutoDetectChangesEnabled = false;
-        var noteValue = context.Entry(note).Property(value => value.Value);
+        var noteValue = context
+            .Entry(note)
+            .Property(value => value.Value);
+
         child.ParentId = target.Id;
-        context.Entry(child).Property(node => node.ParentId).IsModified = true;
+        context
+            .Entry(child)
+            .Property(node => node.ParentId)
+            .IsModified = true;
 
         if (navigation is "reference" or "both")
         {
@@ -70,17 +87,26 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Captures public EF state without any ChangeTracker or EntityEntry detection call.</summary>
-    private static PlannedEntryState[] CapturePlannedParentState(DbContext context)
+    private static PlannedEntryState[] CapturePlannedParentState(
+        DbContext context
+    )
     {
-        var updates = context.GetService<IUpdateAdapterFactory>().Create();
+        var updates = context
+            .GetService<IUpdateAdapterFactory>()
+            .Create();
 
-        return updates.Entries
+        return updates
+            .Entries
             .OrderBy(entry => entry.EntityType.Name, StringComparer.Ordinal)
             .ThenBy(entry => entry.GetCurrentValue<int>(entry.EntityType.FindProperty("Id")!))
             .Select(entry => new PlannedEntryState(
-                entry.ToEntityEntry().Entity,
+                entry.ToEntityEntry()
+                    .Entity,
                 entry.EntityState,
-                entry.EntityType.GetProperties().OrderBy(property => property.Name, StringComparer.Ordinal)
+                entry
+                    .EntityType
+                    .GetProperties()
+                    .OrderBy(property => property.Name, StringComparer.Ordinal)
                     .Select(property => new PlannedPropertyState(
                         property.Name,
                         entry.GetCurrentValue(property),
@@ -89,8 +115,12 @@ public abstract partial class SaveChangesTests
                         entry.IsConceptualNull(property),
                         property.IsKey() || property.IsForeignKey()
                             ? entry.GetRelationshipSnapshotValue(property)
-                            : null)).ToArray(),
-                entry.EntityType.GetNavigations().OrderBy(navigation => navigation.Name, StringComparer.Ordinal)
+                            : null))
+                    .ToArray(),
+                entry
+                    .EntityType
+                    .GetNavigations()
+                    .OrderBy(navigation => navigation.Name, StringComparer.Ordinal)
                     .Select(navigation =>
                     {
                         var current = entry.GetCurrentValue(navigation);
@@ -99,39 +129,71 @@ public abstract partial class SaveChangesTests
                         return new PlannedNavigationState(
                             navigation.Name,
                             current,
-                            navigation.IsCollection ? null : relationship,
-                            navigation.IsCollection ? CopyPlannedMembers(current) : [],
-                            navigation.IsCollection ? CopyPlannedMembers(relationship) : []);
-                    }).ToArray(),
-                entry.EntityType.GetForeignKeys()
+                            navigation.IsCollection
+                                ? null
+                                : relationship,
+                            navigation.IsCollection
+                                ? CopyPlannedMembers(current)
+                                : [],
+                            navigation.IsCollection
+                                ? CopyPlannedMembers(relationship)
+                                : []);
+                    })
+                    .ToArray(),
+                entry
+                    .EntityType
+                    .GetForeignKeys()
                     .OrderBy(ForeignKeyOrder, StringComparer.Ordinal)
-                    .Select(foreignKey => new PlannedPrincipalState(foreignKey,
-                        updates.FindPrincipal(entry, foreignKey)?.ToEntityEntry().Entity)).ToArray(),
-                entry.EntityType.GetReferencingForeignKeys()
+                    .Select(foreignKey => new PlannedPrincipalState(
+                        foreignKey,
+                        updates
+                            .FindPrincipal(entry, foreignKey)
+                            ?.ToEntityEntry()
+                            .Entity))
+                    .ToArray(),
+                entry
+                    .EntityType
+                    .GetReferencingForeignKeys()
                     .OrderBy(ForeignKeyOrder, StringComparer.Ordinal)
-                    .Select(foreignKey => new PlannedDependentsState(foreignKey,
-                        updates.GetDependents(entry, foreignKey).Select(dependent => dependent.ToEntityEntry().Entity)
-                            .ToArray())).ToArray())).ToArray();
+                    .Select(foreignKey => new PlannedDependentsState(
+                        foreignKey,
+                        updates
+                            .GetDependents(entry, foreignKey)
+                            .Select(dependent => dependent.ToEntityEntry()
+                                .Entity)
+                            .ToArray()))
+                    .ToArray()))
+            .ToArray();
     }
 
     /// <summary>
     ///     Orders each fixture FK by its declared mapping and scalar names, without reading entity values.
     /// </summary>
-    private static string ForeignKeyOrder(IForeignKey foreignKey)
-        => foreignKey.DeclaringEntityType.Name + ":" + foreignKey.PrincipalEntityType.Name + ":"
+    private static string ForeignKeyOrder(
+        IForeignKey foreignKey
+    )
+        => foreignKey.DeclaringEntityType.Name
+            + ":"
+            + foreignKey.PrincipalEntityType.Name
+            + ":"
             + string.Join(",", foreignKey.Properties.Select(property => property.Name));
 
     /// <summary>
     ///     Freezes collection references so a later retry cannot change the captured failed-state evidence.
     /// </summary>
-    private static object[] CopyPlannedMembers(object? value) => value is IEnumerable<object> members
+    private static object[] CopyPlannedMembers(
+        object? value
+    ) => value is IEnumerable<object> members
         ? members.ToArray()
         : [];
 
     /// <summary>
     ///     Compares CLR list order exactly and EF relationship collections by their reference-set contract.
     /// </summary>
-    private static void AssertPlannedParentState(PlannedEntryState[] expected, PlannedEntryState[] actual)
+    private static void AssertPlannedParentState(
+        PlannedEntryState[] expected,
+        PlannedEntryState[] actual
+    )
     {
         Assert.Equal(expected.Length, actual.Length);
 
@@ -160,8 +222,11 @@ public abstract partial class SaveChangesTests
                 Assert.Same(before.CurrentReference, after.CurrentReference);
                 Assert.Same(before.RelationshipReference, after.RelationshipReference);
                 Assert.Equal(before.CurrentMembers, after.CurrentMembers, ReferenceEqualityComparer.Instance);
-                Assert.True(before.RelationshipMembers.ToHashSet(ReferenceEqualityComparer.Instance)
-                    .SetEquals(after.RelationshipMembers));
+                Assert.True(
+                    before
+                        .RelationshipMembers
+                        .ToHashSet(ReferenceEqualityComparer.Instance)
+                        .SetEquals(after.RelationshipMembers));
             }
 
             // WHY: Native dependent maps are unordered; reference membership must survive rollback exactly.
@@ -170,8 +235,12 @@ public abstract partial class SaveChangesTests
             for (var foreignKey = 0; foreignKey < left.Dependents.Length; foreignKey++)
             {
                 Assert.Same(left.Dependents[foreignKey].ForeignKey, right.Dependents[foreignKey].ForeignKey);
-                Assert.True(left.Dependents[foreignKey].Entries.ToHashSet(ReferenceEqualityComparer.Instance)
-                    .SetEquals(right.Dependents[foreignKey].Entries));
+                Assert.True(
+                    left
+                        .Dependents[foreignKey]
+                        .Entries
+                        .ToHashSet(ReferenceEqualityComparer.Instance)
+                        .SetEquals(right.Dependents[foreignKey].Entries));
             }
         }
     }
@@ -179,52 +248,83 @@ public abstract partial class SaveChangesTests
     /// <summary>
     ///     Creates the destination tree without loading any hierarchy input into the later facade context.
     /// </summary>
-    private static async Task SeedPreparedNavigationDestinationAsync(TestDatabase database)
+    private static async Task SeedPreparedNavigationDestinationAsync(
+        TestDatabase database,
+        CancellationToken cancellationToken
+    )
     {
-        await using var setup = await CreateNavigationContextAsync(database, wrapped: true);
-        await setup.NestedSet<NavigationNode>().ForScope(1)
-            .InsertRootAsync(new NavigationNode { Id = 100, Name = "Destination" }, s_manualDestinationTree,
-                CancellationToken.None);
+        await using var setup = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: cancellationToken);
+
+        await setup
+            .NestedSet<NavigationNode>()
+            .ForScope(1)
+            .InsertRootAsync(
+                new NavigationNode
+                {
+                    Id = 100,
+                    Name = "Destination",
+                },
+                s_manualDestinationTree,
+                cancellationToken);
     }
 
     /// <summary>Reuses the existing insertion-shape data with the navigation model's explicit scope.</summary>
-    private static NavigationNode[] PreparedNavigationInputs(string shape, int scope)
-        => ManualInsertionInputs(shape).Select(input => new NavigationNode
-        {
-            Id = input.Id,
-            Scope = scope,
-            Name = input.Name ?? throw new InvalidOperationException("The insertion fixture requires names."),
-        }).ToArray();
+    private static NavigationNode[] PreparedNavigationInputs(
+        string shape,
+        int scope
+    )
+        => ManualInsertionInputs(shape)
+            .Select(input => new NavigationNode
+            {
+                Id = input.Id,
+                Scope = scope,
+                Name = input.Name ?? throw new InvalidOperationException("The insertion fixture requires names."),
+            })
+            .ToArray();
 
     /// <summary>Executes the three existing public insertion forms using navigation-mapped inputs.</summary>
     private static async Task InsertPreparedNavigationShapeAsync(
         DbContext context,
         string shape,
-        NavigationNode[] inputs
+        NavigationNode[] inputs,
+        CancellationToken cancellationToken
     )
     {
-        var tree = context.NestedSet<NavigationNode>().ForScope(inputs[0].Scope);
+        var tree = context
+            .NestedSet<NavigationNode>()
+            .ForScope(inputs[0].Scope);
 
         switch (shape)
         {
             case "single":
-                await tree.InsertChildAsync(inputs[0], 100, CancellationToken.None);
+                await tree.InsertChildAsync(inputs[0], 100, cancellationToken);
                 break;
             case "subtree":
                 await tree.InsertSubtreeAsync(
                     new NestedSetBranch<NavigationNode>(inputs[0], [new NestedSetBranch<NavigationNode>(inputs[1])]),
-                    100, CancellationToken.None);
+                    100,
+                    cancellationToken);
+
                 break;
             case "forest":
                 await tree.InsertForestAsync(
                     [
-                        new NestedSetTreeImport<NavigationNode, Guid>(s_manualFirstImportTree,
-                            new NestedSetBranch<NavigationNode>(inputs[0],
+                        new NestedSetTreeImport<NavigationNode, Guid>(
+                            s_manualFirstImportTree,
+                            new NestedSetBranch<NavigationNode>(
+                                inputs[0],
                                 [new NestedSetBranch<NavigationNode>(inputs[1])])),
-                        new NestedSetTreeImport<NavigationNode, Guid>(s_manualSecondImportTree,
-                            new NestedSetBranch<NavigationNode>(inputs[2],
+                        new NestedSetTreeImport<NavigationNode, Guid>(
+                            s_manualSecondImportTree,
+                            new NestedSetBranch<NavigationNode>(
+                                inputs[2],
                                 [new NestedSetBranch<NavigationNode>(inputs[3])])),
-                    ], CancellationToken.None);
+                    ],
+                    cancellationToken);
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(shape));
@@ -236,7 +336,8 @@ public abstract partial class SaveChangesTests
         NavigationNode Root,
         NavigationNode Child,
         NavigationNode Target,
-        PropertyEntry<NavigationNote, string> NoteValue);
+        PropertyEntry<NavigationNote, string> NoteValue
+    );
 
     /// <summary>Freezes one tracked entity's scalar and relationship state.</summary>
     private sealed record PlannedEntryState(
@@ -245,7 +346,8 @@ public abstract partial class SaveChangesTests
         PlannedPropertyState[] Properties,
         PlannedNavigationState[] Navigations,
         PlannedPrincipalState[] Principals,
-        PlannedDependentsState[] Dependents);
+        PlannedDependentsState[] Dependents
+    );
 
     /// <summary>Freezes immutable scalar values, modification flags and installed relationship identity.</summary>
     private sealed record PlannedPropertyState(
@@ -254,7 +356,8 @@ public abstract partial class SaveChangesTests
         object? Original,
         bool Modified,
         bool ConceptualNull,
-        object? Relationship);
+        object? Relationship
+    );
 
     /// <summary>Separates observable CLR sequence state from EF's unordered relationship snapshot.</summary>
     private sealed record PlannedNavigationState(
@@ -262,13 +365,20 @@ public abstract partial class SaveChangesTests
         object? CurrentReference,
         object? RelationshipReference,
         object[] CurrentMembers,
-        object[] RelationshipMembers);
+        object[] RelationshipMembers
+    );
 
     /// <summary>Captures principal lookup through EF's native identity maps.</summary>
-    private sealed record PlannedPrincipalState(IForeignKey ForeignKey, object? Entity);
+    private sealed record PlannedPrincipalState(
+        IForeignKey ForeignKey,
+        object? Entity
+    );
 
     /// <summary>Captures dependent lookup through EF's native dependent indexes.</summary>
-    private sealed record PlannedDependentsState(IForeignKey ForeignKey, object[] Entries);
+    private sealed record PlannedDependentsState(
+        IForeignKey ForeignKey,
+        object[] Entries
+    );
 
     /// <summary>Fails the first completed native payload save and permits an unchanged retry.</summary>
     private sealed class PlannedParentFailure : SaveChangesInterceptor

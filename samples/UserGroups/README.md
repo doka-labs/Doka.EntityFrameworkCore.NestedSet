@@ -503,8 +503,7 @@ new tree, while the tenant stays fixed. Initial and current routing subjects are
 explicit alternatives, never silent defaults.
 
 All hops run sequentially inside one qualified read snapshot. Doka and PostgreSQL
-use Repeatable Read, SQLite uses Serializable, and SQL Server requires Snapshot
-(or an adequate caller Serializable transaction). SQL Server's database owner
+use Repeatable Read, SQLite uses Serializable, and SQL Server requires Snapshot (or an adequate caller Serializable transaction). SQL Server's database owner
 must enable `ALLOW_SNAPSHOT_ISOLATION`; the sample does not alter database
 configuration. An inadequate existing transaction is rejected before the first
 reader. Cancellation propagates as cancellation, never as `NotFound`.

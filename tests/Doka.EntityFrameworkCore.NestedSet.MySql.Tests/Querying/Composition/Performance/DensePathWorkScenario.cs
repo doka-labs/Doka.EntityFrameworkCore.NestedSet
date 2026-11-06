@@ -25,10 +25,14 @@ internal sealed record DensePathWorkScenario(
     internal static readonly Guid OtherTree = Guid.Parse("61616161-6161-6161-6161-616161616161");
 
     /// <summary>Gets the authorized population; foreign scope three never contributes to this budget.</summary>
-    internal int VisibleNodes => Forest ? 2 * Nodes : Nodes;
+    internal int VisibleNodes => Forest
+        ? 2 * Nodes
+        : Nodes;
 
     /// <summary>Gets all physically stored nodes, including both coordinate-overlapping decoy populations.</summary>
-    internal int StoredNodes => Branches || Forest ? 3 * Nodes : Nodes;
+    internal int StoredNodes => Branches || Forest
+        ? 3 * Nodes
+        : Nodes;
 
     /// <summary>Gets the last eligible chain candidate, or null when no dense candidate search is requested.</summary>
     internal int? CandidateCutoff =>
@@ -45,17 +49,17 @@ internal sealed record DensePathWorkScenario(
         int nodes
     ) => shape switch
     {
-        "DenseOffPath" => new(shape, nodes, nodes - 999, true, null),
-        "DenseOnPath" => new(shape, nodes, 1, true, null),
-        "CleanLongPath" => new(shape, nodes, 1, false, null),
-        "DenseCandidatesAccept" => new(shape, nodes, 1, false, null),
-        "DenseCandidatesReject" => new(shape, nodes, 1, false, null),
-        "DenseCandidatesPriorAccept" => new(shape, nodes, 1, false, null),
-        "DenseCandidatesPriorReject" => new(shape, nodes, 1, false, null),
-        "SingleUpperFringe" => new(shape, nodes, 99_020, true, 99_030),
-        "SingleLowerFringe" => new(shape, nodes, 99_020, true, 99_995),
-        "SameBlockLower" => new(shape, nodes, 99_980, true, 99_995),
-        "UpperIncomingOnly" => new(shape, nodes, 99_020, true, 99_020),
+        "DenseOffPath" => new DensePathWorkScenario(shape, nodes, nodes - 999, true, null),
+        "DenseOnPath" => new DensePathWorkScenario(shape, nodes, 1, true, null),
+        "CleanLongPath" => new DensePathWorkScenario(shape, nodes, 1, false, null),
+        "DenseCandidatesAccept" => new DensePathWorkScenario(shape, nodes, 1, false, null),
+        "DenseCandidatesReject" => new DensePathWorkScenario(shape, nodes, 1, false, null),
+        "DenseCandidatesPriorAccept" => new DensePathWorkScenario(shape, nodes, 1, false, null),
+        "DenseCandidatesPriorReject" => new DensePathWorkScenario(shape, nodes, 1, false, null),
+        "SingleUpperFringe" => new DensePathWorkScenario(shape, nodes, 99_020, true, 99_030),
+        "SingleLowerFringe" => new DensePathWorkScenario(shape, nodes, 99_020, true, 99_995),
+        "SameBlockLower" => new DensePathWorkScenario(shape, nodes, 99_980, true, 99_995),
+        "UpperIncomingOnly" => new DensePathWorkScenario(shape, nodes, 99_020, true, 99_020),
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
 
@@ -65,7 +69,7 @@ internal sealed record DensePathWorkScenario(
         bool forest
     ) => shape switch
     {
-        "DenseOffBranch" => new(
+        "DenseOffBranch" => new DensePathWorkScenario(
             shape,
             100_000,
             0,
@@ -73,7 +77,7 @@ internal sealed record DensePathWorkScenario(
             null,
             true,
             forest),
-        "SelectedBranchFailure" => new(
+        "SelectedBranchFailure" => new DensePathWorkScenario(
             shape,
             100_000,
             0,
@@ -81,7 +85,7 @@ internal sealed record DensePathWorkScenario(
             85_752,
             true,
             forest),
-        "CleanDistinctLower" => new(
+        "CleanDistinctLower" => new DensePathWorkScenario(
             shape,
             100_000,
             0,
@@ -89,7 +93,7 @@ internal sealed record DensePathWorkScenario(
             null,
             true,
             forest),
-        "RootAboveSiblingFailures" => new(
+        "RootAboveSiblingFailures" => new DensePathWorkScenario(
             shape,
             100_000,
             0,
@@ -105,7 +109,12 @@ internal sealed record DensePathWorkScenario(
     {
         if (!Branches)
         {
-            for (var population = 0; population < (Forest ? 2 : 1); population++)
+            for (var population = 0;
+                population
+                < (Forest
+                    ? 2
+                    : 1);
+                population++)
             {
                 var offset = population * Nodes;
 
@@ -121,15 +130,22 @@ internal sealed record DensePathWorkScenario(
             yield break;
         }
 
-        for (var population = 0; population < (Forest ? 2 : 1); population++)
+        for (var population = 0;
+            population
+            < (Forest
+                ? 2
+                : 1);
+            population++)
         {
             foreach (var branch in Enumerable.Range(80, 10))
             {
-                var first = (population * Nodes) + 2 + branch * BranchSize;
+                var first = population * Nodes + 2 + branch * BranchSize;
 
                 foreach (var offset in Enumerable.Range(990, 10))
                 {
-                    var upper = Name == "RootAboveSiblingFailures" ? (population * Nodes) + 1 : first + 500;
+                    var upper = Name == "RootAboveSiblingFailures"
+                        ? population * Nodes + 1
+                        : first + 500;
 
                     yield return (upper, first + offset);
                 }
@@ -200,15 +216,20 @@ internal sealed record DensePathWorkScenario(
         int key
     )
     {
-        var population = Branches || Forest ? (key - 1) / Nodes : 0;
-        var local = key - (population * Nodes);
+        var population = Branches || Forest
+            ? (key - 1) / Nodes
+            : 0;
+
+        var local = key - population * Nodes;
 
         if (local == 1)
         {
             return null;
         }
 
-        return Branches && (local - 2) % BranchSize == 0 ? (population * Nodes) + 1 : key - 1;
+        return Branches && (local - 2) % BranchSize == 0
+            ? population * Nodes + 1
+            : key - 1;
     }
 
     /// <summary>Models blocked child edges independently of SQL predicates and coordinate bucketing.</summary>

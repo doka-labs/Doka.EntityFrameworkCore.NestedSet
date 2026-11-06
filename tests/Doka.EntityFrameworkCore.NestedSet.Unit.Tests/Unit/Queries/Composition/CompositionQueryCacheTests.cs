@@ -45,7 +45,7 @@ public sealed class CompositionQueryCacheTests
         var firstTree = Guid.Parse("04ba1fd5-3159-4c68-b9fb-90f658fc925b");
         var secondTree = Guid.Parse("e1927022-7320-407e-8481-86f7d138c2cd");
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        await SeedAsync(context, firstTree, secondTree);
+        await SeedAsync(context, firstTree, secondTree, cancellationToken: TestContext.Current.CancellationToken);
         var first = Query(context, operation, 11, firstTree, [1, 3], 0);
         var second = Query(context, operation, 22, secondTree, [4, 6], 3);
         var changedValue = Query(context, operation, 11, firstTree, [1, 3], 1);
@@ -107,10 +107,15 @@ public sealed class CompositionQueryCacheTests
     }
 
     /// <summary>Seeds two equal-shaped chains under different scope, tree, and node identities.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="firstTree">The identity of the first seeded tree.</param>
+    /// <param name="secondTree">The identity of the second seeded tree.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync(
         CompositionGuardContext context,
         Guid firstTree,
-        Guid secondTree
+        Guid secondTree,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Keep each group ordinal aligned with its scope, tree identity, and disjoint key range.
@@ -128,9 +133,15 @@ public sealed class CompositionQueryCacheTests
                 var node = new CompositionGuardNode
                 {
                     Id = offset + depth + 1,
-                    Scope = group == 0 ? 11 : 22,
-                    TreeId = group == 0 ? firstTree : secondTree,
-                    ParentId = depth == 0 ? null : offset + depth,
+                    Scope = group == 0
+                        ? 11
+                        : 22,
+                    TreeId = group == 0
+                        ? firstTree
+                        : secondTree,
+                    ParentId = depth == 0
+                        ? null
+                        : offset + depth,
                     Left = depth + 1,
                     Right = 6 - depth,
                     Depth = depth,
@@ -138,11 +149,11 @@ public sealed class CompositionQueryCacheTests
 
                 await context
                     .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-                    .AddAsync(node, CancellationToken.None);
+                    .AddAsync(node, cancellationToken);
             }
         }
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 
@@ -168,7 +179,8 @@ public sealed class CompositionQueryCacheTests
         // WHY: Raw sources retain endpoint membership. Bound variants separately exercise its provenance
         // shortcut, so both physical shapes must retain parameterization across scope/tree/value changes.
         var rows = operation.EndsWith("-bound", StringComparison.Ordinal)
-            ? hierarchy.SelectSubtrees(upper => Enumerable.Contains(anchors, upper.Id),
+            ? hierarchy.SelectSubtrees(
+                upper => Enumerable.Contains(anchors, upper.Id),
                 (upper, lower, distance) => new CompositionGuardRow
                 {
                     Upper = upper,
@@ -176,7 +188,8 @@ public sealed class CompositionQueryCacheTests
                 })
             : nodes
                 .Where(upper => Enumerable.Contains(anchors, upper.Id))
-                .SelectMany(upper => nodes.Where(lower => lower.Left >= upper.Left && lower.Right <= upper.Right),
+                .SelectMany(
+                    upper => nodes.Where(lower => lower.Left >= upper.Left && lower.Right <= upper.Right),
                     (upper, lower) => new CompositionGuardRow
                     {
                         Upper = upper,
@@ -185,25 +198,31 @@ public sealed class CompositionQueryCacheTests
 
         var query = operation.Replace("-bound", string.Empty, StringComparison.Ordinal) switch
         {
-            "ancestors" => hierarchy.SelectAncestors(node => Enumerable.Contains(anchors, node.Id),
+            "ancestors" => hierarchy.SelectAncestors(
+                node => Enumerable.Contains(anchors, node.Id),
                 (node, ancestor, distance) => ancestor.Id),
-            "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(node => Enumerable.Contains(anchors, node.Id),
+            "ancestors-or-self" => hierarchy.SelectAncestorsOrSelf(
+                node => Enumerable.Contains(anchors, node.Id),
                 (node, ancestor, distance) => ancestor.Id),
-            "subtrees" => hierarchy.SelectSubtrees(anchor => Enumerable.Contains(anchors, anchor.Id),
+            "subtrees" => hierarchy.SelectSubtrees(
+                anchor => Enumerable.Contains(anchors, anchor.Id),
                 (anchor, node, distance) => node.Id),
             "path" => hierarchy
-                .WherePathEdges(rows,
+                .WherePathEdges(
+                    rows,
                     row => row.Upper,
                     row => row.Lower,
                     (row, parent, child) => child.Id > minimumId)
                 .Select(row => row.Lower.Id),
             "any" => hierarchy
-                .WhereAnyAncestorOrSelf(rows,
+                .WhereAnyAncestorOrSelf(
+                    rows,
                     row => row.Lower,
                     (row, owner) => owner.Id > minimumId)
                 .Select(row => row.Lower.Id),
             "nearest" => hierarchy
-                .WhereNearestAncestorOrSelf(rows,
+                .WhereNearestAncestorOrSelf(
+                    rows,
                     row => row.Lower,
                     (row, owner) => owner.Depth == 0,
                     (row, owner) => owner.Id > minimumId)

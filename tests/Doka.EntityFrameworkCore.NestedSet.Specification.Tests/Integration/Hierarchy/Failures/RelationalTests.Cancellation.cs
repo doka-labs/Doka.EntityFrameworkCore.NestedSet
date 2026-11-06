@@ -13,14 +13,14 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         var original = setup
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPromotionTreeAsync(setup, 1);
-        var before = await SnapshotAsync(setup, 1);
+        await SeedPromotionTreeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         var probe = new AppliedTreeWriteCancellation(cancellation);
         await using var context = database.CreateContext(probe);
@@ -40,7 +40,7 @@ public abstract partial class RelationalTests
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(exception);
         Assert.True(probe.RowsChanged > 0);
-        Assert.Equal(before, await SnapshotAsync(setup, 1));
+        Assert.Equal(before, await SnapshotAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Null(context.Database.CurrentTransaction);
         Assert.True(
             (await original

@@ -36,7 +36,15 @@ public sealed partial class QueryPlanReplayTests
         try
         {
             // Act
-            await CompositionCapacityProfiles.RetainFailureAsync(context, "PostgreSql", profile, probe, original, 1);
+            await CompositionCapacityProfiles.RetainFailureAsync(
+                context,
+                "PostgreSql",
+                profile,
+                probe,
+                original,
+                cancellationToken: TestContext.Current.CancellationToken,
+                1);
+
             var evidence = await File.ReadAllTextAsync(path, CancellationToken.None);
 
             // Assert
@@ -45,7 +53,10 @@ public sealed partial class QueryPlanReplayTests
             Assert.Contains(original.ToString(), evidence, StringComparison.Ordinal);
             Assert.Contains("SELECT 2", evidence, StringComparison.Ordinal);
             Assert.DoesNotContain("SELECT 1", evidence, StringComparison.Ordinal);
-            Assert.Contains(diagnosticFails ? "Estimated-plan capture also failed:" : "estimated target plan",
+            Assert.Contains(
+                diagnosticFails
+                    ? "Estimated-plan capture also failed:"
+                    : "estimated target plan",
                 evidence,
                 StringComparison.Ordinal);
         }

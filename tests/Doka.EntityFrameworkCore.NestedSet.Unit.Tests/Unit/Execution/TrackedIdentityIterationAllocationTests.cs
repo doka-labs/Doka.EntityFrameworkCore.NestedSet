@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects allocation-free traversal of stable captured guard identities.</summary>
+
 // WHY: Keep this fixed-budget allocation check in the existing nonparallel measurement collection.
 // Unrelated test work must not compete with its warmup and measurement window.
 [Collection("Allocation measurements")]
@@ -28,16 +29,17 @@ public sealed class TrackedIdentityIterationAllocationTests
         var metadata = context.Model.FindEntityType(typeof(TreeNode))!;
         var map = NestedSetMapping<TreeNode, int, int>.For(context, metadata);
         const int scope = 7;
-        context.AttachRange(Enumerable
-            .Range(1, candidates)
-            .Select(id => new TreeNode
-            {
-                NodeId = id,
-                Tree = scope,
-                TreeId = Guid.NewGuid(),
-                Start = 1,
-                End = 2,
-            }));
+        context.AttachRange(
+            Enumerable
+                .Range(1, candidates)
+                .Select(id => new TreeNode
+                {
+                    NodeId = id,
+                    Tree = scope,
+                    TreeId = Guid.NewGuid(),
+                    Start = 1,
+                    End = 2,
+                }));
 
         using var guard =
             NestedSetTrackedIdentityGuard<TreeNode, int, Guid, int>.Capture(
@@ -78,13 +80,17 @@ public sealed class TrackedIdentityIterationAllocationTests
         // WHY: A fixed allowance tolerates runtime noise while rejecting the former 80-byte iterator on every check.
         Assert.InRange(allocated, 0, 4096);
         Assert.Equal(candidates != 0, guard.HasCandidates);
-        Assert.Equal(candidates,
+        Assert.Equal(
+            candidates,
             context
                 .ChangeTracker
                 .Entries<TreeNode>()
                 .Count());
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

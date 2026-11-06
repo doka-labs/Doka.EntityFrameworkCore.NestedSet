@@ -4,51 +4,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class SaveChangesTests
 {
-    /// <summary>Maps the same complex payload through ownership, table splitting or a separate ordinary row.</summary>
-    private sealed class ComplexPeerRecoveryContext(DbContextOptions options, string shape)
-        : NestedSetDbContext(options), ITestModelVariant
-    {
-        /// <inheritdoc />
-        object ITestModelVariant.ModelVariant => shape;
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            var node = modelBuilder.Entity<ComplexPeerRecoveryNode>();
-            node.ToTable("NavigationSaveNodes");
-            node.Property(value => value.Id).ValueGeneratedNever();
-            node.Property(value => value.Name).HasMaxLength(128);
-            node.HasNestedSet(value => value.HasTreeId(item => item.TreeId).HasParent(item => item.ParentId)
-                .OrderBy(item => item.Name));
-
-            if (shape == "owned")
-            {
-                var payload = node.OwnsOne(value => value.Details);
-                payload.WithOwner(value => value.Node).HasForeignKey(value => value.Id);
-                payload.HasKey(value => value.Id);
-                payload.Property(value => value.Id).HasColumnName("Id").ValueGeneratedNever();
-
-                ConfigureComplexPeerPayload(payload.OwnedEntityType, optionalPeer: false);
-                node.Navigation(value => value.Details).IsRequired();
-            }
-            else if (shape is "split" or "separate")
-            {
-                var payload = modelBuilder.Entity<ComplexPeerPayload>();
-                payload.ToTable(shape == "split" ? "NavigationSaveNodes" : "SeparateComplexPayloads");
-                payload.Property(value => value.Id).ValueGeneratedNever();
-                ConfigureComplexPeerPayload(payload.Metadata, optionalPeer: shape == "split");
-                node.HasOne(value => value.Details).WithOne(value => value.Node)
-                    .HasForeignKey<ComplexPeerPayload>(value => value.Id).OnDelete(DeleteBehavior.Cascade);
-            }
-            else
-            {
-                throw new InvalidOperationException("The complex sharing model shape is not recognized.");
-            }
-        }
-    }
-
     /// <summary>Configures portable reference-type complex values and a JSON complex collection.</summary>
-    private static void ConfigureComplexPeerPayload(IMutableEntityType payload, bool optionalPeer)
+    private static void ConfigureComplexPeerPayload(
+        IMutableEntityType payload,
+        bool optionalPeer
+    )
     {
         // WHY: OwnedNavigationBuilder has no complex-collection fluent API. Public mutable metadata configures
         // the same supported model without constructing EF's infrastructure-only entity builders.
@@ -87,17 +47,97 @@ public abstract partial class SaveChangesTests
         itemText.IsNullable = false;
     }
 
+    /// <summary>Maps the same complex payload through ownership, table splitting or a separate ordinary row.</summary>
+    private sealed class ComplexPeerRecoveryContext(
+        DbContextOptions options,
+        string shape
+    )
+        : NestedSetDbContext(options), ITestModelVariant
+    {
+        /// <inheritdoc />
+        object ITestModelVariant.ModelVariant => shape;
+
+        /// <inheritdoc />
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
+        {
+            var node = modelBuilder.Entity<ComplexPeerRecoveryNode>();
+            node.ToTable("NavigationSaveNodes");
+            node
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
+
+            node
+                .Property(value => value.Name)
+                .HasMaxLength(128);
+
+            node.HasNestedSet(value => value
+                .HasTreeId(item => item.TreeId)
+                .HasParent(item => item.ParentId)
+                .OrderBy(item => item.Name));
+
+            if (shape == "owned")
+            {
+                var payload = node.OwnsOne(value => value.Details);
+                payload
+                    .WithOwner(value => value.Node)
+                    .HasForeignKey(value => value.Id);
+
+                payload.HasKey(value => value.Id);
+                payload
+                    .Property(value => value.Id)
+                    .HasColumnName("Id")
+                    .ValueGeneratedNever();
+
+                ConfigureComplexPeerPayload(payload.OwnedEntityType, optionalPeer: false);
+                node
+                    .Navigation(value => value.Details)
+                    .IsRequired();
+            }
+            else if (shape is "split" or "separate")
+            {
+                var payload = modelBuilder.Entity<ComplexPeerPayload>();
+                payload.ToTable(
+                    shape == "split"
+                        ? "NavigationSaveNodes"
+                        : "SeparateComplexPayloads");
+
+                payload
+                    .Property(value => value.Id)
+                    .ValueGeneratedNever();
+
+                ConfigureComplexPeerPayload(payload.Metadata, optionalPeer: shape == "split");
+                node
+                    .HasOne(value => value.Details)
+                    .WithOne(value => value.Node)
+                    .HasForeignKey<ComplexPeerPayload>(value => value.Id)
+                    .OnDelete(DeleteBehavior.Cascade);
+            }
+            else
+            {
+                throw new InvalidOperationException("The complex sharing model shape is not recognized.");
+            }
+        }
+    }
+
     /// <summary>Provides an ordered hierarchy whose unchanged peer contains independent complex payload.</summary>
     private sealed class ComplexPeerRecoveryNode : INestedSetNode<int, Guid>
     {
+        /// <summary>Gets or sets the configured optional parent key.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets the explicitly marked ordering criterion.</summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the ordinary peer configured by the current model shape.</summary>
+        public ComplexPeerPayload? Details { get; set; }
+
         /// <inheritdoc />
         public int Id { get; set; }
 
         /// <inheritdoc />
         public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the configured optional parent key.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -110,12 +150,6 @@ public abstract partial class SaveChangesTests
 
         /// <inheritdoc />
         public long Position { get; set; }
-
-        /// <summary>Gets or sets the explicitly marked ordering criterion.</summary>
-        public string Name { get; set; } = string.Empty;
-
-        /// <summary>Gets or sets the ordinary peer configured by the current model shape.</summary>
-        public ComplexPeerPayload? Details { get; set; }
     }
 
     /// <summary>Contains unmarked complex CLR values whose object identity belongs to the caller.</summary>

@@ -3,6 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Postgres;
 internal sealed partial class PostgresNestedSetProvider
 {
     /// <inheritdoc />
+
     // WHY: PostgreSQL truncates identifiers above NAMEDATALEN - 1 bytes, which would silently merge long names.
     // https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
     internal override int? MaxIdentifierLength => 63;
@@ -11,9 +12,13 @@ internal sealed partial class PostgresNestedSetProvider
     internal override bool IdentifierLengthCountsBytes => true;
 
     /// <inheritdoc />
+
     // WHY: Npgsql quotes every identifier that folding would change, and quoted identifiers are case-sensitive.
     // https://www.postgresql.org/docs/17/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
     internal override StringComparer IdentifierComparer => StringComparer.Ordinal;
+
+    /// <inheritdoc />
+    internal override bool StoresAncestorFlag => true;
 
     /// <inheritdoc />
     internal override bool UsesUnicodeScalarLength(
@@ -42,13 +47,11 @@ internal sealed partial class PostgresNestedSetProvider
     }
 
     /// <inheritdoc />
-    internal override bool StoresAncestorFlag => true;
-
-    /// <inheritdoc />
     internal override void AddModelFinalizers(
         ConventionSet conventions,
         ISqlGenerationHelper sql
     ) =>
+
         // WHY: EF drains self-FK conventions after each finalizer. The dependent index exists only after
         // the preceding common hierarchy finalizer finishes its relationship-convention batch.
         conventions.ModelFinalizingConventions.Add(new PostgresParentIndexes(sql));

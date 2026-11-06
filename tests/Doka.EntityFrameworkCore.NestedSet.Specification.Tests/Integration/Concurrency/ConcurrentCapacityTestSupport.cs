@@ -12,5 +12,16 @@ internal static class ConcurrentCapacityTestSupport
     /// <summary>Creates a deterministic distinct tree identity without changing the shared scope.</summary>
     internal static Guid TreeId(
         int value
-    ) => new(value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    ) => new(
+        value,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0);
 }

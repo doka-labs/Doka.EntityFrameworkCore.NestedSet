@@ -30,7 +30,10 @@ public sealed class DatabaseBenchmarkTests
                     .GetMethods()
                     .Where(method => method.IsDefined(typeof(BenchmarkAttribute)));
 
-                int[] treeCounts = type == typeof(CrossTreeMoveBenchmarks) ? [2] : [1, 2];
+                int[] treeCounts = type == typeof(CrossTreeMoveBenchmarks)
+                    ? [2]
+                    : [1, 2];
+
                 foreach (var method in methods)
                 {
                     foreach (var shape in Enum.GetValues<BenchmarkShape>())
@@ -80,10 +83,17 @@ public sealed class DatabaseBenchmarkTests
     {
         // Arrange
         var scenario = new BenchmarkScenario(32, shape, trees, 3);
-        await using var prepared = await PreparedBenchmark.CreateAsync(type, scenario);
+        await using var prepared = await PreparedBenchmark.CreateAsync(
+            type,
+            scenario,
+            TestContext.Current.CancellationToken);
+
         var feature = BindFeature(prepared.Benchmark, methodName);
         var expected = ExpectedForest(scenario);
-        var queryKeys = type == typeof(QueryBenchmarks) ? ExpectedQueryKeys(expected, methodName, scenario) : null;
+        var queryKeys = type == typeof(QueryBenchmarks)
+            ? ExpectedQueryKeys(expected, methodName, scenario)
+            : null;
+
         var hierarchyTrackedBefore = prepared
             .Fixture
             .Context
@@ -98,7 +108,7 @@ public sealed class DatabaseBenchmarkTests
         await feature();
 
         // Assert
-        await prepared.Benchmark.VerifyAsync();
+        await prepared.Benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var nodes = await prepared
             .Fixture
             .Context
@@ -122,7 +132,10 @@ public sealed class DatabaseBenchmarkTests
         }
         else if (type == typeof(OrderingSaveBenchmarks))
         {
-            var renamed = shape == BenchmarkShape.Deep ? scenario.Nodes / trees : 3;
+            var renamed = shape == BenchmarkShape.Deep
+                ? scenario.Nodes / trees
+                : 3;
+
             Assert.Equal([renamed], hierarchyTrackedBefore);
         }
 
@@ -144,10 +157,12 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             type,
-            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0),
+            TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(prepared.Benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() =>
+            prepared.Benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -169,7 +184,8 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(QueryBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 0),
+            TestContext.Current.CancellationToken);
 
         var benchmark = (QueryBenchmarks)prepared.Benchmark;
         await benchmark.CompleteTree();
@@ -183,8 +199,9 @@ public sealed class DatabaseBenchmarkTests
                 result[0] = new BenchmarkNode
                 {
                     Id = 999,
-                    TreeId = result[0].TreeId
+                    TreeId = result[0].TreeId,
                 };
+
                 break;
             case "tree":
                 result[0].TreeId = prepared.Fixture.Forest.Imports[1].TreeId;
@@ -197,7 +214,7 @@ public sealed class DatabaseBenchmarkTests
         }
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -210,7 +227,8 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(InsertBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Wide, 1, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Wide, 1, 0),
+            TestContext.Current.CancellationToken);
 
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
         await benchmark.FirstChild();
@@ -222,7 +240,7 @@ public sealed class DatabaseBenchmarkTests
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Position, 1000), CancellationToken.None);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -235,7 +253,8 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(ValidationBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Deep, 1, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Deep, 1, 0),
+            TestContext.Current.CancellationToken);
 
         var benchmark = (ValidationBenchmarks)prepared.Benchmark;
         await benchmark.Full();
@@ -246,7 +265,7 @@ public sealed class DatabaseBenchmarkTests
             CancellationToken.None);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -258,14 +277,18 @@ public sealed class DatabaseBenchmarkTests
     {
         // Arrange
         var scenario = new BenchmarkScenario(32, BenchmarkShape.Balanced, 2, 3);
-        await using var prepared = await PreparedBenchmark.CreateAsync(typeof(InsertBenchmarks), scenario);
+        await using var prepared = await PreparedBenchmark.CreateAsync(
+            typeof(InsertBenchmarks),
+            scenario,
+            TestContext.Current.CancellationToken);
+
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
-        var registryBefore = await ReadRegistryAsync(prepared.Fixture.Context);
+        var registryBefore = await ReadRegistryAsync(prepared.Fixture.Context, TestContext.Current.CancellationToken);
         await benchmark.Root();
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var actual = await prepared
@@ -276,7 +299,10 @@ public sealed class DatabaseBenchmarkTests
             .ToListAsync(CancellationToken.None);
 
         AssertExpectedForest(ExpectedForest(scenario), actual);
-        Assert.Equal(registryBefore, await ReadRegistryAsync(prepared.Fixture.Context));
+        Assert.Equal(
+            registryBefore,
+            await ReadRegistryAsync(prepared.Fixture.Context, TestContext.Current.CancellationToken));
+
         Assert.Equal(
             3,
             prepared
@@ -285,9 +311,11 @@ public sealed class DatabaseBenchmarkTests
                 .ChangeTracker
                 .Entries<BenchmarkTrackedEntity>()
                 .Count());
+
         Assert.All(
             prepared.Fixture.Context.ChangeTracker.Entries(),
             entry => Assert.Equal(EntityState.Unchanged, entry.State));
+
         Assert.Equal(0, prepared.Fixture.Counter.Commands);
     }
 
@@ -298,18 +326,19 @@ public sealed class DatabaseBenchmarkTests
         // Arrange
         await using var prepared = await PreparedBenchmark.CreateAsync(
             typeof(InsertBenchmarks),
-            new BenchmarkScenario(32, BenchmarkShape.Wide, 2, 0));
+            new BenchmarkScenario(32, BenchmarkShape.Wide, 2, 0),
+            TestContext.Current.CancellationToken);
 
         var benchmark = (InsertBenchmarks)prepared.Benchmark;
         await benchmark.Root();
-        await benchmark.VerifyAsync();
-        await benchmark.PrepareAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
+        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
 
         // Act
         await benchmark.Root();
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
         var inserted = await prepared
             .Fixture
             .Context
@@ -329,7 +358,9 @@ public sealed class DatabaseBenchmarkTests
         string methodName
     )
     {
-        var method = benchmark.GetType().GetMethod(methodName)
+        var method = benchmark
+                .GetType()
+                .GetMethod(methodName)
             ?? throw new InvalidOperationException("The selected benchmark method is missing.");
 
         return method.CreateDelegate<Func<Task>>(benchmark);
@@ -345,7 +376,11 @@ public sealed class DatabaseBenchmarkTests
         var offset = 0;
         for (var tree = 0; tree < scenario.Trees; tree++)
         {
-            var size = (scenario.Nodes / scenario.Trees) + (tree < scenario.Nodes % scenario.Trees ? 1 : 0);
+            var size = scenario.Nodes / scenario.Trees
+                + (tree < scenario.Nodes % scenario.Trees
+                    ? 1
+                    : 0);
+
             var identity = new Guid(tree + 1, 0, 0, new byte[8]);
             for (var local = 0; local < size; local++)
             {
@@ -355,13 +390,13 @@ public sealed class DatabaseBenchmarkTests
                     : offset
                     + keyOffset
                     + 1
-                    + (scenario.Shape switch
+                    + scenario.Shape switch
                     {
                         BenchmarkShape.Wide => 0,
                         BenchmarkShape.Deep => local - 1,
                         BenchmarkShape.Balanced => (local - 1) / 2,
                         _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
-                    });
+                    };
 
                 var position = local == 0
                     ? 0
@@ -392,11 +427,21 @@ public sealed class DatabaseBenchmarkTests
         BenchmarkScenario scenario
     )
     {
-        var firstTreeSize = (scenario.Nodes / scenario.Trees) + (scenario.Nodes % scenario.Trees > 0 ? 1 : 0);
+        var firstTreeSize = scenario.Nodes / scenario.Trees
+            + (scenario.Nodes % scenario.Trees > 0
+                ? 1
+                : 0);
+
         if (type == typeof(InsertBenchmarks))
         {
-            int? parent = method == nameof(InsertBenchmarks.Root) ? null : 1;
-            var identity = parent is null ? new Guid(-1, 0, 0, new byte[8]) : expected[1].TreeId;
+            int? parent = method == nameof(InsertBenchmarks.Root)
+                ? null
+                : 1;
+
+            var identity = parent is null
+                ? new Guid(-1, 0, 0, new byte[8])
+                : expected[1].TreeId;
+
             var position = method switch
             {
                 nameof(InsertBenchmarks.LastChild) => expected.Values.Count(node => node.ParentId == 1),
@@ -408,7 +453,13 @@ public sealed class DatabaseBenchmarkTests
         }
         else if (type == typeof(MoveBenchmarks))
         {
-            MoveExpected(expected, method == nameof(MoveBenchmarks.LeafBeforeFirstChild) ? firstTreeSize : 3, 1, 0);
+            MoveExpected(
+                expected,
+                method == nameof(MoveBenchmarks.LeafBeforeFirstChild)
+                    ? firstTreeSize
+                    : 3,
+                1,
+                0);
         }
         else if (type == typeof(CrossTreeMoveBenchmarks))
         {
@@ -442,7 +493,7 @@ public sealed class DatabaseBenchmarkTests
                     expected[node.Id] = node with
                     {
                         ParentId = removed.ParentId,
-                        Position = removed.Position + index
+                        Position = removed.Position + index,
                     };
                 }
 
@@ -464,12 +515,14 @@ public sealed class DatabaseBenchmarkTests
                     {
                         TreeId = expected[1].TreeId,
                         ParentId = node.ParentId ?? 1,
-                        Position = node.ParentId is null ? position : node.Position,
+                        Position = node.ParentId is null
+                            ? position
+                            : node.Position,
                     });
             }
         }
         else if (type == typeof(OrderingBenchmarks)
-                 || type == typeof(OrderingSaveBenchmarks))
+            || type == typeof(OrderingSaveBenchmarks))
         {
             if (method == nameof(OrderingBenchmarks.SortedInsert))
             {
@@ -477,7 +530,10 @@ public sealed class DatabaseBenchmarkTests
             }
             else
             {
-                var renamed = scenario.Shape == BenchmarkShape.Deep ? firstTreeSize : 3;
+                var renamed = scenario.Shape == BenchmarkShape.Deep
+                    ? firstTreeSize
+                    : 3;
+
                 MoveExpected(expected, renamed, expected[renamed].ParentId!.Value, 0);
                 expected[renamed] = expected[renamed] with { Name = "000-first" };
             }
@@ -576,7 +632,11 @@ public sealed class DatabaseBenchmarkTests
         BenchmarkScenario scenario
     )
     {
-        var firstTreeSize = (scenario.Nodes / scenario.Trees) + (scenario.Nodes % scenario.Trees > 0 ? 1 : 0);
+        var firstTreeSize = scenario.Nodes / scenario.Trees
+            + (scenario.Nodes % scenario.Trees > 0
+                ? 1
+                : 0);
+
         var keys = method switch
         {
             nameof(QueryBenchmarks.CompleteTree) or nameof(QueryBenchmarks.TrackedTree) =>
@@ -638,9 +698,9 @@ public sealed class DatabaseBenchmarkTests
                 coordinates.Add(current.Key, (next++, 0, current.Depth));
                 pending.Push((current.Key, current.Depth, true));
                 foreach (var child in expected
-                             .Values
-                             .Where(node => node.ParentId == current.Key)
-                             .OrderByDescending(node => node.Position))
+                    .Values
+                    .Where(node => node.ParentId == current.Key)
+                    .OrderByDescending(node => node.Position))
                 {
                     pending.Push((child.Id, current.Depth + 1, false));
                 }
@@ -656,7 +716,11 @@ public sealed class DatabaseBenchmarkTests
         IReadOnlyList<BenchmarkNode> actual
     )
     {
-        Assert.Equal(expected.Keys.Order(), actual.Select(node => node.Id).Order());
+        Assert.Equal(
+            expected.Keys.Order(),
+            actual
+                .Select(node => node.Id)
+                .Order());
 
         var coordinates = ExpectedCoordinates(expected);
         foreach (var node in actual)
@@ -676,8 +740,11 @@ public sealed class DatabaseBenchmarkTests
     /// <summary>
     /// Reads registry identities and tombstone state from the provider's actual infrastructure table.
     /// </summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static async Task<string[]> ReadRegistryAsync(
-        BenchmarkContext context
+        BenchmarkContext context,
+        CancellationToken cancellationToken
     )
     {
         var entity = context
@@ -692,12 +759,18 @@ public sealed class DatabaseBenchmarkTests
             .CreateCommand();
 
         command.CommandText = $"SELECT * FROM \"{table}\" ORDER BY \"TreeId\"";
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rows = new List<string>();
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             rows.Add(
-                string.Join("|", Enumerable.Range(0, reader.FieldCount).Select(index => reader.GetValue(index).ToString())));
+                string.Join(
+                    "|",
+                    Enumerable
+                        .Range(0, reader.FieldCount)
+                        .Select(index => reader
+                            .GetValue(index)
+                            .ToString())));
         }
 
         return rows.ToArray();
@@ -725,9 +798,17 @@ public sealed class DatabaseBenchmarkTests
 
         internal BenchmarkFixture Fixture => Benchmark.Fixture;
 
+        /// <inheritdoc />
+        public async ValueTask DisposeAsync() => await Benchmark.CleanupAsync();
+
+        /// <summary>Creates an independently owned benchmark fixture.</summary>
+        /// <param name="type">The benchmark implementation type.</param>
+        /// <param name="scenario">The complete isolated fixture population.</param>
+        /// <param name="cancellationToken">The caller's cancellation token for the operation.</param>
         internal static async Task<PreparedBenchmark> CreateAsync(
             Type type,
-            BenchmarkScenario scenario
+            BenchmarkScenario scenario,
+            CancellationToken cancellationToken
         )
         {
             var benchmark = (DatabaseBenchmark)(Activator.CreateInstance(type)
@@ -740,16 +821,14 @@ public sealed class DatabaseBenchmarkTests
             var prepared = new PreparedBenchmark(benchmark);
             await BenchmarkLifecycle.InitializeAsync(
                 prepared,
-                async () =>
+                async token =>
                 {
                     benchmark.Initialize();
-                    await benchmark.PrepareAsync();
-                });
+                    await benchmark.PrepareAsync(token);
+                },
+                cancellationToken);
 
             return prepared;
         }
-
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync() => await Benchmark.CleanupAsync();
     }
 }

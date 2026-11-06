@@ -49,10 +49,15 @@ public sealed class MetadataCacheTests
         Assert.Equal(nameof(CacheNode.SecondLeft), changed.Left);
         Assert.NotSame(original.Projection, changed.Projection);
         Assert.NotSame(original.PropertyMapping(original.Left), changed.PropertyMapping(changed.Left));
-        Assert.Equal("left one",
-            original.PropertyMapping(original.Left).ColumnName);
-        Assert.Equal("left two",
-            changed.PropertyMapping(changed.Left).ColumnName);
+        Assert.Equal(
+            "left one",
+            original.PropertyMapping(original.Left)
+                .ColumnName);
+
+        Assert.Equal(
+            "left two",
+            changed.PropertyMapping(changed.Left)
+                .ColumnName);
     }
 
     /// <summary>Preserves finalized EF property and parameter metadata when physical column names differ.</summary>
@@ -77,18 +82,35 @@ public sealed class MetadataCacheTests
         Assert.Equal("INTEGER", descriptor.TypeMapping.StoreType);
         Assert.Equal("Hierarchy cache", mapping.Store.Name);
         Assert.Null(mapping.Store.Schema);
-        Assert.Same(mapping.KeyProperty,
-            mapping.PropertyMapping(mapping.Key).Property);
-        Assert.Same(mapping.ScopeProperty,
-            mapping.PropertyMapping(mapping.Scope).Property);
-        Assert.Same(mapping.ParentProperty,
-            mapping.PropertyMapping(mapping.Parent).Property);
-        Assert.Same(mapping.RightProperty,
-            mapping.PropertyMapping(mapping.Right).Property);
-        Assert.Same(mapping.DepthProperty,
-            mapping.PropertyMapping(mapping.Depth).Property);
-        Assert.Same(mapping.PositionProperty,
-            mapping.PropertyMapping(mapping.Position).Property);
+        Assert.Same(
+            mapping.KeyProperty,
+            mapping.PropertyMapping(mapping.Key)
+                .Property);
+
+        Assert.Same(
+            mapping.ScopeProperty,
+            mapping.PropertyMapping(mapping.Scope)
+                .Property);
+
+        Assert.Same(
+            mapping.ParentProperty,
+            mapping.PropertyMapping(mapping.Parent)
+                .Property);
+
+        Assert.Same(
+            mapping.RightProperty,
+            mapping.PropertyMapping(mapping.Right)
+                .Property);
+
+        Assert.Same(
+            mapping.DepthProperty,
+            mapping.PropertyMapping(mapping.Depth)
+                .Property);
+
+        Assert.Same(
+            mapping.PositionProperty,
+            mapping.PropertyMapping(mapping.Position)
+                .Property);
     }
 
     /// <summary>Allows unordered models to select the native save path without inspecting tracked entries.</summary>
@@ -128,10 +150,13 @@ public sealed class MetadataCacheTests
         Assert.Equal(
             [nameof(CacheNode.Name), nameof(CacheNode.Id)],
             mapping.Order!.Properties.Select(item => item.Name));
+
         Assert.Contains(mapping.KeyProperty, metadata.StructuralProperties(mapping.EntityType));
         Assert.Contains(mapping.ParentProperty, metadata.StructuralProperties(mapping.EntityType));
-        Assert.Equal(8,
-            metadata.StructuralProperties(mapping.EntityType).Count);
+        Assert.Equal(
+            8,
+            metadata.StructuralProperties(mapping.EntityType)
+                .Count);
     }
 
     /// <summary>Copies mutable EF annotation arrays before publishing the shared model descriptor.</summary>
@@ -158,9 +183,11 @@ public sealed class MetadataCacheTests
     {
         // WHY: This test measures reuse inside one specific EF service graph, not process-global provider caching.
         // Explicit ownership avoids retaining a test-only CacheKeyFactory graph among the real-provider fixtures.
-        var options = CreateOptions().Options;
+        var options = CreateOptions()
+            .Options;
 
-        return NestedSetTestAdapters.BuildServices(options,
+        return NestedSetTestAdapters.BuildServices(
+            options,
             services => services.Replace(
                 ServiceDescriptor.Singleton<IModelCacheKeyFactory, CacheKeyFactory>()));
     }
@@ -209,14 +236,17 @@ public sealed class MetadataCacheTests
             modelBuilder
                 .Entity<CacheNode>()
                 .ToTable("Hierarchy cache");
+
             modelBuilder
                 .Entity<CacheNode>()
                 .Property(node => node.FirstLeft)
                 .HasColumnName("left one");
+
             modelBuilder
                 .Entity<CacheNode>()
                 .Property(node => node.SecondLeft)
                 .HasColumnName("left two");
+
             modelBuilder
                 .Entity<CacheNode>()
                 .HasNestedSet(configuration =>

@@ -22,26 +22,47 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<CompositionShadowContext>(Engine,
-            static options => new CompositionShadowContext(options), probe, TestMaterializationObserver.Instance);
+        await using var context = await _fixture.CreateContextAsync<CompositionShadowContext>(
+            Engine,
+            static options => new CompositionShadowContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 
         foreach (var depth in Enumerable.Range(0, 6))
         {
             var node = new CompositionShadowNode { Label = $"Long shadow {depth}" };
+
             // WHY: Set the composite shadow key before tracking so descendants cannot temporarily alias root zero.
             var entry = context.Entry(node);
-            entry.Property(CompositionShadowContext.Scope).CurrentValue = scope;
-            entry.Property(CompositionShadowContext.Key).CurrentValue = depth;
-            entry.Property(CompositionShadowContext.Tree).CurrentValue = tree;
-            entry.Property(CompositionShadowContext.Parent).CurrentValue = depth == 0 || (missingParent && depth == 3)
-                ? null : depth - 1;
+            entry.Property(CompositionShadowContext.Scope)
+                .CurrentValue = scope;
 
-            entry.Property(CompositionShadowContext.Start).CurrentValue = (long)depth + 1;
-            entry.Property(CompositionShadowContext.End).CurrentValue = 12L - depth;
-            entry.Property(CompositionShadowContext.Depth).CurrentValue = depth;
-            entry.Property(CompositionShadowContext.Position).CurrentValue = 0L;
+            entry.Property(CompositionShadowContext.Key)
+                .CurrentValue = depth;
+
+            entry.Property(CompositionShadowContext.Tree)
+                .CurrentValue = tree;
+
+            entry.Property(CompositionShadowContext.Parent)
+                .CurrentValue = depth == 0 || (missingParent && depth == 3)
+                ? null
+                : depth - 1;
+
+            entry.Property(CompositionShadowContext.Start)
+                .CurrentValue = (long)depth + 1;
+
+            entry.Property(CompositionShadowContext.End)
+                .CurrentValue = 12L - depth;
+
+            entry.Property(CompositionShadowContext.Depth)
+                .CurrentValue = depth;
+
+            entry.Property(CompositionShadowContext.Position)
+                .CurrentValue = 0L;
+
             await context.AddAsync(node, CancellationToken.None);
         }
 
@@ -49,12 +70,21 @@ public abstract partial class HierarchyCompositionModelTests
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<CompositionShadowNode>().ForScope(scope).InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<CompositionShadowNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter, CompositionShadowContext.Depth)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);

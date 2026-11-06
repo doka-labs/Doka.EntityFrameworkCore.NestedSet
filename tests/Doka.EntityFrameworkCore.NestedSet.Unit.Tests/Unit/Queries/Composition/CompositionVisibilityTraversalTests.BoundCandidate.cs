@@ -26,9 +26,14 @@ public sealed partial class CompositionVisibilityTraversalTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = Nodes(context);
-        var forbidden = Any(nodes.IgnoreQueryFilters().Expression);
+        var forbidden = Any(
+            nodes.IgnoreQueryFilters()
+                .Expression);
 
-        var second = rejectSecondVisit ? forbidden : Expression.Constant(true);
+        var second = rejectSecondVisit
+            ? forbidden
+            : Expression.Constant(true);
+
         var children = new ChangingPredicate(second);
         var dispatch = new ChangingDispatch(second);
         var method = new QueryMethodProbe(rejectSecondVisit);
@@ -38,6 +43,7 @@ public sealed partial class CompositionVisibilityTraversalTests
         {
             "visit-children" => Where(nodes.Expression, children),
             "accept" => Where(nodes.Expression, dispatch),
+
             // WHY: Keep mutable metadata out of the selected alias chain so Resolve cannot consume
             // its first safe observation before the visibility proof inspects the repeated candidate.
             "method" => Where(nodes.Expression, Any(method.Where(nodes.Expression, Expression.Constant(true)))),

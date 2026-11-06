@@ -3,14 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 /// <summary>Atomically reserves or locks one typed tree-registry row.</summary>
 internal sealed class NestedSetTreeLock
 {
-    private readonly DbContext _context;
     private readonly NestedSetProviderCapabilities _provider;
-    private readonly INestedSetTreeLockRequest _request;
-    private readonly string _table;
-    private readonly string? _scope;
-    private readonly string _treeId;
-    private readonly string _revision;
-    private readonly string _lifecycle;
 
     /// <summary>Builds provider SQL from finalized relational model metadata.</summary>
     /// <param name="context">The context whose current transaction owns the lock.</param>
@@ -22,40 +15,42 @@ internal sealed class NestedSetTreeLock
         INestedSetTreeLockRequest request
     )
     {
-        _context = context;
+        Context = context;
         _provider = provider;
-        _request = request;
+        Request = request;
 
         var mapping = request.Mapping;
         var sql = context.GetService<ISqlGenerationHelper>();
-        _table = sql.DelimitIdentifier(mapping.Store.Name, mapping.Store.Schema);
-        _scope = mapping.Scope is null ? null : sql.DelimitIdentifier(mapping.Scope.GetColumnName(mapping.Store)!);
+        Table = sql.DelimitIdentifier(mapping.Store.Name, mapping.Store.Schema);
+        Scope = mapping.Scope is null
+            ? null
+            : sql.DelimitIdentifier(mapping.Scope.GetColumnName(mapping.Store)!);
 
-        _treeId = sql.DelimitIdentifier(mapping.TreeId.GetColumnName(mapping.Store)!);
-        _revision = sql.DelimitIdentifier(mapping.Revision.GetColumnName(mapping.Store)!);
-        _lifecycle = sql.DelimitIdentifier(mapping.Lifecycle.GetColumnName(mapping.Store)!);
+        TreeId = sql.DelimitIdentifier(mapping.TreeId.GetColumnName(mapping.Store)!);
+        Revision = sql.DelimitIdentifier(mapping.Revision.GetColumnName(mapping.Store)!);
+        Lifecycle = sql.DelimitIdentifier(mapping.Lifecycle.GetColumnName(mapping.Store)!);
     }
 
     /// <summary>Gets the caller context used by the selected native registry implementation.</summary>
-    internal DbContext Context => _context;
+    internal DbContext Context { get; }
 
     /// <summary>Gets the complete typed identity and lifecycle requirement.</summary>
-    internal INestedSetTreeLockRequest Request => _request;
+    internal INestedSetTreeLockRequest Request { get; }
 
     /// <summary>Gets the delimited registry table.</summary>
-    internal string Table => _table;
+    internal string Table { get; }
 
     /// <summary>Gets the optional delimited scope column.</summary>
-    internal string? Scope => _scope;
+    internal string? Scope { get; }
 
     /// <summary>Gets the delimited tree identity column.</summary>
-    internal string TreeId => _treeId;
+    internal string TreeId { get; }
 
     /// <summary>Gets the delimited revision column.</summary>
-    internal string Revision => _revision;
+    internal string Revision { get; }
 
     /// <summary>Gets the delimited lifecycle column.</summary>
-    internal string Lifecycle => _lifecycle;
+    internal string Lifecycle { get; }
 
     /// <summary>Acquires one row lock and enforces active, unused, and tombstoned lifecycle rules.</summary>
     /// <param name="cancellationToken">The token used while waiting for and acquiring the database lock.</param>
@@ -73,13 +68,17 @@ internal sealed class NestedSetTreeLock
     {
         var created = false;
 
-        if (_request.Mode == NestedSetTreeLockMode.New)
+        if (Request.Mode == NestedSetTreeLockMode.New)
         {
-            created = await _provider.ReserveTreeAsync(this, cancellationToken).ConfigureAwait(false);
+            created = await _provider
+                .ReserveTreeAsync(this, cancellationToken)
+                .ConfigureAwait(false);
         }
         else
         {
-            await _provider.LockExistingTreeAsync(this, cancellationToken).ConfigureAwait(false);
+            await _provider
+                .LockExistingTreeAsync(this, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var rows = await QueryLifecycleAsync(cancellationToken)
@@ -87,7 +86,7 @@ internal sealed class NestedSetTreeLock
 
         if (rows.Count == 0)
         {
-            var code = _request.Mode is NestedSetTreeLockMode.Existing or NestedSetTreeLockMode.Tombstoned
+            var code = Request.Mode is NestedSetTreeLockMode.Existing or NestedSetTreeLockMode.Tombstoned
                 ? NestedSetErrorCode.TreeNotFound
                 : NestedSetErrorCode.LockAcquisitionFailed;
 
@@ -104,7 +103,7 @@ internal sealed class NestedSetTreeLock
 
         if (lifecycle == NestedSetTreeRegistryMetadata.Tombstoned)
         {
-            if (_request.Mode == NestedSetTreeLockMode.Tombstoned)
+            if (Request.Mode == NestedSetTreeLockMode.Tombstoned)
             {
                 return;
             }
@@ -121,14 +120,14 @@ internal sealed class NestedSetTreeLock
                 $"The selected tree has unsupported lifecycle value '{lifecycle}'.");
         }
 
-        if (_request.Mode == NestedSetTreeLockMode.Tombstoned)
+        if (Request.Mode == NestedSetTreeLockMode.Tombstoned)
         {
             throw new NestedSetException(
                 NestedSetErrorCode.TreeIdNotTombstoned,
                 "The selected TreeId is active and cannot be purged.");
         }
 
-        if (_request.Mode == NestedSetTreeLockMode.New
+        if (Request.Mode == NestedSetTreeLockMode.New
             && !created)
         {
             throw new NestedSetException(
@@ -145,7 +144,7 @@ internal sealed class NestedSetTreeLock
     {
         var parameters = CreateParameters();
 
-        return await _context
+        return await Context
             .Database
             .ExecuteSqlRawAsync(statement, parameters, cancellationToken)
             .ConfigureAwait(false);
@@ -158,13 +157,13 @@ internal sealed class NestedSetTreeLock
         CancellationToken cancellationToken
     )
     {
-        var value = _context
+        var value = Context
             .GetService<ISqlGenerationHelper>()
             .DelimitIdentifier("Value");
 
         var statement = _provider.TreeLifecycleReadSql(this, value);
 
-        return _context
+        return Context
             .Database
             .SqlQueryRaw<byte>(statement, CreateParameters())
             .ToListAsync(cancellationToken);
@@ -173,31 +172,31 @@ internal sealed class NestedSetTreeLock
     /// <summary>Builds the mapped direct insert used by native reservation handlers.</summary>
     internal string DirectInsertSql()
     {
-        var columns = _scope is null
-            ? $"{_treeId}, {_revision}, {_lifecycle}"
-            : $"{_scope}, {_treeId}, {_revision}, {_lifecycle}";
+        var columns = Scope is null
+            ? $"{TreeId}, {Revision}, {Lifecycle}"
+            : $"{Scope}, {TreeId}, {Revision}, {Lifecycle}";
 
-        var values = _scope is null
+        var values = Scope is null
             ? $"{{0}}, 0, {NestedSetTreeRegistryMetadata.Active}"
             : $"{{0}}, {{1}}, 0, {NestedSetTreeRegistryMetadata.Active}";
 
-        return $"INSERT INTO {_table} ({columns}) VALUES ({values})";
+        return $"INSERT INTO {Table} ({columns}) VALUES ({values})";
     }
 
     /// <summary>Builds the complete Scope/TreeId equality predicate using positional parameters.</summary>
-    internal string Predicate() => _scope is null
-        ? $"{_treeId} = {{0}}"
-        : $"{_scope} = {{0}} AND {_treeId} = {{1}}";
+    internal string Predicate() => Scope is null
+        ? $"{TreeId} = {{0}}"
+        : $"{Scope} = {{0}} AND {TreeId} = {{1}}";
 
     /// <summary>Creates provider parameters through the registry's copied relational type mappings.</summary>
     internal object[] CreateParameters()
     {
-        using var command = _context
+        using var command = Context
             .Database
             .GetDbConnection()
             .CreateCommand();
 
-        var mapping = _request.Mapping;
+        var mapping = Request.Mapping;
 
         if (mapping.Scope is null)
         {
@@ -206,7 +205,7 @@ internal sealed class NestedSetTreeLock
                 mapping
                     .TreeId
                     .GetRelationalTypeMapping()
-                    .CreateParameter(command, "treeId", _request.TreeIdValue, nullable: false),
+                    .CreateParameter(command, "treeId", Request.TreeIdValue, nullable: false),
             ];
         }
 
@@ -215,11 +214,11 @@ internal sealed class NestedSetTreeLock
             mapping
                 .Scope
                 .GetRelationalTypeMapping()
-                .CreateParameter(command, "scope", _request.ScopeValue, nullable: false),
+                .CreateParameter(command, "scope", Request.ScopeValue, nullable: false),
             mapping
                 .TreeId
                 .GetRelationalTypeMapping()
-                .CreateParameter(command, "treeId", _request.TreeIdValue, nullable: false),
+                .CreateParameter(command, "treeId", Request.TreeIdValue, nullable: false),
         ];
     }
 }

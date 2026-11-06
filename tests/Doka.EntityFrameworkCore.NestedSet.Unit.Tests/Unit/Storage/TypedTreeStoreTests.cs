@@ -19,8 +19,10 @@ public sealed class TypedTreeStoreTests
         var mismatch = Assert.IsType<ArgumentException>(failure);
         Assert.Equal("treeId", mismatch.ParamName);
         Assert.Contains(typeof(byte[]).FullName!, mismatch.Message, StringComparison.Ordinal);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Cached metadata from another model cannot be bound to the caller's context.</summary>
@@ -40,8 +42,10 @@ public sealed class TypedTreeStoreTests
         var mismatch = Assert.IsType<ArgumentException>(failure);
         Assert.Equal("entityType", mismatch.ParamName);
         Assert.Contains("context model", mismatch.Message, StringComparison.Ordinal);
-        Assert.Equal(ConnectionState.Closed,
-            target.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            target.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Caller mutation cannot change binary store identities, lock requests, or SQL parameters.</summary>
@@ -72,8 +76,10 @@ public sealed class TypedTreeStoreTests
         Assert.Contains("05060708", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("09020304", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("0A060708", sql, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A named shared mapping binds its own table and typed property-bag identities.</summary>
@@ -95,8 +101,10 @@ public sealed class TypedTreeStoreTests
         Assert.DoesNotContain("TypedTreeStoreSharedFirst", sql, StringComparison.Ordinal);
         Assert.Contains(nameof(BinaryStoreNode.TreeId), sql, StringComparison.Ordinal);
         Assert.Contains(nameof(BinaryStoreNode.Scope), sql, StringComparison.Ordinal);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Same-model metadata cannot select another hierarchy with an incompatible entity type.</summary>
@@ -115,8 +123,10 @@ public sealed class TypedTreeStoreTests
         // Assert
         var mismatch = Assert.IsType<ArgumentException>(failure);
         Assert.Equal("entityType", mismatch.ParamName);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Maps binary identities and named property bags using a variant-aware model cache.</summary>
@@ -147,16 +157,23 @@ public sealed class TypedTreeStoreTests
         )
         {
             var node = modelBuilder.Entity<BinaryStoreNode>();
-            node.ToTable(_alternateTable ? "TypedTreeStoreAlternate" : "TypedTreeStoreNodes");
+            node.ToTable(
+                _alternateTable
+                    ? "TypedTreeStoreAlternate"
+                    : "TypedTreeStoreNodes");
+
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.TreeId)
                 .HasMaxLength(8);
+
             node
                 .Property(value => value.Scope)
                 .HasMaxLength(8);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)
@@ -183,10 +200,12 @@ public sealed class TypedTreeStoreTests
                 .IndexerProperty<byte[]>(nameof(BinaryStoreNode.TreeId))
                 .HasMaxLength(8)
                 .IsRequired();
+
             entity
                 .IndexerProperty<byte[]>(nameof(BinaryStoreNode.Scope))
                 .HasMaxLength(8)
                 .IsRequired();
+
             entity.IndexerProperty<int?>(nameof(BinaryStoreNode.ParentId));
             entity.IndexerProperty<long>(nameof(BinaryStoreNode.Left));
             entity.IndexerProperty<long>(nameof(BinaryStoreNode.Right));
@@ -207,6 +226,9 @@ public sealed class TypedTreeStoreTests
     /// <summary>Separates two independently mutable binary identities from an integer node key.</summary>
     private sealed class BinaryStoreNode : IScopedNestedSetNode<int, byte[], byte[]>
     {
+        /// <summary>Gets or sets the optional direct parent identity.</summary>
+        public int? ParentId { get; set; }
+
         /// <inheritdoc />
         public int Id { get; set; }
 
@@ -215,9 +237,6 @@ public sealed class TypedTreeStoreTests
 
         /// <inheritdoc />
         public byte[] Scope { get; set; } = [];
-
-        /// <summary>Gets or sets the optional direct parent identity.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

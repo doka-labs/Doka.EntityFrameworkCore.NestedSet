@@ -201,7 +201,9 @@ internal readonly record struct DensePathNativeWork(
         }
 
         var postIndex = Number(rows);
-        var enumerated = value.TryGetProperty("r_index_rows", out var indexRows) ? Number(indexRows) : postIndex;
+        var enumerated = value.TryGetProperty("r_index_rows", out var indexRows)
+            ? Number(indexRows)
+            : postIndex;
 
         return (Product(enumerated, count), Product(postIndex, count));
     }

@@ -63,6 +63,7 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
                 scopeProperty,
                 NestedSetTreeRegistryMetadata.Scope,
                 Mapping.ScopeUsesUnicodeScalarLength);
+
             Scope = NestedSetTypedValue<TScope>.Snapshot(scopeProperty, scope);
         }
         else
@@ -105,7 +106,9 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
     NestedSetTreeRegistryMapping INestedSetTreeLockRequest.Mapping => Mapping;
 
     /// <inheritdoc />
-    object? INestedSetTreeLockRequest.ScopeValue => Mapping.SourceScope is null ? null : Scope;
+    object? INestedSetTreeLockRequest.ScopeValue => Mapping.SourceScope is null
+        ? null
+        : Scope;
 
     /// <inheritdoc />
     object INestedSetTreeLockRequest.TreeIdValue => TreeId;
@@ -144,11 +147,18 @@ internal sealed class NestedSetTreeLockRequest<TTreeId, TScope> : INestedSetTree
 
         // WHY: Relational conversion is an erased framework boundary. Length validation checks the actual stored
         // representation, while the retained request and every structural consumer keep their exact model types.
-        var converter = property.GetRelationalTypeMapping().Converter;
-        var providerValue = converter is null ? value : converter.ConvertToProvider(value);
+        var converter = property.GetRelationalTypeMapping()
+            .Converter;
+
+        var providerValue = converter is null
+            ? value
+            : converter.ConvertToProvider(value);
+
         var length = providerValue switch
         {
-            string text => unicodeScalarLength ? NestedSetIdentityLength.CountUnicodeScalars(text, role) : text.Length,
+            string text => unicodeScalarLength
+                ? NestedSetIdentityLength.CountUnicodeScalars(text, role)
+                : text.Length,
             byte[] binary => binary.Length,
             _ => 0,
         };

@@ -32,7 +32,10 @@ public sealed partial class HierarchyChangeDetectionTests
         node.Payload = "Pending unmarked payload";
 
         // Act
-        var saved = await SaveManualBoundaryAsync(context, synchronous);
+        var saved = await SaveManualBoundaryAsync(
+            context,
+            synchronous,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, saved);
@@ -41,12 +44,20 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(0, commands.Count);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Payload).IsModified);
-        Assert.Equal(string.Empty,
-            entry.Property(value => value.Payload).OriginalValue);
+        Assert.False(
+            entry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.Equal(
+            string.Empty,
+            entry.Property(value => value.Payload)
+                .OriginalValue);
+
         Assert.Equal("Pending unmarked payload", node.Payload);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Unmarked Parent/order edits are rejected without detection, flag mutation, or SQL.</summary>
@@ -77,26 +88,43 @@ public sealed partial class HierarchyChangeDetectionTests
         ChangeRole(node, propertyName);
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveManualBoundaryAsync(context, synchronous));
+        var failure = await Record.ExceptionAsync(() => SaveManualBoundaryAsync(
+            context,
+            synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, commands.Count);
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.False(entry.Property(propertyName).IsModified);
+        Assert.False(
+            entry.Property(propertyName)
+                .IsModified);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Calls the real base EF save through the same internal coordinator used by overrides.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="synchronous">Whether the fixture deliberately exercises the synchronous save contract.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static Task<int> SaveManualBoundaryAsync(
         SnapshotContext context,
-        bool synchronous
+        bool synchronous,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (synchronous)
         {
             // WHY: This branch intentionally exercises an explicitly synchronous application override.
@@ -104,10 +132,11 @@ public sealed partial class HierarchyChangeDetectionTests
             return Task.FromResult(NestedSetSaveChanges.ExecuteSynchronous(context, () => context.SaveChanges(false)));
         }
 
-        return NestedSetSaveChanges.ExecuteAsync(context,
+        return NestedSetSaveChanges.ExecuteAsync(
+            context,
             false,
             token => context.SaveChangesAsync(false, token),
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <summary>Observes any provider command without replacing EF's actual persistence path.</summary>

@@ -47,17 +47,32 @@ public sealed class BulkPlanAllocationTests
 
         var children = Enumerable
             .Range(2, NodeCount - 1)
-            .Select(id => new NestedSetBranch<TreeNode>(new TreeNode
-            {
-                NodeId = id,
-                Tree = prefilled ? 7 : 0,
-                TreeId = prefilled ? new Guid("11111111-1111-1111-1111-111111111111") : Guid.Empty,
-                Parent = prefilled ? 999 : null,
-                Start = prefilled ? 17L : 0L,
-                End = prefilled ? 18L : 0L,
-                Depth = prefilled ? 9 : 0,
-                Position = prefilled ? 11L : 0L,
-            }))
+            .Select(id => new NestedSetBranch<TreeNode>(
+                new TreeNode
+                {
+                    NodeId = id,
+                    Tree = prefilled
+                        ? 7
+                        : 0,
+                    TreeId = prefilled
+                        ? new Guid("11111111-1111-1111-1111-111111111111")
+                        : Guid.Empty,
+                    Parent = prefilled
+                        ? 999
+                        : null,
+                    Start = prefilled
+                        ? 17L
+                        : 0L,
+                    End = prefilled
+                        ? 18L
+                        : 0L,
+                    Depth = prefilled
+                        ? 9
+                        : 0,
+                    Position = prefilled
+                        ? 11L
+                        : 0L,
+                }))
             .ToArray();
 
         var root = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = 1 }, children);
@@ -68,17 +83,32 @@ public sealed class BulkPlanAllocationTests
         _ = new NestedSetBulkPlan<TreeNode, int, Guid, int>(
             store,
             [
-                new NestedSetBranch<TreeNode>(new TreeNode
-                {
-                    NodeId = int.MaxValue,
-                    Tree = prefilled ? 7 : 0,
-                    TreeId = prefilled ? new Guid("11111111-1111-1111-1111-111111111111") : Guid.Empty,
-                    Parent = prefilled ? 999 : null,
-                    Start = prefilled ? 17L : 0L,
-                    End = prefilled ? 18L : 0L,
-                    Depth = prefilled ? 9 : 0,
-                    Position = prefilled ? 11L : 0L,
-                }),
+                new NestedSetBranch<TreeNode>(
+                    new TreeNode
+                    {
+                        NodeId = int.MaxValue,
+                        Tree = prefilled
+                            ? 7
+                            : 0,
+                        TreeId = prefilled
+                            ? new Guid("11111111-1111-1111-1111-111111111111")
+                            : Guid.Empty,
+                        Parent = prefilled
+                            ? 999
+                            : null,
+                        Start = prefilled
+                            ? 17L
+                            : 0L,
+                        End = prefilled
+                            ? 18L
+                            : 0L,
+                        Depth = prefilled
+                            ? 9
+                            : 0,
+                        Position = prefilled
+                            ? 11L
+                            : 0L,
+                    }),
             ],
             new HashSet<TreeNode>(ReferenceEqualityComparer.Instance),
             CancellationToken.None);

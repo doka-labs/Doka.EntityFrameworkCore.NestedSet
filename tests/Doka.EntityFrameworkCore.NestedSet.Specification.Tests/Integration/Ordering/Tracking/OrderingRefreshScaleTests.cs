@@ -6,9 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class OrderingRefreshScaleTests : ProviderTest
 {
     private readonly OrderingFixture _fixture;
-    private readonly RelationalFixture _relationalFixture;
     private readonly OrderingKeyFixture _keyFixture;
     private readonly ITestOutputHelper _output;
+    private readonly RelationalFixture _relationalFixture;
 
     /// <summary>Uses isolated fixture databases and persists measurements in the test result.</summary>
     protected OrderingRefreshScaleTests(
@@ -38,9 +38,19 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     )
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, nodes);
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var probe = new ScaleProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
         var query = context
             .Set<OrderingNode>()
             .Where(node => node.ParentId != null)
@@ -53,7 +63,10 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
         }
 
         var tracked = await query.ToArrayAsync(CancellationToken.None);
-        tracked[0].Name = adjacent ? "node-00000002z" : "zzzz";
+        tracked[0].Name = adjacent
+            ? "node-00000002z"
+            : "zzzz";
+
         probe.Observe(context);
         probe.Reset();
         var before = GC.GetTotalAllocatedBytes(precise: true);
@@ -81,7 +94,10 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                 ? 2
                 : nodes;
 
-        var finalPosition = adjacent ? 1 : nodes - 1;
+        var finalPosition = adjacent
+            ? 1
+            : nodes - 1;
+
         _output.WriteLine(
             $"Engine={Engine}; forest={nodes}; tracked={tracked.Length}; adjacent={adjacent}; "
             + $"refresh commands={refresh.Length}; "
@@ -92,13 +108,15 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
         Assert.Equal(1, saved);
         Assert.True(lastWrite >= 0);
         Assert.Equal(
-            ((finalPosition * 2) + 2, (finalPosition * 2) + 3, finalPosition),
+            (finalPosition * 2 + 2, finalPosition * 2 + 3, finalPosition),
             (tracked[0].Left, tracked[0].Right, tracked[0].Position));
+
         Assert.True(
             context
                 .Entry(tracked[0])
                 .Property(node => node.Name)
                 .IsModified);
+
         Assert.InRange(refresh.Length, 1, 2);
         Assert.InRange(refresh.Sum(command => command.ReadCalls), affectedTracked, affectedTracked + 2);
         Assert.All(
@@ -114,8 +132,11 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
             tracked.Skip(1),
             node =>
             {
-                var expectedPosition = adjacent && node.Id > 2 ? node.Id - 1 : node.Id - 2;
-                Assert.Equal((expectedPosition * 2) + 2, node.Left);
+                var expectedPosition = adjacent && node.Id > 2
+                    ? node.Id - 1
+                    : node.Id - 2;
+
+                Assert.Equal(expectedPosition * 2 + 2, node.Left);
             });
     }
 
@@ -126,13 +147,33 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     public async Task NativeTrackedKeyCollectionKeepsOneShapeBeyondProviderScalarLimit()
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            5000,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var template = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
-        var cardinalities = new[] { 1, 63, 64, 65, 5000 };
-        var tag = "Collection cardinality measurement " + Guid.NewGuid().ToString("N");
+        var cardinalities = new[]
+        {
+            1,
+            63,
+            64,
+            65,
+            5000,
+        };
+
+        var tag = "Collection cardinality measurement "
+            + Guid
+                .NewGuid()
+                .ToString("N");
+
         var map = NestedSetMapping<OrderingNode, int, int>.For(
             context,
             context.Model.FindEntityType(typeof(OrderingNode))!);
@@ -152,7 +193,12 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                     .Range(1, count)
                     .ToArray();
 
-                var rows = await ReadParameterizedAsync(context, keys, tag);
+                var rows = await ReadParameterizedAsync(
+                    context,
+                    keys,
+                    tag,
+                    cancellationToken: TestContext.Current.CancellationToken);
+
                 results.Add(rows.Length);
             }
 
@@ -195,13 +241,25 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     public async Task OrdinalFallbackReportsActualCompilationCardinalities()
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 64);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            64,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var template = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
         var cardinalities = new[] { 1, 2, 63, 64 };
-        var tag = "Ordinal cardinality measurement " + Guid.NewGuid().ToString("N");
+        var tag = "Ordinal cardinality measurement "
+            + Guid
+                .NewGuid()
+                .ToString("N");
+
         var coldCompilations = 0;
         var results = new List<int>();
         var correlations = new List<(int[] ExpectedKeys, int[] Ordinals, int[] ActualKeys)>();
@@ -233,7 +291,7 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                     .Select(row => new
                     {
                         row.Ordinal,
-                        row.Entity.Id
+                        row.Entity.Id,
                     })
                     .ToArrayAsync(CancellationToken.None);
 
@@ -243,8 +301,12 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                     .ToArray();
 
                 correlations.Add(
-                    (keys, ordered.Select(row => row.Ordinal).ToArray(),
-                        ordered.Select(row => row.Id).ToArray()));
+                    (keys, ordered
+                            .Select(row => row.Ordinal)
+                            .ToArray(),
+                        ordered
+                            .Select(row => row.Id)
+                            .ToArray()));
             }
 
             if (pass == 0)
@@ -277,7 +339,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     private static Task<int[]> ReadParameterizedAsync(
         OrderingContext context,
         int[] keys,
-        string tag
+        string tag,
+        CancellationToken cancellationToken
     )
     {
         var map = NestedSetMapping<OrderingNode, int, int>.For(
@@ -295,6 +358,6 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
                 map.KeyProperty,
                 keys)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 }

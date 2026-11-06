@@ -21,7 +21,8 @@ public abstract class BroadTreeIdTests : ProviderTest
     {
         // Arrange
         using var context = new BroadTreeIdContext(ModelCompatibilityDatabase.Options<BroadTreeIdContext>(Engine));
-        var property = context.Model.FindEntityType(typeof(BroadTreeIdNode))!.FindProperty(nameof(BroadTreeIdNode.TreeId))!;
+        var property =
+            context.Model.FindEntityType(typeof(BroadTreeIdNode))!.FindProperty(nameof(BroadTreeIdNode.TreeId))!;
 
         var first = new BroadTreeId("E");
         var second = new BroadTreeId("e");
@@ -43,7 +44,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "E", 31);
         Seed(context, "e", 34);
@@ -74,7 +76,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "A", 1);
         Seed(context, "a", 4);
@@ -85,8 +88,11 @@ public abstract class BroadTreeIdTests : ProviderTest
             .Set<BroadTreeIdNode>()
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Id == 2).Name = "Zulu";
-        tracked.Single(node => node.Id == 5).Name = "Zulu";
+        tracked.Single(node => node.Id == 2)
+            .Name = "Zulu";
+
+        tracked.Single(node => node.Id == 5)
+            .Name = "Zulu";
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -104,6 +110,7 @@ public abstract class BroadTreeIdTests : ProviderTest
                 .NestedSet<BroadTreeIdNode>()
                 .InTree(new BroadTreeId("A"))
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await context
                 .NestedSet<BroadTreeIdNode>()
@@ -118,7 +125,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Seed(context, "B", 11);
         Seed(context, "b", 14);
@@ -129,8 +137,11 @@ public abstract class BroadTreeIdTests : ProviderTest
             .Set<BroadTreeIdNode>()
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Id == 12).ParentId = 13;
-        tracked.Single(node => node.Id == 15).ParentId = 16;
+        tracked.Single(node => node.Id == 12)
+            .ParentId = 13;
+
+        tracked.Single(node => node.Id == 15)
+            .ParentId = 16;
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -146,6 +157,7 @@ public abstract class BroadTreeIdTests : ProviderTest
                 .NestedSet<BroadTreeIdNode>()
                 .InTree(new BroadTreeId("B"))
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await context
                 .NestedSet<BroadTreeIdNode>()
@@ -160,7 +172,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadTreeIdNode
         {
@@ -179,7 +192,11 @@ public abstract class BroadTreeIdTests : ProviderTest
             .InsertRootAsync(input, new BroadTreeId("C"), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal("original", input.TreeId.Value);
         Assert.Equal(
             0,
@@ -195,7 +212,8 @@ public abstract class BroadTreeIdTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
-            static options => new BroadTreeIdContext(options));
+            static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var input = new BroadTreeIdNode
         {
@@ -218,7 +236,11 @@ public abstract class BroadTreeIdTests : ProviderTest
             .InsertForestAsync([tree], CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal("original", input.TreeId.Value);
         Assert.Equal(
             0,

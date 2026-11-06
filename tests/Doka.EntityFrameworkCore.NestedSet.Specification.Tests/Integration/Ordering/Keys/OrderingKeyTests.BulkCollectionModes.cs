@@ -35,8 +35,13 @@ public abstract partial class OrderingKeyTests
             Engine,
             mode,
             CollectionStringKey,
+            cancellationToken: TestContext.Current.CancellationToken,
             static value => value.ToUpperInvariant()),
-        "Binary" => RefreshCollectionModeBulkAsync<byte[], byte[]?>(Engine, mode, BinaryKey),
+        "Binary" => RefreshCollectionModeBulkAsync<byte[], byte[]?>(
+            Engine,
+            mode,
+            BinaryKey,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -57,12 +62,14 @@ public abstract partial class OrderingKeyTests
             mode,
             CollectionStringKey,
             static node => node.Id = "Edited-import-key",
+            cancellationToken: TestContext.Current.CancellationToken,
             static value => value.ToUpperInvariant()),
         "Binary" => RejectCollectionModeIdentityEditAsync<byte[], byte[]?>(
             Engine,
             mode,
             BinaryKey,
-            static node => node.Id[1] = 0xFE),
+            static node => node.Id[1] = 0xFE,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -71,6 +78,7 @@ public abstract partial class OrderingKeyTests
     /// </summary>
     /// <typeparam name="TKey">The actual string or binary principal key.</typeparam>
     /// <typeparam name="TParent">The matching nullable parent representation.</typeparam>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The fixture-owned relational engine.</param>
     /// <param name="mode">The application's collection-translation override.</param>
     /// <param name="key">Creates independent native key values.</param>
@@ -79,20 +87,30 @@ public abstract partial class OrderingKeyTests
         string engine,
         ParameterTranslationMode mode,
         Func<int, TKey> key,
+        CancellationToken cancellationToken,
         Func<TKey, TKey>? alias = null
     )
         where TKey : notnull
     {
         // Arrange
-        await using var arranged = await CreateScenarioAsync<TKey, TParent>(engine, key, alias);
-        var otherRootBefore = await SnapshotAsync(arranged.Tree.TreeContaining(arranged.Reference(9)));
+        await using var arranged = await CreateScenarioAsync<TKey, TParent>(
+            engine,
+            key,
+            cancellationToken: cancellationToken,
+            alias);
+
+        var otherRootBefore = await SnapshotAsync(
+            arranged.Tree.TreeContaining(arranged.Reference(9)),
+            cancellationToken: cancellationToken);
+
         var probe = new EnterpriseProbe();
         var providerOptions = ModelCompatibilityDatabase.Options<OrderingKeyContext>(
             engine,
             arranged.Context.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var scenario = new KeyScenario<TKey, TParent>(new OrderingKeyContext(options), key, alias)
         {
@@ -112,14 +130,21 @@ public abstract partial class OrderingKeyTests
         OrderingKeyNode<TKey, TParent>[] imported = [importedRoot, later, earlier];
 
         // Act
-        await scenario.Tree.InsertSubtreeAsync(branch, scenario.Reference(1), CancellationToken.None);
+        await scenario.Tree.InsertSubtreeAsync(branch, scenario.Reference(1), cancellationToken);
 
         // Assert
-        await AssertChildrenAsync(scenario, 1, [2, 3, 4, 6]);
-        await AssertChildrenAsync(scenario, 6, [20, 21]);
-        await AssertIntegrityAsync(scenario);
-        Assert.Equal(otherRootBefore, await SnapshotAsync(scenario.Tree.TreeContaining(scenario.Reference(9))));
-        var persisted = await SnapshotAsync(scenario.Tree.TreeContaining(scenario.Reference(1)));
+        await AssertChildrenAsync(scenario, 1, [2, 3, 4, 6], cancellationToken: cancellationToken);
+        await AssertChildrenAsync(scenario, 6, [20, 21], cancellationToken: cancellationToken);
+        await AssertIntegrityAsync(scenario, cancellationToken: cancellationToken);
+        Assert.Equal(
+            otherRootBefore,
+            await SnapshotAsync(
+                scenario.Tree.TreeContaining(scenario.Reference(9)),
+                cancellationToken: cancellationToken));
+
+        var persisted = await SnapshotAsync(
+            scenario.Tree.TreeContaining(scenario.Reference(1)),
+            cancellationToken: cancellationToken);
 
         Assert.All(
             imported,
@@ -129,17 +154,21 @@ public abstract partial class OrderingKeyTests
                 Assert.Equal(
                     (actual.Scope, actual.TreeId, actual.Parent, actual.Left, actual.Right, actual.Depth,
                         actual.Position),
-                    (node.Scope, node.TreeId, node.ParentId is { } parent ? Identity(parent) : null, node.Left,
+                    (node.Scope, node.TreeId, node.ParentId is { } parent
+                            ? Identity(parent)
+                            : null, node.Left,
                         node.Right, node.Depth, node.Position));
-                Assert.Equal(EntityState.Detached, scenario.Context.Entry(node).State);
+
+                Assert.Equal(
+                    EntityState.Detached,
+                    scenario.Context.Entry(node)
+                        .State);
             });
 
         var refreshIndexes = probe
             .Commands
-            .Select((
-                command,
-                index
-            ) => (command, index))
+            .Select((command,
+                index) => (command, index))
             .Where(item => item.command.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
             .Select(item => item.index)
             .ToArray();
@@ -161,6 +190,7 @@ public abstract partial class OrderingKeyTests
     /// </summary>
     /// <typeparam name="TKey">The native string or binary identity.</typeparam>
     /// <typeparam name="TParent">The matching nullable parent representation.</typeparam>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The fixture-owned relational engine.</param>
     /// <param name="mode">The application's collection-translation override.</param>
     /// <param name="key">Creates independent native identities.</param>
@@ -171,13 +201,19 @@ public abstract partial class OrderingKeyTests
         ParameterTranslationMode mode,
         Func<int, TKey> key,
         Action<OrderingKeyNode<TKey, TParent>> edit,
+        CancellationToken cancellationToken,
         Func<TKey, TKey>? alias = null
     )
         where TKey : notnull
     {
         // Arrange
-        await using var arranged = await CreateScenarioAsync<TKey, TParent>(engine, key, alias);
-        var before = await SnapshotAsync(arranged.Nodes);
+        await using var arranged = await CreateScenarioAsync<TKey, TParent>(
+            engine,
+            key,
+            cancellationToken: cancellationToken,
+            alias);
+
+        var before = await SnapshotAsync(arranged.Nodes, cancellationToken: cancellationToken);
         var table = arranged.Context.Model.FindEntityType(typeof(OrderingKeyNode<TKey, TParent>))!.GetTableName()!;
         var probe = new BulkIntervalRefreshProbe(table);
         var providerOptions = ModelCompatibilityDatabase.Options<OrderingKeyContext>(
@@ -185,7 +221,8 @@ public abstract partial class OrderingKeyTests
             arranged.Context.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var scenario = new KeyScenario<TKey, TParent>(new OrderingKeyContext(options), key, alias)
         {
@@ -204,7 +241,9 @@ public abstract partial class OrderingKeyTests
                 ExactCollectionIdentity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? ExactCollectionIdentity(parent) : null,
+                node.ParentId is { } parent
+                    ? ExactCollectionIdentity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -235,21 +274,23 @@ public abstract partial class OrderingKeyTests
         var error = await Record.ExceptionAsync(() => scenario.Tree.InsertSubtreeAsync(
             branch,
             scenario.Reference(1),
-            CancellationToken.None));
+            cancellationToken));
 
         probe.Inserted = false;
 
         // Assert
         Assert.IsType<DbUpdateConcurrencyException>(error);
         Assert.Single(probe.Commands);
-        Assert.Equal(before, await SnapshotAsync(scenario.Nodes));
+        Assert.Equal(before, await SnapshotAsync(scenario.Nodes, cancellationToken: cancellationToken));
         Assert.Equal(
             original,
             imported.Select(node => new KeySnapshot(
                 ExactCollectionIdentity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? ExactCollectionIdentity(parent) : null,
+                node.ParentId is { } parent
+                    ? ExactCollectionIdentity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -257,7 +298,7 @@ public abstract partial class OrderingKeyTests
                 node.Position)));
 
         Assert.Empty(scenario.Context.ChangeTracker.Entries());
-        await AssertIntegrityAsync(scenario);
+        await AssertIntegrityAsync(scenario, cancellationToken: cancellationToken);
     }
 
     /// <summary>Preserves original casing as well as binary contents when checking rollback representations.</summary>
@@ -265,7 +306,9 @@ public abstract partial class OrderingKeyTests
     /// <returns>The exact string value or binary bytes.</returns>
     private static string ExactCollectionIdentity(
         object value
-    ) => value is byte[] bytes ? Convert.ToHexString(bytes) : (string)value;
+    ) => value is byte[] bytes
+        ? Convert.ToHexString(bytes)
+        : (string)value;
 
     /// <summary>Extends the arranged string key set with two distinct imported child identities.</summary>
     /// <param name="index">The arranged or imported node number.</param>

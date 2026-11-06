@@ -75,7 +75,8 @@ public sealed class CompiledSqlServerContext : CompiledTreeContext
             .ConfigureTestWarnings()
             .UseSqlServer(
                 "Server=localhost;Database=compiled;User ID=unused;Password=unused;"
-                + "TrustServerCertificate=True;MultipleActiveResultSets=False", provider => provider.UseNestedSets())
+                + "TrustServerCertificate=True;MultipleActiveResultSets=False",
+                provider => provider.UseNestedSets())
             .Options,
         false) { }
 

@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ManualInsertionMaintainsSiblingPositions()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -33,7 +33,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task MoveBeforeMaintainsDenseSiblingOrder()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -60,7 +60,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task DeletePromotesDirectChildren()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -82,7 +82,11 @@ public abstract partial class NestedSetMutationFacadeTests
         // Assert
         Assert.Equal([1, 3, 4, 5], nodes.Select(node => node.NodeId));
         Assert.All(nodes.Skip(1), node => Assert.Equal(1, node.Parent));
-        Assert.Equal([0L, 1L, 2L], nodes.Skip(1).Select(node => node.Position));
+        Assert.Equal(
+            [0L, 1L, 2L],
+            nodes
+                .Skip(1)
+                .Select(node => node.Position));
     }
 
     /// <summary>DeleteTree removes only the selected identity and tombstones it.</summary>
@@ -90,7 +94,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task DeleteTreeLeavesOtherTreeUntouched()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -115,7 +119,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task CrossTreeRootMoveTombstonesSourceIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -146,7 +150,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task CrossTreeRootMoveSourceIdCannotBeReused()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()

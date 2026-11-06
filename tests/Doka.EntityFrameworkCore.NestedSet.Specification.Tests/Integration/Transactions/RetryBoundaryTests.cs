@@ -26,17 +26,29 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
-        await using var context = Create(setup, mode == "external" ? null : services, commands, transactions);
+        await using var context = Create(
+            setup,
+            mode == "external"
+                ? null
+                : services,
+            commands,
+            transactions);
+
         await using var outer = Create(setup, services);
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
 
-        var strategy = (mode == "external" ? outer : context).Database.CreateExecutionStrategy();
+        var strategy = (mode == "external"
+            ? outer
+            : context).Database.CreateExecutionStrategy();
 
         // Act
         var failure = await Record.ExceptionAsync(() => mode == "direct"
@@ -60,7 +72,11 @@ public abstract class RetryBoundaryTests : ProviderTest
                 CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidTransaction, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidTransaction,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Empty(commands.Commands);
         Assert.Equal(0, transactions.Starts);
         Assert.Null(context.Database.CurrentTransaction);
@@ -86,12 +102,22 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
-        await using var context = Create(setup, mode == "external" ? null : services, commands, transactions);
+        await using var context = Create(
+            setup,
+            mode == "external"
+                ? null
+                : services,
+            commands,
+            transactions);
+
         await using var outer = Create(setup, services);
         var renamed = await context
             .Set<OrderingNode>()
@@ -99,7 +125,9 @@ public abstract class RetryBoundaryTests : ProviderTest
 
         renamed.Name = "Zulu";
         commands.Commands.Clear();
-        var strategy = (mode == "external" ? outer : context).Database.CreateExecutionStrategy();
+        var strategy = (mode == "external"
+            ? outer
+            : context).Database.CreateExecutionStrategy();
 
         // Act
         var failure = await Record.ExceptionAsync(() => mode == "direct"
@@ -107,10 +135,18 @@ public abstract class RetryBoundaryTests : ProviderTest
             : strategy.ExecuteAsync(token => context.SaveChangesAsync(acceptChanges, token), CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidTransaction, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidTransaction,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Empty(commands.Commands);
         Assert.Equal(0, transactions.Starts);
-        Assert.Equal(EntityState.Modified, context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.Equal("Zulu", renamed.Name);
         Assert.Equal(
             "Alpha",
@@ -118,6 +154,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 .Entry(renamed)
                 .Property(row => row.Name)
                 .OriginalValue);
+
         Assert.Equal(
             "Alpha",
             await setup
@@ -136,8 +173,11 @@ public abstract class RetryBoundaryTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe();
         var transactions = new RetryBoundaryTransactionProbe();
         await using var context = Create(setup, null, commands, transactions);
@@ -151,7 +191,7 @@ public abstract class RetryBoundaryTests : ProviderTest
 
         // Act
         using (var ambient = new TransactionScope(
-                   TransactionScopeAsyncFlowOption.Enabled))
+            TransactionScopeAsyncFlowOption.Enabled))
         {
             failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(
                 acceptChanges,
@@ -159,10 +199,18 @@ public abstract class RetryBoundaryTests : ProviderTest
         }
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidTransaction, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidTransaction,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Empty(commands.Commands);
         Assert.Equal(0, transactions.Starts);
-        Assert.Equal(EntityState.Modified, context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.Equal("Zulu", renamed.Name);
         Assert.Equal(
             "Alpha",
@@ -180,7 +228,10 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task OuterStrategyStillRetriesAnUnrelatedSave()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         await using var context = Create(setup, services, probe);
@@ -214,7 +265,10 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task NonRetryingOuterStrategyAllowsHierarchyWrites()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = Create(setup, null);
         var strategy = new RetryBoundaryNonRetryStrategy(context);
         var tree = context
@@ -239,6 +293,7 @@ public abstract class RetryBoundaryTests : ProviderTest
             await setup
                 .Set<OrderingNode>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await setup
                 .NestedSet<OrderingNode>()
@@ -252,7 +307,10 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task RetryingUnitUsesCallerTransactionForHierarchyAndDomainWrites()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         await using var strategyContext = Create(setup, services);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
@@ -266,7 +324,9 @@ public abstract class RetryBoundaryTests : ProviderTest
                 attempts++;
                 await using var context = Create(setup, services);
                 await using var transaction = await context.Database.BeginTransactionAsync(
-                    Engine == "Sqlite" ? DatabaseIsolationLevel.Serializable : DatabaseIsolationLevel.ReadCommitted,
+                    Engine == "Sqlite"
+                        ? DatabaseIsolationLevel.Serializable
+                        : DatabaseIsolationLevel.ReadCommitted,
                     token);
 
                 var tree = context
@@ -313,6 +373,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 .Set<OrderingNode>()
                 .Select(node => node.Name)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             "atomic domain write",
             await setup
@@ -326,12 +387,17 @@ public abstract class RetryBoundaryTests : ProviderTest
     public async Task CallerTransactionRequiresRetryStrategyBoundary()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
         await using var context = Create(setup, services, commands);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? DatabaseIsolationLevel.Serializable : DatabaseIsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? DatabaseIsolationLevel.Serializable
+                : DatabaseIsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var tree = context
@@ -351,7 +417,11 @@ public abstract class RetryBoundaryTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidTransaction, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidTransaction,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.Empty(commands.Commands);
         Assert.Empty(
@@ -389,7 +459,8 @@ public abstract class RetryBoundaryTests : ProviderTest
 
     /// <summary>Seeds two siblings whose rename requires automatic reordering inside one tree.</summary>
     private static async Task SeedAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -403,7 +474,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Root",
             },
             Guid.Empty,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -412,7 +483,7 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Alpha",
             },
             100,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -421,6 +492,6 @@ public abstract class RetryBoundaryTests : ProviderTest
                 Name = "Bravo",
             },
             100,
-            CancellationToken.None);
+            cancellationToken);
     }
 }

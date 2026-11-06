@@ -32,7 +32,8 @@ internal static class ProviderTestContract
         // IDE metadata discovery would still expose its unsupported methods before xUnit filters them.
         return DeclaredMethods(suite)
             .Where(IsTestMethod)
-            .Any(method => !MethodExclusions(method).Contains(engine, StringComparer.Ordinal));
+            .Any(method => !MethodExclusions(method)
+                .Contains(engine, StringComparer.Ordinal));
     }
 
     /// <summary>Includes local abstract-base declarations as seen by each concrete fixture-owned leaf.</summary>
@@ -66,12 +67,12 @@ internal static class ProviderTestContract
         }
 
         foreach (var inline in method.CustomAttributes.Where(attribute =>
-                     attribute.AttributeType == typeof(InlineDataAttribute)
-                     || attribute.AttributeType == typeof(EngineInlineDataAttribute)))
+            attribute.AttributeType == typeof(InlineDataAttribute)
+            || attribute.AttributeType == typeof(EngineInlineDataAttribute)))
         {
             foreach (var error in CoverageErrors(
-                         methodExclusions.Concat(AttributeExclusions(inline)),
-                         $"{Identity(method)}: inline row"))
+                methodExclusions.Concat(AttributeExclusions(inline)),
+                $"{Identity(method)}: inline row"))
             {
                 yield return error;
             }
@@ -79,10 +80,14 @@ internal static class ProviderTestContract
     }
 
     /// <summary>Validates every raw member variant with method, member, and row exclusions composed.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<IReadOnlyCollection<string>> FindSharedDataErrorsAsync(
-        MethodInfo method
+        MethodInfo method,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var errors = new List<string>();
         var methodExclusions = MethodExclusions(method);
         var hasRows = method.CustomAttributes.Any(attribute =>
@@ -93,7 +98,7 @@ internal static class ProviderTestContract
 
         foreach (var member in method.GetCustomAttributes<MemberDataAttributeBase>())
         {
-            var rows = await ReadRawMemberRowsAsync(member, method, tracker);
+            var rows = await ReadRawMemberRowsAsync(member, method, tracker, cancellationToken: cancellationToken);
             AddEmptySourceError(errors, method, member, rows.Count);
             hasRows |= rows.Count > 0;
             var exclusions = methodExclusions
@@ -127,11 +132,15 @@ internal static class ProviderTestContract
     }
 
     /// <summary>Audits effective provider-local declarations against the concrete leaf's executable owner.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<IReadOnlyCollection<string>> FindDeclaredOwnershipErrorsAsync(
         Type suite,
-        string assemblyName
+        string assemblyName,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: Inherited local family bodies run on both leaves; shared-library declarations have a separate audit.
         var methods = LocalMethods(suite)
             .Where(IsTestMethod)
@@ -156,7 +165,7 @@ internal static class ProviderTestContract
             foreach (var member in method.GetCustomAttributes<MemberDataAttributeBase>())
             {
                 // WHY: Raw source validation cannot be bypassed by discovery exclusions or a genuinely empty factory.
-                var rows = await ReadRawMemberRowsAsync(member, method, tracker);
+                var rows = await ReadRawMemberRowsAsync(member, method, tracker, cancellationToken: cancellationToken);
                 AddEmptySourceError(errors, method, member, rows.Count);
                 var index = 0;
 
@@ -297,18 +306,25 @@ internal static class ProviderTestContract
     ) => method.CustomAttributes.Any(attribute => typeof(IFactAttribute).IsAssignableFrom(attribute.AttributeType));
 
     /// <summary>Reads every source row without applying current-engine discovery selection.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static ValueTask<IReadOnlyCollection<ITheoryDataRow>> ReadRawMemberRowsAsync(
         MemberDataAttributeBase member,
         MethodInfo method,
-        DisposalTracker tracker
+        DisposalTracker tracker,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // WHY: xUnit supplies the concrete ReflectedType for an unset MemberType; explicit sources stay intact.
         member.MemberType ??= method.ReflectedType;
 
         return member switch
         {
-            EngineMemberDataAttribute conditional => conditional.GetSourceData(method, tracker),
+            EngineMemberDataAttribute conditional => conditional.GetSourceData(
+                method,
+                tracker,
+                cancellationToken: cancellationToken),
             _ => member.GetData(method, tracker),
         };
     }
@@ -354,12 +370,16 @@ internal static class ProviderTestContract
     /// <summary>Gets member exclusions which apply before any row-specific conditions.</summary>
     private static string[] MemberExclusions(
         MemberDataAttributeBase member
-    ) => member is EngineMemberDataAttribute engine ? engine.ExcludedEngines : [];
+    ) => member is EngineMemberDataAttribute engine
+        ? engine.ExcludedEngines
+        : [];
 
     /// <summary>Gets the additional conditions carried by one normalized source variant.</summary>
     private static string[] RowExclusions(
         ITheoryDataRow row
-    ) => row is EngineTheoryDataRow engine ? engine.ExcludedEngines : [];
+    ) => row is EngineTheoryDataRow engine
+        ? engine.ExcludedEngines
+        : [];
 
     /// <summary>Requires every effective shared variant to span at least two executable owners.</summary>
     private static IEnumerable<string> CoverageErrors(
@@ -378,7 +398,8 @@ internal static class ProviderTestContract
         // WHY: Two engines in the MySql executable are still one owner; provider-specific bodies belong there.
         if (projects.Length == 1)
         {
-            var projectName = projects[0].Split('.')[^2];
+            var projectName = projects[0]
+                .Split('.')[^2];
 
             yield return $"{identity}: effective coverage is confined to one provider executable '{projectName}'; "
                 + "declare this behavior in that provider project.";

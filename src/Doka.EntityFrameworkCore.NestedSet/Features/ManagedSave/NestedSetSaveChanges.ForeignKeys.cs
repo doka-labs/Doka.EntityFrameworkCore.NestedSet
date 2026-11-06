@@ -61,11 +61,11 @@ internal static partial class NestedSetSaveChanges
             foreach (var pair in properties)
             {
                 if (!pair
-                        .Principal
-                        .GetKeyValueComparer()
-                        .Equals(
-                            ParentValue(dependent, pair.Dependent, planned),
-                            oldPrincipal.GetCurrentValue(pair.Principal)))
+                    .Principal
+                    .GetKeyValueComparer()
+                    .Equals(
+                        ParentValue(dependent, pair.Dependent, planned),
+                        oldPrincipal.GetCurrentValue(pair.Principal)))
                 {
                     return false;
                 }

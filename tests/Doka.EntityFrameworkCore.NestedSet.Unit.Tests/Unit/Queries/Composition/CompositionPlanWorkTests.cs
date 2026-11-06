@@ -119,11 +119,11 @@ public sealed class CompositionPlanWorkTests
     {
         // Arrange
         const string plan = """
-            -> Root (actual time=1..2 rows=2 loops=1)
-                -> Lookup (cost=1e20 rows=1e20) (actual time=1..2 rows=0.25 loops=40)
-                    -> Materialize (actual time=1..2 rows=3 loops=2)
-                    -> Unused (cost=1e20 rows=1e20) (never executed)
-            """;
+                            -> Root (actual time=1..2 rows=2 loops=1)
+                                -> Lookup (cost=1e20 rows=1e20) (actual time=1..2 rows=0.25 loops=40)
+                                    -> Materialize (actual time=1..2 rows=3 loops=2)
+                                    -> Unused (cost=1e20 rows=1e20) (never executed)
+                            """;
 
         // Act
         var actual = CompositionPlanWork.ReadMySqlTree(plan);
@@ -140,9 +140,9 @@ public sealed class CompositionPlanWorkTests
     {
         // Arrange
         const string plan = """
-            -> Root (actual time=1..2 rows=1e308 loops=1)
-                -> Child (actual time=1..2 rows=1e308 loops=1)
-            """;
+                            -> Root (actual time=1..2 rows=1e308 loops=1)
+                                -> Child (actual time=1..2 rows=1e308 loops=1)
+                            """;
 
         // Act
         var error = Record.Exception(() => CompositionPlanWork.ReadMySqlTree(plan));

@@ -35,7 +35,8 @@ public sealed partial class CompositionAncestorIndexTests
     )
     {
         // Arrange
-        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>("MySql",
+        var options = ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+            "MySql",
             "Server=127.0.0.1;Database=fact_selection;User ID=unused;Pooling=false");
 
         await using var provider = SelectionServices(options);
@@ -49,38 +50,50 @@ public sealed partial class CompositionAncestorIndexTests
         var selection = shape switch
         {
             "plain" => (Expression<Func<CompositionNode, bool>>)(node => node.Id > 0),
-            "facts" => FactSelection(context.Set<SelectionFact>(),
+            "facts" => FactSelection(
+                context.Set<SelectionFact>(),
                 (node, fact) => fact.NodeId == node.Id),
-            "inherited-facts" => FactSelection(context.Set<DerivedSelectionFact>(),
+            "inherited-facts" => FactSelection(
+                context.Set<DerivedSelectionFact>(),
                 (node, fact) => fact.NodeId == node.Id),
-            "tracking-marker" => FactSelection(context
+            "tracking-marker" => FactSelection(
+                context
                     .Set<SelectionFact>()
                     .AsNoTracking(),
                 (node, fact) => fact.NodeId == node.Id),
-            "scalar-property" => FactSelection(context.Set<SelectionFact>(),
+            "scalar-property" => FactSelection(
+                context.Set<SelectionFact>(),
                 (node, fact) => EF.Property<int>(fact, nameof(SelectionFact.NodeId)) == node.Id),
-            "hierarchy" => FactSelection(context.Set<CompositionNode>(),
+            "hierarchy" => FactSelection(
+                context.Set<CompositionNode>(),
                 (node, other) => other.Id == node.Id),
-            "navigation" => FactSelection(context.Set<SelectionFact>(),
+            "navigation" => FactSelection(
+                context.Set<SelectionFact>(),
                 (node, fact) => fact.Node!.Id == node.Id),
-            "navigation-property" => FactSelection(context.Set<SelectionFact>(),
+            "navigation-property" => FactSelection(
+                context.Set<SelectionFact>(),
                 (node, fact) => EF.Property<CompositionNode>(fact, nameof(SelectionFact.Node))!.Id == node.Id),
-            "named-filter" => FactSelection(context.Set<HierarchyFilteredFact>(),
+            "named-filter" => FactSelection(
+                context.Set<HierarchyFilteredFact>(),
                 (node, fact) => fact.NodeId == node.Id),
-            "inherited-filter" => FactSelection(context.Set<DerivedHierarchyFilteredFact>(),
+            "inherited-filter" => FactSelection(
+                context.Set<DerivedHierarchyFilteredFact>(),
                 (node, fact) => fact.NodeId == node.Id),
             "opaque-query" => node => holder.Field.Any(fact => fact.NodeId == node.Id),
             "query-getter" => node => holder.ThrowingQuery.Any(fact => fact.NodeId == node.Id),
             "query-object" => node => ((IQueryable<SelectionFact>)holder.Untyped).Any(fact => fact.NodeId == node.Id),
-            "unknown-operator" => FactSelection(context
+            "unknown-operator" => FactSelection(
+                context
                     .Set<SelectionFact>()
                     .IgnoreQueryFilters(),
                 (node, fact) => fact.NodeId == node.Id),
-            "raw-sql" => FactSelection(context
+            "raw-sql" => FactSelection(
+                context
                     .Set<SelectionFact>()
                     .FromSqlRaw("SELECT * FROM SelectionFacts"),
                 (node, fact) => fact.NodeId == node.Id),
-            "custom-root" => FactSelection(context
+            "custom-root" => FactSelection(
+                context
                     .Set<SelectionFact>()
                     .AsQueryable()
                     .Provider
@@ -91,7 +104,8 @@ public sealed partial class CompositionAncestorIndexTests
         };
 
         // Act
-        var actual = NestedSetQuerySelection.RequiresAncestorDecorrelation(selection,
+        var actual = NestedSetQuerySelection.RequiresAncestorDecorrelation(
+            selection,
             context.Model,
             out var factSelection);
 
@@ -119,7 +133,8 @@ public sealed partial class CompositionAncestorIndexTests
         // Arrange
         var io = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
-                ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=fact_selection;User ID=unused;Pooling=false"))
             .AddInterceptors(io)
             .Options;
@@ -135,22 +150,27 @@ public sealed partial class CompositionAncestorIndexTests
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty);
 
-        var selected = FactSelection(context.Set<SelectionFact>(),
+        var selected = FactSelection(
+            context.Set<SelectionFact>(),
             (node, fact) => fact.Scope == node.Scope && fact.NodeId == node.Id);
 
-        var enabled = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
+        var enabled = NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
             && (!includeSelf
-                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+                || NestedSetProviderCapabilities.Resolve(context)
+                    .OrderedJoinMethod is not null);
 
         // Act
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(selected,
+            ? hierarchy.SelectAncestorsOrSelf(
+                selected,
                 (node, owner, distance) => new
                 {
                     node.Id,
                     Distance = distance,
                 })
-            : hierarchy.SelectAncestors(selected,
+            : hierarchy.SelectAncestors(
+                selected,
                 (node, owner, distance) => new
                 {
                     node.Id,
@@ -181,7 +201,8 @@ public sealed partial class CompositionAncestorIndexTests
         Expression<Func<CompositionNode, TFact, bool>> match
     )
     {
-        var exists = Expression.Call(typeof(Queryable),
+        var exists = Expression.Call(
+            typeof(Queryable),
             nameof(Queryable.Any),
             [typeof(TFact)],
             facts.Expression,
@@ -197,7 +218,8 @@ public sealed partial class CompositionAncestorIndexTests
     {
         Expression<Func<CompositionNode, SelectionFact, bool>> match = (node, fact) => fact.NodeId == node.Id;
 
-        var exists = Expression.Call(typeof(Enumerable),
+        var exists = Expression.Call(
+            typeof(Enumerable),
             nameof(Enumerable.Any),
             [typeof(SelectionFact)],
             root,

@@ -35,8 +35,16 @@ public abstract class DokaCacheTestBase : ProviderTest
     )
     {
         // Arrange
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
-        await using var template = await _fixture.CreateContextAsync(Engine);
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            5000,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var template = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
 
         await using (var warm = OrderingRefreshTestSupport.CreateCacheContext(template, services))
@@ -47,12 +55,20 @@ public abstract class DokaCacheTestBase : ProviderTest
                 .OrderBy(node => node.Id)
                 .ToArrayAsync(CancellationToken.None);
 
-            warmTracked[0].Name = adjacent ? "node-00000002z" : "zzzz";
+            warmTracked[0].Name = adjacent
+                ? "node-00000002z"
+                : "zzzz";
+
             await warm.SaveChangesAsync(false, CancellationToken.None);
         }
 
         // WHY: Warmup must not leave a no-op rename or changed tree for measurement; reset every persisted row.
-        await OrderingRefreshTestSupport.SeedAsync(_fixture, Engine, 5000);
+        await OrderingRefreshTestSupport.SeedAsync(
+            _fixture,
+            Engine,
+            5000,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var probe = new ScaleProbe();
         await using var context = OrderingRefreshTestSupport.CreateCacheContext(template, services, probe);
         var tracked = await context
@@ -61,7 +77,10 @@ public abstract class DokaCacheTestBase : ProviderTest
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        tracked[0].Name = adjacent ? "node-00000002z" : "zzzz";
+        tracked[0].Name = adjacent
+            ? "node-00000002z"
+            : "zzzz";
+
         probe.Observe(context);
         probe.Reset();
         var before = GC.GetTotalAllocatedBytes(precise: true);
@@ -83,7 +102,10 @@ public abstract class DokaCacheTestBase : ProviderTest
             .Skip(lastWrite + 1)
             .ToArray();
 
-        var expectedPosition = adjacent ? 1 : 4999;
+        var expectedPosition = adjacent
+            ? 1
+            : 4999;
+
         _output.WriteLine(
             $"Engine={Engine}; sample={sample}; tracked=5000; adjacent={adjacent}; "
             + $"refresh commands={refresh.Length}; read calls={refresh.Sum(command => command.ReadCalls)}; "
@@ -92,8 +114,9 @@ public abstract class DokaCacheTestBase : ProviderTest
 
         Assert.Equal(1, saved);
         Assert.Equal(
-            ((expectedPosition * 2) + 2, (expectedPosition * 2) + 3, expectedPosition),
+            (expectedPosition * 2 + 2, expectedPosition * 2 + 3, expectedPosition),
             (tracked[0].Left, tracked[0].Right, tracked[0].Position));
+
         Assert.Equal(0, probe.Compilations);
         Assert.True(lastWrite >= 0);
         Assert.NotEmpty(refresh);
@@ -101,9 +124,12 @@ public abstract class DokaCacheTestBase : ProviderTest
             tracked.Skip(1),
             node =>
             {
-                var position = adjacent && node.Id > 2 ? node.Id - 1 : node.Id - 2;
+                var position = adjacent && node.Id > 2
+                    ? node.Id - 1
+                    : node.Id - 2;
+
                 Assert.Equal(
-                    ((position * 2) + 2, (position * 2) + 3, position),
+                    (position * 2 + 2, position * 2 + 3, position),
                     (node.Left, node.Right, node.Position));
             });
     }

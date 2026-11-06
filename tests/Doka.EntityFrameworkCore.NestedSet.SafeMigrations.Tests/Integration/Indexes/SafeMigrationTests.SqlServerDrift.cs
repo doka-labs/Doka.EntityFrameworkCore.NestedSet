@@ -16,21 +16,32 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("SqlServer", qualifySchema);
+        await using var database = await CreateDatabaseAsync(
+            "SqlServer",
+            qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operation = GetIndexOperations(chain, context)
-            .Single(candidate => ((EnsureIndexIntent)candidate.Intent).Definition.Keys
+            .Single(candidate => ((EnsureIndexIntent)candidate.Intent)
+                .Definition
+                .Keys
                 .Select(key => key.Column)
                 .SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
 
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
-        var nodesBefore = await database.ReadNodesAsync();
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var sql = context.GetService<ISqlGenerationHelper>();
-        var drop = "DROP INDEX " + sql.DelimitIdentifier(definition.Name) + " ON "
+        var drop = "DROP INDEX "
+            + sql.DelimitIdentifier(definition.Name)
+            + " ON "
             + sql.DelimitIdentifier(definition.Table, definition.Schema);
 
         // WHY: Removing only the provider-delimited generated index isolates the absent-index Apply contract.
@@ -45,7 +56,10 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-missing-index-apply"),
                 CancellationToken.None);
 
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(
+            context,
+            [operation],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(SafeMigrationReportStatus.Ready, report.Status);
@@ -53,8 +67,16 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(SafeMigrationOperationKind.EnsureIndex, assessment.OperationKind);
         Assert.Equal(SafeMigrationObservedState.Missing, assessment.ObservedState);
         Assert.Equal(SafeMigrationAction.Apply, assessment.Action);
-        Assert.Equal(indexesBefore, IndexSignatures(await database.ReadIndexesAsync()));
-        Assert.Equal(nodesBefore, await database.ReadNodesAsync());
+        Assert.Equal(
+            indexesBefore,
+            IndexSignatures(
+                await database.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            nodesBefore,
+            await database.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies identical SQL Server index columns cannot hide a changed sibling sort direction.</summary>
@@ -69,26 +91,37 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("SqlServer", qualifySchema);
+        await using var database = await CreateDatabaseAsync(
+            "SqlServer",
+            qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain);
-        await database.SeedAsync();
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operation = GetIndexOperations(chain, context)
-            .Single(candidate => ((EnsureIndexIntent)candidate.Intent).Definition.Keys
+            .Single(candidate => ((EnsureIndexIntent)candidate.Intent)
+                .Definition
+                .Keys
                 .Select(key => key.Column)
-                .SequenceEqual([
+                .SequenceEqual(
+                [
                     "tree_scope", "tree_id", "parent_entry", "entry_payload", "entry_category", "entry_id",
                 ]));
 
         var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-        var original = (await database.ReadIndexesAsync()).Single(index => index.Name == definition.Name);
+        var original = (await database.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken)).Single(index => index.Name == definition.Name);
+
         var sql = context.GetService<ISqlGenerationHelper>();
         var indexName = sql.DelimitIdentifier(definition.Name);
         var table = sql.DelimitIdentifier(definition.Table, definition.Schema);
-        var keys = string.Join(", ", definition.Keys.Select(key => sql.DelimitIdentifier(
-            key.Column ?? throw new InvalidOperationException("The drift test requires mapped index columns."))
-            + " ASC"));
+        var keys = string.Join(
+            ", ",
+            definition.Keys.Select(key => sql.DelimitIdentifier(
+                    key.Column ?? throw new InvalidOperationException("The drift test requires mapped index columns."))
+                + " ASC"));
 
         // WHY: Raw DDL changes only direction; name, ordered columns, uniqueness, and schema remain identical.
         // Identifiers cannot be SQL parameters; every identifier above is escaped by the provider helper.
@@ -97,8 +130,11 @@ public sealed partial class SafeMigrationTests
         await context.Database.ExecuteSqlRawAsync(drop, CancellationToken.None);
         await context.Database.ExecuteSqlRawAsync(create, CancellationToken.None);
 
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
-        var nodesBefore = await database.ReadNodesAsync();
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var report = await context
@@ -110,13 +146,24 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(
+                context,
+                [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Contains(true, original.Descending);
         AssertRejectedIndexDrift(report, exception, "SqlServer");
-        Assert.Equal(indexesBefore, IndexSignatures(await database.ReadIndexesAsync()));
-        Assert.Equal(nodesBefore, await database.ReadNodesAsync());
+        Assert.Equal(
+            indexesBefore,
+            IndexSignatures(
+                await database.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            nodesBefore,
+            await database.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>
@@ -139,14 +186,22 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync("SqlServer", qualifySchema);
+        await using var database = await CreateDatabaseAsync(
+            "SqlServer",
+            qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = ScaffoldSqlServerCheckOperations(database);
-        await DropSqlServerChecksAsync(context, operations);
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, operations);
-        await database.SeedAsync();
+        await DropSqlServerChecksAsync(context, operations, cancellationToken: TestContext.Current.CancellationToken);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(
+            context,
+            operations,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
         var operation = operations
             .Single(candidate => candidate.Intent is EnsureCheckConstraintIntent check
                 && check.Definition.Name.Contains("LeftMin", StringComparison.Ordinal));
@@ -168,10 +223,17 @@ public sealed partial class SafeMigrationTests
             await context.Database.ExecuteSqlRawAsync(enable, CancellationToken.None);
         }
 
-        var stateBefore = await ReadSqlServerCheckStateAsync(context, definition);
-        var checksBefore = await database.ReadChecksAsync();
-        var indexesBefore = IndexSignatures(await database.ReadIndexesAsync());
-        var nodesBefore = await database.ReadNodesAsync();
+        var stateBefore = await ReadSqlServerCheckStateAsync(
+            context,
+            definition,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var indexesBefore = IndexSignatures(
+            await database.ReadIndexesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var report = await context
@@ -183,7 +245,10 @@ public sealed partial class SafeMigrationTests
                 CancellationToken.None);
 
         var exception = await Record.ExceptionAsync(() =>
-            SafeMigrationTestServices.ExecuteOperationsAsync(context, [operation]));
+            SafeMigrationTestServices.ExecuteOperationsAsync(
+                context,
+                [operation],
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Equal(SafeMigrationReportStatus.Blocked, report.Status);
@@ -195,27 +260,60 @@ public sealed partial class SafeMigrationTests
         Assert.False(assessment.PostconditionSatisfied);
         var databaseException = Assert.IsAssignableFrom<DbException>(exception);
         Assert.Contains("doka_sm_different", databaseException.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(enabled ? 1 : 3, stateBefore);
-        Assert.Equal(stateBefore, await ReadSqlServerCheckStateAsync(context, definition));
-        Assert.Equal(checksBefore, await database.ReadChecksAsync());
-        Assert.Equal(indexesBefore, IndexSignatures(await database.ReadIndexesAsync()));
-        Assert.Equal(nodesBefore, await database.ReadNodesAsync());
+        Assert.Equal(
+            enabled
+                ? 1
+                : 3,
+            stateBefore);
+
+        Assert.Equal(
+            stateBefore,
+            await ReadSqlServerCheckStateAsync(
+                context,
+                definition,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            checksBefore,
+            await database.ReadChecksAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            indexesBefore,
+            IndexSignatures(
+                await database.ReadIndexesAsync(
+                    cancellationToken: TestContext.Current.CancellationToken)));
+
+        Assert.Equal(
+            nodesBefore,
+            await database.ReadNodesAsync(
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>
     /// Captures disabled and untrusted flags independently of a check's unchanged authored expression.
     /// </summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="definition">The expected physical index definition.</param>
     private static Task<int> ReadSqlServerCheckStateAsync(
         DbContext context,
-        ExpectedCheckConstraintDefinition definition
+        ExpectedCheckConstraintDefinition definition,
+        CancellationToken cancellationToken
     )
     {
-        var table = context.GetService<ISqlGenerationHelper>().DelimitIdentifier(definition.Table, definition.Schema);
+        var table = context
+            .GetService<ISqlGenerationHelper>()
+            .DelimitIdentifier(definition.Table, definition.Schema);
 
-        return context.Database.SqlQuery<int>($"""
-            SELECT CAST(is_disabled AS int) * 2 + CAST(is_not_trusted AS int) AS [Value]
-            FROM sys.check_constraints
-            WHERE parent_object_id = OBJECT_ID({table}) AND name = {definition.Name}
-            """).SingleAsync(CancellationToken.None);
+        return context
+            .Database
+            .SqlQuery<int>(
+                $"""
+                 SELECT CAST(is_disabled AS int) * 2 + CAST(is_not_trusted AS int) AS [Value]
+                 FROM sys.check_constraints
+                 WHERE parent_object_id = OBJECT_ID({table}) AND name = {definition.Name}
+                 """)
+            .SingleAsync(cancellationToken);
     }
 }

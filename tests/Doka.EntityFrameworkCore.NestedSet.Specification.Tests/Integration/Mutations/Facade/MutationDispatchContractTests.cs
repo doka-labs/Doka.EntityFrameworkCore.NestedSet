@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Features.Facade;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies typed mutation entries reject mismatched arguments before database work.</summary>
@@ -55,7 +57,7 @@ public abstract class MutationDispatchContractTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         await using var context = database.CreateContext(probe);
         var hierarchy = context
@@ -64,14 +66,14 @@ public abstract class MutationDispatchContractTests : ProviderTest
 
         // WHY: InTree rejects a wrong TreeId before maintenance dispatch. Probe the three binding methods
         // directly so each route proves its own generic guard before reaching the cached invoker or SQL.
-        var binding = new Features.Facade.NestedSetMutationBinding<TreeNode>(
+        var binding = new NestedSetMutationBinding<TreeNode>(
             context,
             context.Model.FindEntityType(typeof(TreeNode))!).ForScope(7);
 
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_tree, CancellationToken.None);
         await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
-        var rowsBefore = await RowsAsync(context);
-        var registryBefore = await RegistryAsync(context);
+        var rowsBefore = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistryAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var input = new TreeNode
         {
             NodeId = 3,
@@ -96,61 +98,87 @@ public abstract class MutationDispatchContractTests : ProviderTest
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(() => DispatchAsync(hierarchy, binding, input, route));
+        var error = await Record.ExceptionAsync(() => DispatchAsync(
+            hierarchy,
+            binding,
+            input,
+            route,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<ArgumentException>(error);
         Assert.Equal(0, probe.CommandCount);
         Assert.Equal(inputBefore, Snapshot(input));
-        Assert.Equal(EntityState.Detached, context.Entry(input).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
         Assert.Equal(EntityState.Unchanged, tracked.State);
         Assert.Equal("unchanged application row", application.Value);
-        Assert.Same(application, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            application,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Equal(rowsBefore, await RowsAsync(verification));
-        Assert.Equal(registryBefore, await RegistryAsync(verification));
+        Assert.Equal(
+            rowsBefore,
+            await RowsAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await RegistryAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Calls public mutations and direct maintenance bindings with mismatched key or tree arguments.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task DispatchAsync(
         ScopedNestedSet<TreeNode, int> hierarchy,
-        Features.Facade.NestedSetMutationBinding<TreeNode> binding,
+        NestedSetMutationBinding<TreeNode> binding,
         TreeNode input,
-        string route
+        string route,
+        CancellationToken cancellationToken
     ) => route switch
     {
-        "InsertChild" => hierarchy.InsertChildAsync(input, "1", CancellationToken.None),
-        "InsertFirstChild" => hierarchy.InsertAsFirstChildAsync(input, "1", CancellationToken.None),
-        "InsertLastChild" => hierarchy.InsertAsLastChildAsync(input, "1", CancellationToken.None),
-        "InsertBefore" => hierarchy.InsertBeforeAsync(input, "2", CancellationToken.None),
-        "InsertAfter" => hierarchy.InsertAfterAsync(input, "2", CancellationToken.None),
+        "InsertChild" => hierarchy.InsertChildAsync(input, "1", cancellationToken),
+        "InsertFirstChild" => hierarchy.InsertAsFirstChildAsync(input, "1", cancellationToken),
+        "InsertLastChild" => hierarchy.InsertAsLastChildAsync(input, "1", cancellationToken),
+        "InsertBefore" => hierarchy.InsertBeforeAsync(input, "2", cancellationToken),
+        "InsertAfter" => hierarchy.InsertAfterAsync(input, "2", cancellationToken),
         "InsertSubtree" =>
-            hierarchy.InsertSubtreeAsync(new NestedSetBranch<TreeNode>(input), "1", CancellationToken.None),
-        "Move" => hierarchy.MoveToAsync("2", "1", CancellationToken.None),
-        "MoveBefore" => hierarchy.MoveBeforeAsync("2", "1", CancellationToken.None),
-        "MoveAfter" => hierarchy.MoveAfterAsync("2", "1", CancellationToken.None),
-        "DetachSource" => hierarchy.DetachAsTreeAsync("2", Guid.NewGuid(), CancellationToken.None),
-        "DetachTree" => hierarchy.DetachAsTreeAsync(2, "new-tree", CancellationToken.None),
-        "DeleteSubtree" => hierarchy.DeleteSubtreeAsync("2", CancellationToken.None),
-        "DeleteTree" => hierarchy.DeleteTreeAsync("tree", CancellationToken.None),
-        "Purge" => hierarchy.PurgeTreeIdAsync("tree", CancellationToken.None),
-        "Validate" => binding.ValidateTreeAsync("tree", NestedSetValidationLevel.Full, CancellationToken.None),
-        "Plan" => binding.PlanRebuildAsync("tree", CancellationToken.None),
-        "Rebuild" => binding.RebuildTreeAsync("tree", CancellationToken.None),
+            hierarchy.InsertSubtreeAsync(new NestedSetBranch<TreeNode>(input), "1", cancellationToken),
+        "Move" => hierarchy.MoveToAsync("2", "1", cancellationToken),
+        "MoveBefore" => hierarchy.MoveBeforeAsync("2", "1", cancellationToken),
+        "MoveAfter" => hierarchy.MoveAfterAsync("2", "1", cancellationToken),
+        "DetachSource" => hierarchy.DetachAsTreeAsync("2", Guid.NewGuid(), cancellationToken),
+        "DetachTree" => hierarchy.DetachAsTreeAsync(2, "new-tree", cancellationToken),
+        "DeleteSubtree" => hierarchy.DeleteSubtreeAsync("2", cancellationToken),
+        "DeleteTree" => hierarchy.DeleteTreeAsync("tree", cancellationToken),
+        "Purge" => hierarchy.PurgeTreeIdAsync("tree", cancellationToken),
+        "Validate" => binding.ValidateTreeAsync("tree", NestedSetValidationLevel.Full, cancellationToken),
+        "Plan" => binding.PlanRebuildAsync("tree", cancellationToken),
+        "Rebuild" => binding.RebuildTreeAsync("tree", cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(route)),
     };
 
     /// <summary>Captures the persisted hierarchy in key order without enrolling rows in the tracker.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<NodeSnapshot[]> RowsAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var rows = await context
             .Set<TreeNode>()
             .AsNoTracking()
             .OrderBy(node => node.NodeId)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .Select(Snapshot)
@@ -172,11 +200,14 @@ public abstract class MutationDispatchContractTests : ProviderTest
         node.Payload);
 
     /// <summary>Reads the registry revision and lifecycle independently of any invalid bound tree argument.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(long Revision, byte Lifecycle)> RegistryAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
-        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TreeNode))!)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -184,7 +215,7 @@ public abstract class MutationDispatchContractTests : ProviderTest
             .Select(row => new ValueTuple<long, byte>(
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
     }
 
     /// <summary>Stores complete row values for exact comparison across argument-validation failures.</summary>

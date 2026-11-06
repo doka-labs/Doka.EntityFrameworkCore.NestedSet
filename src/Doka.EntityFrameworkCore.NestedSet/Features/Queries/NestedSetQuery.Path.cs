@@ -44,15 +44,16 @@ internal sealed partial class NestedSetQuery<TEntity>
         {
             // WHY: Validate endpoints immediately, then wait for EF to expand captured source queries.
             // Only the existing normalized proof can decide whether membership is actually redundant.
-            return Composed(NestedSetDeferredQuery.CreatePath(
-                _nodes,
-                _unboundNodes,
-                source,
-                anchor,
-                node,
-                edgeAllowed,
-                _entityType.Name,
-                _treeBound));
+            return Composed(
+                NestedSetDeferredQuery.CreatePath(
+                    _nodes,
+                    _unboundNodes,
+                    source,
+                    anchor,
+                    node,
+                    edgeAllowed,
+                    _entityType.Name,
+                    _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");

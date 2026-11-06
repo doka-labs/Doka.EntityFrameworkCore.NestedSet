@@ -49,7 +49,7 @@ public sealed class ManualDetectionSaveBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
             Func<Task> save = (benchmark, operation) switch
             {
                 (ManualDetectionSaveBenchmarks saveBenchmark, nameof(ManualDetectionSaveBenchmarks.MarkedOrder)) =>
@@ -70,7 +70,7 @@ public sealed class ManualDetectionSaveBenchmarkTests
 
             // Assert
             Assert.False(benchmark.Fixture.Context.ChangeTracker.AutoDetectChangesEnabled);
-            await benchmark.VerifyAsync();
+            await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -93,10 +93,10 @@ public sealed class ManualDetectionSaveBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
             // Act
-            var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+            var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
             // Assert
             Assert.IsType<InvalidOperationException>(error);

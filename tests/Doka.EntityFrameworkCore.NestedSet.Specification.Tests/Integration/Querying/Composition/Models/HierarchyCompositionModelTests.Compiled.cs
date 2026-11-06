@@ -1,3 +1,9 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MySql;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.SqlServer;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class HierarchyCompositionModelTests
@@ -21,34 +27,47 @@ public abstract partial class HierarchyCompositionModelTests
     )
     {
         // Arrange
-        var scope = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        var scope = Guid
+            .NewGuid()
+            .ToString("N", CultureInfo.InvariantCulture);
+
         var treeId = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
         await using var design = await _fixture.CreateContextAsync<CompiledTreeContext>(
             Engine,
             static options => new CompiledTreeContext(options, false),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
         var ids = new[] { scope + "-ROOT", scope + "-MIDDLE", scope + "-LEAF" };
 
         await design.AddAsync(new CompiledScope { Id = scope }, CancellationToken.None);
-        await design.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new CompiledFolder
-        {
-            Id = ids[depth],
-            Scope = scope,
-            ParentId = depth == 0 ? null : ids[depth - 1].ToLowerInvariant(),
-            TreeId = treeId,
-            Left = depth + 1,
-            Right = 6 - depth,
-            Depth = depth,
-            Name = $"Node {depth}",
-        }), CancellationToken.None);
+        await design.AddRangeAsync(
+            Enumerable
+                .Range(0, 3)
+                .Select(depth => new CompiledFolder
+                {
+                    Id = ids[depth],
+                    Scope = scope,
+                    ParentId = depth == 0
+                        ? null
+                        : ids[depth - 1]
+                            .ToLowerInvariant(),
+                    TreeId = treeId,
+                    Left = depth + 1,
+                    Right = 6 - depth,
+                    Depth = depth,
+                    Name = $"Node {depth}",
+                }),
+            CancellationToken.None);
 
         await design.SavePrecomputedHierarchyAsync(CancellationToken.None);
         var model = CompiledCompositionModel(Engine);
-        var extensions = design.GetService<IDbContextOptions>().Extensions
+        var extensions = design
+            .GetService<IDbContextOptions>()
+            .Extensions
             .ToDictionary(extension => extension.GetType());
 
         var options = new DbContextOptionsBuilder<CompiledTreeContext>(
@@ -60,7 +79,10 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = new CompiledTreeContext(options, true);
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         probe.Reset();
-        var hierarchy = context.NestedSet<CompiledFolder>().ForScope(scope.ToUpperInvariant()).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<CompiledFolder>()
+            .ForScope(scope.ToUpperInvariant())
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)
@@ -79,11 +101,11 @@ public abstract partial class HierarchyCompositionModelTests
         string engine
     ) => engine switch
     {
-        "Sqlite" => CompiledModels.CompiledTreeContextModel.Instance,
-        "MySql" => CompiledModels.MySql.CompiledMySqlContextModel.Instance,
-        "MariaDb" => CompiledModels.MariaDb.CompiledMariaDbContextModel.Instance,
-        "PostgreSql" => CompiledModels.PostgreSql.CompiledPostgreSqlContextModel.Instance,
-        "SqlServer" => CompiledModels.SqlServer.CompiledSqlServerContextModel.Instance,
+        "Sqlite" => CompiledTreeContextModel.Instance,
+        "MySql" => CompiledMySqlContextModel.Instance,
+        "MariaDb" => CompiledMariaDbContextModel.Instance,
+        "PostgreSql" => CompiledPostgreSqlContextModel.Instance,
+        "SqlServer" => CompiledSqlServerContextModel.Instance,
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
 }

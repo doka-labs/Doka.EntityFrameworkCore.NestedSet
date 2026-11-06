@@ -19,7 +19,10 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var count = shape == "sources" ? 32_768 : 46_341;
+        var count = shape == "sources"
+            ? 32_768
+            : 46_341;
+
         snapshot = snapshot with
         {
             AnchorIds = Enumerable
@@ -39,11 +42,15 @@ public sealed partial class SignalReportValidationTests
         };
 
         var total = Total(snapshot.AnchorIds[0], snapshot.ChannelIds[0], CapturePort.Pulse, 7);
-        SignalReportTotal[] rows = duplicate ? [total, total] : [total];
+        SignalReportTotal[] rows = duplicate
+            ? [total, total]
+            : [total];
+
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
@@ -75,9 +82,15 @@ public sealed partial class SignalReportValidationTests
         var total = Total(snapshot.AnchorIds[0], snapshot.ChannelIds[0], CapturePort.Pulse, 7);
         snapshot = snapshot with
         {
-            AnchorIds = dimension == "anchors" ? [] : snapshot.AnchorIds,
-            ChannelIds = dimension == "signals" ? [] : snapshot.ChannelIds,
-            Sources = dimension == "sources" ? [] : snapshot.Sources,
+            AnchorIds = dimension == "anchors"
+                ? []
+                : snapshot.AnchorIds,
+            ChannelIds = dimension == "signals"
+                ? []
+                : snapshot.ChannelIds,
+            Sources = dimension == "sources"
+                ? []
+                : snapshot.Sources,
         };
 
         SignalReportTotal[] rows = [total];
@@ -85,7 +98,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, rows);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None);
 

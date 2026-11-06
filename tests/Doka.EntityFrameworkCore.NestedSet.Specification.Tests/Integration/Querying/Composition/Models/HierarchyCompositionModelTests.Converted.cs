@@ -28,26 +28,36 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<CompositionConvertedContext>(
             Engine,
             static options => new CompositionConvertedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 
-        await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new CompositionConvertedNode
-        {
-            Scope = scope,
-            Id = new CompositionNodeKey(depth),
-            ParentId = depth == 0 ? null : new CompositionNodeKey(depth - 1),
-            TreeId = treeId,
-            Left = depth + 1,
-            Right = 6 - depth,
-            Depth = depth,
-        }), CancellationToken.None);
+        await context.AddRangeAsync(
+            Enumerable
+                .Range(0, 3)
+                .Select(depth => new CompositionConvertedNode
+                {
+                    Scope = scope,
+                    Id = new CompositionNodeKey(depth),
+                    ParentId = depth == 0
+                        ? null
+                        : new CompositionNodeKey(depth - 1),
+                    TreeId = treeId,
+                    Left = depth + 1,
+                    Right = 6 - depth,
+                    Depth = depth,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionConvertedNode>().ForScope(scope).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<CompositionConvertedNode>()
+            .ForScope(scope)
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)

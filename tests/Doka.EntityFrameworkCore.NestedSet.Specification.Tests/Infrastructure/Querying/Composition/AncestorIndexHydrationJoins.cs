@@ -14,14 +14,16 @@ internal static partial class AncestorIndexHydrationJoins
         string physicalTable
     )
     {
-        if (!IdentifierRegex().IsMatch(physicalTable))
+        if (!IdentifierRegex()
+            .IsMatch(physicalTable))
         {
             throw new ArgumentException("The fixture table must be a simple quoted identifier.", nameof(physicalTable));
         }
 
         // WHY: These fixtures deliberately project Source/Owner Id first. A positional record omits
         // SQL column aliases; the anonymous Unit control names them. Both identify the same payload roles.
-        var projections = ProjectionsRegex().Matches(sql);
+        var projections = ProjectionsRegex()
+            .Matches(sql);
 
         if (projections.Count != 1)
         {
@@ -51,7 +53,7 @@ internal static partial class AncestorIndexHydrationJoins
         var end = aliases[0].Index - 1;
 
         while (end >= 0
-               && char.IsWhiteSpace(sql[end]))
+            && char.IsWhiteSpace(sql[end]))
         {
             end--;
         }
@@ -66,9 +68,12 @@ internal static partial class AncestorIndexHydrationJoins
             var tables = TablesRegex()
                 .Matches(term);
 
-            if (!SelectRegex().IsMatch(term)
+            if (!SelectRegex()
+                    .IsMatch(term)
                 || tables.Count != 1
-                || tables[0].Groups["table"].Value != physicalTable)
+                || tables[0]
+                    .Groups["table"].Value
+                != physicalTable)
             {
                 throw new FormatException("The filtered payload term does not have the expected fixture-table source.");
             }
@@ -95,7 +100,9 @@ internal static partial class AncestorIndexHydrationJoins
             throw new FormatException("The payload term does not have an immediate supported join edge.");
         }
 
-        return join.Groups["kind"].Value == "STRAIGHT_JOIN" ? "STRAIGHT_JOIN" : "INNER JOIN";
+        return join.Groups["kind"].Value == "STRAIGHT_JOIN"
+            ? "STRAIGHT_JOIN"
+            : "INNER JOIN";
     }
 
     /// <summary>Finds the matching source boundary without confusing nested parentheses or quoted fixture identifiers.</summary>
@@ -131,7 +138,7 @@ internal static partial class AncestorIndexHydrationJoins
                     depth++;
                 }
                 else if (value == '('
-                         && --depth == 0)
+                    && --depth == 0)
                 {
                     return index;
                 }

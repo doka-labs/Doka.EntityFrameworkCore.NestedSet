@@ -19,7 +19,10 @@ public sealed partial class ProviderTestContractTests
         var suite = builder.CreateType();
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("PostgreSql"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("PostgreSql"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -59,7 +62,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact()]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(errors);
@@ -77,7 +83,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact()], project: "MySql", markers: [marker], inherited: true);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("MySql"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("MySql"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(errors);
@@ -97,7 +106,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralTheory(), NeutralInline(["PostgreSql"])], parameterName: parameterName);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(errors);
@@ -111,7 +123,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralTheory(), NeutralInline(["Sqlite"])], parameterName: "engine");
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("not an engine argument", StringComparison.Ordinal));
@@ -127,7 +142,10 @@ public sealed partial class ProviderTestContractTests
             parameterName: "payload");
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(errors);
@@ -145,7 +163,10 @@ public sealed partial class ProviderTestContractTests
             localRows: true);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(errors);
@@ -165,7 +186,10 @@ public sealed partial class ProviderTestContractTests
             emptyRows: true);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("is empty", StringComparison.Ordinal));
@@ -180,7 +204,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact(["Postgres"])], inherited: true);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -196,7 +223,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact(["SqlServer"])], markers: [typeof(SqlServerEngine)]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("foreign provider project", StringComparison.Ordinal));
@@ -210,7 +240,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact()]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("PostgreSql"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("PostgreSql"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("provider 'Sqlite' is foreign", StringComparison.Ordinal));
@@ -224,7 +257,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact()], markers: []);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -243,7 +279,10 @@ public sealed partial class ProviderTestContractTests
             markers: [typeof(MySqlEngine), typeof(MariaDbEngine)]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("MySql"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("MySql"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("contradictory provider fixtures", StringComparison.Ordinal));
@@ -257,7 +296,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralFact()], registerFixture: false);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(
@@ -273,7 +315,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateProbe([NeutralFact()]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("must derive from ProviderTest", StringComparison.Ordinal));
@@ -287,7 +332,10 @@ public sealed partial class ProviderTestContractTests
         var suite = CreateNeutralProbe([NeutralTheory()]);
 
         // Act
-        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(suite, AssemblyName("Sqlite"));
+        var errors = await ProviderTestContract.FindDeclaredOwnershipErrorsAsync(
+            suite,
+            AssemblyName("Sqlite"),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains(errors, error => error.Contains("no raw data rows", StringComparison.Ordinal));

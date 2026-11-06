@@ -14,7 +14,8 @@ internal sealed class NestedSetInputNavigations
         ref NestedSetInputNavigations? snapshots
     )
     {
-        foreach (var navigation in s_shapes.GetValue(entry.Metadata, CreateShape).Empty)
+        foreach (var navigation in s_shapes.GetValue(entry.Metadata, CreateShape)
+            .Empty)
         {
             if (navigation.IsCollection)
             {
@@ -37,7 +38,8 @@ internal sealed class NestedSetInputNavigations
         var entity = entry.ToEntityEntry()
             .Entity;
 
-        foreach (var navigation in s_shapes.GetValue(entry.EntityType, CreateShape).Empty)
+        foreach (var navigation in s_shapes.GetValue(entry.EntityType, CreateShape)
+            .Empty)
         {
             var key = (entity, navigation);
 
@@ -64,10 +66,10 @@ internal sealed class NestedSetInputNavigations
             EmptyCollection(original, navigation);
 
             if (!ReferenceEquals(
-                    navigation
-                        .GetGetter()
-                        .GetClrValueUsingContainingEntity(entity),
-                    original))
+                navigation
+                    .GetGetter()
+                    .GetClrValueUsingContainingEntity(entity),
+                original))
             {
                 NestedSetInsertionContract
                     .Instance
@@ -120,7 +122,9 @@ internal sealed class NestedSetInputNavigations
                 }
             }
 
-            foreach (var navigation in includeOwned ? shape.Owned : [])
+            foreach (var navigation in includeOwned
+                ? shape.Owned
+                : [])
             {
                 var value = navigation
                     .GetGetter()
@@ -161,8 +165,8 @@ internal sealed class NestedSetInputNavigations
         else if (collection is IEnumerable values)
         {
             foreach (var member in values
-                         .Cast<object>()
-                         .ToArray())
+                .Cast<object>()
+                .ToArray())
             {
                 navigation.GetCollectionAccessor()!.RemoveStandalone(collection, member);
             }

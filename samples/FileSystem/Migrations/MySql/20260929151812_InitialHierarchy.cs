@@ -19,7 +19,7 @@ public partial class InitialHierarchy : Migration
             {
                 TreeId = table.Column<Guid>(type: "binary(16)", fixedLength: true, maxLength: 16, nullable: false),
                 Lifecycle = table.Column<byte>(type: "tinyint unsigned", nullable: false),
-                Revision = table.Column<long>(type: "bigint", nullable: false)
+                Revision = table.Column<long>(type: "bigint", nullable: false),
             },
             constraints: table =>
             {
@@ -30,25 +30,34 @@ public partial class InitialHierarchy : Migration
             name: "Folders",
             columns: table => new
             {
-                Id = table.Column<int>(type: "int", nullable: false)
+                Id = table
+                    .Column<int>(type: "int", nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.AutoIncrement),
-                TreeId = table.Column<Guid>(type: "binary(16)", fixedLength: true, maxLength: 16, nullable: false)
+                TreeId = table
+                    .Column<Guid>(type: "binary(16)", fixedLength: true, maxLength: 16, nullable: false)
                     .Annotation("Doka:MySql:GuidFormat", MySqlGuidFormat.Binary16)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Name = table.Column<string>(type: "varchar(120)", maxLength: 120, nullable: false)
+                Name = table
+                    .Column<string>(type: "varchar(120)", maxLength: 120, nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Category = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false)
+                Category = table
+                    .Column<string>(type: "varchar(40)", maxLength: 40, nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                ParentId = table.Column<int>(type: "int", nullable: true)
+                ParentId = table
+                    .Column<int>(type: "int", nullable: true)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Left = table.Column<long>(type: "bigint", nullable: false)
+                Left = table
+                    .Column<long>(type: "bigint", nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Right = table.Column<long>(type: "bigint", nullable: false)
+                Right = table
+                    .Column<long>(type: "bigint", nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Depth = table.Column<int>(type: "int", nullable: false)
+                Depth = table
+                    .Column<int>(type: "int", nullable: false)
                     .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
-                Position = table.Column<long>(type: "bigint", nullable: false)
-                    .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None)
+                Position = table
+                    .Column<long>(type: "bigint", nullable: false)
+                    .Annotation("Doka:MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.None),
             },
             constraints: table =>
             {

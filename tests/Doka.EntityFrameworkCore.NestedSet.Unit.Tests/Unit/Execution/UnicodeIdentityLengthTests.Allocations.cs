@@ -4,6 +4,7 @@ public sealed partial class UnicodeIdentityLengthTests
 {
     /// <summary>Counts characters without allocating buffers, rune collections or normalized strings.</summary>
     /// <param name="input">Eight Unicode scalar values exercising ASCII, BMP and surrogate paths.</param>
+
     // WHY: Coverage can add allocations inside framework helpers; validate the unchanged product budget directly.
     [Trait("Category", "Allocation")]
     [Theory]

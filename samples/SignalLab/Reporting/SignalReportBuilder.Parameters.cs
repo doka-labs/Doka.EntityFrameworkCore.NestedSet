@@ -63,11 +63,11 @@ internal static partial class SignalReportBuilder
         /// <summary>Stores the original field code for ordinary indexed equality.</summary>
         internal readonly string FieldCode;
 
-        /// <summary>Stores the original value for ordinary indexed equality.</summary>
-        internal readonly string Value;
-
         /// <summary>Stores the field code with its exact comparison suffix already appended.</summary>
         internal readonly string FieldCodeWithSuffix;
+
+        /// <summary>Stores the original value for ordinary indexed equality.</summary>
+        internal readonly string Value;
 
         /// <summary>Stores the value with its exact comparison suffix already appended.</summary>
         internal readonly string ValueWithSuffix;

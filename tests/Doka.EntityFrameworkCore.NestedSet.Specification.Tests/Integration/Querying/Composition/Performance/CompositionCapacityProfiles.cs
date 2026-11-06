@@ -7,6 +7,7 @@ internal static partial class CompositionCapacityProfiles
     private const int NativeMutationBatchSize = 100_000;
 
     /// <summary>Measures broad and selective payload joins on an existing valid wide or balanced hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The already seeded case-owned database.</param>
     /// <param name="engine">The provider identity used for native plans.</param>
     /// <param name="nodes">The complete persisted population.</param>
@@ -17,14 +18,30 @@ internal static partial class CompositionCapacityProfiles
         TestDatabase database,
         string engine,
         int nodes,
+        CancellationToken cancellationToken,
         bool balanced = false,
         bool broad = false
     )
     {
         await using var setup = database.CreateContext();
-        await SeedPayloadAsync(setup, nodes, broad ? nodes : Math.Min(nodes, 100));
-        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, engine);
-        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(setup, engine);
+        await SeedPayloadAsync(
+            setup,
+            nodes,
+            broad
+                ? nodes
+                : Math.Min(nodes, 100),
+            cancellationToken: cancellationToken);
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+            setup,
+            engine,
+            cancellationToken: cancellationToken);
+
+        await QueryPlanTestSupport.RefreshStatisticsAsync<UnrelatedRow>(
+            setup,
+            engine,
+            cancellationToken: cancellationToken);
+
         var results = new List<CompositionCapacityObservation>();
 
         foreach (var anchors in new[] { 1, 10, 100, 1_000 })
@@ -32,12 +49,17 @@ internal static partial class CompositionCapacityProfiles
             var planProbe = new EnterpriseProbe(captureParameterBindings: true);
             var commandProbe = new CompositionCommandProbe();
             await using var context = database.CreateContext(planProbe, commandProbe);
-            var firstFact = broad ? 1 : Math.Max(1, nodes - 99);
+            var firstFact = broad
+                ? 1
+                : Math.Max(1, nodes - 99);
+
             var firstAnchor = nodes - anchors + 2;
             var buildBytes = MeasureConstruction(context, firstAnchor, firstFact);
             var query = Build(context, firstAnchor, firstFact);
             var profile = $"{(balanced ? "balanced" : "wide")}-{nodes}-anchors-{anchors}-"
-                + (broad ? "broad" : "selective");
+                + (broad
+                    ? "broad"
+                    : "selective");
 
             // WHY: Only scalar construction is measured above; no anchor, tree, or payload lookup may occur.
             var commandsBefore = commandProbe.CommandCount;
@@ -46,11 +68,18 @@ internal static partial class CompositionCapacityProfiles
 
             try
             {
-                rows = await query.ToArrayAsync(CancellationToken.None);
+                rows = await query.ToArrayAsync(cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(
+                    context,
+                    engine,
+                    profile,
+                    planProbe,
+                    error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
@@ -58,34 +87,65 @@ internal static partial class CompositionCapacityProfiles
             var elapsed = Stopwatch.GetElapsedTime(started);
             var commands = commandProbe.CommandCount - commandsBefore;
             var materialized = planProbe.MaterializedNodes;
-            var tracked = context.ChangeTracker.Entries().Count();
+            var tracked = context
+                .ChangeTracker
+                .Entries()
+                .Count();
+
             string plan;
 
             try
             {
-                plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
+                plan = await QueryPlanTestSupport.ExplainAsync(
+                    context,
+                    planProbe,
+                    0,
+                    engine,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception error)
             {
-                await RetainFailureAsync(context, engine, profile, planProbe, error);
+                // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+                await RetainFailureAsync(
+                    context,
+                    engine,
+                    profile,
+                    planProbe,
+                    error,
+                    cancellationToken: CancellationToken.None);
 
                 throw;
             }
 
             var expected = ExpectedTotals(nodes, anchors, firstFact, balanced);
             var observation = new CompositionCapacityObservation(
-                profile, rows, expected, commands, planProbe.ParameterBindings[0].Length,
-                commandsBefore, materialized, tracked, buildBytes, elapsed, plan);
+                profile,
+                rows,
+                expected,
+                commands,
+                planProbe.ParameterBindings[0].Length,
+                commandsBefore,
+                materialized,
+                tracked,
+                buildBytes,
+                elapsed,
+                plan);
 
             results.Add(observation);
-            await WriteAsync(engine, observation, planProbe.Commands[0]);
+            await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
         }
 
         if (!broad)
         {
             // WHY: Keep a real upward/downward DTO composition selective; crossing every broad fact with every
             // origin would measure the requested Cartesian result, not accidental whole-tree materialization.
-            results.AddRange(await MeasureMixedAsync(database, engine, nodes, balanced));
+            results.AddRange(
+                await MeasureMixedAsync(
+                    database,
+                    engine,
+                    nodes,
+                    balanced,
+                    cancellationToken: cancellationToken));
         }
 
         return results;
@@ -134,7 +194,8 @@ internal static partial class CompositionCapacityProfiles
     /// </remarks>
     internal static async Task<int> BalanceAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var changed = 0;
@@ -144,51 +205,73 @@ internal static partial class CompositionCapacityProfiles
         for (var first = 1; first <= nodes; first += NativeMutationBatchSize)
         {
             var last = Math.Min(nodes, first + NativeMutationBatchSize - 1);
-            changed += await context.Set<TreeNode>()
+            changed += await context
+                .Set<TreeNode>()
                 .Where(node => node.NodeId > 1 && node.NodeId >= first && node.NodeId <= last)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(node => node.Parent,
-                        node => (node.NodeId - 2) % BalancedBranchSize == 0
-                            ? 1
-                            : 2 + ((int)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
-                                * BalancedBranchSize))
-                    .SetProperty(node => node.Start,
-                        node => 2L + ((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
-                                * 2L * BalancedBranchSize)
-                            + ((node.NodeId - 2) % BalancedBranchSize == 0
-                                ? 0L
-                                : (2L * ((node.NodeId - 2) % BalancedBranchSize)) - 1))
-                    // WHY: CASE preserves the partial-branch cap at EF's default SQL Server compatibility;
-                    // Math.Min requires a newer LEAST translation and would fail before fixture I/O.
-                    .SetProperty(node => node.End,
-                        node => (node.NodeId - 2) % BalancedBranchSize == 0
-                            ? 1L + (((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
-                                * 2L * BalancedBranchSize) < (2L * nodes) - 1
-                                ? 1L + (((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
-                                    * 2L * BalancedBranchSize)
-                                : (2L * nodes) - 1
-                            : 2L + ((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
-                                    * 2L * BalancedBranchSize)
-                                + (2L * ((node.NodeId - 2) % BalancedBranchSize)))
-                    .SetProperty(node => node.Depth,
-                        node => (node.NodeId - 2) % BalancedBranchSize == 0 ? 1 : 2)
-                    .SetProperty(node => node.Position,
-                        node => (node.NodeId - 2) % BalancedBranchSize == 0
-                            ? (long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
-                            : ((node.NodeId - 2) % BalancedBranchSize) - 1),
-                    CancellationToken.None);
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(
+                            node => node.Parent,
+                            node => (node.NodeId - 2) % BalancedBranchSize == 0
+                                ? 1
+                                : 2
+                                + (int)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
+                                * BalancedBranchSize)
+                        .SetProperty(
+                            node => node.Start,
+                            node => 2L
+                                + (long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
+                                * 2L
+                                * BalancedBranchSize
+                                + ((node.NodeId - 2) % BalancedBranchSize == 0
+                                    ? 0L
+                                    : 2L * ((node.NodeId - 2) % BalancedBranchSize) - 1))
+
+                        // WHY: CASE preserves the partial-branch cap at EF's default SQL Server compatibility;
+                        // Math.Min requires a newer LEAST translation and would fail before fixture I/O.
+                        .SetProperty(
+                            node => node.End,
+                            node => (node.NodeId - 2) % BalancedBranchSize == 0
+                                ? 1L
+                                + ((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
+                                * 2L
+                                * BalancedBranchSize
+                                < 2L * nodes - 1
+                                    ? 1L
+                                    + ((long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize) + 1L)
+                                    * 2L
+                                    * BalancedBranchSize
+                                    : 2L * nodes - 1
+                                : 2L
+                                + (long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
+                                * 2L
+                                * BalancedBranchSize
+                                + 2L * ((node.NodeId - 2) % BalancedBranchSize))
+                        .SetProperty(
+                            node => node.Depth,
+                            node => (node.NodeId - 2) % BalancedBranchSize == 0
+                                ? 1
+                                : 2)
+                        .SetProperty(
+                            node => node.Position,
+                            node => (node.NodeId - 2) % BalancedBranchSize == 0
+                                ? (long)Math.Floor((node.NodeId - 2) / (double)BalancedBranchSize)
+                                : (node.NodeId - 2) % BalancedBranchSize - 1),
+                    cancellationToken);
         }
 
         return changed;
     }
 
     /// <summary>Restores wide adjacency and the original repair corruption before its heap observer starts.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The existing fixture context outside the measured repair operation.</param>
     /// <param name="nodes">The complete existing population; no additional tree is seeded.</param>
     /// <returns>The number of existing rows changed across bounded primary-key windows.</returns>
     internal static async Task<int> CorruptWideForRepairAsync(
         TreeContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         var changed = 0;
@@ -198,14 +281,25 @@ internal static partial class CompositionCapacityProfiles
         for (var first = 1; first <= nodes; first += NativeMutationBatchSize)
         {
             var last = Math.Min(nodes, first + NativeMutationBatchSize - 1);
-            changed += await context.Set<TreeNode>()
+            changed += await context
+                .Set<TreeNode>()
                 .Where(node => node.NodeId >= first && node.NodeId <= last)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(node => node.Parent, node => node.NodeId == 1 ? null : (int?)1)
-                    .SetProperty(node => node.Position, node => node.NodeId == 1 ? 0L : node.NodeId - 2L)
-                    .SetProperty(node => node.Start, 1L)
-                    .SetProperty(node => node.End, 2L)
-                    .SetProperty(node => node.Depth, 9), CancellationToken.None);
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(
+                            node => node.Parent,
+                            node => node.NodeId == 1
+                                ? null
+                                : 1)
+                        .SetProperty(
+                            node => node.Position,
+                            node => node.NodeId == 1
+                                ? 0L
+                                : node.NodeId - 2L)
+                        .SetProperty(node => node.Start, 1L)
+                        .SetProperty(node => node.End, 2L)
+                        .SetProperty(node => node.Depth, 9),
+                    cancellationToken);
         }
 
         return changed;
@@ -218,28 +312,60 @@ internal static partial class CompositionCapacityProfiles
         int firstFact
     )
     {
-        var hierarchy = context.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty);
+        var hierarchy = context
+            .NestedSet<TreeNode>()
+            .ForScope(1)
+            .InTree(Guid.Empty);
+
         var pairs = hierarchy.SelectSubtrees(
             anchor => anchor.NodeId == 1 || anchor.NodeId >= firstAnchor,
-            (anchor, node, distance) => new { Anchor = anchor, Node = node, Distance = distance });
+            (anchor, node, distance) => new
+            {
+                Anchor = anchor,
+                Node = node,
+                Distance = distance,
+            });
 
-        var payload = context.Set<UnrelatedRow>().Where(fact => fact.Id >= firstFact);
-        var contributions = pairs.Join(payload, row => row.Node.NodeId, fact => fact.Id,
-            (row, fact) => new { row.Anchor, row.Node, row.Distance, FactKey = fact.Id });
+        var payload = context
+            .Set<UnrelatedRow>()
+            .Where(fact => fact.Id >= firstFact);
 
-        var paths = hierarchy.WherePathEdges(contributions,
-            row => row.Anchor, row => row.Node, (_, parent, child) => child.Payload != "blocked");
+        var contributions = pairs.Join(
+            payload,
+            row => row.Node.NodeId,
+            fact => fact.Id,
+            (row, fact) => new
+            {
+                row.Anchor,
+                row.Node,
+                row.Distance,
+                FactKey = fact.Id,
+            });
 
-        var any = hierarchy.WhereAnyAncestorOrSelf(paths,
-            row => row.Node, (_, owner) => owner.Payload != "blocked");
+        var paths = hierarchy.WherePathEdges(
+            contributions,
+            row => row.Anchor,
+            row => row.Node,
+            (_, parent, child) => child.Payload != "blocked");
 
-        var nearest = hierarchy.WhereNearestAncestorOrSelf(any,
-            row => row.Node, (_, owner) => owner.Depth >= 0, (_, owner) => owner.Payload != "blocked");
+        var any = hierarchy.WhereAnyAncestorOrSelf(
+            paths,
+            row => row.Node,
+            (_, owner) => owner.Payload != "blocked");
 
-        return nearest.GroupBy(row => row.Anchor.NodeId)
+        var nearest = hierarchy.WhereNearestAncestorOrSelf(
+            any,
+            row => row.Node,
+            (_, owner) => owner.Depth >= 0,
+            (_, owner) => owner.Payload != "blocked");
+
+        return nearest
+            .GroupBy(row => row.Anchor.NodeId)
             .OrderBy(group => group.Key)
             .Select(group => new CompositionCapacityTotal(
-                group.Key, group.LongCount(), group.Sum(row => (long)row.FactKey)));
+                group.Key,
+                group.LongCount(),
+                group.Sum(row => (long)row.FactKey)));
     }
 
     /// <summary>Measures warmed construction only; database population never becomes a CLR collection.</summary>
@@ -287,24 +413,28 @@ internal static partial class CompositionCapacityProfiles
 
             while (current is { } key)
             {
-                if (key == 1 || key >= firstAnchor)
+                if (key == 1
+                    || key >= firstAnchor)
                 {
                     var previous = totals.GetValueOrDefault(key);
                     totals[key] = (previous.Count + 1, previous.Sum + fact);
                 }
 
-                current = key == 1 ? null
+                current = key == 1
+                    ? null
                     : balanced && (key - 2) % BalancedBranchSize != 0
-                        ? 2 + (((key - 2) / BalancedBranchSize) * BalancedBranchSize)
+                        ? 2 + (key - 2) / BalancedBranchSize * BalancedBranchSize
                         : 1;
             }
         }
 
-        return totals.Select(pair => new CompositionCapacityTotal(pair.Key, pair.Value.Count, pair.Value.Sum))
+        return totals
+            .Select(pair => new CompositionCapacityTotal(pair.Key, pair.Value.Count, pair.Value.Sum))
             .ToArray();
     }
 
     /// <summary>Copies only the requested scalar payload keys with mapped table names and bounded SQL.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The case-owned database with its already seeded hierarchy.</param>
     /// <param name="nodes">The largest source key in the fixture's dense population.</param>
     /// <param name="facts">The number of trailing hierarchy keys that receive payload.</param>
@@ -312,29 +442,36 @@ internal static partial class CompositionCapacityProfiles
     internal static async Task SeedPayloadAsync(
         TreeContext context,
         int nodes,
-        int facts
+        int facts,
+        CancellationToken cancellationToken
     )
     {
-        await context.Set<UnrelatedRow>().ExecuteDeleteAsync(CancellationToken.None);
+        await context
+            .Set<UnrelatedRow>()
+            .ExecuteDeleteAsync(cancellationToken);
+
         var sql = context.GetService<ISqlGenerationHelper>();
         var source = context.Model.FindEntityType(typeof(TreeNode))!;
         var target = context.Model.FindEntityType(typeof(UnrelatedRow))!;
         var sourceStore = StoreObjectIdentifier.Table(source.GetTableName()!, source.GetSchema());
         var targetStore = StoreObjectIdentifier.Table(target.GetTableName()!, target.GetSchema());
-        var sourceKey = sql.DelimitIdentifier(source.FindProperty(nameof(TreeNode.NodeId))!
-            .GetColumnName(sourceStore)!);
+        var sourceKey = sql.DelimitIdentifier(
+            source.FindProperty(nameof(TreeNode.NodeId))!
+                .GetColumnName(sourceStore)!);
 
-        var targetKey = sql.DelimitIdentifier(target.FindProperty(nameof(UnrelatedRow.Id))!
-            .GetColumnName(targetStore)!);
+        var targetKey = sql.DelimitIdentifier(
+            target.FindProperty(nameof(UnrelatedRow.Id))!
+                .GetColumnName(targetStore)!);
 
-        var value = sql.DelimitIdentifier(target.FindProperty(nameof(UnrelatedRow.Value))!
-            .GetColumnName(targetStore)!);
+        var value = sql.DelimitIdentifier(
+            target.FindProperty(nameof(UnrelatedRow.Value))!
+                .GetColumnName(targetStore)!);
 
         // WHY: A broad ten-million-row fixture must not become one extra unbounded INSERT before
         // the measured query. Reuse the existing primary-key window size without changing facts or timeouts.
         for (var first = (long)nodes - facts + 1; first <= nodes; first += NativeMutationBatchSize)
         {
-            var last = Math.Min((long)nodes, first + NativeMutationBatchSize - 1);
+            var last = Math.Min(nodes, first + NativeMutationBatchSize - 1);
             var statement = $"INSERT INTO {sql.DelimitIdentifier(targetStore.Name, targetStore.Schema)} "
                 + $"({targetKey}, {value}) SELECT {sourceKey}, 'fact' "
                 + $"FROM {sql.DelimitIdentifier(sourceStore.Name, sourceStore.Schema)} "
@@ -342,7 +479,7 @@ internal static partial class CompositionCapacityProfiles
                 + $"AND {sourceKey} <= {last.ToString(CultureInfo.InvariantCulture)}";
 
             // WHY: Only fixture-owned integer bounds are interpolated; identifiers use the provider delimiter.
-            await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
         }
     }
 
@@ -350,15 +487,18 @@ internal static partial class CompositionCapacityProfiles
     private static Task WriteAsync(
         string engine,
         CompositionCapacityObservation observation,
-        string command
-    ) => QueryPlanTestSupport.WriteEvidenceAsync(engine + "-composition-capacity-" + observation.Profile,
-    [
-        FormattableString.Invariant(
-            $"Profile={observation.Profile}; elapsed={observation.Elapsed.TotalMilliseconds:F3}ms; ")
+        string command,
+        CancellationToken cancellationToken
+    ) => QueryPlanTestSupport.WriteEvidenceAsync(
+        engine + "-composition-capacity-" + observation.Profile,
+        [
+            FormattableString.Invariant(
+                $"Profile={observation.Profile}; elapsed={observation.Elapsed.TotalMilliseconds:F3}ms; ")
             + $"commands={observation.Commands}; parameters={observation.Parameters}; rows={observation.Rows.Length}; "
             + $"materialized={observation.Materialized}; tracked={observation.Tracked}; "
             + $"construction={observation.BuildBytes} B/op",
-        command,
-        observation.Plan,
-    ]);
+            command,
+            observation.Plan,
+        ],
+        cancellationToken: cancellationToken);
 }

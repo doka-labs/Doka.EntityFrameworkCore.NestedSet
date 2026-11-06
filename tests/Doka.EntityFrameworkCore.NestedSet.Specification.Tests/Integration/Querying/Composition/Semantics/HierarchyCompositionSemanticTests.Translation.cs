@@ -9,19 +9,28 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        await context.AddAsync(new CompositionInputOne
-        {
-            Scope = scope,
-            NodeId = 3,
-            Date = new DateOnly(2044, 10, 1),
-            Amount = 17,
-        }, CancellationToken.None);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await context.AddAsync(
+            new CompositionInputOne
+            {
+                Scope = scope,
+                NodeId = 3,
+                Date = new DateOnly(2044, 10, 1),
+                Amount = 17,
+            },
+            CancellationToken.None);
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var pairs = hierarchy.SelectAncestors(
             node => node.Id == 3,
             (source, upper, distance) => new CompositionSemanticRow
@@ -33,8 +42,16 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         var rows = pairs.Join(
             context.Set<CompositionInputOne>(),
-            pair => new { pair.Source.Scope, NodeId = pair.Source.Id },
-            fact => new { fact.Scope, fact.NodeId },
+            pair => new
+            {
+                pair.Source.Scope,
+                NodeId = pair.Source.Id,
+            },
+            fact => new
+            {
+                fact.Scope,
+                fact.NodeId,
+            },
             (pair, fact) => new CompositionSemanticRow
             {
                 Source = pair.Other,
@@ -43,11 +60,17 @@ public abstract partial class HierarchyCompositionSemanticTests
             });
 
         // Act
-        var actual = await hierarchy.WhereAnyAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereAnyAncestorOrSelf(
                 rows,
                 row => row.Source,
                 (row, owner) => owner.Id == 2 && row.Value == 17)
-            .Select(row => new { Upper = row.Source.Id, Leaf = row.Other.Id, row.Value })
+            .Select(row => new
+            {
+                Upper = row.Source.Id,
+                Leaf = row.Other.Id,
+                row.Value,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
@@ -71,25 +94,51 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope);
 
         // Act
         var failure = Assert.Throws<ArgumentException>(() => composer switch
         {
             CompositionEndpointFilter.Path => hierarchy.WherePathEdges(
-                source, node => node,
-                node => new CompositionNode { Scope = node.Scope, Id = node.Id, TreeId = node.TreeId },
+                source,
+                node => node,
+                node => new CompositionNode
+                {
+                    Scope = node.Scope,
+                    Id = node.Id,
+                    TreeId = node.TreeId,
+                },
                 (node, parent, child) => true),
             CompositionEndpointFilter.Any => hierarchy.WhereAnyAncestorOrSelf(
                 source,
-                node => new CompositionNode { Scope = node.Scope, Id = node.Id, TreeId = node.TreeId },
+                node => new CompositionNode
+                {
+                    Scope = node.Scope,
+                    Id = node.Id,
+                    TreeId = node.TreeId,
+                },
                 (node, owner) => true),
             _ => hierarchy.WhereNearestAncestorOrSelf(
                 source,
-                node => new CompositionNode { Scope = node.Scope, Id = node.Id, TreeId = node.TreeId },
-                (node, owner) => true, (node, owner) => true),
+                node => new CompositionNode
+                {
+                    Scope = node.Scope,
+                    Id = node.Id,
+                    TreeId = node.TreeId,
+                },
+                (node, owner) => true,
+                (node, owner) => true),
         });
 
         // Assert
@@ -105,21 +154,42 @@ public abstract partial class HierarchyCompositionSemanticTests
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var otherProbe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        await using var other = await CreateContextAsync(Guid.NewGuid(), otherProbe);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var other = await CreateContextAsync(
+            Guid.NewGuid(),
+            otherProbe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         probe.Reset();
         otherProbe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope)
-            .Join(other.Set<CompositionNode>(), left => left.Id, right => right.Id,
-                (left, right) => new { Node = left, Payload = right.Id });
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
-        var query = hierarchy.WhereAnyAncestorOrSelf(source, row => row.Node, (row, owner) => true)
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope)
+            .Join(
+                other.Set<CompositionNode>(),
+                left => left.Id,
+                right => right.Id,
+                (left, right) => new
+                {
+                    Node = left,
+                    Payload = right.Id,
+                });
+
+        var query = hierarchy
+            .WhereAnyAncestorOrSelf(source, row => row.Node, (row, owner) => true)
             .Select(row => row.Payload);
 
         // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => query.ToArrayAsync(CancellationToken.None));
+        var failure =
+            await Assert.ThrowsAsync<InvalidOperationException>(() => query.ToArrayAsync(CancellationToken.None));
 
         // Assert
         Assert.Contains("context", failure.Message, StringComparison.OrdinalIgnoreCase);
@@ -140,26 +210,55 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 3);
-        var root = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 1);
-        var pairs = source.Join(root, node => node.Scope, upper => upper.Scope,
-            (node, upper) => new { Node = node, Upper = upper });
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 3);
+
+        var root = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 1);
+
+        var pairs = source.Join(
+            root,
+            node => node.Scope,
+            upper => upper.Scope,
+            (node, upper) => new
+            {
+                Node = node,
+                Upper = upper,
+            });
 
         var query = composer switch
         {
-            CompositionEndpointFilter.Path => hierarchy.WherePathEdges(pairs, row => row.Upper, row => row.Node,
+            CompositionEndpointFilter.Path => hierarchy.WherePathEdges(
+                pairs,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => ClientOnlyComparison(child.Id)),
-            CompositionEndpointFilter.Any => hierarchy.WhereAnyAncestorOrSelf(pairs, row => row.Node,
+            CompositionEndpointFilter.Any => hierarchy.WhereAnyAncestorOrSelf(
+                pairs,
+                row => row.Node,
                 (row, owner) => ClientOnlyComparison(owner.Id)),
-            _ => hierarchy.WhereNearestAncestorOrSelf(pairs, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => ClientOnlyComparison(owner.Id)),
+            _ => hierarchy.WhereNearestAncestorOrSelf(
+                pairs,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => ClientOnlyComparison(owner.Id)),
         };
 
         // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => query.Select(row => row.Node.Id).ToArrayAsync(CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => query
+            .Select(row => row.Node.Id)
+            .ToArrayAsync(CancellationToken.None));
 
         // Assert
         Assert.Contains("translat", failure.Message, StringComparison.OrdinalIgnoreCase);
@@ -175,15 +274,28 @@ public abstract partial class HierarchyCompositionSemanticTests
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var sql = new EnterpriseProbe("CompositionNodes");
-        await using var context = await CreateContextAsync(scope, probe, sql: sql);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            sql: sql,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         sql.Commands.Clear();
         sql.ParameterValues.Clear();
         sql.ParameterNames.Clear();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var candidateId = 2;
-        var query = hierarchy.SelectSubtrees(
+        var query = hierarchy
+            .SelectSubtrees(
                 node => node.Id == candidateId,
-                (upper, node, distance) => new { Upper = upper, Node = node })
+                (upper, node, distance) => new
+                {
+                    Upper = upper,
+                    Node = node,
+                })
             .Select(row => row.Node.Id)
             .OrderBy(id => id);
 
@@ -207,5 +319,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     /// <summary>Intentionally has no database translation so negative tests observe the ordinary EF boundary.</summary>
     private static bool ClientOnlyComparison(
         int key
-    ) => key.ToString(CultureInfo.InvariantCulture).StartsWith("10", StringComparison.Ordinal);
+    ) => key
+        .ToString(CultureInfo.InvariantCulture)
+        .StartsWith("10", StringComparison.Ordinal);
 }

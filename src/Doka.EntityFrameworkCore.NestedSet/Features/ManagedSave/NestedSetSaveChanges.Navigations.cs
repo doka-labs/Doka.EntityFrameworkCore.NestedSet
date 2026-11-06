@@ -36,7 +36,9 @@ internal static partial class NestedSetSaveChanges
             return current is null
                 ? NullingChangesHierarchy(
                     entry,
-                    original is null ? null : TrackedNavigationEntry(entry, original, navigation.TargetEntityType),
+                    original is null
+                        ? null
+                        : TrackedNavigationEntry(entry, original, navigation.TargetEntityType),
                     navigation.ForeignKey,
                     model,
                     updates,
@@ -140,14 +142,16 @@ internal static partial class NestedSetSaveChanges
                 {
                     return true;
                 }
-                else if (ForeignKeyChangesHierarchy(
-                             added,
-                             entry,
-                             entry.ToEntityEntry().Entity,
-                             probe.Navigation.ForeignKey,
-                             model,
-                             updates,
-                             planned))
+
+                if (ForeignKeyChangesHierarchy(
+                    added,
+                    entry,
+                    entry.ToEntityEntry()
+                        .Entity,
+                    probe.Navigation.ForeignKey,
+                    model,
+                    updates,
+                    planned))
                 {
                     return true;
                 }
@@ -226,13 +230,14 @@ internal static partial class NestedSetSaveChanges
                     }
                 }
                 else if (ForeignKeyChangesHierarchy(
-                             added,
-                             entry,
-                             entry.ToEntityEntry().Entity,
-                             probe.Navigation.ForeignKey,
-                             model,
-                             updates,
-                             planned))
+                    added,
+                    entry,
+                    entry.ToEntityEntry()
+                        .Entity,
+                    probe.Navigation.ForeignKey,
+                    model,
+                    updates,
+                    planned))
                 {
                     return true;
                 }
@@ -350,6 +355,8 @@ internal static partial class NestedSetSaveChanges
         var contract = NestedSetInsertionContract.Instance;
         var entry = contract.FindTrackedEntry(contract.Manager(owner), entity, entityType);
 
-        return entry is { EntityState: not EntityState.Detached } ? entry : null;
+        return entry is { EntityState: not EntityState.Detached }
+            ? entry
+            : null;
     }
 }

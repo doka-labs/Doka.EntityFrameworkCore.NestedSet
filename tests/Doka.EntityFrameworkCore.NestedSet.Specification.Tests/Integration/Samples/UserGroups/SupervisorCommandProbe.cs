@@ -27,10 +27,27 @@ internal sealed class SupervisorCommandProbe : DbCommandInterceptor, IMaterializ
     /// <summary>Gets or sets an optional asynchronous barrier before a measured reader executes.</summary>
     internal Func<int, CancellationToken, Task>? BeforeReadAsync { get; set; }
 
+    /// <inheritdoc />
+    public object InitializedInstance(
+        MaterializationInterceptionData materializationData,
+        object entity
+    )
+    {
+        if (Enabled
+            && entity is App.User or App.UserGroup)
+        {
+            Entities++;
+        }
+
+        return entity;
+    }
+
     /// <summary>Finds an exact scalar string or a string element in a native or JSON array parameter.</summary>
     /// <param name="expected">The complete string value whose transport is being asserted.</param>
     /// <returns>Whether the original parameter values contain this exact value.</returns>
-    internal bool HasStringParameterElement(string expected)
+    internal bool HasStringParameterElement(
+        string expected
+    )
         => ParameterValues.Any(value => value switch
         {
             string text when string.Equals(text, expected, StringComparison.Ordinal) => true,
@@ -40,15 +57,21 @@ internal sealed class SupervisorCommandProbe : DbCommandInterceptor, IMaterializ
         });
 
     /// <summary>Checks structured array elements without accepting substrings or changing captured values.</summary>
-    private static bool HasJsonStringElement(string json, string expected)
+    private static bool HasJsonStringElement(
+        string json,
+        string expected
+    )
     {
         try
         {
             using var document = JsonDocument.Parse(json);
 
             return document.RootElement.ValueKind == JsonValueKind.Array
-                && document.RootElement.EnumerateArray().Any(element => element.ValueKind == JsonValueKind.String
-                    && string.Equals(element.GetString(), expected, StringComparison.Ordinal));
+                && document
+                    .RootElement
+                    .EnumerateArray()
+                    .Any(element => element.ValueKind == JsonValueKind.String
+                        && string.Equals(element.GetString(), expected, StringComparison.Ordinal));
         }
         catch (JsonException)
         {
@@ -84,7 +107,12 @@ internal sealed class SupervisorCommandProbe : DbCommandInterceptor, IMaterializ
         {
             Commands.Add(command.CommandText);
             ParameterCounts.Add(command.Parameters.Count);
-            ParameterValues.AddRange(command.Parameters.Cast<DbParameter>().Select(parameter => parameter.Value));
+            ParameterValues.AddRange(
+                command
+                    .Parameters
+                    .Cast<DbParameter>()
+                    .Select(parameter => parameter.Value));
+
             if (BeforeReadAsync is { } barrier)
             {
                 await barrier(Commands.Count, cancellationToken);
@@ -107,20 +135,5 @@ internal sealed class SupervisorCommandProbe : DbCommandInterceptor, IMaterializ
         }
 
         return result;
-    }
-
-    /// <inheritdoc />
-    public object InitializedInstance(
-        MaterializationInterceptionData materializationData,
-        object entity
-    )
-    {
-        if (Enabled
-            && entity is App.User or App.UserGroup)
-        {
-            Entities++;
-        }
-
-        return entity;
     }
 }

@@ -28,12 +28,23 @@ public abstract partial class GroupSupervisorTests
         const int candidateOccurrences = 4 * origins;
         var probe = new SupervisorCommandProbe();
         var plans = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, plans);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            plans);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedGroupRankOriginsAsync(context, data, origins, typeFirst);
+        await SeedGroupRankOriginsAsync(
+            context,
+            data,
+            origins,
+            typeFirst,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
-            Groups = typeFirst ? new App.NthTypeGroupThenValidate(4, number)
+            Groups = typeFirst
+                ? new App.NthTypeGroupThenValidate(4, number)
                 : new App.NthEligibleGroup([], number),
         };
 
@@ -46,8 +57,12 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            _ = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            before = await ReadRankingHandlersAsync(context);
+            _ = await CalibrateRankingHandlersAsync(
+                context,
+                data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            before = await ReadRankingHandlersAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var index = plans.Commands.Count;
@@ -58,7 +73,11 @@ public abstract partial class GroupSupervisorTests
         try
         {
             result = await App.SupervisorQueries.ResolveAsync(
-                context, data.TenantId, request, App.SupervisorSelection.All, CancellationToken.None);
+                context,
+                data.TenantId,
+                request,
+                App.SupervisorSelection.All,
+                CancellationToken.None);
         }
         catch (Exception error)
         {
@@ -68,7 +87,12 @@ public abstract partial class GroupSupervisorTests
                 failure.Add(plans.Commands[index]);
                 try
                 {
-                    failure.Add(await EstimatedOriginPlanAsync(context, plans, index));
+                    failure.Add(
+                        await EstimatedOriginPlanAsync(
+                            context,
+                            plans,
+                            index,
+                            cancellationToken: TestContext.Current.CancellationToken));
                 }
                 catch (Exception captureError)
                 {
@@ -78,48 +102,98 @@ public abstract partial class GroupSupervisorTests
             }
 
             await QueryPlanTestSupport.WriteEvidenceAsync(
-                $"{Engine}-usergroups-group-rank-failed-{typeFirst}-{number}", failure);
+                $"{Engine}-usergroups-group-rank-failed-{typeFirst}-{number}",
+                failure,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
-        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context));
+        var handlers = before is null
+            ? null
+            : RankingHandlerDelta(
+                before,
+                await ReadRankingHandlersAsync(
+                    context,
+                    cancellationToken: TestContext.Current.CancellationToken));
+
         var readerAdvances = probe.ReaderAdvances;
         var commandCount = probe.Commands.Count;
         var bytes = Encoding.UTF8.GetByteCount(plans.Commands[index]);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, index, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            plans,
+            index,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await QueryPlanTestSupport.WriteEvidenceAsync(
             $"{Engine}-usergroups-group-rank-{typeFirst}-{number}",
-            [$"Origins={origins}; occurrences={candidateOccurrences}; handlerBudget={handlerBudget}; SQL={bytes} B",
-                FormatRankingHandlers(handlers), plans.Commands[index], plan]);
+            [
+                $"Origins={origins}; occurrences={candidateOccurrences}; handlerBudget={handlerBudget}; SQL={bytes} B",
+                FormatRankingHandlers(handlers), plans.Commands[index], plan,
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, result.Status);
         Assert.Equal(origins, result.Origins.Count);
-        Assert.All(result.Origins, origin =>
-        {
-            Assert.Equal(found ? App.SupervisorResolutionStatus.Found : App.SupervisorResolutionStatus.NotFound,
-                origin.Status);
-            Assert.Equal(found ? 2 : 0, origin.Evidence.Count);
-            Assert.Null(origin.Continuation);
-            var expectedPeople = number == 1
-                ? new[] { data.Users[1], data.Users[2] } : new[] { data.Users[3], data.Users[5] };
-
-            Assert.Equal(found ? expectedPeople.Order() : [],
-                origin.Evidence.Select(row => row.CandidateUserId).Order());
-            Assert.All(origin.Evidence, row =>
+        Assert.All(
+            result.Origins,
+            origin =>
             {
-                Assert.Equal(number == 1 ? origin.StartGroupId : data.Groups[0], row.FoundGroupId);
-                Assert.Equal(number - 1, row.Distance);
-                Assert.Equal(data.TreeId, row.StartTreeId);
+                Assert.Equal(
+                    found
+                        ? App.SupervisorResolutionStatus.Found
+                        : App.SupervisorResolutionStatus.NotFound,
+                    origin.Status);
+
+                Assert.Equal(
+                    found
+                        ? 2
+                        : 0,
+                    origin.Evidence.Count);
+
+                Assert.Null(origin.Continuation);
+                var expectedPeople = number == 1
+                    ? new[] { data.Users[1], data.Users[2] }
+                    : new[] { data.Users[3], data.Users[5] };
+
+                Assert.Equal(
+                    found
+                        ? expectedPeople.Order()
+                        : [],
+                    origin
+                        .Evidence
+                        .Select(row => row.CandidateUserId)
+                        .Order());
+
+                Assert.All(
+                    origin.Evidence,
+                    row =>
+                    {
+                        Assert.Equal(
+                            number == 1
+                                ? origin.StartGroupId
+                                : data.Groups[0],
+                            row.FoundGroupId);
+
+                        Assert.Equal(number - 1, row.Distance);
+                        Assert.Equal(data.TreeId, row.StartTreeId);
+                    });
             });
-        });
 
         Assert.Equal(1, commandCount);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());
+
         // WHY: All transports one source marker, every origin marker, and every actual evidence occurrence.
-        var expectedRows = 1 + origins + (found ? 2 * origins : 0);
+        var expectedRows = 1
+            + origins
+            + (found
+                ? 2 * origins
+                : 0);
+
         Assert.InRange(readerAdvances, expectedRows, expectedRows + 1);
         if (Engine == "MySql")
         {
@@ -128,7 +202,8 @@ public abstract partial class GroupSupervisorTests
             var work = CompositionPlanWork.ReadMySqlTree(plan);
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"Native tuples={work.MaximumOperatorTuples}; materialized={work.MaximumMaterializedTuples}.");
-            Assert.Equal((double)expectedRows, work.RootOutputTuples);
+
+            Assert.Equal(expectedRows, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, handlerBudget);
             Assert.InRange(work.MaximumMaterializedTuples, 0, 2L * candidateOccurrences);
         }
@@ -140,7 +215,8 @@ public abstract partial class GroupSupervisorTests
             var work = CompositionPlanWork.ReadPostgreSqlJson(plan);
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"Native tuples={work.MaximumOperatorTuples}; rejected joins={work.MaximumRejectedJoinTuples}.");
-            Assert.Equal((double)expectedRows, work.RootOutputTuples);
+
+            Assert.Equal(expectedRows, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, handlerBudget);
             Assert.InRange(work.MaximumRejectedJoinTuples, 0, handlerBudget);
         }
@@ -149,6 +225,7 @@ public abstract partial class GroupSupervisorTests
         {
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"TypeFirst={typeFirst}; number={number}; handlers={handlers.Values.Sum()}; budget={handlerBudget}.");
+
             Assert.InRange(handlers.Values.Sum(), 0, handlerBudget);
         }
     }
@@ -158,41 +235,62 @@ public abstract partial class GroupSupervisorTests
         App.UserGroupContext context,
         App.SupervisorScenarioFixture data,
         int origins,
-        bool typeFirst
+        bool typeFirst,
+        CancellationToken cancellationToken
     )
     {
-        await SeedOriginProfileAsync(context, data, origins, 1);
+        await SeedOriginProfileAsync(context, data, origins, 1, cancellationToken: cancellationToken);
         if (typeFirst)
         {
-            await context.Groups.Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[0])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(group => group.TypeId, 4), CancellationToken.None);
-            await context.MembershipMetadatas.Where(value => value.TenantId == data.TenantId
+            await context
+                .Groups
+                .Where(group => group.TenantId == data.TenantId && group.Id == data.Groups[0])
+                .ExecuteUpdateAsync(setters => setters.SetProperty(group => group.TypeId, 4), cancellationToken);
+
+            await context
+                .MembershipMetadatas
+                .Where(value => value.TenantId == data.TenantId
                     && value.UserGroupId == data.Groups[0])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.GroupTypeId, 4),
-                    CancellationToken.None);
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(value => value.GroupTypeId, 4),
+                    cancellationToken);
         }
 
-        var groups = await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
+        var groups = await context
+            .UserGroupMemberships
+            .Where(member => member.TenantId == data.TenantId
                 && member.UserId == data.Users[0])
-            .Select(member => member.UserGroupId).ToArrayAsync(CancellationToken.None);
+            .Select(member => member.UserGroupId)
+            .ToArrayAsync(cancellationToken);
 
         foreach (var group in groups)
         {
             AddGroupRankPerson(context, data, data.Users[2], group, 4);
-            context.GroupRelationPeriods.Add(new App.GroupRelationPeriod
-            {
-                TenantId = data.TenantId, ParentId = data.Groups[0], ChildId = group,
-                FromDate = new DateOnly(2026, 1, 1),
-            });
+            context.GroupRelationPeriods.Add(
+                new App.GroupRelationPeriod
+                {
+                    TenantId = data.TenantId,
+                    ParentId = data.Groups[0],
+                    ChildId = group,
+                    FromDate = new DateOnly(2026, 1, 1),
+                });
         }
 
-        AddGroupRankPerson(context, data, data.Users[3], data.Groups[0], typeFirst ? 4 : 1);
-        await context.SaveChangesAsync(CancellationToken.None);
+        AddGroupRankPerson(
+            context,
+            data,
+            data.Users[3],
+            data.Groups[0],
+            typeFirst
+                ? 4
+                : 1);
+
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
 
         // WHY: The rank fixture adds memberships, grants, routing and periods after the origin seed's
         // statistics pass. Prepare the completed population before measuring its native query plan.
-        await PrepareConsumerStatisticsAsync(context);
+        await PrepareConsumerStatisticsAsync(context, cancellationToken: cancellationToken);
     }
 
     /// <summary>Stages one exact membership, its local role, and matching typed routing field.</summary>
@@ -204,20 +302,33 @@ public abstract partial class GroupSupervisorTests
         int type
     )
     {
-        context.UserGroupMemberships.Add(new App.UserGroupMembership
-        {
-            TenantId = data.TenantId, UserId = user, UserGroupId = group, LeadershipPriority = 10,
-        });
+        context.UserGroupMemberships.Add(
+            new App.UserGroupMembership
+            {
+                TenantId = data.TenantId,
+                UserId = user,
+                UserGroupId = group,
+                LeadershipPriority = 10,
+            });
 
-        context.MembershipRoles.Add(new App.MembershipRole
-        {
-            TenantId = data.TenantId, UserId = user, UserGroupId = group, RoleId = data.ManagerRoleId,
-        });
+        context.MembershipRoles.Add(
+            new App.MembershipRole
+            {
+                TenantId = data.TenantId,
+                UserId = user,
+                UserGroupId = group,
+                RoleId = data.ManagerRoleId,
+            });
 
-        context.MembershipMetadatas.Add(new App.MembershipMetadata
-        {
-            TenantId = data.TenantId, UserId = user, UserGroupId = group, GroupTypeId = type,
-            FieldCode = "Route", Value = "lane-blue",
-        });
+        context.MembershipMetadatas.Add(
+            new App.MembershipMetadata
+            {
+                TenantId = data.TenantId,
+                UserId = user,
+                UserGroupId = group,
+                GroupTypeId = type,
+                FieldCode = "Route",
+                Value = "lane-blue",
+            });
     }
 }

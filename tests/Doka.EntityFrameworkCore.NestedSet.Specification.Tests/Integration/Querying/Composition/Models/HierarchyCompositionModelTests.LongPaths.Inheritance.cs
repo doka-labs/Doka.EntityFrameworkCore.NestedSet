@@ -22,16 +22,26 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<TptContext>(Engine,
-            static options => new TptContext(options), probe, TestMaterializationObserver.Instance);
+        await using var context = await _fixture.CreateContextAsync<TptContext>(
+            Engine,
+            static options => new TptContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 
         foreach (var depth in Enumerable.Range(0, 6))
         {
-            InheritanceNode node = depth % 2 == 0 ? new TptFolderNode() : new TptMetricNode();
+            InheritanceNode node = depth % 2 == 0
+                ? new TptFolderNode()
+                : new TptMetricNode();
+
             node.Id = first + depth;
-            node.ParentId = depth == 0 || (missingParent && depth == 3) ? null : first + depth - 1;
+            node.ParentId = depth == 0 || (missingParent && depth == 3)
+                ? null
+                : first + depth - 1;
+
             node.TreeId = tree;
             node.Left = depth + 1;
             node.Right = 12 - depth;
@@ -44,12 +54,20 @@ public abstract partial class HierarchyCompositionModelTests
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<InheritanceNode>().InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<InheritanceNode>()
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);

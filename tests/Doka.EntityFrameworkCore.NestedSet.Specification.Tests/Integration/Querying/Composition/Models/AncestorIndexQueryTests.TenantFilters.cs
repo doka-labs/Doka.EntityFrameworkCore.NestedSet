@@ -10,45 +10,80 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedAncestorsRetainApplicationTenantFilter(bool includeSelf, bool matchingScope)
+    public async Task IndexedAncestorsRetainApplicationTenantFilter(
+        bool includeSelf,
+        bool matchingScope
+    )
     {
         // Arrange
         var tenant = Guid.NewGuid();
         var foreignTenant = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexTenantQueryContext>(Engine,
-            static options => new AncestorIndexTenantQueryContext(options), probe);
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexTenantQueryContext>(
+            Engine,
+            static options => new AncestorIndexTenantQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         foreach (var scope in new[] { tenant, foreignTenant })
         {
-            await context.AddRangeAsync(Enumerable.Range(1, 3).Select(id => new CompositionNode
-            {
-                Scope = scope,
-                TreeId = tree,
-                Id = id,
-                ParentId = id == 1 ? null : id - 1,
-                Left = id,
-                Right = 7 - id,
-                Depth = id - 1,
-            }), CancellationToken.None);
+            await context.AddRangeAsync(
+                Enumerable
+                    .Range(1, 3)
+                    .Select(id => new CompositionNode
+                    {
+                        Scope = scope,
+                        TreeId = tree,
+                        Id = id,
+                        ParentId = id == 1
+                            ? null
+                            : id - 1,
+                        Left = id,
+                        Right = 7 - id,
+                        Depth = id - 1,
+                    }),
+                CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         context.Tenant = tenant;
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(matchingScope ? tenant : foreignTenant);
-        var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
-                (source, owner, distance) => new { owner.Id, owner.Scope })
-            : hierarchy.SelectAncestors(node => node.Id == 3,
-                (source, owner, distance) => new { owner.Id, owner.Scope });
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(
+                matchingScope
+                    ? tenant
+                    : foreignTenant);
 
-        int[] expected = !matchingScope ? [] : includeSelf ? [1, 2, 3] : [1, 2];
+        var query = includeSelf
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => node.Id == 3,
+                (source, owner, distance) => new
+                {
+                    owner.Id,
+                    owner.Scope,
+                })
+            : hierarchy.SelectAncestors(
+                node => node.Id == 3,
+                (source, owner, distance) => new
+                {
+                    owner.Id,
+                    owner.Scope,
+                });
+
+        int[] expected = !matchingScope
+            ? []
+            : includeSelf
+                ? [1, 2, 3]
+                : [1, 2];
+
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(owner => owner.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(owner => owner.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);

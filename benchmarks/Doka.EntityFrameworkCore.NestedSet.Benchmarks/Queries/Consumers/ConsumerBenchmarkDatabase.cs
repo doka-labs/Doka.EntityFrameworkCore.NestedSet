@@ -21,20 +21,25 @@ internal static class ConsumerBenchmarkDatabase
     }
 
     /// <summary>Creates this iteration's actual sample schema before any measured reader starts.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     internal static async Task ResetAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await context.Database.CloseConnectionAsync();
-        await context.Database.EnsureDeletedAsync(CancellationToken.None);
+        await context.Database.EnsureDeletedAsync(cancellationToken);
 
         if (BenchmarkRunOptions.Current.Engine == BenchmarkEngine.SqliteMemory)
         {
-            await context.Database.OpenConnectionAsync(CancellationToken.None);
+            await context.Database.OpenConnectionAsync(cancellationToken);
         }
 
-        await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.EnsureCreatedAsync(cancellationToken);
+        await context.Database.OpenConnectionAsync(cancellationToken);
 
         if (context.Database.IsSqlServer())
         {
@@ -42,7 +47,7 @@ internal static class ConsumerBenchmarkDatabase
             // on the launcher-owned database, never an automatic library or production-reader ALTER DATABASE.
             await context.Database.ExecuteSqlRawAsync(
                 "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                CancellationToken.None);
+                cancellationToken);
         }
     }
 }

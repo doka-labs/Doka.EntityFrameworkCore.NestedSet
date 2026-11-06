@@ -3,10 +3,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// <summary>Measures public root, child and sibling insertion with identical starting catalogs.</summary>
 public class InsertBenchmarks : DatabaseBenchmark
 {
+    private int _childCount;
+    private bool _inserted;
     private int? _parent;
     private long _position;
-    private bool _inserted;
-    private int _childCount;
 
     /// <summary>Appends an independently identified tree to the existing forest.</summary>
     [Benchmark]
@@ -68,30 +68,34 @@ public class InsertBenchmarks : DatabaseBenchmark
     };
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _inserted = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
         _childCount = Fixture.Forest.Parents.Count(parent => parent == 1);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         var node = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == Nodes + 1, CancellationToken.None);
+            .SingleAsync(value => value.Id == Nodes + 1, cancellationToken);
 
         BenchmarkFixture.Require(
             _inserted && node.ParentId == _parent && node.Position == _position,
             "Insert placement did not occur.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes + 1,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes + 1,
             "Insert count is incorrect.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

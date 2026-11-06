@@ -1,7 +1,6 @@
 using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.Extensions.Logging;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
@@ -30,9 +29,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(false);
 
@@ -47,6 +47,7 @@ public sealed partial class SignalReportConstructionTests
 
         // Assert
         Assert.Equal(engine == "Sqlite", sql.Contains("json_each(", StringComparison.OrdinalIgnoreCase));
+
         // WHY: A command-cache improvement does not justify changing server-provider cardinality plans.
         // PostgreSQL retains its native array translation; the other servers retain ordinary parameters.
         Assert.DoesNotContain("JSON_TABLE(", sql, StringComparison.OrdinalIgnoreCase);
@@ -68,7 +69,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var generated = new SqlGeneratorCounter();
         var compilations = new List<string>();
         var probe = new SignalReportProbe();
@@ -77,15 +78,20 @@ public sealed partial class SignalReportConstructionTests
                 connection,
                 provider => provider.UseNestedSets())
             .AddInterceptors(probe)
-            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
+            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);
 
         await using var provider = CreateCommandCacheProvider(options.Options, generated);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var input = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any);
+        var input = data.Request(
+            nearest
+                ? TagOwnerMode.Nearest
+                : TagOwnerMode.Any);
+
         var requests = new[]
         {
             input with
@@ -117,9 +123,11 @@ public sealed partial class SignalReportConstructionTests
         _ = await SignalReportBuilder
             .Catalog(context, warm)
             .ToArrayAsync(CancellationToken.None);
+
         _ = await SignalReportBuilder
             .Build(context, warm)
             .ToArrayAsync(CancellationToken.None);
+
         var actual =
             new List<(ValidatedSignalReport Request, SignalCatalogRow[] Catalog, SignalReportTotal[] Totals)>();
 
@@ -150,7 +158,8 @@ public sealed partial class SignalReportConstructionTests
         Assert.Empty(compilations);
         Assert.Equal(requests.Length * 2, probe.Readers.Count);
         Assert.All(probe.Readers, sql => Assert.Contains("json_each(", sql, StringComparison.OrdinalIgnoreCase));
-        Assert.All(actual.Zip(requests),
+        Assert.All(
+            actual.Zip(requests),
             pair =>
             {
                 SignalReportValidation.RequireCatalog(pair.First.Request, pair.First.Catalog);
@@ -183,12 +192,13 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var compilations = new List<string>();
         var options = ContextOptions("Sqlite", boundary)
-            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
+            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);
 
         await using var provider = CreateCommandCacheProvider(options.Options, generated);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         Guid[][] selections =
         [
@@ -212,6 +222,7 @@ public sealed partial class SignalReportConstructionTests
 
         _ = query()
             .ToQueryString();
+
         generated.Reset();
         compilations.Clear();
         var statements = new List<string>();
@@ -224,12 +235,18 @@ public sealed partial class SignalReportConstructionTests
         {
             selected = selection;
             scalar = selection.FirstOrDefault();
-            statements.Add(query()
-                .ToQueryString());
+            statements.Add(
+                query()
+                    .ToQueryString());
         }
 
         // Assert
-        Assert.Equal(collection ? selections.Length : 0, generated.Count);
+        Assert.Equal(
+            collection
+                ? selections.Length
+                : 0,
+            generated.Count);
+
         Assert.Empty(compilations);
         Assert.Equal(selections.Length, statements.Count);
         Assert.All(statements, sql => Assert.DoesNotContain("json_each(", sql, StringComparison.OrdinalIgnoreCase));
@@ -246,7 +263,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SignalReportProbe();
         var options = new DbContextOptionsBuilder<SignalLabContext>()
             .UseSqlite(
@@ -291,31 +308,40 @@ public sealed partial class SignalReportConstructionTests
         Assert.Equal(expectedTotals, ScalarTotals(totals));
 
         Assert.All(catalog.Where(row => row.Kind == 0), row => Assert.Equal(SignalReportDataset.Id(1), row.Id));
-        Assert.All(catalog.Where(row => row.Kind == 1),
+        Assert.All(
+            catalog.Where(row => row.Kind == 1),
             row => Assert.Equal(SignalReportDataset.PulseChannel, row.Id));
+
         Assert.Equal(2, probe.Readers.Count);
-        Assert.All(probe.Readers,
+        Assert.All(
+            probe.Readers,
             sql =>
             {
                 Assert.Contains("json_each(", sql, StringComparison.OrdinalIgnoreCase);
-                Assert.DoesNotContain(SignalReportDataset
+                Assert.DoesNotContain(
+                    SignalReportDataset
                         .Id(1)
                         .ToString(),
                     sql,
                     StringComparison.OrdinalIgnoreCase);
-                Assert.DoesNotContain(SignalReportDataset.PulseChannel.ToString(),
+
+                Assert.DoesNotContain(
+                    SignalReportDataset.PulseChannel.ToString(),
                     sql,
                     StringComparison.OrdinalIgnoreCase);
             });
 
-        Assert.Contains(probe.ParameterValues,
+        Assert.Contains(
+            probe.ParameterValues,
             value => value is string text
-                && text.Contains(SignalReportDataset
+                && text.Contains(
+                    SignalReportDataset
                         .Id(1)
                         .ToString(),
                     StringComparison.OrdinalIgnoreCase));
 
-        Assert.Contains(probe.ParameterValues,
+        Assert.Contains(
+            probe.ParameterValues,
             value => value is string text
                 && text.Contains(SignalReportDataset.PulseChannel.ToString(), StringComparison.OrdinalIgnoreCase));
 
@@ -336,9 +362,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions("Sqlite", boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var data = new SignalReportDataset(Guid.NewGuid(), Guid.NewGuid(), [SignalReportDataset.Id(1)], false);
         var input = data.Request();
@@ -379,7 +406,7 @@ public sealed partial class SignalReportConstructionTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
-        await CreateSqliteReportSchemaAsync(connection);
+        await CreateSqliteReportSchemaAsync(connection, cancellationToken: TestContext.Current.CancellationToken);
         var generated = new SqlGeneratorCounter();
         var compilations = new List<string>();
         var probe = new SignalReportProbe();
@@ -388,12 +415,13 @@ public sealed partial class SignalReportConstructionTests
                 connection,
                 provider => provider.UseNestedSets())
             .AddInterceptors(probe)
-            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
+            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);
 
         await using var provider = CreateCommandCacheProvider(options.Options, generated);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         TestMaterializationObserver.Instance.Register(context, probe.Materialized);
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
@@ -404,14 +432,15 @@ public sealed partial class SignalReportConstructionTests
             .FirstAsync(CancellationToken.None);
 
         var foreignSignal = SignalReportDataset.Id(998);
-        context.SignalChannels.Add(new SignalChannel
-        {
-            TenantId = otherTenant,
-            Id = foreignSignal,
-            MeasurementTypeId = SignalReportDataset.SensorKind,
-            Name = "Another tenant's metric",
-            UnitCode = "count",
-        });
+        context.SignalChannels.Add(
+            new SignalChannel
+            {
+                TenantId = otherTenant,
+                Id = foreignSignal,
+                MeasurementTypeId = SignalReportDataset.SensorKind,
+                Name = "Another tenant's metric",
+                UnitCode = "count",
+            });
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
@@ -451,7 +480,8 @@ public sealed partial class SignalReportConstructionTests
         Assert.Contains("json_each(", catalog, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("SUM(", catalog, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("GROUP BY", catalog, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(probe.ParameterValues,
+        Assert.Contains(
+            probe.ParameterValues,
             value => value is string text
                 && text.Contains(rejectedId.ToString(), StringComparison.OrdinalIgnoreCase));
 
@@ -471,8 +501,11 @@ public sealed partial class SignalReportConstructionTests
         .ToArray();
 
     /// <summary>Creates only the fixture schema before report-specific I/O observation is installed.</summary>
+    /// <param name="connection">The connection whose ownership transfers to this factory on entry.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task CreateSqliteReportSchemaAsync(
-        SqliteConnection connection
+        SqliteConnection connection,
+        CancellationToken cancellationToken
     )
     {
         // WHY: SQLite's EnsureCreatedAsync performs its HasTables check synchronously. Schema setup belongs
@@ -484,7 +517,7 @@ public sealed partial class SignalReportConstructionTests
             .Options;
 
         await using var bootstrap = new SignalLabContext(options);
-        await bootstrap.Database.EnsureCreatedAsync(CancellationToken.None);
+        await bootstrap.Database.EnsureCreatedAsync(cancellationToken);
     }
 
     /// <summary>Wraps the installed public generator factory while preserving all actual provider services.</summary>
@@ -502,26 +535,33 @@ public sealed partial class SignalReportConstructionTests
         // WHY: The caller owns this internal provider. EF rejects option-level singleton interceptors
         // with UseInternalServiceProvider, so register the shared observer in its actual service graph.
         services.AddSingleton<IInterceptor>(TestMaterializationObserver.Instance);
-        var original = Assert.Single(services,
+        var original = Assert.Single(
+            services,
             descriptor => descriptor.ServiceType == typeof(IQuerySqlGeneratorFactory));
 
         Assert.False(original.IsKeyedService);
         services.Remove(original);
+
         // WHY: Replacing the provider factory with a generic generator would measure different SQL. Decorate
         // its actual descriptor and lifetime; the public Create call reveals command-template regeneration.
-        services.Add(new ServiceDescriptor(typeof(IQuerySqlGeneratorFactory),
-            provider =>
-            {
-                var instance = original.ImplementationInstance
-                    ?? original.ImplementationFactory?.Invoke(provider)
-                    ?? ActivatorUtilities.CreateInstance(provider,
-                        original.ImplementationType
-                        ?? throw new InvalidOperationException("The provider factory has no activation descriptor."));
+        services.Add(
+            new ServiceDescriptor(
+                typeof(IQuerySqlGeneratorFactory),
+                provider =>
+                {
+                    var instance = original.ImplementationInstance
+                        ?? original.ImplementationFactory?.Invoke(provider)
+                        ?? ActivatorUtilities.CreateInstance(
+                            provider,
+                            original.ImplementationType
+                            ?? throw new InvalidOperationException(
+                                "The provider factory has no activation descriptor."));
 
-                return new ObservedSqlGeneratorFactory(Assert.IsAssignableFrom<IQuerySqlGeneratorFactory>(instance),
-                    counter);
-            },
-            original.Lifetime));
+                    return new ObservedSqlGeneratorFactory(
+                        Assert.IsAssignableFrom<IQuerySqlGeneratorFactory>(instance),
+                        counter);
+                },
+                original.Lifetime));
 
         return services.BuildServiceProvider();
     }

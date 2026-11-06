@@ -28,8 +28,10 @@ public sealed class EnterpriseMappingTests
         Assert.NotNull(service);
         Assert.NotNull(registry.FindProperty(NestedSetTreeRegistryMetadata.Scope));
         Assert.NotNull(registry.FindProperty(NestedSetTreeRegistryMetadata.TreeId));
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Builds one variant-aware model without opening a database connection.</summary>
@@ -77,9 +79,11 @@ public sealed class ScopeMappingContext : DbContext, ITestModelVariant
             .Property(row => row.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         node
             .Property(row => row.Tree)
             .HasMaxLength(64);
+
         node
             .Property(row => row.ParentId)
             .HasMaxLength(64);

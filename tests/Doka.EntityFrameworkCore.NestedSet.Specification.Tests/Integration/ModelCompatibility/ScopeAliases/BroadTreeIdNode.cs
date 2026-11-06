@@ -75,9 +75,11 @@ internal sealed class BroadTreeIdContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(40);
+
         var treeId = node
             .Property(entity => entity.TreeId)
             .HasConversion(value => value.Value, value => new BroadTreeId(value))
@@ -90,10 +92,8 @@ internal sealed class BroadTreeIdContext : DbContext
 
         // WHY: EF's registry key must distinguish the same stored TreeIds as its case-sensitive column.
         var exact = new ValueComparer<BroadTreeId>(
-            (
-                first,
-                second
-            ) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
+            (first,
+                second) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
             value => StringComparer.Ordinal.GetHashCode(value.Value),
             value => new BroadTreeId(value.Value));
 
@@ -103,6 +103,7 @@ internal sealed class BroadTreeIdContext : DbContext
             .WithMany()
             .HasForeignKey(entity => entity.ParentId)
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)
             .HasTreeId(entity => entity.TreeId)

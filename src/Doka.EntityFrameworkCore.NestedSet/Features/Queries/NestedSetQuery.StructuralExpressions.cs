@@ -63,7 +63,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: Both internal edge aliases retain the explicit scope binding. Public endpoints have
         // already passed complete MatchEndpoint membership (or exact-root provenance) before this
         // path decision is admitted. A forest still requires TreeId, including malformed Parent links.
-        return _treeBound ? identity : Expression.AndAlso(identity, RoleEqual(bound, selected, _descriptor.TreeId));
+        return _treeBound
+            ? identity
+            : Expression.AndAlso(identity, RoleEqual(bound, selected, _descriptor.TreeId));
     }
 
     /// <summary>Tests structural containment in this exact mapped tree without assuming public role names.</summary>
@@ -78,7 +80,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         // WHY: Internal owners and edges retain the explicit scope binding of the same immutable root.
         // External endpoints pass the full membership barrier first. Forests still compare TreeId;
         // independently supplied endpoints must never use this helper without that membership proof.
-        return _treeBound ? bounds : Expression.AndAlso(RoleEqual(upper, lower, _descriptor.TreeId), bounds);
+        return _treeBound
+            ? bounds
+            : Expression.AndAlso(RoleEqual(upper, lower, _descriptor.TreeId), bounds);
     }
 
     /// <summary>Tests mapped coordinate containment after the caller establishes tree and scope identity.</summary>
@@ -143,15 +147,6 @@ internal sealed partial class NestedSetQuery<TEntity>
         return Expression.Call(AnyMethod<TSource>.Method, source.Expression, Expression.Quote(lambda));
     }
 
-    /// <summary>Retains only the exact public existence overload for one statically known source type.</summary>
-    /// <typeparam name="TSource">The entity or joined direct-edge source type.</typeparam>
-    private static class AnyMethod<TSource>
-    {
-        /// <summary>Gets the closed predicate overload without retaining a source or caller predicate.</summary>
-        internal static readonly MethodInfo Method = MethodOf(
-            (Expression<Func<IQueryable<TSource>, bool>>)(source => source.Any(value => true)));
-    }
-
     /// <summary>Preserves correlation and avoids a near-empty estimate for an opaque path predicate.</summary>
     private static BinaryExpression CorrelatedCondition(
         Expression condition
@@ -181,5 +176,14 @@ internal sealed partial class NestedSetQuery<TEntity>
                 "The source must use the same EF context and query provider as this hierarchy.",
                 nameof(source));
         }
+    }
+
+    /// <summary>Retains only the exact public existence overload for one statically known source type.</summary>
+    /// <typeparam name="TSource">The entity or joined direct-edge source type.</typeparam>
+    private static class AnyMethod<TSource>
+    {
+        /// <summary>Gets the closed predicate overload without retaining a source or caller predicate.</summary>
+        internal static readonly MethodInfo Method = MethodOf(
+            (Expression<Func<IQueryable<TSource>, bool>>)(source => source.Any(value => true)));
     }
 }

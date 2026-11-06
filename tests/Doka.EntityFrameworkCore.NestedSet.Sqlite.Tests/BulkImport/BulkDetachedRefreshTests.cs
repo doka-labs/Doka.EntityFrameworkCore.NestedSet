@@ -28,13 +28,15 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     public async Task CompletedImportDoesNotRetainDetachedInputs()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var marker = new UnrelatedRow { Id = 500_000 };
         context.Attach(marker);
 
         // Act
-        var inputs = await ImportWithoutRetainingInputsAsync(context);
+        var inputs = await ImportWithoutRetainingInputsAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         // WHY: Entries() omits EF's detached reference map. Collection while the context stays alive detects
@@ -43,9 +45,22 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         GC.WaitForPendingFinalizers();
         GC.Collect();
         Assert.All(inputs, input => Assert.False(input.TryGetTarget(out _)));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(EntityState.Unchanged, context.Entry(marker).State);
-        Assert.Equal(129, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(marker)
+                .State);
+
+        Assert.Equal(
+            129,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -55,11 +70,17 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         context.SavedChanges += (_, _) => probe.Inserted = true;
 
         // Act
-        var result = await FailImportWithoutRetainingInputsAsync(context);
+        var result = await FailImportWithoutRetainingInputsAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsType<InjectedCommandException>(result.Error);
@@ -70,7 +91,12 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         GC.Collect();
         Assert.All(result.Inputs, input => Assert.False(input.TryGetTarget(out _)));
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(0, await context.Set<BulkGeneratedNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            0,
+            await context
+                .Set<BulkGeneratedNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -84,7 +110,10 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     )
     {
         // Arrange
-        await using var context = await _generated.ResetAsync(Engine);
+        await using var context = await _generated.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<BulkGeneratedNode>()
             .ForScope(7);
@@ -136,14 +165,20 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         {
             Assert.Equal(
                 NestedSetErrorCode.TreeIdUnavailable,
-                Assert.IsType<NestedSetException>(error).Code);
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
         }
         else
         {
             Assert.IsType<InjectedCommandException>(error);
         }
 
-        Assert.Equal(beforeStaging ? 0 : 1, completedSaves);
+        Assert.Equal(
+            beforeStaging
+                ? 0
+                : 1,
+            completedSaves);
+
         Assert.All(
             nodes.Select((node, index) => (node, index)),
             item =>
@@ -156,16 +191,21 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
 
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Equal(
-            beforeStaging ? 1 : 0,
+            beforeStaging
+                ? 1
+                : 0,
             await context
                 .Set<BulkGeneratedNode>()
                 .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Keeps input references inside a completed helper so JIT liveness cannot affect collection.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<WeakReference<TreeNode>[]> ImportWithoutRetainingInputsAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = Enumerable
@@ -183,7 +223,7 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
         await context
             .NestedSet<TreeNode>()
             .ForScope(7)
-            .InsertForestAsync([new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch)], CancellationToken.None);
+            .InsertForestAsync([new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch)], cancellationToken);
 
         return nodes
             .Select(node => new WeakReference<TreeNode>(node))
@@ -191,10 +231,13 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     }
 
     /// <summary>Returns rollback evidence without retaining generated inputs in the caller's async frame.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<( WeakReference<BulkGeneratedNode>[] Inputs, Exception? Error, bool Restored)>
         FailImportWithoutRetainingInputsAsync(
-            BulkGeneratedContext context
+            BulkGeneratedContext context,
+            CancellationToken cancellationToken
         )
     {
         var nodes = Enumerable
@@ -214,7 +257,7 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
             .ForScope(7)
             .InsertForestAsync(
                 [new NestedSetTreeImport<BulkGeneratedNode, Guid>(Guid.Empty, branch)],
-                CancellationToken.None));
+                cancellationToken));
 
         var restored = nodes.All(node => node is { Id: 0, Name: null, Details.Label: null }
             and { Version: 0, Details.Revision: 0 }

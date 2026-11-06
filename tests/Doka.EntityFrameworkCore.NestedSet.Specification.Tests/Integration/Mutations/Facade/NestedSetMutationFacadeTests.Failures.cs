@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task DeleteRejectsRoot()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -34,7 +34,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task PreCanceledRootInsertionWritesNothing()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -58,7 +58,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task MissingInsertionAnchorWritesNothing()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -87,7 +87,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task CyclicMoveWritesNothing()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -95,7 +95,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
         await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
-        var before = await StructureAsync(context);
+        var before = await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Assert.ThrowsAsync<NestedSetException>(() => hierarchy.MoveToAsync(
@@ -105,7 +105,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.CycleDetected, error.Code);
-        Assert.Equal(before, await StructureAsync(context));
+        Assert.Equal(before, await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Relative sibling moves reject a destination in another tree before changing either tree.</summary>
@@ -113,7 +113,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task RelativeMoveRejectsAnotherTree()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -122,7 +122,7 @@ public abstract partial class NestedSetMutationFacadeTests
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
         await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
-        var before = await StructureAsync(context);
+        var before = await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Assert.ThrowsAsync<NestedSetException>(() =>
@@ -130,7 +130,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.OperationRejected, error.Code);
-        Assert.Equal(before, await StructureAsync(context));
+        Assert.Equal(before, await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Detach rejects both active and retired destination identities before moving any row.</summary>
@@ -138,7 +138,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task DetachRejectsUnavailableTreeId()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -148,7 +148,7 @@ public abstract partial class NestedSetMutationFacadeTests
         await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
         await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
         await hierarchy.DeleteTreeAsync(s_secondTree, CancellationToken.None);
-        var before = await StructureAsync(context);
+        var before = await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Assert.ThrowsAsync<NestedSetException>(() =>
@@ -156,7 +156,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, error.Code);
-        Assert.Equal(before, await StructureAsync(context));
+        Assert.Equal(before, await StructureAsync(context, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Concurrent first writers reserve one TreeId exactly once.</summary>
@@ -164,7 +164,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ConcurrentDuplicateRootsHaveOneWinner()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
         await using var second = database.CreateContext();
         var firstHierarchy = first
@@ -177,19 +177,27 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Act
         var outcomes = await Task.WhenAll(
-            CaptureAsync(() => firstHierarchy.InsertRootAsync(
-                new TreeNode { NodeId = 1 },
-                s_firstTree,
-                CancellationToken.None)),
-            CaptureAsync(() => secondHierarchy.InsertRootAsync(
-                new TreeNode { NodeId = 2 },
-                s_firstTree,
-                CancellationToken.None)));
+            CaptureAsync(
+                token => firstHierarchy.InsertRootAsync(
+                    new TreeNode { NodeId = 1 },
+                    s_firstTree,
+                    token),
+                cancellationToken: TestContext.Current.CancellationToken),
+            CaptureAsync(
+                token => secondHierarchy.InsertRootAsync(
+                    new TreeNode { NodeId = 2 },
+                    s_firstTree,
+                    token),
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Single(outcomes, error => error is null);
         var failure = Assert.Single(outcomes, error => error is not null);
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         await using var verification = database.CreateContext();
         Assert.Equal(
             1,
@@ -199,13 +207,16 @@ public abstract partial class NestedSetMutationFacadeTests
     }
 
     /// <summary>Captures one concurrent operation outcome without obscuring its original exception.</summary>
+    /// <param name="operation">The concurrent operation that receives the unchanged caller token.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<Exception?> CaptureAsync(
-        Func<Task> operation
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken
     )
     {
         try
         {
-            await operation();
+            await operation(cancellationToken);
 
             return null;
         }
@@ -216,9 +227,11 @@ public abstract partial class NestedSetMutationFacadeTests
     }
 
     /// <summary>Reads only structural values in stable key order for rollback assertions.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(int Id, Guid TreeId, int? Parent, long Left, long Right, int Depth, long Position)[]>
         StructureAsync(
-            TreeContext context
+            TreeContext context,
+            CancellationToken cancellationToken
         ) => context
         .Set<TreeNode>()
         .AsNoTracking()
@@ -231,5 +244,5 @@ public abstract partial class NestedSetMutationFacadeTests
             node.End,
             node.Depth,
             node.Position))
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 }

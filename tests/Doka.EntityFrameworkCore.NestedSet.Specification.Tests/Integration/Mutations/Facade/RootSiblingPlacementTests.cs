@@ -44,7 +44,7 @@ public abstract class RootSiblingPlacementTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -61,18 +61,37 @@ public abstract class RootSiblingPlacementTests : ProviderTest
         };
 
         var inputBefore = Capture(input);
-        var rowsBefore = await RowsAsync(context);
-        var registriesBefore = await RegistryRowsAsync(context);
+        var rowsBefore = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var registriesBefore = await RegistryRowsAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(() => ApplyAsync(hierarchy, input, operation));
+        var error = await Record.ExceptionAsync(() => ApplyAsync(
+            hierarchy,
+            input,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.OperationRejected, Assert.IsType<NestedSetException>(error).Code);
-        Assert.Equal(rowsBefore, await RowsAsync(context));
-        Assert.Equal(registriesBefore, await RegistryRowsAsync(context));
+        Assert.Equal(
+            NestedSetErrorCode.OperationRejected,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
+        Assert.Equal(rowsBefore, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registriesBefore,
+            await RegistryRowsAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(inputBefore, Capture(input));
-        Assert.Equal(EntityState.Detached, context.Entry(input).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(input)
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.True(
             (await hierarchy
@@ -81,29 +100,33 @@ public abstract class RootSiblingPlacementTests : ProviderTest
     }
 
     /// <summary>Dispatches one real public mutation against the existing root key.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task ApplyAsync(
         ScopedNestedSet<TreeNode, int> hierarchy,
         TreeNode input,
-        string operation
+        string operation,
+        CancellationToken cancellationToken
     ) => operation switch
     {
-        "InsertBefore" => hierarchy.InsertBeforeAsync(input, 1, CancellationToken.None),
-        "InsertAfter" => hierarchy.InsertAfterAsync(input, 1, CancellationToken.None),
-        "MoveBefore" => hierarchy.MoveBeforeAsync(2, 1, CancellationToken.None),
-        "MoveAfter" => hierarchy.MoveAfterAsync(2, 1, CancellationToken.None),
+        "InsertBefore" => hierarchy.InsertBeforeAsync(input, 1, cancellationToken),
+        "InsertAfter" => hierarchy.InsertAfterAsync(input, 1, cancellationToken),
+        "MoveBefore" => hierarchy.MoveBeforeAsync(2, 1, cancellationToken),
+        "MoveAfter" => hierarchy.MoveAfterAsync(2, 1, cancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(operation)),
     };
 
     /// <summary>Reads every tree independently of the mutated facade's bound identity.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<NodeSnapshot[]> RowsAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var rows = await context
             .Set<TreeNode>()
             .AsNoTracking()
             .OrderBy(node => node.NodeId)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .Select(Capture)
@@ -125,12 +148,15 @@ public abstract class RootSiblingPlacementTests : ProviderTest
         node.Payload);
 
     /// <summary>Reads every registry revision and lifecycle to detect hidden writes on a rejected mutation.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<RegistrySnapshot[]> RegistryRowsAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var entityType = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -140,7 +166,7 @@ public abstract class RootSiblingPlacementTests : ProviderTest
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Stores all row values by value for exact rollback comparison.</summary>

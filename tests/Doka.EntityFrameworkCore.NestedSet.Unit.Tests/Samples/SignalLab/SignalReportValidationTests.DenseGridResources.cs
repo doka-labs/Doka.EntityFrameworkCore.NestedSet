@@ -10,23 +10,30 @@ public sealed partial class SignalReportValidationTests
     public async Task DenseStreamedGridRetainsBoundedTemporaryState()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = Enumerable
-                .Range(1, 64)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            ChannelIds = Enumerable
-                .Range(101, 32)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = Enumerable
+                    .Range(1, 64)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                ChannelIds = Enumerable
+                    .Range(101, 32)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
+            });
 
         var totals = snapshot
             .AnchorIds
             .SelectMany(anchor => snapshot.ChannelIds.SelectMany(signal =>
-                snapshot.Sources.Select(source => Total(anchor, signal, source, source == CapturePort.Pulse ? 0 : 13))))
+                snapshot.Sources.Select(source => Total(
+                    anchor,
+                    signal,
+                    source,
+                    source == CapturePort.Pulse
+                        ? 0
+                        : 13))))
             .ToArray();
 
         // WHY: This fixed grain measured 858248 B on .NET 10. About 21 KiB of headroom permits
@@ -38,7 +45,8 @@ public sealed partial class SignalReportValidationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var warmup = 0; warmup < 8; warmup++)
         {
-            _ = await SignalReportValidation.CreateGridAsync(snapshot,
+            _ = await SignalReportValidation.CreateGridAsync(
+                snapshot,
                 ReadRows(totals, new ReaderProbe(), CancellationToken.None),
                 CancellationToken.None);
         }
@@ -55,8 +63,10 @@ public sealed partial class SignalReportValidationTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Dense streamed grid: cells={cells.Length}; allocated={allocated} B; "
+        output.WriteLine(
+            $"Dense streamed grid: cells={cells.Length}; allocated={allocated} B; "
             + $"maximum={maximumBytes} B.");
+
         Assert.Equal(64 * 32 * 3, cells.Length);
         Assert.All(cells, cell => Assert.True(cell.HasData));
         Assert.Equal(0, cells[1].Value);

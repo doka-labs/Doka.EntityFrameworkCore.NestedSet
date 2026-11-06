@@ -21,7 +21,10 @@ public abstract class MutationBindingIsolationTests : ProviderTest
     /// <param name="fixture">The owner of model-compatibility databases.</param>
     protected MutationBindingIsolationTests(
         IProviderFixture<ModelCompatibilityDatabase> fixture
-    ) : base(fixture) => _fixture = fixture.Value;
+    ) : base(fixture)
+    {
+        _fixture = fixture.Value;
+    }
 
     /// <summary>Two shared CLR mappings retain different key roles across interleaved contexts and scopes.</summary>
     /// <returns>A task that completes after verifying physical rows and registry lifecycle isolation.</returns>
@@ -31,7 +34,8 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         // Arrange
         await using var first = await _fixture.CreateContextAsync<IsolationContext>(
             Engine,
-            static options => new IsolationContext(options));
+            static options => new IsolationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: This scenario requires identical metadata across distinct contexts. Supply that model explicitly
         // instead of relying on EF's bounded model cache while the full suite builds other models in parallel.
@@ -41,7 +45,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
 
         await using var second = new IsolationContext(sharedOptions);
 
-        await ResetModelAsync(first);
+        await ResetModelAsync(first, cancellationToken: TestContext.Current.CancellationToken);
         var alphaOne = first
             .NestedSet<Dictionary<string, object>>(Alpha)
             .ForScope(1);
@@ -85,6 +89,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree(s_tree)
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
+
         Assert.Equal(
             (10, 2, s_tree, null, 1L, 2L, 0, 0L),
             AlphaRow(
@@ -92,6 +97,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree(s_tree)
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
+
         Assert.Equal(
             (11, 2, s_detached, null, 1L, 2L, 0, 0L),
             AlphaRow(
@@ -99,6 +105,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree(s_detached)
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
+
         Assert.Collection(
             await betaOne
                 .InTree("shared")
@@ -109,21 +116,25 @@ public abstract class MutationBindingIsolationTests : ProviderTest
             grandchild => Assert.Equal(
                 (GuidKey(3), "one", "shared", (Guid?)GuidKey(2), 3L, 4L, 2, 0L),
                 BetaRow(grandchild)));
+
         Assert.False(
             await betaTwo
                 .InTree("shared")
                 .Nodes
                 .AnyAsync(CancellationToken.None));
+
         Assert.Equal(
             3,
             await first
                 .Set<Dictionary<string, object>>(Alpha)
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             3,
             await first
                 .Set<Dictionary<string, object>>(Beta)
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             new[]
                 {
@@ -133,14 +144,16 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 }
                 .OrderBy(row => row.Item1)
                 .ThenBy(row => row.Item2),
-            await AlphaRegistriesAsync(first));
+            await AlphaRegistriesAsync(first, cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             new[]
             {
                 ("one", "shared", NestedSetTreeRegistryMetadata.Active),
                 ("two", "shared", NestedSetTreeRegistryMetadata.Tombstoned),
             },
-            await StringRegistriesAsync(first, Beta));
+            await StringRegistriesAsync(first, Beta, cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(first.ChangeTracker.Entries());
         Assert.Empty(second.ChangeTracker.Entries());
     }
@@ -153,14 +166,16 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         // Arrange
         await using var first = await _fixture.CreateContextAsync<IsolationContext>(
             Engine,
-            static options => new IsolationContext(options));
+            static options => new IsolationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var alternate = await _fixture.CreateContextAsync<AlternateContext>(
             Engine,
-            static options => new AlternateContext(options));
+            static options => new AlternateContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await ResetModelAsync(first);
-        await ResetModelAsync(alternate);
+        await ResetModelAsync(first, cancellationToken: TestContext.Current.CancellationToken);
+        await ResetModelAsync(alternate, cancellationToken: TestContext.Current.CancellationToken);
         var integerKeys = first
             .NestedSet<Dictionary<string, object>>(Alpha)
             .ForScope(1);
@@ -192,6 +207,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree(s_tree)
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
+
         Assert.Equal(
             (GuidKey(1), "one", "shared", null, 1L, 2L, 0, 0L),
             BetaRow(
@@ -199,6 +215,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree("shared")
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
+
         Assert.Equal(
             (GuidKey(2), "one", "detached", null, 1L, 2L, 0, 0L),
             BetaRow(
@@ -206,27 +223,36 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     .InTree("detached")
                     .Nodes
                     .SingleAsync(CancellationToken.None)));
-        Assert.Equal(new[] { (1, s_tree, NestedSetTreeRegistryMetadata.Active) }, await AlphaRegistriesAsync(first));
+
+        Assert.Equal(
+            new[] { (1, s_tree, NestedSetTreeRegistryMetadata.Active) },
+            await AlphaRegistriesAsync(
+                first,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(
             new[]
             {
                 ("one", "detached", NestedSetTreeRegistryMetadata.Active),
                 ("one", "shared", NestedSetTreeRegistryMetadata.Active),
             },
-            await StringRegistriesAsync(alternate, Alpha));
+            await StringRegistriesAsync(alternate, Alpha, cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(first.ChangeTracker.Entries());
         Assert.Empty(alternate.ChangeTracker.Entries());
     }
 
     /// <summary>Completely resets only the property-bag hierarchy tables owned by the selected test model.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ResetModelAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         foreach (var entity in context
-                     .Model
-                     .GetEntityTypes()
-                     .Where(entity => entity.ClrType == typeof(Dictionary<string, object>)))
+            .Model
+            .GetEntityTypes()
+            .Where(entity => entity.ClrType == typeof(Dictionary<string, object>)))
         {
             var rows = context.Set<Dictionary<string, object>>(entity.Name);
 
@@ -234,19 +260,19 @@ public abstract class MutationBindingIsolationTests : ProviderTest
             {
                 await rows.ExecuteUpdateAsync(
                     setters => setters.SetProperty(row => EF.Property<int?>(row, Parent), (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             }
             else
             {
                 await rows.ExecuteUpdateAsync(
                     setters => setters.SetProperty(row => EF.Property<Guid?>(row, Parent), (Guid?)null),
-                    CancellationToken.None);
+                    cancellationToken);
             }
 
-            await rows.ExecuteDeleteAsync(CancellationToken.None);
+            await rows.ExecuteDeleteAsync(cancellationToken);
         }
 
-        await context.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await context.ClearNestedSetTreeRegistriesAsync(cancellationToken);
     }
 
     /// <summary>Initializes explicit property-bag roles without relying on missing-indexer defaults.</summary>
@@ -287,11 +313,14 @@ public abstract class MutationBindingIsolationTests : ProviderTest
         (int)row[Depth], (long)row[Position]);
 
     /// <summary>Reads the registry owned solely by the integer-key named hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(int Scope, Guid Tree, byte Lifecycle)[]> AlphaRegistriesAsync(
-        IsolationContext context
+        IsolationContext context,
+        CancellationToken cancellationToken
     )
     {
-        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(Alpha)!).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(Alpha)!)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -302,16 +331,19 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 EF.Property<int>(row, NestedSetTreeRegistryMetadata.Scope),
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Reads the independent registry owned solely by the Guid-key named hierarchy.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<(string Scope, string Tree, byte Lifecycle)[]> StringRegistriesAsync(
         DbContext context,
-        string entityTypeName
+        string entityTypeName,
+        CancellationToken cancellationToken
     )
     {
-        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(entityTypeName)!).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(entityTypeName)!)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -322,7 +354,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                 EF.Property<string>(row, NestedSetTreeRegistryMetadata.Scope),
                 EF.Property<string>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Configures shared coordinates while each exact model retains its own scalar identity roles.</summary>
@@ -363,6 +395,7 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     node
                         .IndexerProperty<int>(Id)
                         .ValueGeneratedNever();
+
                     node.IndexerProperty<int>(Scope);
                     node.IndexerProperty<Guid>(Tree);
                     node.IndexerProperty<int?>(Parent);
@@ -377,14 +410,17 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     node
                         .IndexerProperty<Guid>(Id)
                         .ValueGeneratedNever();
+
                     node
                         .IndexerProperty<string>(Scope)
                         .HasMaxLength(40)
                         .IsRequired();
+
                     node
                         .IndexerProperty<string>(Tree)
                         .HasMaxLength(40)
                         .IsRequired();
+
                     node.IndexerProperty<Guid?>(Parent);
                     ConfigureCoordinates(node);
                 });
@@ -409,14 +445,17 @@ public abstract class MutationBindingIsolationTests : ProviderTest
                     node
                         .IndexerProperty<Guid>(Id)
                         .ValueGeneratedNever();
+
                     node
                         .IndexerProperty<string>(Scope)
                         .HasMaxLength(40)
                         .IsRequired();
+
                     node
                         .IndexerProperty<string>(Tree)
                         .HasMaxLength(40)
                         .IsRequired();
+
                     node.IndexerProperty<Guid?>(Parent);
                     ConfigureCoordinates(node);
                 });

@@ -29,6 +29,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<ConcreteTpcContext>(
             Engine,
             static options => new ConcreteTpcContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -36,25 +37,36 @@ public abstract partial class HierarchyCompositionModelTests
 
         foreach (var (identity, offset) in new[] { (treeId, 0), (otherTreeId, 3) })
         {
-            await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new TpcFolderNode
-            {
-                Id = first + offset + depth,
-                ParentId = depth == 0 ? null : first + offset + depth - 1,
-                TreeId = identity,
-                Left = depth + 1,
-                Right = 6 - depth,
-                Depth = depth,
-                Name = $"Node {depth}",
-            }), CancellationToken.None);
+            await context.AddRangeAsync(
+                Enumerable
+                    .Range(0, 3)
+                    .Select(depth => new TpcFolderNode
+                    {
+                        Id = first + offset + depth,
+                        ParentId = depth == 0
+                            ? null
+                            : first + offset + depth - 1,
+                        TreeId = identity,
+                        Left = depth + 1,
+                        Right = 6 - depth,
+                        Depth = depth,
+                        Name = $"Node {depth}",
+                    }),
+                CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
         var hierarchy = context.NestedSet<TpcFolderNode>();
-        var pairs = hierarchy.SelectSubtrees(
+        var pairs = hierarchy
+            .SelectSubtrees(
                 anchor => anchor.TreeId == treeId && anchor.Depth == 0,
-                (anchor, node, distance) => new { Anchor = anchor, Node = node })
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                })
             .Where(row => row.Node.Depth == 2);
 
         // Act
@@ -69,29 +81,53 @@ public abstract partial class HierarchyCompositionModelTests
             HierarchyCompositionOperation.Subtrees => hierarchy.SelectSubtrees(
                 anchor => anchor.TreeId == treeId && anchor.Depth == 0,
                 (anchor, node, distance) => node.Depth),
-            HierarchyCompositionOperation.AllowedPath => hierarchy.WherePathEdges(
-                    pairs, row => row.Anchor, row => row.Node,
+            HierarchyCompositionOperation.AllowedPath => hierarchy
+                .WherePathEdges(
+                    pairs,
+                    row => row.Anchor,
+                    row => row.Node,
                     (row, parent, child) => child.Depth == parent.Depth + 1)
                 .Select(row => row.Node.Depth),
-            HierarchyCompositionOperation.AnyAncestor => hierarchy.WhereAnyAncestorOrSelf(
-                    pairs, row => row.Node, (row, owner) => owner.Depth == 0)
+            HierarchyCompositionOperation.AnyAncestor => hierarchy
+                .WhereAnyAncestorOrSelf(
+                    pairs,
+                    row => row.Node,
+                    (row, owner) => owner.Depth == 0)
                 .Select(row => row.Node.Depth),
-            HierarchyCompositionOperation.NearestAncestor => hierarchy.WhereNearestAncestorOrSelf(
-                    pairs, row => row.Node, (row, owner) => owner.Depth < 2, (row, owner) => owner.Depth == 1)
+            HierarchyCompositionOperation.NearestAncestor => hierarchy
+                .WhereNearestAncestorOrSelf(
+                    pairs,
+                    row => row.Node,
+                    (row, owner) => owner.Depth < 2,
+                    (row, owner) => owner.Depth == 1)
                 .Select(row => row.Node.Depth),
-            HierarchyCompositionOperation.MissingNearestOwner => hierarchy.WhereNearestAncestorOrSelf(
-                    pairs, row => row.Node, (row, owner) => owner.Depth == 99, (row, owner) => owner.Depth == 0)
+            HierarchyCompositionOperation.MissingNearestOwner => hierarchy
+                .WhereNearestAncestorOrSelf(
+                    pairs,
+                    row => row.Node,
+                    (row, owner) => owner.Depth == 99,
+                    (row, owner) => owner.Depth == 0)
                 .Select(row => row.Node.Depth),
-            HierarchyCompositionOperation.NearestOwnerRejectsValue => hierarchy.WhereNearestAncestorOrSelf(
-                    pairs, row => row.Node, (row, owner) => owner.Depth < 2, (row, owner) => owner.Depth == 0)
+            HierarchyCompositionOperation.NearestOwnerRejectsValue => hierarchy
+                .WhereNearestAncestorOrSelf(
+                    pairs,
+                    row => row.Node,
+                    (row, owner) => owner.Depth < 2,
+                    (row, owner) => owner.Depth == 0)
                 .Select(row => row.Node.Depth),
-            HierarchyCompositionOperation.BlockedPath => hierarchy.WherePathEdges(
-                    pairs, row => row.Anchor, row => row.Node, (row, parent, child) => child.Depth != 1)
+            HierarchyCompositionOperation.BlockedPath => hierarchy
+                .WherePathEdges(
+                    pairs,
+                    row => row.Anchor,
+                    row => row.Node,
+                    (row, parent, child) => child.Depth != 1)
                 .Select(row => row.Node.Depth),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 
-        var actual = await query.OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertDepths(operation, actual, probe, context, materialized);

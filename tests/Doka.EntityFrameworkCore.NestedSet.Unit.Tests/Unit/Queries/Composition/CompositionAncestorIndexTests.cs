@@ -30,7 +30,8 @@ public sealed partial class CompositionAncestorIndexTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
-                ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_index;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
@@ -42,9 +43,10 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new IndexCompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new IndexCompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -54,7 +56,8 @@ public sealed partial class CompositionAncestorIndexTests
             ? includeSelf
                 ? hierarchy
                     .InTree(Guid.Empty)
-                    .SelectAncestorsOrSelf(node => node.Id == 3,
+                    .SelectAncestorsOrSelf(
+                        node => node.Id == 3,
                         (source, ancestor, distance) => new
                         {
                             Source = source,
@@ -63,7 +66,8 @@ public sealed partial class CompositionAncestorIndexTests
                         })
                 : hierarchy
                     .InTree(Guid.Empty)
-                    .SelectAncestors(node => node.Id == 3,
+                    .SelectAncestors(
+                        node => node.Id == 3,
                         (source, ancestor, distance) => new
                         {
                             Source = source,
@@ -71,14 +75,16 @@ public sealed partial class CompositionAncestorIndexTests
                             Distance = distance,
                         })
             : includeSelf
-                ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
+                ? hierarchy.SelectAncestorsOrSelf(
+                    node => node.Id == 3,
                     (source, ancestor, distance) => new
                     {
                         Source = source,
                         Ancestor = ancestor,
                         Distance = distance,
                     })
-                : hierarchy.SelectAncestors(node => node.Id == 3,
+                : hierarchy.SelectAncestors(
+                    node => node.Id == 3,
                     (source, ancestor, distance) => new
                     {
                         Source = source,
@@ -88,9 +94,11 @@ public sealed partial class CompositionAncestorIndexTests
 
         // WHY: This same contract runs against the published fallback and exact private feature
         // binary. Availability changes the SQL strategy; neither installation may perform I/O here.
-        var hasBinding = NestedSetProviderCapabilities.Resolve(context).CompletedSourceMethod is not null
+        var hasBinding = NestedSetProviderCapabilities.Resolve(context)
+                .CompletedSourceMethod is not null
             && (!includeSelf
-                || NestedSetProviderCapabilities.Resolve(context).OrderedJoinMethod is not null);
+                || NestedSetProviderCapabilities.Resolve(context)
+                    .OrderedJoinMethod is not null);
 
         // Act
         var sql = query.ToQueryString();
@@ -100,13 +108,19 @@ public sealed partial class CompositionAncestorIndexTests
         // Assert
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(hasBinding, sql.Contains("WITH RECURSIVE", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal(hasBinding && includeSelf,
+        Assert.Equal(
+            hasBinding && includeSelf,
             sql.Contains("STRAIGHT_JOIN", StringComparison.OrdinalIgnoreCase));
+
         Assert.Contains("HasChildren", sql, StringComparison.Ordinal);
 
         if (!includeSelf)
         {
-            Assert.Equal(hasBinding ? 1 : 0, structural.CompletePredicates);
+            Assert.Equal(
+                hasBinding
+                    ? 1
+                    : 0,
+                structural.CompletePredicates);
         }
 
         if (hasBinding)
@@ -149,7 +163,8 @@ public sealed partial class CompositionAncestorIndexTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<IndexCompositionContext>(
-                ModelCompatibilityDatabase.Options<IndexCompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<IndexCompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_index;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
@@ -161,9 +176,10 @@ public sealed partial class CompositionAncestorIndexTests
         }
 
         await using var provider = services.BuildServiceProvider();
-        await using var context = new IndexCompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new IndexCompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -177,14 +193,16 @@ public sealed partial class CompositionAncestorIndexTests
 
         // Act
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(selected,
+            ? hierarchy.SelectAncestorsOrSelf(
+                selected,
                 (source, ancestor, distance) => new
                 {
                     Source = source,
                     Ancestor = ancestor,
                     Distance = distance,
                 })
-            : hierarchy.SelectAncestors(selected,
+            : hierarchy.SelectAncestors(
+                selected,
                 (source, ancestor, distance) => new
                 {
                     Source = source,

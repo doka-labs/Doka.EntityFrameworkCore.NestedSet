@@ -56,16 +56,20 @@ internal sealed class EntitySplitCollationContext(DbContextOptions<EntitySplitCo
             .Property(value => value.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         node
             .Property(value => value.Scope)
             .HasMaxLength(64)
             .IsRequired();
+
         node
             .Property(value => value.ParentId)
             .HasMaxLength(64);
+
         node
             .Property(value => value.Name)
             .HasMaxLength(100);
+
         node
             .Property(value => value.Payload)
             .HasMaxLength(160);

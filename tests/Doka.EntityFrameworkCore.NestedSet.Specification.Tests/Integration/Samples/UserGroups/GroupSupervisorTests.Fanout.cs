@@ -21,10 +21,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 8, 1);
-        await EnableSnapshotAsync(context);
+        await SeedOriginProfileAsync(context, data, 8, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         App.MetadataMatch[] matches =
         [
             new(App.MetadataOwner.SourceUser, "Route", App.MetadataOwner.CandidateMembership, "Route"),
@@ -34,15 +34,31 @@ public abstract partial class GroupSupervisorTests
         {
             SourceUserId = data.Users[0],
             RoutingOrigin = App.RoutingOrigin.InitialSubject,
-            MaxFrontierStates = limit == "frontier" ? 4 : 1000,
-            MaxVisitedStates = limit == "visited" ? 4 : 1000,
-            MaxResultRows = limit == "logical" ? 40 : 1000,
+            MaxFrontierStates = limit == "frontier"
+                ? 4
+                : 1000,
+            MaxVisitedStates = limit == "visited"
+                ? 4
+                : 1000,
+            MaxResultRows = limit == "logical"
+                ? 40
+                : 1000,
             Steps =
             [
-                new(App.SearchStart.IncludeSelf, new App.MembershipRoleFilter(data.ManagerRoleId),
-                    new App.NthTypeGroupThenValidate(4, 1), matches, null, App.SupervisorSelection.RequireUnique),
-                new(App.SearchStart.ParentsOnly, new App.MembershipRoleFilter(data.ManagerRoleId),
-                    new App.NthTypeGroupThenValidate(1, 1), matches, null, App.SupervisorSelection.RequireUnique),
+                new App.SupervisorStep(
+                    App.SearchStart.IncludeSelf,
+                    new App.MembershipRoleFilter(data.ManagerRoleId),
+                    new App.NthTypeGroupThenValidate(4, 1),
+                    matches,
+                    null,
+                    App.SupervisorSelection.RequireUnique),
+                new App.SupervisorStep(
+                    App.SearchStart.ParentsOnly,
+                    new App.MembershipRoleFilter(data.ManagerRoleId),
+                    new App.NthTypeGroupThenValidate(1, 1),
+                    matches,
+                    null,
+                    App.SupervisorSelection.RequireUnique),
             ],
         };
 
@@ -50,15 +66,26 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.FollowAllMembershipsAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         // Assert
         Assert.False(result.Complete);
         Assert.Contains(result.Branches, branch => branch.Status == App.SupervisorChainStatus.LimitExceeded);
         Assert.Equal(expectedReaders, probe.Commands.Count);
-        Assert.InRange(probe.ReaderAdvances, 0, limit == "logical" ? 40 : 1000);
-        Assert.All(result.Branches.Where(branch => branch.Status == App.SupervisorChainStatus.LimitExceeded),
+        Assert.InRange(
+            probe.ReaderAdvances,
+            0,
+            limit == "logical"
+                ? 40
+                : 1000);
+
+        Assert.All(
+            result.Branches.Where(branch => branch.Status == App.SupervisorChainStatus.LimitExceeded),
             branch => Assert.Empty(branch.Hops));
+
         Assert.Equal(0, probe.Entities);
     }
 }

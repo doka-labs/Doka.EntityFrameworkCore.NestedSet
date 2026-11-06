@@ -26,10 +26,10 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     private readonly CommandObservation _observation = new();
     private UserGroupContext? _context;
     private SupervisorScenarioFixture? _data;
-    private SupervisorRequest? _request;
-    private SupervisorResolutionBatch? _result;
     private IQueryable<SupervisorQueries.SupervisorReadRow>? _prepared;
     private SupervisorQueries.SupervisorReadRow[]? _preparedRows;
+    private SupervisorRequest? _request;
+    private SupervisorResolutionBatch? _result;
 
     /// <summary>Gets or sets the actual group count; users remain a fixed separate payload population.</summary>
     [ParamsSource(nameof(NodeCounts))]
@@ -72,93 +72,27 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     internal SupervisorResolutionBatch Result =>
         _result ?? throw new InvalidOperationException("The supervisor query did not run.");
 
-    /// <summary>Configures the real sample context after the launcher has acquired its database.</summary>
-    [GlobalSetup]
-    public void Initialize()
-    {
-        if (Trees != 1
-            || Tracked != 0)
+    /// <summary>Maps the public benchmark case to the unchanged sample-owned selection contract.</summary>
+    private SupervisorSelection PersonSelection =>
+        Selection switch
         {
-            throw new ArgumentException("The selection benchmark has one group tree and an empty tracker.");
-        }
+            BenchmarkPersonSelection.RequireUnique => SupervisorSelection.RequireUnique,
+            BenchmarkPersonSelection.HighestBusinessPriority => SupervisorSelection.HighestBusinessPriority,
+            BenchmarkPersonSelection.SecondPerson => SupervisorSelection.NthPerson(2),
+            _ => throw new ArgumentOutOfRangeException(nameof(Selection)),
+        };
 
-        _context = new UserGroupContext(ConsumerBenchmarkDatabase.Options(_observation));
-    }
+    /// <summary>Rejects operation outside the native benchmark lifecycle.</summary>
+    private UserGroupContext Context =>
+        _context ?? throw new InvalidOperationException("Initialize the group benchmark first.");
 
-    /// <summary>Completes actual sample preparation before native measurement begins.</summary>
-    [IterationSetup]
-    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync());
+    /// <summary>Requires a completed actual sample seed.</summary>
+    private SupervisorScenarioFixture Data =>
+        _data ?? throw new InvalidOperationException("Prepare the group dataset first.");
 
-    /// <summary>Completes equivalence verification outside native measurement.</summary>
-    [IterationCleanup]
-    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync());
-
-    /// <summary>Seeds inputs and asynchronously warms selected/reference EF execution before observation.</summary>
-    public async Task PrepareAsync()
-    {
-        await ConsumerBenchmarkDatabase.ResetAsync(Context);
-        (_data, _request) = await UserGroupBenchmarkData.CreateAsync(Context, Nodes, Shape, Origins, Matches);
-        _result = null;
-        _preparedRows = null;
-        _prepared = SupervisorQueries.ResolutionRows(Context, Data.TenantId, Request, PersonSelection);
-
-        // WHY: Actual async execution warms EF's execution cache; ToQueryString warms a different path.
-        // Every workload receives the same warm selected/reference shapes before operation counters reset.
-        _ = await _prepared.ToArrayAsync(CancellationToken.None);
-        _ = await ReadReferenceAsync();
-        _observation.Reset();
-    }
-
-    /// <summary>Runs the actual server-reduced source/status/evidence reader.</summary>
-    [Benchmark]
-    public async Task Api()
-    {
-        _result = await SupervisorQueries.ResolveAsync(
-            Context,
-            Data.TenantId,
-            Request,
-            PersonSelection,
-            CancellationToken.None);
-    }
-
-    /// <summary>Reads complete candidates/statuses and applies identical application person selection.</summary>
-    [Benchmark(Baseline = true)]
-    public async Task Reference() => _result = await ReadReferenceAsync();
-
-    /// <summary>Measures prepared asynchronous scalar execution and materialization, excluding reduction.</summary>
-    [Benchmark]
-    public async Task Prepared()
-    {
-        var query = _prepared ?? throw new InvalidOperationException("Prepare the supervisor query first.");
-        _preparedRows = await query.ToArrayAsync(CancellationToken.None);
-    }
-
-    /// <summary>Checks origin statuses, retained evidence and canonical continuations after timing.</summary>
-    public async Task VerifyAsync()
-    {
-        if (_preparedRows is { } rows)
-        {
-            _result = SupervisorQueries.ReadResolution(Data.TenantId, rows, PersonSelection);
-        }
-
-        var actual = Result;
-        var expected = await ReadReferenceAsync();
-        BenchmarkFixture.Require(
-            Signature(actual)
-                .SequenceEqual(Signature(expected)),
-            "Server and application person reductions produced different statuses or provenance.");
-        BenchmarkFixture.Require(actual.Origins.Count == Origins, "The request lost an evaluated source origin.");
-        BenchmarkFixture.Require(
-            !Context
-                .ChangeTracker
-                .Entries()
-                .Any(),
-            "Scalar supervisor selection populated the tracker.");
-    }
-
-    /// <summary>Releases the actual sample context; resource ownership remains with the existing launcher.</summary>
-    [GlobalCleanup]
-    public async Task CleanupAsync() => await DisposeAsync();
+    /// <summary>Requires the privately captured explicit consumer request.</summary>
+    private SupervisorRequest Request =>
+        _request ?? throw new InvalidOperationException("Prepare the group request first.");
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
@@ -174,18 +108,123 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>Configures the real sample context after the launcher has acquired its database.</summary>
+    [GlobalSetup]
+    public void Initialize()
+    {
+        if (Trees != 1
+            || Tracked != 0)
+        {
+            throw new ArgumentException("The selection benchmark has one group tree and an empty tracker.");
+        }
+
+        _context = new UserGroupContext(ConsumerBenchmarkDatabase.Options(_observation));
+    }
+
+    /// <summary>Seeds inputs and asynchronously warms selected/reference EF execution before observation.</summary>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        await ConsumerBenchmarkDatabase.ResetAsync(Context, cancellationToken);
+        (_data, _request) = await UserGroupBenchmarkData.CreateAsync(
+            Context,
+            Nodes,
+            Shape,
+            Origins,
+            Matches,
+            cancellationToken);
+
+        _result = null;
+        _preparedRows = null;
+        _prepared = SupervisorQueries.ResolutionRows(Context, Data.TenantId, Request, PersonSelection);
+
+        // WHY: Actual async execution warms EF's execution cache; ToQueryString warms a different path.
+        // Every workload receives the same warm selected/reference shapes before operation counters reset.
+        _ = await _prepared.ToArrayAsync(cancellationToken);
+        _ = await ReadReferenceAsync(cancellationToken);
+        _observation.Reset();
+    }
+
+    /// <summary>Checks origin statuses, retained evidence and canonical continuations after timing.</summary>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    public async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        if (_preparedRows is { } rows)
+        {
+            _result = SupervisorQueries.ReadResolution(Data.TenantId, rows, PersonSelection);
+        }
+
+        var actual = Result;
+        var expected = await ReadReferenceAsync(cancellationToken);
+        BenchmarkFixture.Require(
+            Signature(actual)
+                .SequenceEqual(Signature(expected)),
+            "Server and application person reductions produced different statuses or provenance.");
+
+        BenchmarkFixture.Require(actual.Origins.Count == Origins, "The request lost an evaluated source origin.");
+        BenchmarkFixture.Require(
+            !Context
+                .ChangeTracker
+                .Entries()
+                .Any(),
+            "Scalar supervisor selection populated the tracker.");
+    }
+
+    /// <summary>Releases the actual sample context; resource ownership remains with the existing launcher.</summary>
+    [GlobalCleanup]
+    public async Task CleanupAsync() => await DisposeAsync();
+
     /// <inheritdoc />
     CommandObservation IDatabaseBenchmark.Observation => _observation;
 
+    /// <summary>Completes actual sample preparation before native measurement begins.</summary>
+    [IterationSetup]
+    public void Prepare() => BenchmarkLifecycle.Complete(PrepareAsync(CancellationToken.None));
+
+    /// <summary>Completes equivalence verification outside native measurement.</summary>
+    [IterationCleanup]
+    public void Verify() => BenchmarkLifecycle.Complete(VerifyAsync(CancellationToken.None));
+
+    /// <summary>Runs the actual server-reduced source/status/evidence reader.</summary>
+    [Benchmark]
+    public async Task Api()
+    {
+        _result = await SupervisorQueries.ResolveAsync(
+            Context,
+            Data.TenantId,
+            Request,
+            PersonSelection,
+            CancellationToken.None);
+    }
+
+    /// <summary>Reads complete candidates/statuses and applies identical application person selection.</summary>
+    [Benchmark(Baseline = true)]
+    public async Task Reference() => _result = await ReadReferenceAsync(CancellationToken.None);
+
+    /// <summary>Measures prepared asynchronous scalar execution and materialization, excluding reduction.</summary>
+    [Benchmark]
+    public async Task Prepared()
+    {
+        var query = _prepared ?? throw new InvalidOperationException("Prepare the supervisor query first.");
+        _preparedRows = await query.ToArrayAsync(CancellationToken.None);
+    }
+
     /// <summary>Retains the source/catalog/zero-origin contract instead of timing an incomplete DTO query.</summary>
-    private async Task<SupervisorResolutionBatch> ReadReferenceAsync()
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+    private async Task<SupervisorResolutionBatch> ReadReferenceAsync(
+        CancellationToken cancellationToken
+    )
     {
         var all = await SupervisorQueries.ResolveAsync(
             Context,
             Data.TenantId,
             Request,
             SupervisorSelection.All,
-            CancellationToken.None);
+            cancellationToken);
 
         return all with
         {
@@ -217,26 +256,4 @@ public class UserGroupSelectionBenchmarks : IDatabaseBenchmark, IAsyncDisposable
                     .ThenBy(row => row.CandidateUserId)
                     .Select(row => $"{row.StartGroupId}:{row.FoundGroupId}:{row.CandidateUserId}:"
                         + $"{row.Distance}:{row.LeadershipPriority}:{row.StartTreeId}"))));
-
-    /// <summary>Maps the public benchmark case to the unchanged sample-owned selection contract.</summary>
-    private SupervisorSelection PersonSelection =>
-        Selection switch
-        {
-            BenchmarkPersonSelection.RequireUnique => SupervisorSelection.RequireUnique,
-            BenchmarkPersonSelection.HighestBusinessPriority => SupervisorSelection.HighestBusinessPriority,
-            BenchmarkPersonSelection.SecondPerson => SupervisorSelection.NthPerson(2),
-            _ => throw new ArgumentOutOfRangeException(nameof(Selection)),
-        };
-
-    /// <summary>Rejects operation outside the native benchmark lifecycle.</summary>
-    private UserGroupContext Context =>
-        _context ?? throw new InvalidOperationException("Initialize the group benchmark first.");
-
-    /// <summary>Requires a completed actual sample seed.</summary>
-    private SupervisorScenarioFixture Data =>
-        _data ?? throw new InvalidOperationException("Prepare the group dataset first.");
-
-    /// <summary>Requires the privately captured explicit consumer request.</summary>
-    private SupervisorRequest Request =>
-        _request ?? throw new InvalidOperationException("Prepare the group request first.");
 }

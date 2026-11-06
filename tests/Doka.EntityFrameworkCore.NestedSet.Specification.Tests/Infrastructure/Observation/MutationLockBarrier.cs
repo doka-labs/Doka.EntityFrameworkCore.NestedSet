@@ -6,9 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal sealed class MutationLockBarrier : DbCommandInterceptor
 {
     private readonly NestedSetTreeRegistryMapping _mapping;
+    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly int _scope;
     private readonly Guid _treeId;
-    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _arrivals;
 
     /// <summary>Identifies the complete indexed registry key shared by the competing operations.</summary>

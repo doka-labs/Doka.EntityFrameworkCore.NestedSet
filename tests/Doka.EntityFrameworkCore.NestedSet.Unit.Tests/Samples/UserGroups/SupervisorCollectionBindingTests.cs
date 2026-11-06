@@ -27,11 +27,15 @@ public sealed class SupervisorCollectionBindingTests
             SourceUserId = 1,
             SearchStart = SearchStart.ParentsOnly,
             Roles = new NoRoleFilter(),
-            Groups = new AllEligibleGroups([1, 2]),
+            Groups = new AllEligibleGroups(1, 2),
             Matches =
             [
-                new(MetadataOwner.SourceUser, "Route", MetadataOwner.CandidateMembership, "Route"),
-                new(MetadataOwner.SourceGroup, "ChannelClass", MetadataOwner.CandidateGroup, "ChannelClass"),
+                new MetadataMatch(MetadataOwner.SourceUser, "Route", MetadataOwner.CandidateMembership, "Route"),
+                new MetadataMatch(
+                    MetadataOwner.SourceGroup,
+                    "ChannelClass",
+                    MetadataOwner.CandidateGroup,
+                    "ChannelClass"),
             ],
         };
 

@@ -8,16 +8,34 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task MixedPayloadOwnerRollbackRestoresIndependentMembers(bool leavesTarget, bool hierarchyFailure)
+    public async Task MixedPayloadOwnerRollbackRestoresIndependentMembers(
+        bool leavesTarget,
+        bool hierarchyFailure
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedMixedPayloadOwnerMemberAsync(database, leavesTarget);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedMixedPayloadOwnerMemberAsync(
+            database,
+            leavesTarget,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareMixedPayloadOwnerGraphAsync(context);
+        var graph = await PrepareMixedPayloadOwnerGraphAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
         var previousCollection = graph.A.Previous.Nodes;
         var previousMembers = previousCollection.ToArray();
@@ -25,8 +43,14 @@ public abstract partial class SaveChangesTests
         var targetMembers = targetCollection.ToArray();
         var previousNative = PayloadOwnerNativeMembers(context, graph.A.Previous);
         var targetNative = PayloadOwnerNativeMembers(context, graph.A.Target);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -38,32 +62,62 @@ public abstract partial class SaveChangesTests
         var after = CapturePlannedParentState(context);
         var previousNativeAfter = PayloadOwnerNativeMembers(context, graph.A.Previous);
         var targetNativeAfter = PayloadOwnerNativeMembers(context, graph.A.Target);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(expectedError, error);
         AssertPlannedParentState(
-            before.Where(entry => ReferenceEquals(entry.Entity, graph.A.Node)
-                || ReferenceEquals(entry.Entity, graph.B.Entity)).ToArray(),
-            after.Where(entry => ReferenceEquals(entry.Entity, graph.A.Node)
-                || ReferenceEquals(entry.Entity, graph.B.Entity)).ToArray());
+            before
+                .Where(entry => ReferenceEquals(entry.Entity, graph.A.Node)
+                    || ReferenceEquals(entry.Entity, graph.B.Entity))
+                .ToArray(),
+            after
+                .Where(entry => ReferenceEquals(entry.Entity, graph.A.Node)
+                    || ReferenceEquals(entry.Entity, graph.B.Entity))
+                .ToArray());
 
         Assert.Same(previousCollection, graph.A.Previous.Nodes);
         Assert.Same(targetCollection, graph.A.Target.Nodes);
         Assert.Equal(previousMembers, graph.A.Previous.Nodes, ReferenceEqualityComparer.Instance);
+
         // WHY: A's raw membership remains pending, while B must return to its original CLR owner independently.
-        Assert.Equal(targetMembers, graph.A.Target.Nodes.Where(node => !ReferenceEquals(node, graph.A.Node)),
+        Assert.Equal(
+            targetMembers,
+            graph.A.Target.Nodes.Where(node => !ReferenceEquals(node, graph.A.Node)),
             ReferenceEqualityComparer.Instance);
 
         Assert.Contains(graph.A.Node, graph.A.Target.Nodes);
-        Assert.True(previousNative.ToHashSet(ReferenceEqualityComparer.Instance).SetEquals(previousNativeAfter));
-        Assert.True(targetNative.ToHashSet(ReferenceEqualityComparer.Instance).SetEquals(targetNativeAfter));
+        Assert.True(
+            previousNative
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(previousNativeAfter));
+
+        Assert.True(
+            targetNative
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(targetNativeAfter));
+
         Assert.DoesNotContain(graph.A.Node, targetNativeAfter);
         Assert.Equal(leavesTarget, graph.A.Target.Nodes.Contains(graph.B.Entity));
         Assert.Equal(!leavesTarget, graph.A.Previous.Nodes.Contains(graph.B.Entity));
-        Assert.Equal(leavesTarget ? 2 : 1, graph.B.Entity.PayloadOwnerId);
-        Assert.Same(leavesTarget ? graph.A.Target : graph.A.Previous, graph.B.Entity.PayloadOwner);
+        Assert.Equal(
+            leavesTarget
+                ? 2
+                : 1,
+            graph.B.Entity.PayloadOwnerId);
+
+        Assert.Same(
+            leavesTarget
+                ? graph.A.Target
+                : graph.A.Previous,
+            graph.B.Entity.PayloadOwner);
+
         Assert.False(graph.BForeignKey.IsModified);
         Assert.Equal(storedBefore.Nodes, storedAfter.Nodes);
         Assert.Equal(storedBefore.Note, storedAfter.Note);
@@ -76,24 +130,48 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MixedPayloadOwnerRollbackRetainsAuthoritativePreSaveMembership(bool hierarchyFailure)
+    public async Task MixedPayloadOwnerRollbackRetainsAuthoritativePreSaveMembership(
+        bool hierarchyFailure
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedMixedPayloadOwnerMemberAsync(database, leavesTarget: false);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedMixedPayloadOwnerMemberAsync(
+            database,
+            leavesTarget: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareMixedPayloadOwnerGraphAsync(context);
+        var graph = await PrepareMixedPayloadOwnerGraphAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         StagePayloadOwnerWrite(graph.A, publicCurrentValue: true);
         var before = CapturePlannedParentState(context);
         var nativeBefore = PayloadOwnerNativeMembers(context, graph.A.Target);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
+
             // WHY: Genuine EF fixup removes A, then the raw write forces the library to baseline A again.
             graph.A.ForeignKey.CurrentValue = graph.A.Previous.Id;
             StagePayloadOwnerWrite(graph.A, publicCurrentValue: false);
@@ -103,14 +181,23 @@ public abstract partial class SaveChangesTests
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = CapturePlannedParentState(context);
         var nativeAfter = PayloadOwnerNativeMembers(context, graph.A.Target);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         AssertPlannedParentState(before, after);
         Assert.Same(expectedError, error);
         Assert.Contains(graph.A.Node, nativeBefore);
-        Assert.True(nativeBefore.ToHashSet(ReferenceEqualityComparer.Instance).SetEquals(nativeAfter));
+        Assert.True(
+            nativeBefore
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(nativeAfter));
+
         Assert.Contains(graph.A.Node, nativeAfter);
         Assert.Contains(graph.A.Node, graph.A.Target.Nodes);
         Assert.DoesNotContain(graph.A.Node, graph.A.Previous.Nodes);
@@ -145,14 +232,31 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedMixedPayloadOwnerMemberAsync(database, leavesTarget);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedMixedPayloadOwnerMemberAsync(
+            database,
+            leavesTarget,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            failure);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareMixedPayloadOwnerGraphAsync(context);
-        var bBefore = CapturePlannedParentState(context).Single(entry => ReferenceEquals(entry.Entity, graph.B.Entity));
+        var graph = await PrepareMixedPayloadOwnerGraphAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var bBefore = CapturePlannedParentState(context)
+            .Single(entry => ReferenceEquals(entry.Entity, graph.B.Entity));
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -178,14 +282,33 @@ public abstract partial class SaveChangesTests
 
         // Act
         var retryError = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var stored = await ReadPreparedOwnerStoreAsync(database);
-        var assignments = await ReadMixedPayloadOwnerAssignmentsAsync(database);
-        var native = PayloadOwnerNativeMembers(context, graph.A.Target).Cast<NavigationNode>()
-            .Select(node => node.Id).Order().ToArray();
+        var stored = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var current = graph.A.Target.Nodes.Select(node => node.Id).Order().ToArray();
-        var persisted = assignments.Where(assignment => assignment.PayloadOwnerId == graph.A.Target.Id)
-            .Select(assignment => assignment.Id).Order().ToArray();
+        var assignments = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var native = PayloadOwnerNativeMembers(context, graph.A.Target)
+            .Cast<NavigationNode>()
+            .Select(node => node.Id)
+            .Order()
+            .ToArray();
+
+        var current = graph
+            .A
+            .Target
+            .Nodes
+            .Select(node => node.Id)
+            .Order()
+            .ToArray();
+
+        var persisted = assignments
+            .Where(assignment => assignment.PayloadOwnerId == graph.A.Target.Id)
+            .Select(assignment => assignment.Id)
+            .Order()
+            .ToArray();
 
         // Assert
         Assert.Same(expectedError, firstError);
@@ -197,9 +320,19 @@ public abstract partial class SaveChangesTests
         Assert.False(failedModified);
         Assert.Null(retryError);
         var savesA = retryPolicy != "manual-unmarked";
-        Assert.Equal(savesA ? 2 : 1, assignments.Single(assignment => assignment.Id == graph.A.Node.Id).PayloadOwnerId);
-        Assert.Equal(leavesTarget ? 2 : 1,
-            assignments.Single(assignment => assignment.Id == graph.B.Entity.Id).PayloadOwnerId);
+        Assert.Equal(
+            savesA
+                ? 2
+                : 1,
+            assignments.Single(assignment => assignment.Id == graph.A.Node.Id)
+                .PayloadOwnerId);
+
+        Assert.Equal(
+            leavesTarget
+                ? 2
+                : 1,
+            assignments.Single(assignment => assignment.Id == graph.B.Entity.Id)
+                .PayloadOwnerId);
 
         Assert.Equal(persisted, native);
 
@@ -214,9 +347,18 @@ public abstract partial class SaveChangesTests
         }
 
         Assert.Equal(leavesTarget, graph.A.Target.Nodes.Contains(graph.B.Entity));
-        Assert.Same(leavesTarget ? graph.A.Target : graph.A.Previous, graph.B.Entity.PayloadOwner);
+        Assert.Same(
+            leavesTarget
+                ? graph.A.Target
+                : graph.A.Previous,
+            graph.B.Entity.PayloadOwner);
+
         Assert.False(graph.BForeignKey.IsModified);
-        Assert.Equal("Zulu", stored.Nodes.Single(node => node.Id == graph.A.Node.Id).Name);
+        Assert.Equal(
+            "Zulu",
+            stored.Nodes.Single(node => node.Id == graph.A.Node.Id)
+                .Name);
+
         Assert.Equal(0, stored.Issues);
         Assert.Equal(retryPolicy == "automatic", context.ChangeTracker.AutoDetectChangesEnabled);
     }
@@ -238,16 +380,38 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedMixedPayloadOwnerMemberAsync(database, leavesTarget);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedMixedPayloadOwnerMemberAsync(
+            database,
+            leavesTarget,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
         var (failure, expectedError) = CreatePayloadOwnerRecoveryFailure(hierarchyFailure);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure, probe);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            failure,
+            probe);
+
         ArmPayloadOwnerHierarchyFailure(context, failure);
-        var graph = await PrepareMixedPayloadOwnerGraphAsync(context);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var graph = await PrepareMixedPayloadOwnerGraphAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -265,8 +429,10 @@ public abstract partial class SaveChangesTests
         else
         {
             graph.B.State = EntityState.Detached;
+
             // WHY: Cancel only the unrelated order edit so this follow-up tests ordinary payload persistence.
-            graph.A.Entry.Property(node => node.Name).IsModified = false;
+            graph.A.Entry.Property(node => node.Name)
+                .IsModified = false;
         }
 
         graph.A.Note.CurrentValue = "following payload";
@@ -274,8 +440,13 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(expectedError, firstError);
@@ -286,7 +457,11 @@ public abstract partial class SaveChangesTests
 
         if (detachRawMember)
         {
-            Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+            Assert.Equal(
+                NestedSetErrorCode.InvalidContext,
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
+
             Assert.Equal(writesBeforeFollowup, probe.Writes);
             Assert.Equal(storedBefore.Note, storedAfter.Note);
         }
@@ -306,33 +481,73 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MixedPayloadOwnerRollbackPreservesRawMembersAndDuplicateClrOccurrences(bool duplicate)
+    public async Task MixedPayloadOwnerRollbackPreservesRawMembersAndDuplicateClrOccurrences(
+        bool duplicate
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedMixedPayloadOwnerMemberAsync(database, leavesTarget: false);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await SeedMixedPayloadOwnerMemberAsync(
+            database,
+            leavesTarget: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using (var setup = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
-            await setup.NestedSet<NavigationNode>().ForScope(1)
-                .InsertChildAsync(new NavigationNode { Id = 4, Name = "Charlie", PayloadOwnerId = 1 }, 1,
+            await setup
+                .NestedSet<NavigationNode>()
+                .ForScope(1)
+                .InsertChildAsync(
+                    new NavigationNode
+                    {
+                        Id = 4,
+                        Name = "Charlie",
+                        PayloadOwnerId = 1,
+                    },
+                    1,
                     CancellationToken.None);
         }
 
         var callback = new SaveBoundaryCallback();
         var failure = new PlannedParentFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, failure);
-        var graph = await PrepareMixedPayloadOwnerGraphAsync(context);
-        var c = await context.Set<NavigationNode>().SingleAsync(node => node.Id == 4, CancellationToken.None);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            failure);
+
+        var graph = await PrepareMixedPayloadOwnerGraphAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var c = await context
+            .Set<NavigationNode>()
+            .SingleAsync(node => node.Id == 4, CancellationToken.None);
+
         var cEntry = context.Entry(c);
         var cForeignKey = cEntry.Property(node => node.PayloadOwnerId);
         var before = CapturePlannedParentState(context);
         var nativeBefore = PayloadOwnerNativeMembers(context, graph.A.Target);
         var previousNative = PayloadOwnerNativeMembers(context, graph.A.Previous);
         var collection = graph.A.Target.Nodes;
-        NavigationNode[] pending = duplicate ? [graph.A.Node, c, graph.A.Node] : [graph.A.Node, c];
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        NavigationNode[] pending = duplicate
+            ? [graph.A.Node, c, graph.A.Node]
+            : [graph.A.Node, c];
+
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsBefore = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         callback.OnSaving = _ =>
         {
             callback.OnSaving = null;
@@ -352,18 +567,36 @@ public abstract partial class SaveChangesTests
         var after = CapturePlannedParentState(context);
         var nativeAfter = PayloadOwnerNativeMembers(context, graph.A.Target);
         var previousNativeAfter = PayloadOwnerNativeMembers(context, graph.A.Previous);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
-        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var assignmentsAfter = await ReadMixedPayloadOwnerAssignmentsAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(failure.Error, error);
-        AssertPlannedParentState(before.Where(entry => entry.Entity is NavigationNode).ToArray(),
-            after.Where(entry => entry.Entity is NavigationNode).ToArray());
+        AssertPlannedParentState(
+            before
+                .Where(entry => entry.Entity is NavigationNode)
+                .ToArray(),
+            after
+                .Where(entry => entry.Entity is NavigationNode)
+                .ToArray());
 
         Assert.Same(collection, graph.A.Target.Nodes);
         Assert.Equal(pending, collection, ReferenceEqualityComparer.Instance);
-        Assert.True(nativeBefore.ToHashSet(ReferenceEqualityComparer.Instance).SetEquals(nativeAfter));
-        Assert.True(previousNative.ToHashSet(ReferenceEqualityComparer.Instance).SetEquals(previousNativeAfter));
+        Assert.True(
+            nativeBefore
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(nativeAfter));
+
+        Assert.True(
+            previousNative
+                .ToHashSet(ReferenceEqualityComparer.Instance)
+                .SetEquals(previousNativeAfter));
+
         Assert.DoesNotContain(graph.A.Node, nativeAfter);
         Assert.DoesNotContain(c, nativeAfter);
         Assert.DoesNotContain(graph.B.Entity, collection);
@@ -378,51 +611,88 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Seeds B's original relationship independently of the callback whose rollback is tested.</summary>
-    private static async Task SeedMixedPayloadOwnerMemberAsync(TestDatabase database, bool leavesTarget)
+    private static async Task SeedMixedPayloadOwnerMemberAsync(
+        TestDatabase database,
+        bool leavesTarget,
+        CancellationToken cancellationToken
+    )
     {
-        await SeedPayloadOwnersAsync(database, assigned: true);
-        await using var setup = await CreateNavigationContextAsync(database, wrapped: true);
-        var owner = leavesTarget ? 2 : 1;
-        await setup.Set<NavigationNode>().Where(node => node.Id == 3)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.PayloadOwnerId, (int?)owner),
-                CancellationToken.None);
+        await SeedPayloadOwnersAsync(database, assigned: true, cancellationToken: cancellationToken);
+        await using var setup = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: cancellationToken);
+
+        var owner = leavesTarget
+            ? 2
+            : 1;
+
+        await setup
+            .Set<NavigationNode>()
+            .Where(node => node.Id == 3)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(node => node.PayloadOwnerId, owner),
+                cancellationToken);
     }
 
     /// <summary>Retains both existing entries before a callback mixes raw assignment with public EF fixup.</summary>
-    private static async Task<MixedPayloadOwnerGraph> PrepareMixedPayloadOwnerGraphAsync(DbContext context)
+    private static async Task<MixedPayloadOwnerGraph> PrepareMixedPayloadOwnerGraphAsync(
+        DbContext context,
+        CancellationToken cancellationToken
+    )
     {
-        var a = await PreparePayloadOwnerRecoveryAsync(context);
-        var b = await context.Set<NavigationNode>().SingleAsync(node => node.Id == 3, CancellationToken.None);
+        var a = await PreparePayloadOwnerRecoveryAsync(context, cancellationToken: cancellationToken);
+        var b = await context
+            .Set<NavigationNode>()
+            .SingleAsync(node => node.Id == 3, cancellationToken);
+
         var entry = context.Entry(b);
 
         return new MixedPayloadOwnerGraph(a, entry, entry.Property(node => node.PayloadOwnerId));
     }
 
     /// <summary>Changes B through real fixup before A's prepared raw membership is installed by the library.</summary>
-    private static void StageMixedPayloadOwnerWrites(MixedPayloadOwnerGraph graph, bool leavesTarget)
+    private static void StageMixedPayloadOwnerWrites(
+        MixedPayloadOwnerGraph graph,
+        bool leavesTarget
+    )
     {
-        graph.BForeignKey.CurrentValue = leavesTarget ? graph.A.Previous.Id : graph.A.Target.Id;
+        graph.BForeignKey.CurrentValue = leavesTarget
+            ? graph.A.Previous.Id
+            : graph.A.Target.Id;
+
         StagePayloadOwnerWrite(graph.A, publicCurrentValue: false);
     }
 
     /// <summary>Reads participating stored FK values independently of the restored tracker or CLR graph.</summary>
     private static async Task<MixedPayloadOwnerAssignment[]> ReadMixedPayloadOwnerAssignmentsAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: cancellationToken);
 
-        return await verification.Set<NavigationNode>().Where(node => node.Id >= 2 && node.Id <= 4)
-            .OrderBy(node => node.Id).Select(node => new MixedPayloadOwnerAssignment(node.Id, node.PayloadOwnerId))
-            .ToArrayAsync(CancellationToken.None);
+        return await verification
+            .Set<NavigationNode>()
+            .Where(node => node.Id >= 2 && node.Id <= 4)
+            .OrderBy(node => node.Id)
+            .Select(node => new MixedPayloadOwnerAssignment(node.Id, node.PayloadOwnerId))
+            .ToArrayAsync(cancellationToken);
     }
 
     /// <summary>Holds exact tracked objects and property entries for two independent application writes.</summary>
     private sealed record MixedPayloadOwnerGraph(
         PayloadOwnerRecoveryGraph A,
         EntityEntry<NavigationNode> B,
-        PropertyEntry<NavigationNode, int?> BForeignKey);
+        PropertyEntry<NavigationNode, int?> BForeignKey
+    );
 
     /// <summary>Captures persisted relationship identity without materializing tracked entities.</summary>
-    private sealed record MixedPayloadOwnerAssignment(int Id, int? PayloadOwnerId);
+    private sealed record MixedPayloadOwnerAssignment(
+        int Id,
+        int? PayloadOwnerId
+    );
 }

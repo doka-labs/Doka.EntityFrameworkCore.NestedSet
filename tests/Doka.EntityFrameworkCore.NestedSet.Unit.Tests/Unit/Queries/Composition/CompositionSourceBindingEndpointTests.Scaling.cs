@@ -78,11 +78,13 @@ public sealed partial class CompositionSourceBindingEndpointTests
         for (var index = 0; index < 24; index++)
         {
             query = projected
-                ? Bind(query,
+                ? Bind(
+                    query,
                     selected => selected
-                        .Select(x => new { Node = x.Node })
-                        .Concat(selected.Select(y => new { Node = y.Node })))
-                : Bind(query,
+                        .Select(x => new { x.Node })
+                        .Concat(selected.Select(y => new { y.Node })))
+                : Bind(
+                    query,
                     selected => selected
                         .Select(x => x)
                         .Concat(selected.Select(y => y)));
@@ -127,7 +129,8 @@ public sealed partial class CompositionSourceBindingEndpointTests
             ? context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping)
             : first;
 
-        var query = first.Join(second,
+        var query = first.Join(
+            second,
             left => left.Id,
             right => right.Id,
             (left, right) => new CompositionGuardRow
@@ -141,7 +144,8 @@ public sealed partial class CompositionSourceBindingEndpointTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 24; index++)
         {
-            query = Bind(query,
+            query = Bind(
+                query,
                 selected => selected
                     .Select(row => new CompositionGuardRow
                     {
@@ -220,7 +224,9 @@ public sealed partial class CompositionSourceBindingEndpointTests
 
         var changing = new ChangingQuery(first, second);
         var expression = throughObjectField
-            ? Expression.Convert(Expression.Field(Expression.Constant(new ObjectQueryCapture(changing)),
+            ? Expression.Convert(
+                Expression.Field(
+                    Expression.Constant(new ObjectQueryCapture(changing)),
                     nameof(ObjectQueryCapture.Query)),
                 typeof(IQueryable<CompositionGuardNode>))
             : (Expression)Expression.Constant(changing, typeof(IQueryable<CompositionGuardNode>));
@@ -268,18 +274,20 @@ public sealed partial class CompositionSourceBindingEndpointTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 16; index++)
         {
-            query = Bind(query,
+            query = Bind(
+                query,
                 selected => selected
                     .Select(x => new
                     {
                         x.Node,
                         x.Payload,
                     })
-                    .Concat(selected.Select(y => new
-                    {
-                        y.Node,
-                        y.Payload,
-                    })));
+                    .Concat(
+                        selected.Select(y => new
+                        {
+                            y.Node,
+                            y.Payload,
+                        })));
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
@@ -306,11 +314,11 @@ public sealed partial class CompositionSourceBindingEndpointTests
         object query
     )
     {
-        /// <summary>Retains the caller's query without exposing IQueryable in the field's declared type.</summary>
-        public readonly object Query = query;
-
         /// <summary>Retains an opaque static capture for serialized cases in this test class.</summary>
         public static object? StaticQuery;
+
+        /// <summary>Retains the caller's query without exposing IQueryable in the field's declared type.</summary>
+        public readonly object Query = query;
 
         /// <summary>Gets the number of application getter invocations during metadata inspection.</summary>
         internal int GetterReads { get; private set; }
@@ -343,7 +351,9 @@ public sealed partial class CompositionSourceBindingEndpointTests
         public IQueryProvider Provider => first.Provider;
 
         /// <inheritdoc />
-        public Expression Expression => ++Reads == 1 ? first.Expression : second.Expression;
+        public Expression Expression => ++Reads == 1
+            ? first.Expression
+            : second.Expression;
 
         /// <inheritdoc />
         public IEnumerator<CompositionGuardNode> GetEnumerator()

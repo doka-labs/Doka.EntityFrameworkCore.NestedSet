@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using AmbientTransaction = System.Transactions.Transaction;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Features.Maintenance;
@@ -13,11 +14,11 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    /// <summary>The exact-tree queries and mapped structural selectors.</summary>
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
-
     /// <summary>The transaction and write-lock boundary shared with all other tree operations.</summary>
     private readonly NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope> _executor;
+
+    /// <summary>The exact-tree queries and mapped structural selectors.</summary>
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
 
     /// <summary>Creates maintenance operations sharing the exact-tree store and mutation boundary.</summary>
     /// <param name="store">The tree-bound store that projects mapped structural values.</param>
@@ -170,10 +171,10 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
             // WHY: String aliases must resolve with database collation. Unusual custom comparers and binary
             // keys retain the same canonical-link path rather than assuming CLR equality proves store equality.
             await foreach (var link in _store
-                               .ParentLinks
-                               .AsAsyncEnumerable()
-                               .WithCancellation(cancellationToken)
-                               .ConfigureAwait(false))
+                .ParentLinks
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
             {
                 parents.Add(link.Key, link.Parent);
             }
@@ -295,7 +296,9 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
         var context = _store.Context;
         var provider = NestedSetProviderCapabilities.Resolve(context);
         var transaction = context.Database.CurrentTransaction;
-        var isolation = transaction?.GetDbTransaction().IsolationLevel;
+        var isolation = transaction?.GetDbTransaction()
+            .IsolationLevel;
+
         var safeCallerSnapshot = provider.IsSafeReadSnapshot(isolation);
         var singleReadSnapshot = singleStatement && provider.HasStatementReadSnapshot(isolation);
 
@@ -305,7 +308,8 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
             {
                 // WHY: Native-key validation is one SELECT with an implicit statement snapshot on SQLite,
                 // InnoDB, and PostgreSQL. Existing transaction snapshots also cover canonical-parent reads.
-                return await read(cancellationToken).ConfigureAwait(false);
+                return await read(cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             if (transaction is null)
@@ -330,7 +334,8 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
                 {
                     // WHY: SQL Server snapshot isolation requires database opt-in. Unsupported or weaker caller
                     // isolation keeps the established lock protocol rather than returning a mixed-version tree.
-                    result = await read(token).ConfigureAwait(false);
+                    result = await read(token)
+                        .ConfigureAwait(false);
                 },
                 [_store.LockRequest(NestedSetTreeLockMode.Existing)],
                 cancellationToken)
@@ -356,7 +361,8 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
         Exception? failure = null;
         try
         {
-            result = await read(cancellationToken).ConfigureAwait(false);
+            result = await read(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception operationError)
         {
@@ -383,10 +389,7 @@ internal sealed class NestedSetMaintenance<TEntity, TKey, TTreeId, TScope>
 
         if (failure is not null)
         {
-            System
-                .Runtime
-                .ExceptionServices
-                .ExceptionDispatchInfo
+            ExceptionDispatchInfo
                 .Capture(failure)
                 .Throw();
         }

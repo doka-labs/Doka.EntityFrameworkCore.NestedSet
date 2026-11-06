@@ -17,14 +17,19 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var marker = new UnrelatedRow { Id = 701 };
         await context.AddAsync(marker, CancellationToken.None);
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Act
-        var rejected = await FailSingleInitializationAsync(context, fault);
+        var rejected = await FailSingleInitializationAsync(
+            context,
+            fault,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
         GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
@@ -33,26 +38,34 @@ public abstract partial class SingleInsertGuardTests
         // Assert
         Assert.True(rejected.Restored);
         Assert.Equal((false, false, false), retained);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Empty(
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
     /// <summary>Leaves no caller-owned strong reference when observing a rejected detached initialization.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<(WeakReference Root, WeakReference Owned, WeakReference? Foreign, bool Restored)>
         FailSingleInitializationAsync(
             SingleIdentityContext context,
-            int fault
+            int fault,
+            CancellationToken cancellationToken
         )
     {
         var treeId = Guid.NewGuid();
@@ -62,10 +75,13 @@ public abstract partial class SingleInsertGuardTests
         var rootReference = new WeakReference(input);
         var ownedReference = new WeakReference(input.Details);
         var foreign = input.Foreign ?? input.Details.Foreign;
-        var foreignReference = foreign is null ? null : new WeakReference(foreign);
+        var foreignReference = foreign is null
+            ? null
+            : new WeakReference(foreign);
+
         var error = await Record.ExceptionAsync(() => context
             .NestedSet<SingleIdentityNode>()
-            .InsertRootAsync(input, Guid.Empty, CancellationToken.None));
+            .InsertRootAsync(input, Guid.Empty, cancellationToken));
 
         ClearSingleInitializationFault(input);
         var restored =

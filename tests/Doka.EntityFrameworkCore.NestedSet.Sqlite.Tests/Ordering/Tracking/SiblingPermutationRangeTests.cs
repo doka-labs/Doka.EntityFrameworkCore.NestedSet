@@ -29,8 +29,11 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
         // WHY: Independent databases keep collected statistics from leaking into the fresh-statistics case.
         await using var fixture = new OrderingFixture();
         await fixture.InitializeAsync();
-        await using var setup = await fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var before = await setup
             .Set<OrderingNode>()
             .AsNoTracking()
@@ -43,7 +46,12 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
         }
 
         var probe = new EnterpriseProbe("StrictOrderingNodes", captureParameterBindings: true);
-        await using var context = await fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
         var changed = await context
             .Set<OrderingNode>()
             .Where(node => node.ParentId == 1 && node.Position < 195 && node.Position % 3 == 0)
@@ -77,11 +85,18 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
             commands.Count(index => probe
                 .Commands[index]
                 .Contains("CASE", StringComparison.Ordinal)));
+
         Assert.InRange(probe.MaximumUpdateParameters, 1, 322);
 
         foreach (var index in commands)
         {
-            var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, probe, index, Engine);
+            var plan = await QueryPlanTestSupport.ExplainAsync(
+                context,
+                probe,
+                index,
+                Engine,
+                cancellationToken: TestContext.Current.CancellationToken);
+
             _output.WriteLine(probe.Commands[index]);
             _output.WriteLine(plan);
             Assert.Contains("SEARCH StrictOrderingNodes", plan, StringComparison.Ordinal);
@@ -102,6 +117,7 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
             after
                 .Where(IsUnchanged)
                 .Select(Coordinates));
+
         Assert.Equal(
             Enumerable
                 .Range(1, after.Length * 2)
@@ -124,8 +140,11 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
     }
 
     /// <summary>Seeds 4,097 valid nodes without measuring hierarchy construction or automatic ordering.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static async Task SeedAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     )
     {
         var treeId = Guid.NewGuid();
@@ -137,9 +156,9 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
                 Scope = 1,
                 TreeId = treeId,
                 ParentId = 1,
-                Name = $"N{position / 3:D4}-{(char)('a' + (position % 3))}",
-                Left = (position * 2L) + 2,
-                Right = (position * 2L) + 3,
+                Name = $"N{position / 3:D4}-{(char)('a' + position % 3)}",
+                Left = position * 2L + 2,
+                Right = position * 2L + 3,
                 Depth = 1,
                 Position = position,
             });
@@ -154,8 +173,8 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
             Right = 8194,
         };
 
-        await context.AddRangeAsync(children.Prepend(root), CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.AddRangeAsync(children.Prepend(root), cancellationToken);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

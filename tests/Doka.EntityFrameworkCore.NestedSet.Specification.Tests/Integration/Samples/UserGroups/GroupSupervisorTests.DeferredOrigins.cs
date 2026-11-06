@@ -10,7 +10,7 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]);
@@ -24,15 +24,26 @@ public abstract partial class GroupSupervisorTests
         var secondRows = await secondQuery.ToArrayAsync(CancellationToken.None);
         var secondParameters = probe.ParameterValues.ToArray();
         var firstRows = await firstQuery.ToArrayAsync(CancellationToken.None);
-        var firstParameters = probe.ParameterValues.Skip(secondParameters.Length).ToArray();
+        var firstParameters = probe
+            .ParameterValues
+            .Skip(secondParameters.Length)
+            .ToArray();
 
         // Assert
         Assert.Equal(0, constructionCommands);
         Assert.Equal(2, probe.Commands.Count);
-        Assert.Equal(new[] { first.Users[1], first.Users[2] }.Order(),
-            firstRows.Select(row => row.CandidateUserId).Order());
+        Assert.Equal(
+            new[] { first.Users[1], first.Users[2] }.Order(),
+            firstRows
+                .Select(row => row.CandidateUserId)
+                .Order());
+
         Assert.All(firstRows, row => AssertDeferredCandidate(row, first, firstRequest, first.Groups[4], 1));
-        Assert.Equal(second.Users[4], Assert.Single(secondRows).CandidateUserId);
+        Assert.Equal(
+            second.Users[4],
+            Assert.Single(secondRows)
+                .CandidateUserId);
+
         AssertDeferredCandidate(secondRows[0], second, secondRequest, second.Groups[1], 3);
         AssertDeferredBindings(secondParameters, secondRequest, second.TenantId, probe.Commands[0]);
         AssertDeferredBindings(firstParameters, firstRequest, first.TenantId, probe.Commands[1]);
@@ -47,20 +58,28 @@ public abstract partial class GroupSupervisorTests
     [InlineData("all", true)]
     [InlineData("single", false)]
     [InlineData("single", true)]
-    public async Task DeferredResolutionRowsRetainEmptyAndAmbiguousOriginSources(string mode, bool empty)
+    public async Task DeferredResolutionRowsRetainEmptyAndAmbiguousOriginSources(
+        string mode,
+        bool empty
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]) with
         {
-            OnDay = empty ? new DateOnly(2025, 12, 31) : new DateOnly(2026, 10, 16),
+            OnDay = empty
+                ? new DateOnly(2025, 12, 31)
+                : new DateOnly(2026, 10, 16),
         };
 
         var secondRequest = DistinctDeferredRequest(second);
-        var selection = mode == "all" ? App.SupervisorSelection.All : App.SupervisorSelection.RequireUnique;
+        var selection = mode == "all"
+            ? App.SupervisorSelection.All
+            : App.SupervisorSelection.RequireUnique;
+
         probe.Enabled = true;
         var firstQuery = App.SupervisorQueries.ResolutionRows(context, first.TenantId, firstRequest, selection);
         var secondQuery = App.SupervisorQueries.ResolutionRows(context, second.TenantId, secondRequest, selection);
@@ -70,7 +89,11 @@ public abstract partial class GroupSupervisorTests
         var secondRows = await secondQuery.ToArrayAsync(CancellationToken.None);
         var secondParameters = probe.ParameterValues.ToArray();
         var firstRows = await firstQuery.ToArrayAsync(CancellationToken.None);
-        var firstParameters = probe.ParameterValues.Skip(secondParameters.Length).ToArray();
+        var firstParameters = probe
+            .ParameterValues
+            .Skip(secondParameters.Length)
+            .ToArray();
+
         var secondResult = App.SupervisorQueries.ReadResolution(second.TenantId, secondRows, selection);
         var firstResult = App.SupervisorQueries.ReadResolution(first.TenantId, firstRows, selection);
 
@@ -80,14 +103,23 @@ public abstract partial class GroupSupervisorTests
         Assert.Equal(App.SupervisorBatchStatus.Completed, firstResult.Status);
         var firstOrigin = Assert.Single(firstResult.Origins);
         Assert.Equal(first.Groups[5], firstOrigin.StartGroupId);
-        Assert.Equal(empty ? App.SupervisorResolutionStatus.NotFound : App.SupervisorResolutionStatus.Ambiguous,
+        Assert.Equal(
+            empty
+                ? App.SupervisorResolutionStatus.NotFound
+                : App.SupervisorResolutionStatus.Ambiguous,
             firstOrigin.Status);
+
         Assert.Empty(firstOrigin.Evidence);
         Assert.All(firstRows, row => Assert.Equal(firstRequest.SourceUserId, row.SourceUserId));
         var marker = Assert.Single(firstRows.Where(row => row.Kind == 1));
         Assert.Equal(first.Groups[5], marker.StartGroupId);
         Assert.Equal(first.TreeId, marker.StartTreeId);
-        Assert.Equal(empty ? 0L : 2L, marker.Count);
+        Assert.Equal(
+            empty
+                ? 0L
+                : 2L,
+            marker.Count);
+
         Assert.False(marker.HasEvidence);
         Assert.Equal(App.SupervisorBatchStatus.Completed, secondResult.Status);
         var secondOrigin = Assert.Single(secondResult.Origins);
@@ -109,11 +141,14 @@ public abstract partial class GroupSupervisorTests
     [InlineData("all", "hidden-source")]
     [InlineData("single", "expired-membership")]
     [InlineData("single", "missing-source")]
-    public async Task DeferredOriginsDoNotReuseAnotherRequestsAuthorization(string mode, string rejection)
+    public async Task DeferredOriginsDoNotReuseAnotherRequestsAuthorization(
+        string mode,
+        string rejection
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]);
@@ -123,22 +158,36 @@ public abstract partial class GroupSupervisorTests
         }
 
         var secondRequest = DistinctDeferredRequest(second);
-        var selection = mode == "all" ? App.SupervisorSelection.All : App.SupervisorSelection.RequireUnique;
+        var selection = mode == "all"
+            ? App.SupervisorSelection.All
+            : App.SupervisorSelection.RequireUnique;
+
         var firstQuery = App.SupervisorQueries.ResolutionRows(context, first.TenantId, firstRequest, selection);
         var secondQuery = App.SupervisorQueries.ResolutionRows(context, second.TenantId, secondRequest, selection);
+
         // WHY: Build both deferred queries before changing authorization. A cached shape must neither
         // freeze the earlier visible origin nor borrow the other request's valid tenant and source.
         if (rejection == "hidden-source")
         {
-            await context.Users.Where(user => user.TenantId == first.TenantId && user.Id == first.Users[0])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), CancellationToken.None);
+            await context
+                .Users
+                .Where(user => user.TenantId == first.TenantId && user.Id == first.Users[0])
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(user => user.Visible, false),
+                    CancellationToken.None);
         }
         else if (rejection == "expired-membership")
         {
-            await context.UserGroupMemberships.Where(member => member.TenantId == first.TenantId
-                    && member.UserId == first.Users[0] && member.UserGroupId == first.Groups[5])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.ToDate,
-                    firstRequest.OnDay!.Value.AddDays(-1)), CancellationToken.None);
+            await context
+                .UserGroupMemberships
+                .Where(member => member.TenantId == first.TenantId
+                    && member.UserId == first.Users[0]
+                    && member.UserGroupId == first.Groups[5])
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        member => member.ToDate,
+                        firstRequest.OnDay!.Value.AddDays(-1)),
+                    CancellationToken.None);
         }
 
         probe.Enabled = true;
@@ -147,15 +196,22 @@ public abstract partial class GroupSupervisorTests
         var secondRows = await secondQuery.ToArrayAsync(CancellationToken.None);
         var secondParameters = probe.ParameterValues.ToArray();
         var firstRows = await firstQuery.ToArrayAsync(CancellationToken.None);
-        var firstParameters = probe.ParameterValues.Skip(secondParameters.Length).ToArray();
+        var firstParameters = probe
+            .ParameterValues
+            .Skip(secondParameters.Length)
+            .ToArray();
+
         var secondResult = App.SupervisorQueries.ReadResolution(second.TenantId, secondRows, selection);
         var firstResult = App.SupervisorQueries.ReadResolution(first.TenantId, firstRows, selection);
 
         // Assert
         Assert.Equal(2, probe.Commands.Count);
-        Assert.Equal(rejection == "expired-membership"
-            ? App.SupervisorBatchStatus.NoVisibleMemberships : App.SupervisorBatchStatus.SourceNotFound,
+        Assert.Equal(
+            rejection == "expired-membership"
+                ? App.SupervisorBatchStatus.NoVisibleMemberships
+                : App.SupervisorBatchStatus.SourceNotFound,
             firstResult.Status);
+
         Assert.Empty(firstResult.Origins);
         Assert.DoesNotContain(firstRows, row => row.Kind == 1);
         Assert.Equal(App.SupervisorBatchStatus.Completed, secondResult.Status);
@@ -171,10 +227,13 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Uses another real source, origin, and validity date with exactly one upstream roleholder.</summary>
-    private static App.SupervisorRequest DistinctDeferredRequest(App.SupervisorScenarioFixture data)
+    private static App.SupervisorRequest DistinctDeferredRequest(
+        App.SupervisorScenarioFixture data
+    )
         => data.Request(group: data.Groups[4]) with
         {
-            SourceUserId = data.Users[1], OnDay = new DateOnly(2026, 10, 17),
+            SourceUserId = data.Users[1],
+            OnDay = new DateOnly(2026, 10, 17),
         };
 
     /// <summary>Checks complete occurrence identity without reducing independent requests to person IDs.</summary>
@@ -206,9 +265,12 @@ public abstract partial class GroupSupervisorTests
         Assert.Contains(request.StartGroupId!.Value, values);
         var day = request.OnDay!.Value;
         var text = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        Assert.Contains(values, value => value is DateOnly date && date == day
-            || value is DateTime instant && DateOnly.FromDateTime(instant) == day
-            || value is string scalar && scalar == text);
+        Assert.Contains(
+            values,
+            value => (value is DateOnly date && date == day)
+                || (value is DateTime instant && DateOnly.FromDateTime(instant) == day)
+                || (value is string scalar && scalar == text));
+
         Assert.DoesNotContain(text, command, StringComparison.Ordinal);
         Assert.DoesNotContain(tenantId.ToString("D"), command, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(tenantId.ToString("N"), command, StringComparison.OrdinalIgnoreCase);

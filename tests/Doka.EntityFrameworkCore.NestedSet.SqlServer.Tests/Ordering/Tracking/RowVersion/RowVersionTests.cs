@@ -23,7 +23,10 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(readCommittedSnapshot);
+        await using var context = await _fixture.ResetAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            readCommittedSnapshot);
+
         var tree = context
             .NestedSet<SqlServerVersionNode>()
             .ForScope(1);
@@ -66,7 +69,7 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync();
+        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
         var tree = context
             .NestedSet<SqlServerVersionNode>()
             .ForScope(1);
@@ -105,19 +108,26 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
         Assert.NotEqual(originalToken, currentToken);
         Assert.NotEqual(peerToken, tracked[1].Version);
         Assert.Equal(
-            acceptAllChanges ? EntityState.Unchanged : EntityState.Modified,
+            acceptAllChanges
+                ? EntityState.Unchanged
+                : EntityState.Modified,
             context.Entry(tracked[0])
                 .State);
+
         Assert.Equal(
             EntityState.Unchanged,
             context.Entry(tracked[1])
                 .State);
+
         Assert.Equal(
-            acceptAllChanges ? "Zulu" : "Alpha",
+            acceptAllChanges
+                ? "Zulu"
+                : "Alpha",
             context
                 .Entry(tracked[0])
                 .Property(node => node.Name)
                 .OriginalValue);
+
         var persisted = await context
             .Set<SqlServerVersionNode>()
             .AsNoTracking()
@@ -128,6 +138,10 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
         Assert.Equal(["Middle", "Zulu"], persisted.Select(node => node.Name));
         Assert.Equal(persisted[0].Version, tracked[1].Version);
         Assert.Equal(persisted[1].Version, currentToken);
-        Assert.Equal(acceptAllChanges ? currentToken : originalToken, tracked[0].Version);
+        Assert.Equal(
+            acceptAllChanges
+                ? currentToken
+                : originalToken,
+            tracked[0].Version);
     }
 }

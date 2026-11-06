@@ -9,22 +9,33 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Builds schema through ordinary metadata, then returns a context that forbids rebuilding.</summary>
     /// <param name="engine">The real relational engine represented by the generated model.</param>
     /// <param name="compiledModel">The checked-in output of that provider's actual EF model generator.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<CompiledTreeContext> ResetAsync(
         string engine,
-        IModel compiledModel
+        IModel compiledModel,
+        CancellationToken cancellationToken
     )
     {
-        await using var setup = await CreateContextAsync(engine, null);
+        await using var setup = await CreateContextAsync(engine, null, cancellationToken: cancellationToken);
 
         if (!_initialized.Contains(engine))
         {
             // WHY: Schema creation needs design metadata; runtime operations below must use only generated metadata.
             await setup
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
 
             _initialized.Add(engine);
         }
@@ -35,31 +46,31 @@ public sealed class CompiledModelFixture : IAsyncLifetime
             .Set<CompiledFolder>()
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(row => row.ParentId, (string?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await setup
             .Set<CompiledNumber>()
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(row => row.ParentId, (int?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await setup
             .Set<CompiledFolder>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         await setup
             .Set<CompiledNumber>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
         await setup
             .Set<CompiledScope>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, CancellationToken.None);
-        await setup.AddAsync(new CompiledScope { Id = "scope" }, CancellationToken.None);
-        await setup.SaveChangesAsync(CancellationToken.None);
+        await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, cancellationToken);
+        await setup.AddAsync(new CompiledScope { Id = "scope" }, cancellationToken);
+        await setup.SaveChangesAsync(cancellationToken);
 
-        return await CreateContextAsync(engine, compiledModel);
+        return await CreateContextAsync(engine, compiledModel, cancellationToken: cancellationToken);
     }
 
     /// <summary>Retains the fixture's exact provider options and replaces only its explicit model selection.</summary>
@@ -67,9 +78,11 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     /// <param name="engine">The provider whose configured extensions are cloned.</param>
     /// <param name="model">The optional generated runtime model.</param>
     /// <param name="enableNestedSets">Whether the primary nested-set options bootstrap is installed.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The complete options for the requested context.</returns>
     public async Task<DbContextOptions<TContext>> CreateOptionsAsync<TContext>(
         string engine,
+        CancellationToken cancellationToken,
         IModel? model = null,
         bool enableNestedSets = true
     )
@@ -77,7 +90,7 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -100,38 +113,37 @@ public sealed class CompiledModelFixture : IAsyncLifetime
 
         return model is null
             ? options.Options
-            : options.UseModel(model).Options;
+            : options.UseModel(model)
+                .Options;
     }
 
     /// <summary>Creates the context type whose provider generated the selected runtime model.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task<CompiledTreeContext> CreateContextAsync(
         string engine,
-        IModel? model
+        IModel? model,
+        CancellationToken cancellationToken
     ) => engine switch
     {
         "Sqlite" =>
-            new CompiledTreeContext(await CreateOptionsAsync<CompiledTreeContext>(engine, model), model is not null),
+            new CompiledTreeContext(
+                await CreateOptionsAsync<CompiledTreeContext>(
+                    engine,
+                    cancellationToken: cancellationToken,
+                    model),
+                model is not null),
         "MySql" => new CompiledMySqlContext(
-            await CreateOptionsAsync<CompiledMySqlContext>(engine, model),
+            await CreateOptionsAsync<CompiledMySqlContext>(engine, cancellationToken: cancellationToken, model),
             model is not null),
         "MariaDb" => new CompiledMariaDbContext(
-            await CreateOptionsAsync<CompiledMariaDbContext>(engine, model),
+            await CreateOptionsAsync<CompiledMariaDbContext>(engine, cancellationToken: cancellationToken, model),
             model is not null),
         "PostgreSql" => new CompiledPostgreSqlContext(
-            await CreateOptionsAsync<CompiledPostgreSqlContext>(engine, model),
+            await CreateOptionsAsync<CompiledPostgreSqlContext>(engine, cancellationToken: cancellationToken, model),
             model is not null),
         "SqlServer" => new CompiledSqlServerContext(
-            await CreateOptionsAsync<CompiledSqlServerContext>(engine, model),
+            await CreateOptionsAsync<CompiledSqlServerContext>(engine, cancellationToken: cancellationToken, model),
             model is not null),
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
-    }
 }

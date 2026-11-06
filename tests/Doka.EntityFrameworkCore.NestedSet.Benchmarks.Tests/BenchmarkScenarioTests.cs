@@ -27,7 +27,11 @@ public sealed class BenchmarkScenarioTests
         var offset = 0;
         for (var tree = 0; tree < scenario.Trees; tree++)
         {
-            var size = (scenario.Nodes / scenario.Trees) + (tree < scenario.Nodes % scenario.Trees ? 1 : 0);
+            var size = scenario.Nodes / scenario.Trees
+                + (tree < scenario.Nodes % scenario.Trees
+                    ? 1
+                    : 0);
+
             var import = forest.Imports[tree];
             Assert.Equal(new Guid(tree + 1, 0, 0, new byte[8]), import.TreeId);
             Assert.Equal(101 + offset, import.Root.Entity.Id);
@@ -39,13 +43,13 @@ public sealed class BenchmarkScenarioTests
                     ? null
                     : offset
                     + 101
-                    + (shape switch
+                    + shape switch
                     {
                         BenchmarkShape.Wide => 0,
                         BenchmarkShape.Deep => local - 1,
                         BenchmarkShape.Balanced => (local - 1) / 2,
                         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
-                    });
+                    };
 
                 Assert.Equal(parent, actualParents[key]);
                 Assert.Equal(parent, forest.Parents[offset + local]);
@@ -92,7 +96,10 @@ public sealed class BenchmarkScenarioTests
         Assert.Null(parents[1]);
         Assert.Equal(nodes - 1, parents[nodes]);
         Assert.All(Enumerable.Range(2, nodes - 1), key => Assert.Equal(key - 1, parents[key]));
-        Assert.Equal(1, Assert.Single(forest.Imports).Root.Entity.Id);
+        Assert.Equal(
+            1,
+            Assert.Single(forest.Imports)
+                .Root.Entity.Id);
     }
 
     /// <summary>Incomplete scenarios are rejected before a provider or import plan is acquired.</summary>

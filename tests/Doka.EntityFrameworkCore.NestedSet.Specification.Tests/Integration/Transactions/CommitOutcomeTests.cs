@@ -19,7 +19,7 @@ public abstract class CommitOutcomeTests : ProviderTest
     public async Task PostCommitFailureRequiresFreshContextReconciliation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new PostCommitFailureProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -40,7 +40,8 @@ public abstract class CommitOutcomeTests : ProviderTest
         if (error is AggregateException aggregate)
         {
             Assert.Contains(
-                aggregate.Flatten().InnerExceptions,
+                aggregate.Flatten()
+                    .InnerExceptions,
                 cause => ReferenceEquals(cause, probe.Failure));
         }
         else
@@ -59,6 +60,7 @@ public abstract class CommitOutcomeTests : ProviderTest
         Assert.Equal(
             (41, 1, 2, 0, 0),
             (persisted.NodeId, persisted.Start, persisted.End, persisted.Depth, persisted.Position));
+
         Assert.Equal("Committed once", persisted.Payload);
         var verifiedTree = verification
             .NestedSet<TreeNode>()

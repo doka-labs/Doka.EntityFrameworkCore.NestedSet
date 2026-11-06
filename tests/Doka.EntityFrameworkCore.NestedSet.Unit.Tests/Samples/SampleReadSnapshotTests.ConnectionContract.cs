@@ -42,14 +42,16 @@ public sealed partial class SampleReadSnapshotTests
 
         services.AddScoped(_ => replacement);
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var reads = 0;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(
+            context,
             _ =>
             {
                 reads++;
@@ -62,16 +64,23 @@ public sealed partial class SampleReadSnapshotTests
 
         // Assert
         Assert.IsNotAssignableFrom<ITransactionEnlistmentManager>(replacement);
-        Assert.Equal("The SQLite read snapshot requires a relational connection with the EF enlistment contract.",
-            Assert.IsType<NotSupportedException>(error).Message);
+        Assert.Equal(
+            "The SQLite read snapshot requires a relational connection with the EF enlistment contract.",
+            Assert.IsType<NotSupportedException>(error)
+                .Message);
 
         Assert.Equal(0, reads);
         Assert.Equal(0, probe.ResourceCalls);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, state);
+        Assert.Equal(
+            alreadyOpen
+                ? ConnectionState.Open
+                : ConnectionState.Closed,
+            state);
     }
 
     /// <summary>Exposes only IRelationalConnection so an unsupported service cannot pass by inheritance.</summary>
+
     // WHY: DispatchProxy creates the concrete subtype in its separate generated assembly. Expose that
     // inheritance boundary explicitly, as with the existing metadata probes; this test assembly is not shipped.
     public class SnapshotInterfaceConnection : DispatchProxy

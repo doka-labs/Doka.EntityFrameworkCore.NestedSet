@@ -17,10 +17,8 @@ internal sealed partial class NestedSetQuery<TEntity>
 
     /// <summary>Owns a closed direct-edge projection, whose aliases cannot capture an enclosing path.</summary>
     private static readonly Expression<Func<TEntity, TEntity, NestedSetQueryEdge<TEntity>>> s_edgeProjection =
-    (
-        principal,
-        dependent
-    ) => new NestedSetQueryEdge<TEntity>
+    (principal,
+        dependent) => new NestedSetQueryEdge<TEntity>
     {
         Parent = principal,
         Child = dependent,

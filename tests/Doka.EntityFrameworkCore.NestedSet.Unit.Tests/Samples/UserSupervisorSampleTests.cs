@@ -50,32 +50,34 @@ public sealed class UserSupervisorSampleTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(
-                    [
-                        nameof(UserGroupMembership.TenantId),
-                        nameof(UserGroupMembership.UserGroupId),
-                        nameof(UserGroupMembership.UserId),
-                    ]));
+                [
+                    nameof(UserGroupMembership.TenantId),
+                    nameof(UserGroupMembership.UserGroupId),
+                    nameof(UserGroupMembership.UserId),
+                ]));
 
         Assert.Contains(
             membership.GetForeignKeys(),
             foreignKey => foreignKey.PrincipalEntityType.ClrType == typeof(User)
                 && foreignKey.DeleteBehavior == DeleteBehavior.Cascade);
+
         Assert.Contains(
             membership.GetForeignKeys(),
             foreignKey => foreignKey.PrincipalEntityType.ClrType == typeof(UserGroup)
                 && foreignKey.DeleteBehavior == DeleteBehavior.Restrict);
+
         Assert.Contains(
             entity.GetIndexes(),
             index => index
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual(
-                    [
-                        nameof(User.TenantId),
-                        UserHierarchyProperties.TreeId,
-                        nameof(User.SupervisorId),
-                        UserHierarchyProperties.NestedSetPosition,
-                    ]));
+                [
+                    nameof(User.TenantId),
+                    UserHierarchyProperties.TreeId,
+                    nameof(User.SupervisorId),
+                    UserHierarchyProperties.NestedSetPosition,
+                ]));
     }
 
     /// <summary>A moved employee is found through scoped ancestors and retains its group membership.</summary>

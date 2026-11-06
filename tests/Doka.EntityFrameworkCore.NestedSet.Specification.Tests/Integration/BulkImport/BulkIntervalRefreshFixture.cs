@@ -8,9 +8,20 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns a cleared generated-value context on the selected real relational engine.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     public async Task<BulkIntervalRefreshContext> ResetAsync(
         string engine,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
@@ -18,7 +29,7 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
 
         if (create)
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -27,7 +38,7 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
             .ConfigureTestWarnings();
 
         foreach (var extension in source.GetService<IDbContextOptions>()
-                     .Extensions)
+            .Extensions)
         {
             ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(extension);
         }
@@ -38,41 +49,34 @@ public sealed class BulkIntervalRefreshFixture : IAsyncLifetime
             {
                 await setup
                     .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                    .CreateTablesAsync(cancellationToken);
             }
 
             await setup
                 .Set<BulkIntervalNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await setup
                 .Set<BulkIntervalNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await setup
                 .Set<BulkStageTextNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await setup
                 .Set<BulkStageBinaryParent>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             // WHY: Fresh import cases must not inherit active identities or tombstones from a previous case.
-            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, CancellationToken.None);
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(setup, cancellationToken);
         }
 
-        return new BulkIntervalRefreshContext(options.AddInterceptors(interceptors).Options);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
+        return new BulkIntervalRefreshContext(
+            options.AddInterceptors(interceptors)
+                .Options);
     }
 }
 
@@ -101,7 +105,9 @@ public sealed class BulkIntervalRefreshContext : DbContext
             + $" + {sql.DelimitIdentifier(nameof(BulkIntervalNode.Depth))}"
             + $" + {sql.DelimitIdentifier(nameof(BulkIntervalNode.Position))}";
 
-        var expression = Database.IsSqlServer() ? $"CAST({sum} AS int)" : sum;
+        var expression = Database.IsSqlServer()
+            ? $"CAST({sum} AS int)"
+            : sum;
 
         // WHY: Computed values change after parent repair on every provider, independently of trigger timing.
         node
@@ -114,9 +120,11 @@ public sealed class BulkIntervalRefreshContext : DbContext
             .Property(value => value.Label)
             .HasMaxLength(80)
             .HasDefaultValue("Generated detail");
+
         details
             .Property(value => value.Revision)
             .HasComputedColumnSql(expression + " + 1000", stored: true);
+
         node.HasNestedSet(builder => builder
             .HasTreeId(value => value.TreeId)
             .HasScope(value => value.Scope)
@@ -142,22 +150,21 @@ public sealed class BulkIntervalRefreshContext : DbContext
         // exact inserted key instead of allowing a same-count replacement through the application's comparer.
         key.Metadata.SetValueComparer(
             new ValueComparer<string>(
-                (
-                    left,
-                    right
-                ) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+                (left,
+                    right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
                 value => StringComparer.OrdinalIgnoreCase.GetHashCode(value),
                 value => value));
-
 
         text
             .Property(value => value.Scope)
             .HasMaxLength(64)
             .UseCollation(collation);
+
         text
             .Property(value => value.ParentId)
             .HasMaxLength(64)
             .UseCollation(collation);
+
         text.HasNestedSet(builder => builder
             .HasTreeId(value => value.TreeId)
             .HasScope(value => value.Scope)
@@ -169,9 +176,11 @@ public sealed class BulkIntervalRefreshContext : DbContext
             .Property(value => value.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         binary
             .Property(value => value.ParentId)
             .HasMaxLength(64);
+
         binary.HasNestedSet(builder => builder
             .HasTreeId(value => value.TreeId)
             .HasScope(value => value.Scope)
@@ -182,15 +191,6 @@ public sealed class BulkIntervalRefreshContext : DbContext
 /// <summary>Exercises identity generation, ordinary payload retention and final computed-value refresh.</summary>
 public sealed class BulkIntervalNode : IScopedNestedSetNode<int, Guid, int>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the independent forest scope.</summary>
-    public int Scope { get; set; }
-
     /// <summary>Gets or sets the immediate parent identity.</summary>
     public int? ParentId { get; set; }
 
@@ -205,6 +205,15 @@ public sealed class BulkIntervalNode : IScopedNestedSetNode<int, Guid, int>
 
     /// <summary>Gets or sets complex payload containing default and update-generated values.</summary>
     public BulkGeneratedDetails Details { get; set; } = new();
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the independent forest scope.</summary>
+    public int Scope { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

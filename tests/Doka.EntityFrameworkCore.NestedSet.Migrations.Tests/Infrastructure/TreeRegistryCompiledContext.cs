@@ -23,6 +23,7 @@ public sealed class TreeRegistryCompiledContext : NestedSetDbContext
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node.HasNestedSet(builder => builder
             .HasParent(value => value.ParentId)
             .HasTreeRegistryTable(RegistryTable));
@@ -32,14 +33,14 @@ public sealed class TreeRegistryCompiledContext : NestedSetDbContext
 /// <summary>Provides a hierarchy node for generated-model execution.</summary>
 public sealed class TreeRegistryCompiledNode : INestedSetNode<int, Guid>
 {
+    /// <summary>Gets or sets the optional direct parent identifier.</summary>
+    public int? ParentId { get; set; }
+
     /// <inheritdoc />
     public int Id { get; set; }
 
     /// <inheritdoc />
     public Guid TreeId { get; set; }
-
-    /// <summary>Gets or sets the optional direct parent identifier.</summary>
-    public int? ParentId { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

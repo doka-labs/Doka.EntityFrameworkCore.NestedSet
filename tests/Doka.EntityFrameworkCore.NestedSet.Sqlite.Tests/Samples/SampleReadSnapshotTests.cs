@@ -1,5 +1,4 @@
 extern alias SnapshotSample;
-
 using Microsoft.Data.Sqlite;
 using SampleReadSnapshot = SnapshotSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleReadSnapshot;
 
@@ -11,7 +10,9 @@ public sealed class SampleReadSnapshotTests
 {
     /// <summary>Uses immutable SQLite ownership while each test owns its local database.</summary>
     /// <param name="fixture">The fixture identifying this suite's SQLite engine.</param>
-    public SampleReadSnapshotTests(ProviderFixture<ProviderResources, SqliteEngine> fixture) : base(fixture) { }
+    public SampleReadSnapshotTests(
+        ProviderFixture<ProviderResources, SqliteEngine> fixture
+    ) : base(fixture) { }
 
     /// <summary>A WAL writer commits between reads without changing the owned reader's established snapshot.</summary>
     /// <param name="alreadyOpen">Whether the caller already owns an open reader connection.</param>
@@ -19,14 +20,20 @@ public sealed class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnedWalSnapshotPermitsWriterCommitAndRetainsEarlierView(bool alreadyOpen)
+    public async Task OwnedWalSnapshotPermitsWriterCommitAndRetainsEarlierView(
+        bool alreadyOpen
+    )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         await context.Database.ExecuteSqlRawAsync(
             "CREATE TABLE SnapshotReadSentinels (Value TEXT NOT NULL); "
-            + "INSERT INTO SnapshotReadSentinels VALUES ('before');", CancellationToken.None);
+            + "INSERT INTO SnapshotReadSentinels VALUES ('before');",
+            CancellationToken.None);
 
         // WHY: WAL is deployment/test setup, never a per-report mutation. It allows the writer's commit
         // while the reader retains its old version, exposing an accidental BEGIN IMMEDIATE reservation.
@@ -42,21 +49,27 @@ public sealed class SampleReadSnapshotTests
         var committed = false;
 
         // Act
-        var result = await SampleReadSnapshot.RunAsync(context, async token =>
-        {
-            var first = await ReadValueAsync(context, token);
-            await using var transaction = await writer.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable, token);
+        var result = await SampleReadSnapshot.RunAsync(
+            context,
+            async token =>
+            {
+                var first = await ReadValueAsync(context, token);
+                await using var transaction = await writer.Database.BeginTransactionAsync(
+                    IsolationLevel.Serializable,
+                    token);
 
-            await writer.Database.ExecuteSqlRawAsync("UPDATE SnapshotReadSentinels SET Value = 'after'", token);
-            await transaction.CommitAsync(token);
-            committed = true;
-            var second = await ReadValueAsync(context, token);
+                await writer.Database.ExecuteSqlRawAsync("UPDATE SnapshotReadSentinels SET Value = 'after'", token);
+                await transaction.CommitAsync(token);
+                committed = true;
+                var second = await ReadValueAsync(context, token);
 
-            return (First: first, Second: second);
-        }, CancellationToken.None);
+                return (First: first, Second: second);
+            },
+            CancellationToken.None);
 
-        var connectionState = context.Database.GetDbConnection().State;
+        var connectionState = context.Database.GetDbConnection()
+            .State;
+
         var latest = await ReadValueAsync(writer, CancellationToken.None);
 
         if (alreadyOpen)
@@ -68,13 +81,27 @@ public sealed class SampleReadSnapshotTests
         Assert.True(committed);
         Assert.Equal(("before", "before"), result);
         Assert.Equal("after", latest);
-        Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, connectionState);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(
+            alreadyOpen
+                ? ConnectionState.Open
+                : ConnectionState.Closed,
+            connectionState);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
     /// <summary>Reads one scalar through EF without tracking or depending on a sample domain model.</summary>
-    private static Task<string> ReadValueAsync(DbContext context, CancellationToken cancellationToken)
-        => context.Database.SqlQueryRaw<string>("SELECT Value FROM SnapshotReadSentinels")
+    private static Task<string> ReadValueAsync(
+        DbContext context,
+        CancellationToken cancellationToken
+    )
+        => context
+            .Database
+            .SqlQueryRaw<string>("SELECT Value FROM SnapshotReadSentinels")
             .SingleAsync(cancellationToken);
 }

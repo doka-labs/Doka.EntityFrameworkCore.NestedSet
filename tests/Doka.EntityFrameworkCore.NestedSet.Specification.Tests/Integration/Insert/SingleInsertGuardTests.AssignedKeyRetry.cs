@@ -16,11 +16,13 @@ public abstract partial class SingleInsertGuardTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -46,7 +48,9 @@ public abstract partial class SingleInsertGuardTests
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidStructure,
-            Assert.IsType<NestedSetException>(rejection).Code);
+            Assert.IsType<NestedSetException>(rejection)
+                .Code);
+
         var saved = Assert.Single(
             await context
                 .Set<TreeNode>()
@@ -58,12 +62,18 @@ public abstract partial class SingleInsertGuardTests
             (101, 1, Guid.Empty, (int?)null, 1L, 2L, 0, 0L),
             (input.NodeId, input.Tree, input.TreeId, input.Parent, input.Start, input.End, input.Depth,
                 input.Position));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.NotSame(input, await context.FindAsync<TreeNode>([101], CancellationToken.None));
     }
@@ -82,11 +92,13 @@ public abstract partial class SingleInsertGuardTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -112,7 +124,8 @@ public abstract partial class SingleInsertGuardTests
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidStructure,
-            Assert.IsType<NestedSetException>(rejection).Code);
+            Assert.IsType<NestedSetException>(rejection)
+                .Code);
 
         var saved = Assert.Single(
             await context
@@ -126,12 +139,18 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(
             (1, Guid.Empty, 1L, 2L, 0, 0L),
             (input.Tree, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.NotSame(input, await context.FindAsync<BinaryNode>([new byte[] { 3 }], CancellationToken.None));
     }

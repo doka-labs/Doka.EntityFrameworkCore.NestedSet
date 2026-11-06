@@ -93,7 +93,8 @@ internal sealed record SampleCommand
         index++;
 
         if (index == args.Length
-            || args[index].StartsWith("--", StringComparison.Ordinal)
+            || args[index]
+                .StartsWith("--", StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(args[index]))
         {
             throw new ArgumentException("--provider and --scenario require a value.", nameof(args));

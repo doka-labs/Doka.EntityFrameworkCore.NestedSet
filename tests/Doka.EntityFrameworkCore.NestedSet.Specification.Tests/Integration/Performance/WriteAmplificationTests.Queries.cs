@@ -7,8 +7,11 @@ public abstract partial class WriteAmplificationTests
     public async Task ParentQueryJoinsTheScopedAnchorWithoutOrdering()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -33,8 +36,11 @@ public abstract partial class WriteAmplificationTests
     public async Task AncestorQueryReturnsTheScopedPathWithoutExistenceScans()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -57,8 +63,11 @@ public abstract partial class WriteAmplificationTests
     public async Task DescendantQueryPreservesDepthFilterWithoutExistenceScans()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -82,8 +91,11 @@ public abstract partial class WriteAmplificationTests
     public async Task ParentQueryExcludesAnAnchorInAnotherScope()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new StructuralWriteProbe();
         await using var context = database.CreateContext(probe);
         var service = context

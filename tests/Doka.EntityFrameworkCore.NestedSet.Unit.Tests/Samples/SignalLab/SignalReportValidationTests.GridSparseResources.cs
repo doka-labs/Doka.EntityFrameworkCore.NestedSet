@@ -37,7 +37,8 @@ public sealed partial class SignalReportValidationTests
         // WHY: This source offers only completed ValueTasks. Current-thread bytes isolate this operation
         // from parallel tests without blocking async execution; the thread assertion guards that premise.
         var before = GC.GetAllocatedBytesForCurrentThread();
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             rows,
             CancellationToken.None));
 
@@ -62,19 +63,8 @@ public sealed partial class SignalReportValidationTests
         private readonly Task<bool> _failure = Task.FromException<bool>(failure);
         private int _index = -1;
 
-        /// <summary>Gets the latest sparse scalar projection.</summary>
-        public SignalReportTotal Current => rows[_index];
-
         /// <summary>Gets whether the failed reader was asynchronously disposed.</summary>
         internal bool Disposed { get; private set; }
-
-        /// <summary>Returns completed values or the prepared late failure.</summary>
-        public ValueTask<bool> MoveNextAsync()
-        {
-            _index++;
-
-            return _index < rows.Length ? ValueTask.FromResult(true) : new ValueTask<bool>(_failure);
-        }
 
         /// <summary>Exposes the sole prepared enumerator after checking the supplied cancellation token.</summary>
         public IAsyncEnumerator<SignalReportTotal> GetAsyncEnumerator(
@@ -84,6 +74,19 @@ public sealed partial class SignalReportValidationTests
             cancellationToken.ThrowIfCancellationRequested();
 
             return this;
+        }
+
+        /// <summary>Gets the latest sparse scalar projection.</summary>
+        public SignalReportTotal Current => rows[_index];
+
+        /// <summary>Returns completed values or the prepared late failure.</summary>
+        public ValueTask<bool> MoveNextAsync()
+        {
+            _index++;
+
+            return _index < rows.Length
+                ? ValueTask.FromResult(true)
+                : new ValueTask<bool>(_failure);
         }
 
         /// <summary>Records disposal without scheduling additional work.</summary>

@@ -52,7 +52,7 @@ public sealed class CompositionBenchmarkTests
 
         await using var cleanup = new CompositionBenchmarkOwner(benchmark);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         if (reference)
@@ -65,11 +65,18 @@ public sealed class CompositionBenchmarkTests
         }
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.NotEmpty(benchmark.Result);
         Assert.All(benchmark.Result, total => Assert.InRange(total.Anchor, 1, 16));
         Assert.Empty(benchmark.Fixture.Context.ChangeTracker.Entries<BenchmarkNode>());
-        Assert.Equal(3, benchmark.Fixture.Context.ChangeTracker.Entries<BenchmarkTrackedEntity>().Count());
+        Assert.Equal(
+            3,
+            benchmark
+                .Fixture
+                .Context
+                .ChangeTracker
+                .Entries<BenchmarkTrackedEntity>()
+                .Count());
     }
 
     /// <summary>Both complete queries reject a blocked nearest-self payload without falling back to root.</summary>
@@ -212,10 +219,10 @@ public sealed class CompositionBenchmarkTests
 
         await using var cleanup = new CompositionBenchmarkOwner(benchmark);
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+        var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);

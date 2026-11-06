@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Doka.EntityFrameworkCore.MySql;
 using Doka.EntityFrameworkCore.NestedSet;
 using Doka.NestedSet.PackageConsumers;
@@ -10,4 +11,4 @@ options.UseMySql(
     MySqlServerVersion.MariaDb(new Version(11, 8, 0)),
     mysql => mysql.UseNestedSets());
 
-await ConsumerContext.VerifyQueryAsync(options.Options);
+await ConsumerContext.VerifyQueryAsync(options.Options, CancellationToken.None);

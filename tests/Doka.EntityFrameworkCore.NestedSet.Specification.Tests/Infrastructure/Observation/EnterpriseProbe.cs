@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Observes structural SQL and injects deterministic faults at repair batch boundaries.</summary>
 public sealed class EnterpriseProbe : DbCommandInterceptor
 {
-    private readonly string _tableName;
     private readonly bool _captureParameterBindings;
+    private readonly string _tableName;
 
     /// <summary>Creates an observer for one hierarchy table without counting lock-table updates.</summary>
     /// <param name="tableName">The mapped hierarchy table name used by the test fixture.</param>
@@ -70,7 +70,7 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -99,18 +99,22 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
 
     /// <summary>Records command shape and fails only after an earlier repair batch has executed.</summary>
     /// <param name="command">The command about to execute.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task that completes after inspection and any cancellation callbacks.</returns>
     private async ValueTask InspectAsync(
-        DbCommand command
+        DbCommand command,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         Commands.Add(command.CommandText);
         ParameterValues.Add(
             command

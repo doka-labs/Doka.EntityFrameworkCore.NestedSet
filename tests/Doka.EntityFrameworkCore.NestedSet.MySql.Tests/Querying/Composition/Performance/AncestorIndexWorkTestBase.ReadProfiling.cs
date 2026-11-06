@@ -26,8 +26,11 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Records native schema and ordered logical row proofs outside every measured read window.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
     private static async Task<ConsumerPhysicalTable[]> ConsumerPhysicalTablesAsync(
-        AncestorIndexQueryContext context
+        AncestorIndexQueryContext context,
+        CancellationToken cancellationToken
     )
     {
         string[] names = ["AncestorIndexQueryNodes", "AncestorIndexQueryItems"];
@@ -44,9 +47,9 @@ public abstract partial class AncestorIndexWorkTestBase
             command.CommandText = "SHOW CREATE TABLE `" + name + "`";
             string definition;
 
-            await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                Assert.True(await reader.ReadAsync(CancellationToken.None));
+                Assert.True(await reader.ReadAsync(cancellationToken));
                 definition = reader.GetString(1);
             }
 
@@ -55,19 +58,19 @@ public abstract partial class AncestorIndexWorkTestBase
             command.CommandText = "CHECKSUM TABLE `" + name + "` EXTENDED";
             string checksum;
 
-            await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                Assert.True(await reader.ReadAsync(CancellationToken.None));
-                Assert.False(await reader.IsDBNullAsync(1, CancellationToken.None));
+                Assert.True(await reader.ReadAsync(cancellationToken));
+                Assert.False(await reader.IsDBNullAsync(1, cancellationToken));
                 checksum = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)!;
             }
 
-            var logicalRows = await ConsumerLogicalRowsAsync(context, name);
+            var logicalRows = await ConsumerLogicalRowsAsync(context, name, cancellationToken: cancellationToken);
 
-            await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                Assert.True(await reader.ReadAsync(CancellationToken.None));
-                Assert.False(await reader.IsDBNullAsync(1, CancellationToken.None));
+                Assert.True(await reader.ReadAsync(cancellationToken));
+                Assert.False(await reader.IsDBNullAsync(1, cancellationToken));
                 var checksumAfterRead = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)!;
                 tables[index] = new ConsumerPhysicalTable(
                     name,
@@ -83,9 +86,13 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Folds every ordered row and column into a cryptographic proof with constant retained memory.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="table">The physical table name.</param>
     private static async Task<ConsumerLogicalRows> ConsumerLogicalRowsAsync(
         AncestorIndexQueryContext context,
-        string table
+        string table,
+        CancellationToken cancellationToken
     )
     {
         var columns = table switch
@@ -111,11 +118,11 @@ public abstract partial class AncestorIndexWorkTestBase
             + "` ORDER BY `Scope`,`Id`";
 
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var row = new byte[32];
         long count = 0;
 
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             // WHY: ReadAsync fetches the row. GetBytes copies its already buffered fixed-size digest
             // without allocating an array or requesting synchronous network I/O for each row.
@@ -133,6 +140,14 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Separates capture overhead from warm complete reads without replacing qualified observations.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="observedContext">The context whose materialization and commands are observed.</param>
+    /// <param name="originalCapture">The command capture from the original read.</param>
+    /// <param name="build">The query factory used for construction and execution observations.</param>
+    /// <param name="expected">The independently derived expected results.</param>
+    /// <param name="profile">The selected synthetic workload profile.</param>
+    /// <param name="readWarmups">The fixed number of unmeasured warmup reads.</param>
+    /// <param name="measuredReads">The fixed number of complete reads inside the observation window.</param>
     private async Task ObserveConsumerReadsWithoutCaptureAsync(
         AncestorIndexQueryContext observedContext,
         EnterpriseProbe originalCapture,
@@ -140,7 +155,8 @@ public abstract partial class AncestorIndexWorkTestBase
         ConsumerFactPair[] expected,
         string profile,
         int readWarmups,
-        int measuredReads
+        int measuredReads,
+        CancellationToken cancellationToken
     )
     {
         var connectionString = observedContext.Database.GetConnectionString()!;
@@ -149,7 +165,7 @@ public abstract partial class AncestorIndexWorkTestBase
         // WHY: Keep the same mapped database, query and full-result oracle. Removing test capture only
         // estimates observer overhead; these samples cannot be reported as product allocation improvements.
         await using var context = new AncestorIndexQueryContext(options);
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
         var query = build(context);
 
         // WHY: Retain the same asynchronous read wrapper in both windows. The original capture is
@@ -158,7 +174,13 @@ public abstract partial class AncestorIndexWorkTestBase
 
         for (var warmup = 0; warmup < readWarmups; warmup++)
         {
-            var actual = await ReadConsumerFactsAsync(context, originalCapture, query, lightProfile);
+            var actual = await ReadConsumerFactsAsync(
+                context,
+                originalCapture,
+                query,
+                lightProfile,
+                cancellationToken: cancellationToken);
+
             RequireConsumerOracle(actual, expected);
         }
 
@@ -170,7 +192,13 @@ public abstract partial class AncestorIndexWorkTestBase
             profileEvents.BeginRead(Engine, profile, "observer-light", sample);
             var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var started = Stopwatch.GetTimestamp();
-            var actual = await ReadConsumerFactsAsync(context, originalCapture, query, lightProfile);
+            var actual = await ReadConsumerFactsAsync(
+                context,
+                originalCapture,
+                query,
+                lightProfile,
+                cancellationToken: cancellationToken);
+
             var elapsed = Stopwatch.GetElapsedTime(started);
             var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
             profileEvents.EndRead(Engine, profile, "observer-light", sample);
@@ -194,7 +222,8 @@ public abstract partial class AncestorIndexWorkTestBase
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-consumer-" + profile + "-observer-light",
-            [summary]);
+            [summary],
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>

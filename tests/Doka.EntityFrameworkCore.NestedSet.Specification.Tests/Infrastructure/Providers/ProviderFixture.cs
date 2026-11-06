@@ -65,12 +65,6 @@ public sealed class ProviderFixture<TResource, TEngine> : IProviderFixture<TReso
     where TEngine : struct, IProviderEngine
 {
     /// <inheritdoc />
-    public string Engine => TEngine.Name;
-
-    /// <inheritdoc />
-    public TResource Value { get; } = new();
-
-    /// <inheritdoc />
     public ValueTask InitializeAsync() => Value is IAsyncLifetime lifetime
         ? lifetime.InitializeAsync()
         : ValueTask.CompletedTask;
@@ -88,6 +82,12 @@ public sealed class ProviderFixture<TResource, TEngine> : IProviderFixture<TReso
             synchronous.Dispose();
         }
     }
+
+    /// <inheritdoc />
+    public string Engine => TEngine.Name;
+
+    /// <inheritdoc />
+    public TResource Value { get; } = new();
 }
 
 /// <summary>Supplies immutable engine ownership to metadata-only suites without database resources.</summary>

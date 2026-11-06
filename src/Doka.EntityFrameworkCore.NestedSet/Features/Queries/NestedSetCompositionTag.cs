@@ -20,14 +20,21 @@ internal static class NestedSetCompositionTag
         while (remaining.StartsWith("--", StringComparison.Ordinal))
         {
             var end = remaining.IndexOfAny('\r', '\n');
-            var line = end < 0 ? remaining : remaining[..end];
+            var line = end < 0
+                ? remaining
+                : remaining[..end];
 
-            if (line.TrimEnd().Equals(CommentLine, StringComparison.Ordinal))
+            if (line
+                .TrimEnd()
+                .Equals(CommentLine, StringComparison.Ordinal))
             {
                 return true;
             }
 
-            remaining = end < 0 ? [] : remaining[end..].TrimStart("\r\n");
+            remaining = end < 0
+                ? []
+                : remaining[end..]
+                    .TrimStart("\r\n");
         }
 
         return false;

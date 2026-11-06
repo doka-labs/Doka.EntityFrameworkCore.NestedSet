@@ -20,7 +20,13 @@ public sealed partial class ComplexPeerRollbackTests
             Number = 7,
         };
 
-        var item = new OptionalOnlyElement { Value = originalPresent ? original : null };
+        var item = new OptionalOnlyElement
+        {
+            Value = originalPresent
+                ? original
+                : null,
+        };
+
         var items = new List<OptionalOnlyElement> { item };
         var root = new OptionalElementRoot
         {
@@ -77,29 +83,52 @@ public sealed partial class ComplexPeerRollbackTests
         Assert.False(text.IsModified);
         Assert.False(code.IsModified);
         Assert.Equal(textCurrent, text.CurrentValue);
-        Assert.Equal(originalPresent ? "Stored optional text" : null, textOriginal);
+        Assert.Equal(
+            originalPresent
+                ? "Stored optional text"
+                : null,
+            textOriginal);
+
         Assert.Equal(textOriginal, text.OriginalValue);
         Assert.Equal(codeCurrent, code.CurrentValue);
-        Assert.Equal(originalPresent ? "Stored optional code" : null, codeOriginal);
+        Assert.Equal(
+            originalPresent
+                ? "Stored optional code"
+                : null,
+            codeOriginal);
+
         Assert.Equal(codeOriginal, code.OriginalValue);
         Assert.False(number.IsModified);
         Assert.Equal(numberCurrent, number.CurrentValue);
-        Assert.Equal(originalPresent ? 7 : 0, numberOriginal);
+        Assert.Equal(
+            originalPresent
+                ? 7
+                : 0,
+            numberOriginal);
+
         Assert.Equal(numberOriginal, number.OriginalValue);
         Assert.Equal("Stored optional text", original.Text);
         Assert.Equal("Stored optional code", original.Code);
         Assert.Equal(7, original.Number);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Maps an optional-only JSON element with real EF relational metadata and no database commands.</summary>
     private sealed class OptionalElementContext : DbContext
     {
         /// <summary>Retains raw-null complex storage independently of tracked original values.</summary>
-        internal OptionalElementContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal OptionalElementContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -116,7 +145,9 @@ public sealed partial class ComplexPeerRollbackTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            root.ComplexCollection(value => value.Items,
+
+            root.ComplexCollection(
+                value => value.Items,
                 items =>
                 {
                     items.ToJson("Items");

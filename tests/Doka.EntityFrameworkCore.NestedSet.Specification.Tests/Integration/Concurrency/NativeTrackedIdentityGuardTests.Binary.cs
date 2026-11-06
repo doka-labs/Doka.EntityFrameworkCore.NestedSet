@@ -12,13 +12,26 @@ public abstract partial class NativeTrackedIdentityGuardTests
         await using var context = await _fixture.CreateContextAsync<BinaryGuardContext>(
             Engine,
             static options => new BinaryGuardContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var affectedTree = Guid.NewGuid();
         var otherTree = Guid.NewGuid();
-        await SeedBinaryTreeAsync(context, affectedTree, root, 1);
-        await SeedBinaryTreeAsync(context, otherTree, root + 100, 64);
+        await SeedBinaryTreeAsync(
+            context,
+            affectedTree,
+            root,
+            1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedBinaryTreeAsync(
+            context,
+            otherTree,
+            root + 100,
+            64,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = await context
             .Set<BinaryGuardNode>()
             .Where(node => node.TreeId == otherTree)
@@ -38,15 +51,22 @@ public abstract partial class NativeTrackedIdentityGuardTests
 
         // WHY: EF10 pads a 65-element fixed IN collection to 70 key parameters, plus one TreeId parameter.
         Assert.Equal(71, probe.MaximumNativeParameters);
-        Assert.All(tracked, node => Assert.Equal(EntityState.Unchanged, context.Entry(node).State));
+        Assert.All(
+            tracked,
+            node => Assert.Equal(
+                EntityState.Unchanged,
+                context.Entry(node)
+                    .State));
     }
 
     /// <summary>Imports fixed-width distinct binary keys without provider-dependent padding aliases.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedBinaryTreeAsync(
         DbContext context,
         Guid treeId,
         int root,
-        int children
+        int children,
+        CancellationToken cancellationToken
     )
     {
         var branches = Enumerable
@@ -71,7 +91,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
             .NestedSet<BinaryGuardNode>()
             .InsertForestAsync(
                 [new NestedSetTreeImport<BinaryGuardNode, Guid>(treeId, branch)],
-                CancellationToken.None);
+                cancellationToken);
 
         context.ChangeTracker.Clear();
     }
@@ -91,17 +111,21 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 .Property(value => value.Id)
                 .HasMaxLength(sizeof(int))
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.ParentId)
                 .HasMaxLength(sizeof(int));
+
             node
                 .Property(value => value.Name)
                 .HasMaxLength(100);
+
             node
                 .HasOne<BinaryGuardNode>()
                 .WithMany()
                 .HasForeignKey(value => value.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
             node.HasNestedSet(nestedSet => nestedSet
                 .HasNodeKey(value => value.Id)
                 .HasTreeId(value => value.TreeId)

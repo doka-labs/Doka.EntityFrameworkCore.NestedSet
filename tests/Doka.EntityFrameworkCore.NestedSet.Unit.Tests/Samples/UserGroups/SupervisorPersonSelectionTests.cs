@@ -94,8 +94,11 @@ public sealed class SupervisorPersonSelectionTests
 
         // Assert
         Assert.Equal(SupervisorResolutionStatus.Found, result.Status);
-        Assert.Equal(20,
-            Assert.Single(result.Evidence).CandidateUserId);
+        Assert.Equal(
+            20,
+            Assert.Single(result.Evidence)
+                .CandidateUserId);
+
         Assert.Equal(4, result.Continuation!.Distance);
     }
 
@@ -203,7 +206,9 @@ public sealed class SupervisorPersonSelectionTests
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(21, 4, 1), Candidate(21, 1, 9), Candidate(21, 2, 4)];
-        var selection = personRank ? SupervisorSelection.NthPerson(1) : SupervisorSelection.RequireUnique;
+        var selection = personRank
+            ? SupervisorSelection.NthPerson(1)
+            : SupervisorSelection.RequireUnique;
 
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, selection);

@@ -7,8 +7,7 @@ internal sealed partial class NestedSetQuery<TEntity>
     // access key without carrying entities or keeping any context, model or request in static state.
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string, string,
-            string, IQueryable<long?>>> s_scopedCandidateFringeLefts = (
-            endpoints,
+            string, IQueryable<long?>>> s_scopedCandidateFringeLefts = (endpoints,
             candidates,
             width,
             lowerLeft,
@@ -17,8 +16,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             scope,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 candidates
                     .GroupBy(owner => new
@@ -49,8 +47,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string, string,
-            IQueryable<long?>>> s_unscopedCandidateFringeLefts = (
-            endpoints,
+            IQueryable<long?>>> s_unscopedCandidateFringeLefts = (endpoints,
             candidates,
             width,
             lowerLeft,
@@ -58,8 +55,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             partition,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 candidates
                     .GroupBy(owner => new
@@ -87,8 +83,7 @@ internal sealed partial class NestedSetQuery<TEntity>
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string, string,
-            IQueryable<long?>>> s_scopedInteriorCandidateLefts = (
-            endpoints,
+            IQueryable<long?>>> s_scopedInteriorCandidateLefts = (endpoints,
             candidates,
             width,
             lowerLeftBlock,
@@ -96,8 +91,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             scope,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 candidates
                     .GroupBy(owner => new
@@ -132,16 +126,14 @@ internal sealed partial class NestedSetQuery<TEntity>
 
     private static readonly
         Expression<Func<IQueryable<TEntity>, IQueryable<TEntity>, long, long, long, string, string, string,
-            IQueryable<long?>>> s_unscopedInteriorCandidateLefts = (
-            endpoints,
+            IQueryable<long?>>> s_unscopedInteriorCandidateLefts = (endpoints,
             candidates,
             width,
             lowerLeftBlock,
             lowerRightBlock,
             tree,
             left,
-            right
-        ) => endpoints
+            right) => endpoints
             .Join(
                 candidates
                     .GroupBy(owner => new
@@ -172,7 +164,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         LambdaExpression predicate
     )
     {
-        var candidates = _nodes.Where(candidate).Expression;
+        var candidates = _nodes.Where(candidate)
+            .Expression;
+
         var endpoint = VisibleCoordinateEndpoint(lower);
         var width = VisibleCoordinateBlockWidth();
         var lowerLeft = Bound(lower, _descriptor.Left);

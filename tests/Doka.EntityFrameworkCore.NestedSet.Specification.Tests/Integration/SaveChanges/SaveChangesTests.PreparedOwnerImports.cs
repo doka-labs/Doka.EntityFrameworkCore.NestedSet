@@ -9,26 +9,50 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", 65)]
     [InlineData("subtree", 130)]
     [InlineData("forest", 130)]
-    public async Task PreparedOwnerImportAcrossBatchesAllowsFollowingSave(string shape, int nodes)
+    public async Task PreparedOwnerImportAcrossBatchesAllowsFollowingSave(
+        string shape,
+        int nodes
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback);
+
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var observedBatches = new List<int[]>();
-        callback.OnSaving = current => observedBatches.Add(current.GetService<IUpdateAdapterFactory>().Create().Entries
-            .Where(entry => entry.EntityType.ClrType == typeof(NavigationNode))
-            .Select(entry => entry.GetCurrentValue<int>(entry.EntityType.FindProperty(nameof(NavigationNode.Id))!))
-            .Order().ToArray());
+        callback.OnSaving = current => observedBatches.Add(
+            current
+                .GetService<IUpdateAdapterFactory>()
+                .Create()
+                .Entries
+                .Where(entry => entry.EntityType.ClrType == typeof(NavigationNode))
+                .Select(entry => entry.GetCurrentValue<int>(entry.EntityType.FindProperty(nameof(NavigationNode.Id))!))
+                .Order()
+                .ToArray());
 
         // Act
         await InsertPreparedOwnerImportAsync(context, shape, graph.Inputs, CancellationToken.None);
         callback.OnSaving = null;
         graph.NoteValue.CurrentValue = "following payload";
         await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await ReadPreparedOwnerStoreAsync(database);
+        var stored = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(4 + nodes, stored.Nodes.Length);
@@ -36,10 +60,23 @@ public abstract partial class SaveChangesTests
         Assert.Equal(0, stored.Issues);
         Assert.Equal((nodes + 63) / 64, observedBatches.Count);
         Assert.All(observedBatches, batch => Assert.InRange(batch.Length, 1, 64));
-        Assert.Equal(graph.Inputs.Select(input => input.Id).Order(),
-            observedBatches.SelectMany(batch => batch).Order());
+        Assert.Equal(
+            graph
+                .Inputs
+                .Select(input => input.Id)
+                .Order(),
+            observedBatches
+                .SelectMany(batch => batch)
+                .Order());
+
         Assert.Equal(graph.Inputs, graph.Owner.Nodes, ReferenceEqualityComparer.Instance);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -48,17 +85,36 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", 65)]
     [InlineData("subtree", 130)]
     [InlineData("forest", 130)]
-    public async Task PreparedOwnerImportLateFailureRestoresExactState(string shape, int nodes)
+    public async Task PreparedOwnerImportLateFailureRestoresExactState(
+        string shape,
+        int nodes
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new PreparedOwnerBatchFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, failure);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
         var inputBefore = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -66,7 +122,9 @@ public abstract partial class SaveChangesTests
 
         var after = CapturePlannedParentState(context);
         var inputAfter = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(failure.Error, error);
@@ -77,7 +135,13 @@ public abstract partial class SaveChangesTests
         Assert.Equal(storedBefore.Nodes, storedAfter.Nodes);
         Assert.Equal(storedBefore.Note, storedAfter.Note);
         Assert.Equal(0, storedAfter.Issues);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -86,16 +150,34 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", 65)]
     [InlineData("subtree", 130)]
     [InlineData("forest", 130)]
-    public async Task PreparedOwnerImportRetriesIdenticallyAfterLateFailure(string shape, int nodes)
+    public async Task PreparedOwnerImportRetriesIdenticallyAfterLateFailure(
+        string shape,
+        int nodes
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new PreparedOwnerBatchFailure();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, failure);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
         var inputBefore = CapturePreparedOwnerInputs(graph.Inputs);
+
         // WHY: The first rollback is the retry's precondition; this observer fails only its second save.
         var firstError = await Record.ExceptionAsync(() =>
             InsertPreparedOwnerImportAsync(context, shape, graph.Inputs, CancellationToken.None));
@@ -105,7 +187,9 @@ public abstract partial class SaveChangesTests
 
         // Act
         await InsertPreparedOwnerImportAsync(context, shape, graph.Inputs, CancellationToken.None);
-        var stored = await ReadPreparedOwnerStoreAsync(database);
+        var stored = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Same(failure.Error, firstError);
@@ -115,7 +199,13 @@ public abstract partial class SaveChangesTests
         Assert.Equal("original", stored.Note);
         Assert.Equal(0, stored.Issues);
         Assert.Equal(graph.Inputs, graph.Owner.Nodes, ReferenceEqualityComparer.Instance);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -124,18 +214,37 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", 65)]
     [InlineData("subtree", 130)]
     [InlineData("forest", 130)]
-    public async Task PreparedOwnerImportCancellationRestoresExactState(string shape, int nodes)
+    public async Task PreparedOwnerImportCancellationRestoresExactState(
+        string shape,
+        int nodes
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         var observer = new PreparedOwnerBatchCancellation(cancellation);
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, observer);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            observer);
+
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var before = CapturePlannedParentState(context);
         var inputBefore = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -143,7 +252,9 @@ public abstract partial class SaveChangesTests
 
         var after = CapturePlannedParentState(context);
         var inputAfter = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
@@ -154,7 +265,13 @@ public abstract partial class SaveChangesTests
         Assert.Equal(storedBefore.Nodes, storedAfter.Nodes);
         Assert.Equal(storedBefore.Note, storedAfter.Note);
         Assert.Equal(0, storedAfter.Issues);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -169,15 +286,34 @@ public abstract partial class SaveChangesTests
     [InlineData("forest", 130, "unknown")]
     [InlineData("forest", 130, "added")]
     [InlineData("forest", 130, "scope")]
-    public async Task PreparedOwnerImportRejectsUnauthorizedFutureMembers(string shape, int nodes, string change)
+    public async Task PreparedOwnerImportRejectsUnauthorizedFutureMembers(
+        string shape,
+        int nodes,
+        string change
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPreparedNavigationDestinationAsync(database);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPreparedNavigationDestinationAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var callback = new SaveBoundaryCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
-        var graph = await PrepareOwnerImportAsync(context, nodes);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            probe);
+
+        var graph = await PrepareOwnerImportAsync(
+            context,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var future = graph.Inputs[^1];
 
         if (change == "scope")
@@ -188,19 +324,32 @@ public abstract partial class SaveChangesTests
 
         var before = CapturePlannedParentState(context);
         var inputBefore = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(database);
+        var storedBefore = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         int? writesAtCallback = null;
         int? activeAtCallback = null;
         callback.OnSaving = current =>
         {
             writesAtCallback = probe.Writes;
-            activeAtCallback = current.GetService<IUpdateAdapterFactory>().Create().Entries
+            activeAtCallback = current
+                .GetService<IUpdateAdapterFactory>()
+                .Create()
+                .Entries
                 .Count(entry => entry.EntityType.ClrType == typeof(NavigationNode));
 
             switch (change)
             {
                 case "unknown":
-                    graph.Owner.Nodes.Add(new NavigationNode { Id = 999, Scope = graph.Owner.Id, Name = "Unknown" });
+                    graph.Owner.Nodes.Add(
+                        new NavigationNode
+                        {
+                            Id = 999,
+                            Scope = graph.Owner.Id,
+                            Name = "Unknown",
+                        });
+
                     break;
                 case "added":
                     // WHY: The first batch is authorized already; this explicitly registers a different future batch.
@@ -221,7 +370,9 @@ public abstract partial class SaveChangesTests
 
         var after = CapturePlannedParentState(context);
         var inputAfter = CapturePreparedOwnerInputs(graph.Inputs);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(database);
+        var storedAfter = await ReadPreparedOwnerStoreAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var rejection = Assert.IsType<NestedSetException>(error);
@@ -230,7 +381,8 @@ public abstract partial class SaveChangesTests
         {
             // WHY: An explicitly attached future node violates the existing active import-membership contract.
             Assert.Equal(NestedSetErrorCode.InvalidImport, rejection.Code);
-            Assert.Equal("Save callbacks must not add or remove hierarchy entities during an import.",
+            Assert.Equal(
+                "Save callbacks must not add or remove hierarchy entities during an import.",
                 rejection.Message);
         }
         else
@@ -246,7 +398,13 @@ public abstract partial class SaveChangesTests
         Assert.Equal(storedBefore.Nodes, storedAfter.Nodes);
         Assert.Equal(storedBefore.Note, storedAfter.Note);
         Assert.Equal(0, storedAfter.Issues);
-        Assert.All(graph.Inputs, input => Assert.Equal(EntityState.Detached, context.Entry(input).State));
+        Assert.All(
+            graph.Inputs,
+            input => Assert.Equal(
+                EntityState.Detached,
+                context.Entry(input)
+                    .State));
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 }

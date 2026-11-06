@@ -7,9 +7,15 @@ public abstract partial class OrderingTests
     public async Task ProbeFamiliesShareServiceProviderAndKeepMaterializationCountsIsolated()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(Tree(setup));
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var ordinarySetup = database.CreateContext();
         await ordinarySetup
             .NestedSet<TreeNode>()
@@ -18,7 +24,12 @@ public abstract partial class OrderingTests
 
         var orderedProbe = new OrderingSaveProbe();
         var ordinaryProbe = new EnterpriseProbe();
-        await using var ordered = await _fixture.CreateContextAsync(Engine, "Strict", orderedProbe);
+        await using var ordered = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            orderedProbe);
+
         await using var ordinary = database.CreateContext((IInterceptor)ordinaryProbe);
 
         // Act
@@ -47,7 +58,10 @@ public abstract partial class OrderingTests
     public async Task OrderedFacadeRejectsMissingAdapterBeforeMutation()
     {
         // Arrange
-        await using var configured = await _fixture.ResetAsync(Engine);
+        await using var configured = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var connection = configured.Database.GetConnectionString()!;
         var probe = new OrderingSaveProbe();
         var boundary = new ConfigurationIoBoundary();
@@ -79,10 +93,13 @@ public abstract partial class OrderingTests
         // WHY: Reusing the configured context's options would also reuse UseNestedSets() and invalidate this
         // negative control. Only the provider connection is intentionally shared.
         await using var context = new MissingIntegrationOrderingContext(options.Options);
+
         // Act
         var exception = await Record.ExceptionAsync(async () =>
         {
-            var tree = context.NestedSet<OrderingNode>().ForScope(1);
+            var tree = context
+                .NestedSet<OrderingNode>()
+                .ForScope(1);
 
             await tree.InsertRootAsync(
                 new OrderingNode
@@ -114,7 +131,10 @@ public abstract partial class OrderingTests
     public async Task TrackedOrderingChangeRejectsMissingCoordinatedSaveWrapper()
     {
         // Arrange
-        await using var configured = await _fixture.ResetAsync(Engine);
+        await using var configured = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await configured
             .NestedSet<OrderingNode>()
             .ForScope(1)
@@ -154,9 +174,17 @@ public abstract partial class OrderingTests
         Assert.Empty(probe.Commands);
         Assert.Equal(0, probe.CompletedPayloadUpdates);
         Assert.Equal(0, probe.StructuralUpdates);
-        Assert.Equal(EntityState.Modified, context.Entry(node).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(node)
+                .State);
+
         Assert.Equal("Changed", node.Name);
-        Assert.Equal("Root", (await configured.Set<OrderingNode>().AsNoTracking()
-            .SingleAsync(row => row.Id == 1, CancellationToken.None)).Name);
+        Assert.Equal(
+            "Root",
+            (await configured
+                .Set<OrderingNode>()
+                .AsNoTracking()
+                .SingleAsync(row => row.Id == 1, CancellationToken.None)).Name);
     }
 }

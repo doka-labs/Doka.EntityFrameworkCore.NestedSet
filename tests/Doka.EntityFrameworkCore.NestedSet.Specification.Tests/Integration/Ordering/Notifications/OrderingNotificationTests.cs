@@ -24,16 +24,27 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync);
-        await using var context = await CreateContextAsync(database);
-        await LoadAndRenameAsync(context);
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using var context = await CreateContextAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await LoadAndRenameAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var saved = await context.SaveChangesAsync(acceptAllChangesOnSuccess, CancellationToken.None);
 
         // Assert
         Assert.Equal(2, saved);
-        await AssertSuccessfulSaveAsync(database, context, acceptAllChangesOnSuccess);
+        await AssertSuccessfulSaveAsync(
+            database,
+            context,
+            acceptAllChangesOnSuccess,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a late failure restores refreshed coordinates and unrelated pending payload.</summary>
@@ -46,10 +57,18 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync);
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new CommitFailureProbe();
-        await using var context = await CreateContextAsync(database, failure);
-        var nodes = await LoadAndRenameAsync(context);
+        await using var context = await CreateContextAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        var nodes = await LoadAndRenameAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var before = Coordinates(nodes);
         var renamed = nodes.Single(node => node.Id == 2);
         var payload = context
@@ -69,22 +88,41 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(before, Coordinates(nodes));
         Assert.Equal("Zulu", renamed.Name);
         Assert.Equal("pending application change", payload.Value);
-        Assert.Equal(EntityState.Modified, context.Entry(renamed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.True(
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
-        Assert.Equal(EntityState.Modified, context.Entry(payload).State);
+
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(payload)
+                .State);
+
         Assert.True(
             context
                 .Entry(payload)
                 .Property(row => row.Value)
                 .IsModified);
-        Assert.Equal(5, context.ChangeTracker.Entries().Count());
+
+        Assert.Equal(
+            5,
+            context
+                .ChangeTracker
+                .Entries()
+                .Count());
+
         Assert.Null(context.Database.CurrentTransaction);
         AssertUnavailableOriginals(context, nodes, payload);
-        await using var verification = await CreateContextAsync(database);
+        await using var verification = await CreateContextAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var persisted = await verification
             .Set<OrderingNotificationNode>()
             .AsNoTracking()
@@ -94,7 +132,9 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(before, Coordinates(persisted));
         Assert.Equal(
             "Alpha",
-            persisted.Single(node => node.Id == 2).Name);
+            persisted.Single(node => node.Id == 2)
+                .Name);
+
         Assert.Equal(
             "original application value",
             await verification
@@ -113,10 +153,18 @@ public abstract class OrderingNotificationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.PrepareAsync(Engine, SeedAsync);
+        var database = await _fixture.PrepareAsync(
+            Engine,
+            SeedAsync,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var failure = new CommitFailureProbe();
-        await using var context = await CreateContextAsync(database, failure);
-        await LoadAndRenameAsync(context);
+        await using var context = await CreateContextAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken,
+            failure);
+
+        await LoadAndRenameAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var initialFailure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         failure.FailOnCommit = false;
 
@@ -128,34 +176,42 @@ public abstract class OrderingNotificationTests : ProviderTest
         Assert.Equal(2, failure.CommitAttempts);
         Assert.Equal(4, failure.RenamedLeftAtCommit);
         Assert.Equal(2, saved);
-        await AssertSuccessfulSaveAsync(database, context, acceptAllChangesOnSuccess);
+        await AssertSuccessfulSaveAsync(
+            database,
+            context,
+            acceptAllChangesOnSuccess,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Creates a context using the fixture's real provider and caller-owned observers.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The fixture database with independent notification tables.</param>
     /// <param name="interceptors">Observers registered only on the returned context.</param>
     /// <returns>A context disposed by its caller.</returns>
     private static async Task<OrderingNotificationContext> CreateContextAsync(
         TestDatabase database,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
-    ) => new(await SaveSemanticsFixture.OptionsAsync(database, interceptors));
+    ) => new(await SaveSemanticsFixture.OptionsAsync(database, cancellationToken: cancellationToken, interceptors));
 
     /// <summary>Seeds a movable subtree and unrelated persisted notification-tracked application data.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The database whose independent notification tables are created here.</param>
     /// <param name="firstUse">Whether the independent tables must be created before seeding.</param>
     /// <returns>A task that completes after the shared scenario is persisted.</returns>
     private static async Task SeedAsync(
         TestDatabase database,
-        bool firstUse
+        bool firstUse,
+        CancellationToken cancellationToken
     )
     {
-        await using var context = await CreateContextAsync(database);
+        await using var context = await CreateContextAsync(database, cancellationToken: cancellationToken);
 
         if (firstUse)
         {
             await context
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
         }
         else
         {
@@ -163,15 +219,15 @@ public abstract class OrderingNotificationTests : ProviderTest
                 .Set<OrderingNotificationNode>()
                 .ExecuteUpdateAsync(
                     setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                    CancellationToken.None);
+                    cancellationToken);
 
             await context
                 .Set<OrderingNotificationNode>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await context
                 .Set<OrderingNotificationPayload>()
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(cancellationToken);
         }
 
         var tree = context
@@ -185,7 +241,7 @@ public abstract class OrderingNotificationTests : ProviderTest
                 Name = "Root",
             },
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNotificationNode
@@ -194,7 +250,7 @@ public abstract class OrderingNotificationTests : ProviderTest
                 Name = "Alpha",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNotificationNode
@@ -203,7 +259,7 @@ public abstract class OrderingNotificationTests : ProviderTest
                 Name = "Bravo",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNotificationNode
@@ -212,42 +268,47 @@ public abstract class OrderingNotificationTests : ProviderTest
                 Name = "Leaf",
             },
             2,
-            CancellationToken.None);
+            cancellationToken);
 
         await context.AddAsync(
             new OrderingNotificationPayload
             {
                 Id = 1,
-                Value = "original application value"
+                Value = "original application value",
             },
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Loads every affected coordinate and creates two caller-owned notification changes.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context owning the hierarchy and unrelated pending payload.</param>
     /// <returns>The tracked nodes in stable identity order.</returns>
     private static async Task<OrderingNotificationNode[]> LoadAndRenameAsync(
-        OrderingNotificationContext context
+        OrderingNotificationContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<OrderingNotificationNode>()
             .OrderBy(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var payload = await context
             .Set<OrderingNotificationPayload>()
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
-        nodes.Single(node => node.Id == 2).Name = "Zulu";
+        nodes.Single(node => node.Id == 2)
+            .Name = "Zulu";
+
         payload.Value = "pending application change";
 
         return nodes;
     }
 
     /// <summary>Compares tracked coordinates with an independent database read and verifies pending flags.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="database">The database read through an independent verification context.</param>
     /// <param name="context">The context whose caller-owned state must match the acceptance mode.</param>
     /// <param name="accepted">Whether the successful save accepted the caller's pending changes.</param>
@@ -255,7 +316,8 @@ public abstract class OrderingNotificationTests : ProviderTest
     private static async Task AssertSuccessfulSaveAsync(
         TestDatabase database,
         OrderingNotificationContext context,
-        bool accepted
+        bool accepted,
+        CancellationToken cancellationToken
     )
     {
         var nodes = context
@@ -270,54 +332,69 @@ public abstract class OrderingNotificationTests : ProviderTest
             .Single();
 
         var renamed = nodes.Single(node => node.Id == 2);
-        await using var verification = await CreateContextAsync(database);
+        await using var verification = await CreateContextAsync(database, cancellationToken: cancellationToken);
         var persisted = await verification
             .Set<OrderingNotificationNode>()
             .AsNoTracking()
             .OrderBy(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal(
             new[]
             {
-                (1, 1L, 8L, 0, 0L),
-                (2, 4L, 7L, 1, 1L),
-                (3, 2L, 3L, 1, 0L),
-                (4, 5L, 6L, 2, 0L),
+                (1, 1L, 8L, 0, 0L), (2, 4L, 7L, 1, 1L), (3, 2L, 3L, 1, 0L), (4, 5L, 6L, 2, 0L),
             },
             Coordinates(persisted));
+
         Assert.Equal(Coordinates(persisted), Coordinates(nodes));
-        Assert.Equal("Zulu", persisted.Single(node => node.Id == 2).Name);
         Assert.Equal(
-            accepted ? EntityState.Unchanged : EntityState.Modified,
-            context.Entry(renamed).State);
+            "Zulu",
+            persisted.Single(node => node.Id == 2)
+                .Name);
+
+        Assert.Equal(
+            accepted
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(renamed)
+                .State);
+
         Assert.Equal(
             !accepted,
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
+
         Assert.Equal(
-            accepted ? EntityState.Unchanged : EntityState.Modified,
-            context.Entry(payload).State);
+            accepted
+                ? EntityState.Unchanged
+                : EntityState.Modified,
+            context.Entry(payload)
+                .State);
+
         Assert.Equal(
             !accepted,
             context
                 .Entry(payload)
                 .Property(row => row.Value)
                 .IsModified);
+
         Assert.All(
             nodes.Where(node => node.Id != 2),
             node => Assert.Equal(
                 EntityState.Unchanged,
-                context.Entry(node).State));
+                context.Entry(node)
+                    .State));
+
         Assert.Equal("pending application change", payload.Value);
         Assert.Equal(
             "pending application change",
             await verification
                 .Set<OrderingNotificationPayload>()
                 .Select(row => row.Value)
-                .SingleAsync(CancellationToken.None));
+                .SingleAsync(cancellationToken));
+
         AssertUnavailableOriginals(context, nodes, payload);
         var tree = verification
             .NestedSet<OrderingNotificationNode>()
@@ -325,7 +402,7 @@ public abstract class OrderingNotificationTests : ProviderTest
 
         var report = await tree
             .InTree(persisted[0].TreeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(report.IsValid);
     }
@@ -346,11 +423,16 @@ public abstract class OrderingNotificationTests : ProviderTest
             foreach (var name in new[] { "Left", "Right", "Depth", "Position" })
             {
                 // WHY: This negative control fails if the model accidentally falls back to snapshot tracking.
-                Assert.Throws<InvalidOperationException>(() => entry.Property(name).OriginalValue);
-                Assert.False(entry.Property(name).IsModified);
+                Assert.Throws<InvalidOperationException>(() => entry.Property(name)
+                    .OriginalValue);
+
+                Assert.False(
+                    entry.Property(name)
+                        .IsModified);
             }
 
-            Assert.Throws<InvalidOperationException>(() => entry.Property(value => value.Name).OriginalValue);
+            Assert.Throws<InvalidOperationException>(() => entry.Property(value => value.Name)
+                .OriginalValue);
         }
 
         Assert.Throws<InvalidOperationException>(() => context

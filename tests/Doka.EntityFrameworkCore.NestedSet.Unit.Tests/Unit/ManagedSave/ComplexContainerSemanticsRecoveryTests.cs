@@ -47,8 +47,10 @@ public sealed class ComplexContainerSemanticsRecoveryTests
         Assert.Same(rows, payload.Rows);
         Assert.Same(first, Assert.Single(rows));
         Assert.Equal(0, rows.Mutations);
-        Assert.Equal(EntityState.Unchanged,
-            entry.ComplexCollection(nameof(GuardedPayload.Rows))[0].State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            entry
+                .ComplexCollection(nameof(GuardedPayload.Rows))[0].State);
     }
 
     /// <summary>Observes no temporary membership through CollectionChanged during field-mapped staging.</summary>
@@ -159,10 +161,11 @@ public sealed class ComplexContainerSemanticsRecoveryTests
 
         // Assert
         Assert.Equal(["stored"], payload.Value!.Value.Tags);
-        Assert.False(entry
-            .ComplexProperty(nameof(NullablePayload.Value))
-            .Property(nameof(NullableValue.Tags))
-            .IsModified);
+        Assert.False(
+            entry
+                .ComplexProperty(nameof(NullablePayload.Value))
+                .Property(nameof(NullableValue.Tags))
+                .IsModified);
     }
 
     /// <summary>Restores a nullable struct scalar on an element hidden from the current CLR path.</summary>
@@ -191,14 +194,16 @@ public sealed class ComplexContainerSemanticsRecoveryTests
         payload.Rows.Clear();
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         row.Value!.Value.Tags!.Add("callback");
-        payload.Rows.Add(new NullableRow
-        {
-            Value = new NullableValue
+        payload.Rows.Add(
+            new NullableRow
             {
-                Count = 2,
-                Tags = [],
-            },
-        });
+                Value = new NullableValue
+                {
+                    Count = 2,
+                    Tags = [],
+                },
+            });
+
         context.ChangeTracker.DetectChanges();
         payload.Rows.Clear();
 
@@ -290,7 +295,11 @@ public sealed class ComplexContainerSemanticsRecoveryTests
 
         // Assert
         Assert.Same(rows, payload.Rows);
-        Assert.Equal(keepFirst ? [first] : [], rows.ToArray());
+        Assert.Equal(
+            keepFirst
+                ? [first]
+                : [],
+            rows.ToArray());
     }
 
     /// <summary>Installs exact membership when a callback changed a read-only view's hidden backing list.</summary>
@@ -328,8 +337,10 @@ public sealed class ComplexContainerSemanticsRecoveryTests
 
         // Assert
         Assert.Same(first, Assert.Single(payload.Rows));
-        Assert.Equal(EntityState.Unchanged,
-            entry.ComplexCollection(nameof(ViewPayload.Rows))[0].State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            entry
+                .ComplexCollection(nameof(ViewPayload.Rows))[0].State);
     }
 
     /// <summary>Accepts the setter's copy when a callback replaced a collection behind a copying setter.</summary>
@@ -365,15 +376,20 @@ public sealed class ComplexContainerSemanticsRecoveryTests
 
         // Assert
         Assert.Same(first, Assert.Single(payload.Rows));
-        Assert.Equal(EntityState.Unchanged,
-            entry.ComplexCollection(nameof(CopyingPayload.Rows))[0].State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            entry
+                .ComplexCollection(nameof(CopyingPayload.Rows))[0].State);
     }
 
     /// <summary>Maps each container semantics with automatic detection off, as a suspended callback sees it.</summary>
     private sealed class SemanticsContext : DbContext
     {
         /// <summary>Prevents observation from implicitly accepting callback changes.</summary>
-        internal SemanticsContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal SemanticsContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -389,19 +405,25 @@ public sealed class ComplexContainerSemanticsRecoveryTests
             modelBuilder
                 .Entity<GuardedPayload>()
                 .ComplexCollection(value => value.Rows, rows => rows.ToJson("Rows"));
+
             modelBuilder
                 .Entity<ObservablePayload>()
                 .ComplexCollection(value => value.Rows, rows => rows.ToJson("Rows"));
+
             modelBuilder
                 .Entity<EqualityPayload>()
                 .ComplexProperty(value => value.Value);
+
             modelBuilder
                 .Entity<NullablePayload>()
-                .ComplexProperty(value => value.Value,
+                .ComplexProperty(
+                    value => value.Value,
                     value => value.PrimitiveCollection(item => item.Tags));
+
             modelBuilder
                 .Entity<NullableRowsPayload>()
-                .ComplexCollection(value => value.Rows,
+                .ComplexCollection(
+                    value => value.Rows,
                     rows =>
                     {
                         rows.ToJson("Rows");
@@ -410,7 +432,8 @@ public sealed class ComplexContainerSemanticsRecoveryTests
 
             modelBuilder
                 .Entity<PropertyGuardedPayload>()
-                .ComplexCollection(value => value.Rows,
+                .ComplexCollection(
+                    value => value.Rows,
                     rows =>
                     {
                         rows.ToJson("Rows");
@@ -420,9 +443,11 @@ public sealed class ComplexContainerSemanticsRecoveryTests
             modelBuilder
                 .Entity<ViewPayload>()
                 .ComplexCollection(value => value.Rows, rows => rows.ToJson("Rows"));
+
             modelBuilder
                 .Entity<CopyingPayload>()
-                .ComplexCollection(value => value.Rows,
+                .ComplexCollection(
+                    value => value.Rows,
                     rows =>
                     {
                         rows.ToJson("Rows");

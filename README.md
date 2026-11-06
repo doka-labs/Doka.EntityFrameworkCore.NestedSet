@@ -47,18 +47,17 @@ source remains .NET/EF Core 10; additional release lines are registered inactive
 
 ## Install
 
-Version `10.2.0` is the stable six-package contract. It adds optional registry
-table naming and corrects manual change detection and save recovery. The
-provider-callback registration introduced in `10.1.0` remains unchanged; upgrading
-from `10.0.0` still requires the documented installation/registration transition. See the
+Version `10.3.0` is the stable six-package source contract. Owned asynchronous
+operations require an explicit `CancellationToken`; use the caller's token or
+choose `CancellationToken.None` deliberately. For migration instructions, see the
 [upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
 For Doka MySQL/MariaDB, install the selected adapter:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
 ```
 
-Keep all selected NestedSet adapters and the common EF package at `10.2.0`.
+Keep all selected NestedSet adapters and the common EF package at `10.3.0`.
 Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:
@@ -71,14 +70,14 @@ The provider qualification matrix is:
 | SQL Server | `.SqlServer` | `Microsoft.EntityFrameworkCore.SqlServer` |
 
 Adapter names in this table are suffixes of `Doka.EntityFrameworkCore.NestedSet`.
-The MySQL adapter supports Doka `[10.6.3,10.7.0)`; its effective EF Relational
+The MySQL adapter supports Doka `[10.6.4,10.7.0)`; its effective EF Relational
 range is `[10.0.12,10.1.0)` after intersecting the common kernel and Doka ranges.
 See [supported versions](docs/support-and-qualification.md#provider-and-engine-matrix)
 for the other adapter ranges and actual qualification evidence.
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
 baseline. SafeMigrations is an optional integration. Repository qualification
-uses published Doka 10.6.3 and SafeMigrations 10.6.1. The optional tests retain
+uses published Doka 10.6.4 and SafeMigrations 10.7.0. The optional tests retain
 the current adapter contract without a legacy mode or compatibility skip. See the
 [adapter qualification](docs/support-and-qualification.md#migration-matrix)
 for the current graph, the earlier 2026-10-25 executed local qualification, separate
@@ -320,12 +319,16 @@ in `Left` preorder. Applying a global business `OrderBy` to the result would no
 longer represent hierarchical traversal.
 
 The facade exposes atomic insert, move, detach, delete, bulk, validation, and
-rebuild operations. `DetachAsTreeAsync(nodeKey, newTreeId)` creates a new tree;
+rebuild operations. `DetachAsTreeAsync(nodeKey, newTreeId, cancellationToken)` creates a new tree;
 `DeleteAsync` promotes children of a non-root; `DeleteSubtreeAsync` deletes one
-branch; and `DeleteTreeAsync(treeId)` retires the complete identity.
+branch; and `DeleteTreeAsync(treeId, cancellationToken)` retires the complete identity.
 Retired TreeIds remain tombstoned. The separately authorized
-`PurgeTreeIdAsync(treeId)` administrative operation removes only an empty,
+`PurgeTreeIdAsync(treeId, cancellationToken)` administrative operation removes only an empty,
 locked tombstone and is required before deliberate identity reuse.
+
+Owned asynchronous operations require an explicit `CancellationToken`. Forward
+the caller's token, or deliberately pass `CancellationToken.None`; EF/.NET
+overrides and interface implementations retain their upstream contract.
 
 ## Ordering and tracked changes
 

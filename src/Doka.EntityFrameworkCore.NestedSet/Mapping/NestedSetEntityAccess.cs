@@ -56,7 +56,9 @@ internal static class NestedSetEntityAccess<TEntity>
     internal static DbSet<TEntity> Set(
         DbContext context,
         IEntityType entityType
-    ) => entityType.HasSharedClrType ? context.Set<TEntity>(entityType.Name) : context.Set<TEntity>();
+    ) => entityType.HasSharedClrType
+        ? context.Set<TEntity>(entityType.Name)
+        : context.Set<TEntity>();
 
     /// <summary>Returns an entry whose metadata is unambiguous for ordinary and shared CLR types.</summary>
     internal static EntityEntry<TEntity> Entry(
@@ -64,7 +66,8 @@ internal static class NestedSetEntityAccess<TEntity>
         IEntityType entityType,
         TEntity entity
     ) => entityType.HasSharedClrType
-        ? Set(context, entityType).Entry(entity)
+        ? Set(context, entityType)
+            .Entry(entity)
         : context.Entry(entity);
 
     /// <summary>Returns tracked entries belonging to this exact EF entity type.</summary>

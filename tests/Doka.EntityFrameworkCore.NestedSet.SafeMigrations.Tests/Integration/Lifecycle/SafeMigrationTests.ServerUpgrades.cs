@@ -18,11 +18,18 @@ public sealed partial class SafeMigrationTests
     )
     {
         // Arrange
-        await using var database = await CreateDatabaseAsync(engine, qualifySchema);
+        await using var database = await CreateDatabaseAsync(
+            engine,
+            qualifySchema,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline);
-        await database.SeedAsync(MigrationStage.Baseline);
-        var before = await database.ReadNodesAsync(MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        var before = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            MigrationStage.Baseline);
+
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
 
@@ -35,8 +42,8 @@ public sealed partial class SafeMigrationTests
         var beyondInt32 = (long)int.MaxValue + 1;
 
         // Act
-        await database.MigrateAsync(upgrade);
-        var after = await database.ReadNodesAsync();
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
+        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
         await database.InsertNodeDirectlyAsync(
             new MigrationNode
             {
@@ -47,15 +54,20 @@ public sealed partial class SafeMigrationTests
                 Right = beyondInt32 + 1,
                 Position = beyondInt32,
                 Payload = "upgraded Int64 coordinates",
-            });
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBeforeReplay = await database.ReadNodesAsync();
-        var indexes = await database.ReadIndexesAsync();
-        var checks = await database.ReadChecksAsync();
-        var foreignKeys = await database.ReadForeignKeysAsync();
-        var columnTypes = await database.ReadColumnTypesAsync();
+        var nodesBeforeReplay = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var checks = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var foreignKeys = await database.ReadForeignKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var columnTypes = await database.ReadColumnTypesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var history = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
-        await SafeMigrationTestServices.ExecuteOperationsAsync(context, replayOperations);
+        await SafeMigrationTestServices.ExecuteOperationsAsync(
+            context,
+            replayOperations,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var replayReport = await context
             .GetService<ISafeMigrationRunner>()
             .AnalyzeAsync(
@@ -64,11 +76,19 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-supported-upgrade-replay"),
                 CancellationToken.None);
 
-        var nodesAfterReplay = await database.ReadNodesAsync();
-        var indexesAfterReplay = await database.ReadIndexesAsync();
-        var checksAfterReplay = await database.ReadChecksAsync();
-        var foreignKeysAfterReplay = await database.ReadForeignKeysAsync();
-        var columnsAfterReplay = await database.ReadColumnTypesAsync();
+        var nodesAfterReplay = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var indexesAfterReplay = await database.ReadIndexesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var checksAfterReplay = await database.ReadChecksAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var foreignKeysAfterReplay = await database.ReadForeignKeysAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var columnsAfterReplay = await database.ReadColumnTypesAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var historyAfterReplay = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
@@ -81,6 +101,7 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             (beyondInt32, beyondInt32 + 1, beyondInt32),
             (largeNode.Left, largeNode.Right, largeNode.Position));
+
         Assert.NotEmpty(replayOperations);
         Assert.Equal(SafeMigrationReportStatus.Ready, replayReport.Status);
         Assert.Equal(replayOperations.Length, replayReport.Assessments.Count);
@@ -88,6 +109,7 @@ public sealed partial class SafeMigrationTests
             3,
             replayReport.Assessments.Count(assessment =>
                 assessment.OperationKind == SafeMigrationOperationKind.DropIndex));
+
         Assert.All(
             replayReport.Assessments,
             assessment =>

@@ -18,17 +18,40 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var rows = hierarchy.SelectSubtrees(node => node.Id == 1,
-            (anchor, node, distance) => new { Anchor = anchor, Node = node });
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var firstBlocked = reverseConstruction ? 5 : 2;
-        var secondBlocked = reverseConstruction ? 2 : 5;
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var rows = hierarchy.SelectSubtrees(
+            node => node.Id == 1,
+            (anchor, node, distance) => new
+            {
+                Anchor = anchor,
+                Node = node,
+            });
+
+        var firstBlocked = reverseConstruction
+            ? 5
+            : 2;
+
+        var secondBlocked = reverseConstruction
+            ? 2
+            : 5;
+
         var first = Build(firstBlocked);
         var second = Build(secondBlocked);
-        int[] firstExpected = firstBlocked == 2 ? [1, 5, 6] : [1];
-        int[] secondExpected = secondBlocked == 2 ? [1, 5, 6] : [1];
+        int[] firstExpected = firstBlocked == 2
+            ? [1, 5, 6]
+            : [1];
+
+        int[] secondExpected = secondBlocked == 2
+            ? [1, 5, 6]
+            : [1];
 
         // Act
         var secondResult = await second.ToArrayAsync(CancellationToken.None);
@@ -40,18 +63,30 @@ public abstract partial class HierarchyCompositionTests
         Assert.Equal(2, probe.CommandCount);
         Assert.Empty(context.ChangeTracker.Entries());
 
-        IQueryable<int> Build(int blocked)
+        IQueryable<int> Build(
+            int blocked
+        )
         {
             var paths = rowAware
-                ? hierarchy.WherePathEdges(rows, row => row.Anchor, row => row.Node,
+                ? hierarchy.WherePathEdges(
+                    rows,
+                    row => row.Anchor,
+                    row => row.Node,
                     (row, parent, child) => child.Id != blocked || row.Node.Id == 0)
-                : hierarchy.WherePathEdges(rows, row => row.Anchor, row => row.Node,
+                : hierarchy.WherePathEdges(
+                    rows,
+                    row => row.Anchor,
+                    row => row.Node,
                     (row, parent, child) => child.Id != blocked);
 
             // WHY: Node 2 is a nearer rejecting candidate than the matching root. The second query
             // leaves that branch open, so sharing syntax must not accidentally enable an ancestor fallback.
-            return hierarchy.WhereNearestAncestorOrSelf(paths, row => row.Node,
-                    (row, owner) => owner.Candidate, (row, owner) => owner.Matches)
+            return hierarchy
+                .WhereNearestAncestorOrSelf(
+                    paths,
+                    row => row.Node,
+                    (row, owner) => owner.Candidate,
+                    (row, owner) => owner.Matches)
                 .Select(row => row.Node.Id)
                 .OrderBy(id => id);
         }

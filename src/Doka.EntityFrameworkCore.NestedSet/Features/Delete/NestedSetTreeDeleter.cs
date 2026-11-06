@@ -28,7 +28,8 @@ internal static class NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>
                 var physicalDelete = new NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>(store);
 
                 if (physicalDelete.IsRequired
-                    || !NestedSetProviderCapabilities.Resolve(store.Context).SupportsStatementAtomicSelfReferentialDelete)
+                    || !NestedSetProviderCapabilities.Resolve(store.Context)
+                        .SupportsStatementAtomicSelfReferentialDelete)
                 {
                     // WHY: Doka and SQLite must tolerate restrictive self-FKs created outside the EF model.
                     await store

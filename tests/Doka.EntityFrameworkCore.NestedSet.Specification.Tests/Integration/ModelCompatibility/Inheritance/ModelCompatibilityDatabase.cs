@@ -3,8 +3,17 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Shares one real database per provider across distinct model-compatibility tables.</summary>
 public sealed class ModelCompatibilityDatabase : IAsyncDisposable
 {
-    private readonly Dictionary<string, TestDatabase> _databases = new(StringComparer.Ordinal);
     private readonly HashSet<(string Engine, Type Model)> _createdTables = [];
+    private readonly Dictionary<string, TestDatabase> _databases = new(StringComparer.Ordinal);
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
 
     /// <summary>Builds provider options for mapping checks that do not connect to a database.</summary>
     internal static DbContextOptions<TContext> Options<TContext>(
@@ -18,17 +27,19 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
     /// <param name="engine">The relational provider to use.</param>
     /// <param name="create">Constructs the mapped context from configured provider options.</param>
     /// <param name="interceptors">Optional observers for this context only.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The context and its ready schema.</returns>
     internal async Task<TContext> CreateContextAsync<TContext>(
         string engine,
         Func<DbContextOptions<TContext>, TContext> create,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
         where TContext : DbContext
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
         }
 
@@ -38,7 +49,8 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
         var context = create(
             interceptors.Length == 0
                 ? options
-                : new DbContextOptionsBuilder<TContext>(options).AddInterceptors(interceptors).Options);
+                : new DbContextOptionsBuilder<TContext>(options).AddInterceptors(interceptors)
+                    .Options);
 
         try
         {
@@ -47,7 +59,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                 // WHY: Each model has distinct tables, so a provider container can be reused without sharing rows.
                 await context
                     .GetService<IRelationalDatabaseCreator>()
-                    .CreateTablesAsync(CancellationToken.None);
+                    .CreateTablesAsync(cancellationToken);
             }
 
             return context;
@@ -58,15 +70,6 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
             await context.DisposeAsync();
 
             throw;
-        }
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
         }
     }
 
@@ -100,6 +103,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                             provider.UseParameterizedCollectionMode(mode);
                         }
                     });
+
                 break;
             case "MySql":
                 options.UseMySql(
@@ -114,6 +118,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                             provider.UseParameterizedCollectionMode(mode);
                         }
                     });
+
                 break;
             case "MariaDb":
                 options.UseMySql(
@@ -128,6 +133,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                             provider.UseParameterizedCollectionMode(mode);
                         }
                     });
+
                 break;
             case "PostgreSql":
                 options.UseNpgsql(
@@ -141,6 +147,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                             provider.UseParameterizedCollectionMode(mode);
                         }
                     });
+
                 break;
             case "SqlServer":
                 options.UseSqlServer(
@@ -154,6 +161,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                             provider.UseParameterizedCollectionMode(mode);
                         }
                     });
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));

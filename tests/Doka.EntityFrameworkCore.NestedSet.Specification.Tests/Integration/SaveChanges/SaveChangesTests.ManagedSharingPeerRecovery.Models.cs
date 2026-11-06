@@ -3,44 +3,91 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Combines the hierarchy model with an independent shared application row.</summary>
-    private sealed class ManagedSharingContext(DbContextOptions options, string shape)
+    private sealed class ManagedSharingContext(
+        DbContextOptions options,
+        string shape
+    )
         : NestedSetDbContext(options), ITestModelVariant
     {
         /// <inheritdoc />
         object ITestModelVariant.ModelVariant => shape;
 
         /// <inheritdoc />
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        protected override void OnModelCreating(
+            ModelBuilder modelBuilder
+        )
         {
             ConfigureNavigationModel(modelBuilder);
             var row = modelBuilder.Entity<ManagedSharingRow>();
             row.ToTable("ManagedSharingRows");
-            row.Property(value => value.Id).ValueGeneratedNever();
-            row.Property(value => value.Text).HasMaxLength(128);
-            row.Property(value => value.Version).HasColumnName("Version").IsConcurrencyToken();
+            row
+                .Property(value => value.Id)
+                .ValueGeneratedNever();
+
+            row
+                .Property(value => value.Text)
+                .HasMaxLength(128);
+
+            row
+                .Property(value => value.Version)
+                .HasColumnName("Version")
+                .IsConcurrencyToken();
 
             if (shape == "owned")
             {
-                row.OwnsOne(value => value.Payload, payload =>
-                {
-                    payload.WithOwner(value => value.Row).HasForeignKey(value => value.Id);
-                    payload.HasKey(value => value.Id);
-                    payload.Property(value => value.Id).HasColumnName("Id").ValueGeneratedNever();
-                    payload.Property(value => value.Value).HasColumnName("PayloadValue").HasMaxLength(128);
-                    payload.Property(value => value.Version).HasColumnName("Version").IsConcurrencyToken();
-                });
-                row.Navigation(value => value.Payload).IsRequired();
+                row.OwnsOne(
+                    value => value.Payload,
+                    payload =>
+                    {
+                        payload
+                            .WithOwner(value => value.Row)
+                            .HasForeignKey(value => value.Id);
+
+                        payload.HasKey(value => value.Id);
+                        payload
+                            .Property(value => value.Id)
+                            .HasColumnName("Id")
+                            .ValueGeneratedNever();
+
+                        payload
+                            .Property(value => value.Value)
+                            .HasColumnName("PayloadValue")
+                            .HasMaxLength(128);
+
+                        payload
+                            .Property(value => value.Version)
+                            .HasColumnName("Version")
+                            .IsConcurrencyToken();
+                    });
+
+                row
+                    .Navigation(value => value.Payload)
+                    .IsRequired();
             }
             else if (shape == "split")
             {
                 var payload = modelBuilder.Entity<ManagedSharingPayload>();
                 payload.ToTable("ManagedSharingRows");
-                payload.Property(value => value.Id).ValueGeneratedNever();
-                payload.Property(value => value.Value).HasColumnName("PayloadValue").HasMaxLength(128);
+                payload
+                    .Property(value => value.Id)
+                    .ValueGeneratedNever();
+
+                payload
+                    .Property(value => value.Value)
+                    .HasColumnName("PayloadValue")
+                    .HasMaxLength(128);
+
                 // WHY: Every entity sharing this row maps the same concurrency-token column.
-                payload.Property(value => value.Version).HasColumnName("Version").IsConcurrencyToken();
-                row.HasOne(value => value.Payload).WithOne(value => value.Row)
-                    .HasForeignKey<ManagedSharingPayload>(value => value.Id).OnDelete(DeleteBehavior.Cascade);
+                payload
+                    .Property(value => value.Version)
+                    .HasColumnName("Version")
+                    .IsConcurrencyToken();
+
+                row
+                    .HasOne(value => value.Payload)
+                    .WithOne(value => value.Row)
+                    .HasForeignKey<ManagedSharingPayload>(value => value.Id)
+                    .OnDelete(DeleteBehavior.Cascade);
             }
             else
             {

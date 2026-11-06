@@ -122,7 +122,11 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
 
         // Assert
         Assert.Same(rows, payload.Rows);
-        Assert.Equal(clear ? 0 : 1, rows.Count);
+        Assert.Equal(
+            clear
+                ? 0
+                : 1,
+            rows.Count);
 
         if (!clear)
         {
@@ -147,11 +151,19 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
             .GetOriginalEntry(1)
             .ComplexProperty(nameof(StructRow.Data));
 
-        Assert.Equal(numberOriginal,
-            restoredOriginal.Property(nameof(PrimitiveValue.Number)).OriginalValue);
-        Assert.True(restoredOriginal.Property(nameof(PrimitiveValue.Tags)).IsModified);
+        Assert.Equal(
+            numberOriginal,
+            restoredOriginal.Property(nameof(PrimitiveValue.Number))
+                .OriginalValue);
+
+        Assert.True(
+            restoredOriginal.Property(nameof(PrimitiveValue.Tags))
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

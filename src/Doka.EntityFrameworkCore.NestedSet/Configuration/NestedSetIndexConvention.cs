@@ -3,11 +3,11 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Maintains indexes while metadata is mutable and validates the completed node-identity contract.</summary>
 internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedConvention, IModelFinalizingConvention
 {
-    /// <summary>The active provider's SQL identifier service.</summary>
-    private readonly ISqlGenerationHelper _sql;
-
     /// <summary>The registered provider identity controlling collation support.</summary>
     private readonly NestedSetProviderCapabilities _provider;
+
+    /// <summary>The active provider's SQL identifier service.</summary>
+    private readonly ISqlGenerationHelper _sql;
 
     /// <summary>The provider service resolving implicit conversions from configured store facets.</summary>
     private readonly ITypeMappingSource _typeMappings;
@@ -34,6 +34,7 @@ internal sealed class NestedSetIndexConvention : IEntityTypePrimaryKeyChangedCon
         IConventionKey? previousPrimaryKey,
         IConventionContext<IConventionKey> context
     ) =>
+
         // WHY: Waiting solely for finalization would add indexes after provider-specific index-length budgeting.
         NestedSetIndexes.Reconcile(entityTypeBuilder.Metadata, provider: _provider);
 

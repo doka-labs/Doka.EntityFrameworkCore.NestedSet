@@ -24,7 +24,8 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SortedSharedContext>(
             Engine,
-            static options => new SortedSharedContext(options));
+            static options => new SortedSharedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var treeId = Guid.NewGuid();
         var hierarchy = context.NestedSet<SharedSaveNode>(SortedSharedContext.FolderEntity);
@@ -102,6 +103,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
             third => Assert.Equal(
                 (4, "D", 6L, 7L, 2L),
                 (third.Id, third.Name, third.Left, third.Right, third.Position)));
+
         Assert.Equal((1L, 8L, 0), (tracked[0].Left, tracked[0].Right, tracked[0].Depth));
         Assert.Equal(
             s_expectedTrackedPositions,
@@ -124,9 +126,14 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                 .Set<SharedSaveNode>(SortedSharedContext.UnrelatedEntity)
                 .AsNoTracking()
                 .SingleAsync(CancellationToken.None)).Name);
+
         var renamedEntry = Assert.Single(entries, entry => ReferenceEquals(entry.Entity, renamed));
         Assert.Equal(SortedSharedContext.FolderEntity, renamedEntry.Metadata.Name);
-        Assert.Equal("A", renamedEntry.Property(node => node.Name).OriginalValue);
+        Assert.Equal(
+            "A",
+            renamedEntry.Property(node => node.Name)
+                .OriginalValue);
+
         Assert.All(renamedEntry.Properties, property => Assert.False(property.IsModified));
         Assert.True(
             (await hierarchy
@@ -142,7 +149,8 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PropertyBagSaveContext>(
             Engine,
-            static options => new PropertyBagSaveContext(options));
+            static options => new PropertyBagSaveContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var sourceTree = Guid.NewGuid();
         var targetTree = Guid.NewGuid();
@@ -172,6 +180,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
             ((Guid)child[SharedTypeContext.TreeId], (int)child[SharedTypeContext.ParentId],
                 (long)child[SharedTypeContext.Left], (long)child[SharedTypeContext.Right],
                 (int)child[SharedTypeContext.Depth], (long)child[SharedTypeContext.Position]));
+
         Assert.Equal("Moved", child[SharedTypeContext.Name]);
         Assert.Equal((1L, 2L), ((long)tracked[0][SharedTypeContext.Left], (long)tracked[0][SharedTypeContext.Right]));
         Assert.Equal((1L, 4L), ((long)tracked[1][SharedTypeContext.Left], (long)tracked[1][SharedTypeContext.Right]));
@@ -183,7 +192,11 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
         Assert.All(entries, entry => Assert.Equal(EntityState.Unchanged, entry.State));
         var childEntry = Assert.Single(entries, entry => ReferenceEquals(entry.Entity, child));
         Assert.Equal(SharedTypeContext.FolderEntity, childEntry.Metadata.Name);
-        Assert.Equal(2, childEntry.Property<int?>(SharedTypeContext.ParentId).OriginalValue);
+        Assert.Equal(
+            2,
+            childEntry.Property<int?>(SharedTypeContext.ParentId)
+                .OriginalValue);
+
         Assert.All(childEntry.Properties, property => Assert.False(property.IsModified));
         var unrelatedEntry = Assert.Single(entries, entry => ReferenceEquals(entry.Entity, unrelated));
         Assert.Equal(SharedTypeContext.UnrelatedEntity, unrelatedEntry.Metadata.Name);
@@ -193,10 +206,12 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                 .Set<Dictionary<string, object>>(SharedTypeContext.UnrelatedEntity)
                 .AsNoTracking()
                 .CountAsync(CancellationToken.None));
+
         Assert.True(
             (await hierarchy
                 .InTree(sourceTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await hierarchy
                 .InTree(targetTree)
@@ -232,6 +247,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                     node
                         .IndexerProperty<int>(SharedTypeContext.Id)
                         .ValueGeneratedNever();
+
                     node.IndexerProperty<Guid>(SharedTypeContext.TreeId);
                     node.IndexerProperty<int?>(SharedTypeContext.ParentId);
                     node.IndexerProperty<long>(SharedTypeContext.Left);
@@ -241,6 +257,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                     node
                         .IndexerProperty<string>(SharedTypeContext.Name)
                         .HasMaxLength(80);
+
                     node.HasKey(SharedTypeContext.Id);
                     node.HasNestedSet(nestedSet => nestedSet
                         .HasNodeKey(SharedTypeContext.Id)
@@ -259,6 +276,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                     node
                         .IndexerProperty<int>(SharedTypeContext.Id)
                         .ValueGeneratedNever();
+
                     node.HasKey(SharedTypeContext.Id);
                 });
         }
@@ -288,9 +306,11 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
                     node
                         .Property(entity => entity.Id)
                         .ValueGeneratedNever();
+
                     node
                         .Property(entity => entity.Name)
                         .HasMaxLength(80);
+
                     node.HasNestedSet(nestedSet => nestedSet
                         .HasTreeId(entity => entity.TreeId)
                         .HasParent(entity => entity.ParentId)

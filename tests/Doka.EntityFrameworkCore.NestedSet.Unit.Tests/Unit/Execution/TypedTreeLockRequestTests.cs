@@ -35,8 +35,10 @@ public sealed class TypedTreeLockRequestTests
         Assert.Same(request.TreeId, native.TreeIdValue);
         Assert.Same(request.Mapping, native.Mapping);
         Assert.Equal(NestedSetTreeLockMode.Existing, native.Mode);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects an incompatible generic identity role before opening the database.</summary>
@@ -74,10 +76,18 @@ public sealed class TypedTreeLockRequestTests
         });
 
         // Assert
-        Assert.Equal(wrongScope ? "Scope" : "TreeId",
-            Assert.IsType<ArgumentException>(error).ParamName);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            wrongScope
+                ? "Scope"
+                : "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -102,8 +112,10 @@ public sealed class TypedTreeLockRequestTests
         Assert.Null(request.Mapping.SourceScope);
         Assert.Equal(Guid.Empty, request.TreeId);
         Assert.Equal(NestedSetTreeLockMode.New, request.Mode);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects an unrelated role even when the mapped hierarchy omits its Scope column.</summary>
@@ -122,10 +134,15 @@ public sealed class TypedTreeLockRequestTests
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal("scope",
-            Assert.IsType<ArgumentException>(error).ParamName);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            "scope",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects another named hierarchy sharing the same CLR type and exact generic identity roles.</summary>
@@ -153,12 +170,18 @@ public sealed class TypedTreeLockRequestTests
             : executor.ExecuteAsync(Operation, [request], CancellationToken.None));
 
         // Assert
-        Assert.Equal("requests",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            "requests",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         Assert.NotSame(request.Mapping, NestedSetTreeRegistryMapping.For(first));
         Assert.Equal(0, attempts);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
 
@@ -201,6 +224,7 @@ public sealed class TypedTreeLockRequestTests
                 .Entity<ScopelessNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             modelBuilder
                 .Entity<ScopelessNode>()
                 .HasNestedSet(node => node.HasParent(value => value.ParentId));
@@ -223,10 +247,12 @@ public sealed class TypedTreeLockRequestTests
                 .IndexerProperty<byte[]>("TreeId")
                 .HasMaxLength(8)
                 .IsRequired();
+
             entity
                 .IndexerProperty<byte[]>("Scope")
                 .HasMaxLength(8)
                 .IsRequired();
+
             entity.IndexerProperty<int?>("ParentId");
             entity.IndexerProperty<long>("Left");
             entity.IndexerProperty<long>("Right");
@@ -247,14 +273,14 @@ public sealed class TypedTreeLockRequestTests
     /// <summary>Models a hierarchy whose configuration has no Scope role or column.</summary>
     private sealed class ScopelessNode : INestedSetNode<int, Guid>
     {
+        /// <summary>Gets or sets the optional direct parent identity.</summary>
+        public int? ParentId { get; set; }
+
         /// <inheritdoc />
         public int Id { get; set; }
 
         /// <inheritdoc />
         public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the optional direct parent identity.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }

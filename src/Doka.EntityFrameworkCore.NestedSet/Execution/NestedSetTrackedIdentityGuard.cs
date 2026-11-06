@@ -15,19 +15,21 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
     internal const string QueryTag = "NestedSet native tracked identity guard";
 
     /// <summary>Bounds scalar candidates before grouping their complete Scope and NodeKey identities.</summary>
+
     // WHY: At most twice 768 candidate parameters plus two for each of 64 requested trees stays below
     // SQL Server's 2,098-parameter command budget, including fixed collection expansion padding.
     private const int MaximumScalarCandidates = 768;
 
+    private readonly IReadOnlyList<Candidate> _candidates;
+
     private readonly DbContext _context;
+    private readonly NestedSetProviderComparer<TKey> _keyComparer;
     private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
     private readonly IReadOnlyList<NestedSetTreeLockRequest<TTreeId, TScope>> _requests;
-    private readonly IReadOnlyList<Candidate> _candidates;
-    private readonly NestedSetProviderComparer<TKey> _keyComparer;
     private readonly NestedSetProviderComparer<TTreeId> _treeComparer;
     private readonly bool _usesNativeScopeComparison;
-    private bool _observing;
     private bool _newHierarchyEntry;
+    private bool _observing;
 
     /// <summary>Observes only hierarchy attachments during the pending native equality checks.</summary>
     private NestedSetTrackedIdentityGuard(
@@ -46,11 +48,28 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
         _keyComparer = keyComparer;
         _treeComparer = treeComparer;
         _usesNativeScopeComparison = map.ScopeProperty is { } scope
-            && (scope.GetTypeMapping().Converter?.ProviderClrType ?? scope.ClrType) == typeof(string)
-            && NestedSetProviderCapabilities.Resolve(context).UsesNativeScopeComparison;
+            && (scope.GetTypeMapping()
+                    .Converter?.ProviderClrType
+                ?? scope.ClrType)
+            == typeof(string)
+            && NestedSetProviderCapabilities.Resolve(context)
+                .UsesNativeScopeComparison;
 
         _context.ChangeTracker.Tracked += OnTracked;
         _observing = true;
+    }
+
+    /// <summary>Gets whether captured entries require native equality probes and a late state check.</summary>
+    internal bool HasCandidates => _candidates.Count != 0;
+
+    /// <summary>Removes the temporary attachment observer before structural work or on any failed boundary.</summary>
+    public void Dispose()
+    {
+        if (_observing)
+        {
+            _context.ChangeTracker.Tracked -= OnTracked;
+            _observing = false;
+        }
     }
 
     /// <summary>Rejects known affected identities immediately and snapshots only uncertain hierarchy entries.</summary>
@@ -141,7 +160,9 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             context,
             map,
             requests,
-            candidates is null ? Array.Empty<Candidate>() : candidates,
+            candidates is null
+                ? Array.Empty<Candidate>()
+                : candidates,
             keyComparer,
             treeComparer);
 
@@ -179,9 +200,6 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
         }
     }
 
-    /// <summary>Gets whether captured entries require native equality probes and a late state check.</summary>
-    internal bool HasCandidates => _candidates.Count != 0;
-
     /// <summary>Rejects entries whose actual persisted rows belong to any locked mutation tree.</summary>
     /// <param name="cancellationToken">The token used by the bounded native database probes.</param>
     /// <returns>A task that completes only when every uncertain tracked row is unaffected.</returns>
@@ -203,7 +221,9 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
 
         // WHY: The same owned candidates apply to every request batch. Build bounded native predicates once;
         // grouping inside each pack prevents one query per Scope when scopes contain only a few tracked rows.
-        var scalarPredicates = nativeGroups is null ? CreateScalarPredicates() : null;
+        var scalarPredicates = nativeGroups is null
+            ? CreateScalarPredicates()
+            : null;
 
         for (var requestStart = 0; requestStart < _requests.Count; requestStart += NestedSetBatch.MaximumRows)
         {
@@ -214,15 +234,17 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             {
                 foreach (var group in nativeGroups)
                 {
-                    var scoped = _map.Scope is null ? affected : affected.Where(ScopePredicate(group.Scope));
+                    var scoped = _map.Scope is null
+                        ? affected
+                        : affected.Where(ScopePredicate(group.Scope));
 
                     // WHY: Verified native keys can share one collection parameter regardless of tracker width.
                     // A mapped Scope predicate preserves tenant-local keys and SQL-equal Scope aliases; Doka's
                     // existing equality join avoids scanning the JSON collection for every persisted row.
                     if (await capabilities
-                            .MatchTrackedKeyCollection(scoped, _map.KeyProperty, group.Keys)
-                            .AnyAsync(cancellationToken)
-                            .ConfigureAwait(false))
+                        .MatchTrackedKeyCollection(scoped, _map.KeyProperty, group.Keys)
+                        .AnyAsync(cancellationToken)
+                        .ConfigureAwait(false))
                     {
                         throw AffectedTrackedEntry();
                     }
@@ -324,16 +346,6 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             {
                 throw ChangedTracker();
             }
-        }
-    }
-
-    /// <summary>Removes the temporary attachment observer before structural work or on any failed boundary.</summary>
-    public void Dispose()
-    {
-        if (_observing)
-        {
-            _context.ChangeTracker.Tracked -= OnTracked;
-            _observing = false;
         }
     }
 
@@ -525,6 +537,18 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             }
         }
 
+        /// <inheritdoc />
+        public IEnumerator<Candidate> GetEnumerator()
+        {
+            for (var index = 0; index < Count; index++)
+            {
+                yield return this[index];
+            }
+        }
+
+        /// <inheritdoc />
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
         /// <summary>Appends one snapshot and retains earlier live wrappers in their original block.</summary>
         internal void Add(
             Candidate candidate
@@ -540,18 +564,6 @@ internal sealed class NestedSetTrackedIdentityGuard<TEntity, TKey, TTreeId, TSco
             _blocks[^1][Count % BlockSize] = candidate;
             Count++;
         }
-
-        /// <inheritdoc />
-        public IEnumerator<Candidate> GetEnumerator()
-        {
-            for (var index = 0; index < Count; index++)
-            {
-                yield return this[index];
-            }
-        }
-
-        /// <inheritdoc />
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     /// <summary>Retains one uncertain entry and independent, exact typed structural identity snapshots.</summary>

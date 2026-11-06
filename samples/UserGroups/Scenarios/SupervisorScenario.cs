@@ -83,25 +83,25 @@ internal static class SupervisorScenario
             {
                 TenantId = s_tenantId,
                 UserId = engineeringDirector.Id,
-                UserGroupId = groups.Engineering.Id
+                UserGroupId = groups.Engineering.Id,
             },
             new UserGroupMembership
             {
                 TenantId = s_tenantId,
                 UserId = apiEngineer.Id,
-                UserGroupId = groups.ApiTeam.Id
+                UserGroupId = groups.ApiTeam.Id,
             },
             new UserGroupMembership
             {
                 TenantId = s_tenantId,
                 UserId = apiEngineer.Id,
-                UserGroupId = groups.Finance.Id
+                UserGroupId = groups.Finance.Id,
             },
             new UserGroupMembership
             {
                 TenantId = s_tenantId,
                 UserId = financeDirector.Id,
-                UserGroupId = groups.Finance.Id
+                UserGroupId = groups.Finance.Id,
             });
 
         await context.SaveChangesAsync(cancellationToken);

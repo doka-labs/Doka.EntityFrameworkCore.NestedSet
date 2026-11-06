@@ -18,7 +18,10 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -42,7 +45,9 @@ public sealed partial class BulkIdentityRetentionTests
                     .Single()
                     .Entity;
 
-                (scope ? node.Scope : node.Id)[0] = 4;
+                (scope
+                    ? node.Scope
+                    : node.Id)[0] = 4;
             }
             else
             {
@@ -52,24 +57,45 @@ public sealed partial class BulkIdentityRetentionTests
                     .Single()
                     .Entity;
 
-                (scope ? node.Scope : node.Id).Value = "changed";
+                (scope
+                    ? node.Scope
+                    : node.Id).Value = "changed";
             }
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary);
+        var result = await ImportMutableAsync(
+            context,
+            binary,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidImport,
-            Assert.IsType<NestedSetException>(result.Error).Code);
+            Assert.IsType<NestedSetException>(result.Error)
+                .Code);
+
         Assert.True(result.Restored);
         CollectInputs();
         Assert.False(result.Input.TryGetTarget(out _));
         Assert.False(result.Payload.TryGetTarget(out _));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
-        Assert.Equal(0, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
-        Assert.Equal(0, await context.Set<BinaryNode>().CountAsync(CancellationToken.None));
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
+
+        Assert.Equal(
+            0,
+            await context
+                .Set<BinaryNode>()
+                .CountAsync(CancellationToken.None));
+
         Assert.Null(
             await context.FindAsync<MutableNode>(
                 [new MutableIdentity("scope"), new MutableIdentity("node")],
@@ -89,7 +115,10 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShallowBinaryContext>()
             .ConfigureTestWarnings()
@@ -111,21 +140,39 @@ public sealed partial class BulkIdentityRetentionTests
                 .Single()
                 .Entity;
 
-            (scope ? input.Scope : input.Id)[0] = 4;
+            (scope
+                ? input.Scope
+                : input.Id)[0] = 4;
         };
 
         // Act
-        var result = await ImportMutableAsync(context, binary: true);
+        var result = await ImportMutableAsync(
+            context,
+            binary: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(result.Error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(result.Error)
+                .Code);
+
         Assert.True(result.Restored);
         CollectInputs();
         Assert.False(result.Input.TryGetTarget(out _));
         Assert.False(result.Payload.TryGetTarget(out _));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Null(await context.FindAsync<BinaryNode>([new byte[] { 1 }, new byte[] { 3 }], CancellationToken.None));
-        Assert.Equal(0, await context.Set<BinaryNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            0,
+            await context
+                .Set<BinaryNode>()
+                .CountAsync(CancellationToken.None));
+
         GC.KeepAlive(context);
     }
 
@@ -134,7 +181,10 @@ public sealed partial class BulkIdentityRetentionTests
     public async Task SuccessfulImportReleasesMutableIdentities()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -164,7 +214,11 @@ public sealed partial class BulkIdentityRetentionTests
         Assert.Equal("node", node.Id.Value);
         Assert.Equal("scope", node.Scope.Value);
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(1, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>Comparer-equal replacements around explicit detection preserve a valid mutable-key insertion.</summary>
@@ -177,7 +231,10 @@ public sealed partial class BulkIdentityRetentionTests
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
@@ -235,7 +292,12 @@ public sealed partial class BulkIdentityRetentionTests
         // Assert
         Assert.Equal("node", node.Id.Value);
         Assert.Equal("scope", node.Scope.Value);
-        Assert.Equal(1, await context.Set<MutableNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<MutableNode>()
+                .CountAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 }

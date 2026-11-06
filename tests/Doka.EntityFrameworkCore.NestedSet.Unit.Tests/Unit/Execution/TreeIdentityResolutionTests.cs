@@ -5,6 +5,7 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Facade;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects ordered anchor resolution and its missing-before-ambiguous error contract.</summary>
+
 // WHY: Allocation observations share the existing isolated collection rather than competing with other tests.
 [Collection("Allocation measurements")]
 public sealed class TreeIdentityResolutionTests
@@ -19,6 +20,21 @@ public sealed class TreeIdentityResolutionTests
     {
         _output = output;
     }
+
+    /// <summary>Provides absent, duplicate and mixed invalid source/target rows.</summary>
+    public static TheoryData<int[], NestedSetErrorCode> InvalidRows =>
+        new()
+        {
+            { [], NestedSetErrorCode.NodeNotFound },
+            { [0], NestedSetErrorCode.NodeNotFound },
+            { [1], NestedSetErrorCode.NodeNotFound },
+            { [-1, 2], NestedSetErrorCode.NodeNotFound },
+            { [0, 0], NestedSetErrorCode.NodeNotFound },
+            { [1, 1], NestedSetErrorCode.NodeNotFound },
+            { [0, 0, 1], NestedSetErrorCode.InvalidStructure },
+            { [0, 1, 1], NestedSetErrorCode.InvalidStructure },
+            { [0, 1, 0, 1], NestedSetErrorCode.InvalidStructure },
+        };
 
     /// <summary>Returns source then target regardless of row order, ignored ordinals or equal identities.</summary>
     /// <param name="targetFirst">Whether the target row precedes the source.</param>
@@ -35,8 +51,14 @@ public sealed class TreeIdentityResolutionTests
     {
         // Arrange
         var source = Guid.NewGuid();
-        var target = sameTree ? source : Guid.NewGuid();
-        (int Ordinal, Guid TreeId)[] selected = targetFirst ? [(1, target), (0, source)] : [(0, source), (1, target)];
+        var target = sameTree
+            ? source
+            : Guid.NewGuid();
+
+        (int Ordinal, Guid TreeId)[] selected = targetFirst
+            ? [(1, target), (0, source)]
+            : [(0, source), (1, target)];
+
         var rows = Probe<Guid>.Rows([(-1, Guid.NewGuid()), .. selected, (2, Guid.NewGuid())]);
 
         // Act
@@ -90,23 +112,9 @@ public sealed class TreeIdentityResolutionTests
         Assert.Equal(
             "Source and destination must each resolve to exactly one hierarchy row in the selected Scope.",
             failure.Message);
+
         Assert.Equal(ordinals.Length, rows.Count);
     }
-
-    /// <summary>Provides absent, duplicate and mixed invalid source/target rows.</summary>
-    public static TheoryData<int[], NestedSetErrorCode> InvalidRows =>
-        new()
-        {
-            { [], NestedSetErrorCode.NodeNotFound },
-            { [0], NestedSetErrorCode.NodeNotFound },
-            { [1], NestedSetErrorCode.NodeNotFound },
-            { [-1, 2], NestedSetErrorCode.NodeNotFound },
-            { [0, 0], NestedSetErrorCode.NodeNotFound },
-            { [1, 1], NestedSetErrorCode.NodeNotFound },
-            { [0, 0, 1], NestedSetErrorCode.InvalidStructure },
-            { [0, 1, 1], NestedSetErrorCode.InvalidStructure },
-            { [0, 1, 0, 1], NestedSetErrorCode.InvalidStructure },
-        };
 
     /// <summary>Does not recreate filtered row arrays during repeated successful resolution.</summary>
     /// <param name="ignoredRows">Additional unrelated ordinals surrounding the two requested anchors.</param>
@@ -122,13 +130,13 @@ public sealed class TreeIdentityResolutionTests
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var rows = Probe<Guid>.Rows(
-            [
-                .. Enumerable
-                    .Range(0, ignoredRows)
-                    .Select(index => (index + 2, Guid.NewGuid())),
-                (1, target),
-                (0, source),
-            ]);
+        [
+            .. Enumerable
+                .Range(0, ignoredRows)
+                .Select(index => (index + 2, Guid.NewGuid())),
+            (1, target),
+            (0, source),
+        ]);
 
         const int repetitions = 1_024;
 
@@ -158,8 +166,10 @@ public sealed class TreeIdentityResolutionTests
         _output.WriteLine(
             $"Tree identity resolution: ignored={ignoredRows}; operations={repetitions}; "
             + $"allocated={allocated} B.");
+
         Assert.Equal(source, resolved.Source);
         Assert.Equal(target, resolved.Target);
+
         // WHY: A fixed noise allowance still rejects the former two filtered arrays on every invocation.
         Assert.InRange(allocated, 0, 4_096);
     }
@@ -183,8 +193,11 @@ public sealed class TreeIdentityResolutionTests
             var method = invoker.GetMethod("ResolveTreeIds", BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("The production tree identity selector was not found.");
 
-            s_rows = method.GetParameters()[0].ParameterType;
-            var row = s_rows.GetGenericArguments()[0];
+            s_rows = method
+                .GetParameters()[0].ParameterType;
+
+            var row = s_rows
+                .GetGenericArguments()[0];
 
             var constructor = row.GetConstructor(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,

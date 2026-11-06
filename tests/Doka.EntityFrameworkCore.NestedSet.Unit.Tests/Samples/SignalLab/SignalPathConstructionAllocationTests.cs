@@ -76,14 +76,26 @@ public sealed class SignalPathConstructionAllocationTests(
         Assert.Same(firstLiterals.Invalid, secondLiterals.Invalid);
         Assert.Same(firstLiterals.One, secondLiterals.One);
         Assert.Same(firstLiterals.Two, secondLiterals.Two);
-        Assert.Equal(0L,
-            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Zero).Value);
-        Assert.Equal(-1L,
-            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Invalid).Value);
-        Assert.Equal(1L,
-            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.One).Value);
-        Assert.Equal(2L,
-            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Two).Value);
+        Assert.Equal(
+            0L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Zero)
+                .Value);
+
+        Assert.Equal(
+            -1L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Invalid)
+                .Value);
+
+        Assert.Equal(
+            1L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.One)
+                .Value);
+
+        Assert.Equal(
+            2L,
+            Assert.IsAssignableFrom<ConstantExpression>(firstLiterals.Two)
+                .Value);
+
         Assert.NotSame(first, second);
         Assert.True(NestedSetQueryExpressions.References(first, upper));
         Assert.True(NestedSetQueryExpressions.References(first, lower));
@@ -106,9 +118,13 @@ public sealed class SignalPathConstructionAllocationTests(
         var oneEdge = Assert.IsAssignableFrom<ConditionalExpression>(proof.IfFalse);
         var twoEdges = Assert.IsAssignableFrom<ConditionalExpression>(oneEdge.IfFalse);
 
-        return (Assert.IsAssignableFrom<BinaryExpression>(proof.Test).Right,
-            Assert.IsAssignableFrom<ConditionalExpression>(proof.IfTrue).IfFalse,
-            Assert.IsAssignableFrom<BinaryExpression>(oneEdge.Test).Right,
-            Assert.IsAssignableFrom<BinaryExpression>(twoEdges.Test).Right);
+        return (Assert.IsAssignableFrom<BinaryExpression>(proof.Test)
+                .Right,
+            Assert.IsAssignableFrom<ConditionalExpression>(proof.IfTrue)
+                .IfFalse,
+            Assert.IsAssignableFrom<BinaryExpression>(oneEdge.Test)
+                .Right,
+            Assert.IsAssignableFrom<BinaryExpression>(twoEdges.Test)
+                .Right);
     }
 }

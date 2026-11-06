@@ -61,7 +61,8 @@ public sealed partial class ComplexPeerRollbackTests
 
         var peerEntry = context.Entry(peer);
         var peerState = peerEntry.State;
-        var collectionModified = peerEntry.ComplexCollection(value => value.Items).IsModified;
+        var collectionModified = peerEntry.ComplexCollection(value => value.Items)
+            .IsModified;
 
         var expectedTexts = addItem
             ? new[] { "Stored one", "Stored two", "Raw native addition" }
@@ -69,13 +70,14 @@ public sealed partial class ComplexPeerRollbackTests
 
         TestContext.Current.TestOutputHelper!.WriteLine(
             $"Native EF before save: add={addItem}; peer={peerState}; collectionModified={collectionModified}; "
-            + JsonSerializer.Serialize(new
-            {
-                root.Name,
-                peer.Marker,
-                peer.Optional,
-                peer.Items,
-            }));
+            + JsonSerializer.Serialize(
+                new
+                {
+                    root.Name,
+                    peer.Marker,
+                    peer.Optional,
+                    peer.Items,
+                }));
 
         // Act
         // WHY: This plain EF model has no NestedSet registration. Shared-row preparation discovers a new
@@ -93,13 +95,15 @@ public sealed partial class ComplexPeerRollbackTests
         var storedPeer = Assert.IsType<ComplexPeer>(stored.Peer);
         TestContext.Current.TestOutputHelper!.WriteLine(
             $"Native EF reloaded: items={storedPeer.Items.Count}; "
-            + JsonSerializer.Serialize(new
-            {
-                stored.Name,
-                storedPeer.Marker,
-                storedPeer.Optional,
-                storedPeer.Items,
-            }));
+            + JsonSerializer.Serialize(
+                new
+                {
+                    stored.Name,
+                    storedPeer.Marker,
+                    storedPeer.Optional,
+                    storedPeer.Items,
+                }));
+
         Assert.Equal(EntityState.Unchanged, peerState);
         Assert.False(collectionModified);
         Assert.True(saved > 0);

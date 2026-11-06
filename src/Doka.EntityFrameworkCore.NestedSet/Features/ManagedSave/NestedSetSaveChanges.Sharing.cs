@@ -29,14 +29,18 @@ internal static partial class NestedSetSaveChanges
             var source = callbackWrites[index];
 
             foreach (var table in s_callbackSharingTables.GetValue(
-                         source.EntityType,
-                         static type => type
-                             .GetTableMappings()
-                             .Select(mapping => mapping.Table)
-                             .Where(table => table.IsShared
-                                 && (table.GetRowInternalForeignKeys(type).Any()
-                                     || table.GetReferencingRowInternalForeignKeys(type).Any()))
-                             .ToArray()))
+                source.EntityType,
+                static type => type
+                    .GetTableMappings()
+                    .Select(mapping => mapping.Table)
+                    .Where(table => table.IsShared
+                        && (table
+                                .GetRowInternalForeignKeys(type)
+                                .Any()
+                            || table
+                                .GetReferencingRowInternalForeignKeys(type)
+                                .Any()))
+                    .ToArray()))
             {
                 updates ??= context
                     .GetService<IUpdateAdapterFactory>()

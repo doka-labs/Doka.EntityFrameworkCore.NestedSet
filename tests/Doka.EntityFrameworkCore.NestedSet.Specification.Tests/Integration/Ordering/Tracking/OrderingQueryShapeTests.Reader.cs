@@ -175,6 +175,7 @@ public abstract partial class OrderingQueryShapeTests
         public override T GetFieldValue<T>(
             int ordinal
         ) =>
+
             // WHY: EF scalar materialization requires the synchronous reader member; asynchronous delegation is separate.
             // ReSharper disable once MethodHasAsyncOverload
             inner.GetFieldValue<T>(ordinal);
@@ -318,6 +319,7 @@ public abstract partial class OrderingQueryShapeTests
 
         /// <inheritdoc />
         public override DataTable? GetSchemaTable() =>
+
             // WHY: The synchronous metadata contract must not initiate asynchronous work or block on a task.
             // ReSharper disable once MethodHasAsyncOverload
             inner.GetSchemaTable();
@@ -354,7 +356,9 @@ public abstract partial class OrderingQueryShapeTests
         }
 
         /// <inheritdoc />
-        public override Task CloseAsync() => _disposeStarted ? Task.CompletedTask : inner.CloseAsync();
+        public override Task CloseAsync() => _disposeStarted
+            ? Task.CompletedTask
+            : inner.CloseAsync();
 
         /// <inheritdoc />
         protected override void Dispose(
@@ -366,6 +370,7 @@ public abstract partial class OrderingQueryShapeTests
                 if (disposing && !_disposeStarted)
                 {
                     _disposeStarted = true;
+
                     // WHY: Required synchronous disposal delegates once; asynchronous disposal has its own override.
                     // ReSharper disable once MethodHasAsyncOverload
                     inner.Dispose();

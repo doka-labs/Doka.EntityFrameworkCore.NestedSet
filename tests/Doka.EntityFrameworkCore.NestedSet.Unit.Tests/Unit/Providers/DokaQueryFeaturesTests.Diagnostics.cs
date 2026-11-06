@@ -39,10 +39,12 @@ public sealed partial class DokaQueryFeaturesTests
         Assert.All(events, entry => Assert.Equal(70_004, entry.EventId.Id));
         Assert.All(events, entry => Assert.Equal(AncestorFallbackName, entry.EventId.Name));
         Assert.All(events, entry => Assert.Equal(AncestorFallbackMessage, entry.ToString()));
-        Assert.DoesNotContain(events,
+        Assert.DoesNotContain(
+            events,
             entry => entry
                 .ToString()
                 .Contains("CompositionFirst", StringComparison.Ordinal));
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -62,10 +64,15 @@ public sealed partial class DokaQueryFeaturesTests
         NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
 
         // Assert
-        Assert.Equal("context",
-            Assert.IsType<ArgumentNullException>(error).ParamName);
-        Assert.Equal(AncestorFallbackName,
-            Assert.Single(events).EventId.Name);
+        Assert.Equal(
+            "context",
+            Assert.IsType<ArgumentNullException>(error)
+                .ParamName);
+
+        Assert.Equal(
+            AncestorFallbackName,
+            Assert.Single(events)
+                .EventId.Name);
     }
 
     /// <summary>Concurrent first reporting claims one bounded event after EF service initialization.</summary>
@@ -82,11 +89,12 @@ public sealed partial class DokaQueryFeaturesTests
         _ = context.GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>();
 
         // Act
-        await Task.WhenAll(Enumerable
-            .Range(0, 32)
-            .Select(_ => Task.Run(
-                () => NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context),
-                CancellationToken.None)));
+        await Task.WhenAll(
+            Enumerable
+                .Range(0, 32)
+                .Select(_ => Task.Run(
+                    () => NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context),
+                    CancellationToken.None)));
 
         // Assert
         Assert.Single(events);
@@ -137,8 +145,10 @@ public sealed partial class DokaQueryFeaturesTests
         var options = builder.Options;
         using var provider = NestedSetTestAdapters.BuildServices(options);
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
-        var listener = Assert.IsType<DiagnosticListener>(context
-            .GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>().DiagnosticSource);
+        var listener = Assert.IsType<DiagnosticListener>(
+            context
+                .GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>()
+                .DiagnosticSource);
 
         using var observer = new QueryDiagnosticObserver();
         using var subscription = listener.Subscribe(observer, name => enabled && name == AncestorFallbackName);
@@ -174,7 +184,8 @@ public sealed partial class DokaQueryFeaturesTests
         }
         else
         {
-            Assert.Equal(AncestorFallbackMessage,
+            Assert.Equal(
+                AncestorFallbackMessage,
                 Assert
                     .Single(events)
                     .ToString());
@@ -305,6 +316,9 @@ public sealed partial class DokaQueryFeaturesTests
         internal List<KeyValuePair<string, object?>> Events { get; } = [];
 
         /// <inheritdoc />
+        public void Dispose() => s_owner.Value = _previous;
+
+        /// <inheritdoc />
         public void OnNext(
             KeyValuePair<string, object?> value
         )
@@ -322,8 +336,5 @@ public sealed partial class DokaQueryFeaturesTests
 
         /// <inheritdoc />
         public void OnCompleted() { }
-
-        /// <inheritdoc />
-        public void Dispose() => s_owner.Value = _previous;
     }
 }

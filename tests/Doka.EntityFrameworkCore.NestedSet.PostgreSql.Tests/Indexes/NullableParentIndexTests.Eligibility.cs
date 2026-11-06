@@ -16,7 +16,7 @@ public sealed partial class NullableParentIndexTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var source = database.CreateContext();
         var observer = new TreeEligibilityObserver();
         var options = new DbContextOptionsBuilder<TreeEligibilityContext>()
@@ -26,10 +26,19 @@ public sealed partial class NullableParentIndexTests
             .Options;
 
         await using var context = new TreeEligibilityContext(options, convertedTree);
-        var table = convertedTree ? "EligibilityConvertedTree" : "EligibilityNativeTree";
+        var table = convertedTree
+            ? "EligibilityConvertedTree"
+            : "EligibilityNativeTree";
+
         var index = table + "Path";
-        var storeType = convertedTree ? "text" : "uuid";
-        var value = convertedTree ? "md5(((n - 1) / 20)::text)::uuid::text" : "md5(((n - 1) / 20)::text)::uuid";
+        var storeType = convertedTree
+            ? "text"
+            : "uuid";
+
+        var value = convertedTree
+            ? "md5(((n - 1) / 20)::text)::uuid::text"
+            : "md5(((n - 1) / 20)::text)::uuid";
+
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await using var command = context
             .Database
@@ -58,7 +67,12 @@ public sealed partial class NullableParentIndexTests
             + "WHERE x.\"Scope\" = @scope AND x.\"Id\" = @key FOR KEY SHARE OF x";
 
         // Act
-        var principalPlan = await ExplainAsync(context, principalQuery, true);
+        var principalPlan = await ExplainAsync(
+            context,
+            principalQuery,
+            true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await context
             .NestedSet<TreeEligibilityNode>()
             .ForScope(1)
@@ -69,8 +83,12 @@ public sealed partial class NullableParentIndexTests
             .ToArrayAsync(CancellationToken.None);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
-            "PostgreSql-tree-predicate-" + (convertedTree ? "converted" : "native"),
-            ["principal\n" + principalPlan, "typed-tree\n" + observer.Plan]);
+            "PostgreSql-tree-predicate-"
+            + (convertedTree
+                ? "converted"
+                : "native"),
+            ["principal\n" + principalPlan, "typed-tree\n" + observer.Plan],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(IndexNames(principalPlan));
@@ -78,7 +96,11 @@ public sealed partial class NullableParentIndexTests
         Assert.Contains(index, IndexNames(observer.Plan!));
         Assert.Equal(20, ActualRows(observer.Plan!));
         Assert.Equal(Enumerable.Range(1, 20), nodes);
-        Assert.Equal(convertedTree ? typeof(string) : typeof(Guid), observer.TreeParameterType);
+        Assert.Equal(
+            convertedTree
+                ? typeof(string)
+                : typeof(Guid),
+            observer.TreeParameterType);
     }
 
     /// <summary>Maps a typed query over independently created scratch index metadata.</summary>
@@ -108,7 +130,10 @@ public sealed partial class NullableParentIndexTests
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
 
-            node.ToTable(_convertedTree ? "EligibilityConvertedTree" : "EligibilityNativeTree");
+            node.ToTable(
+                _convertedTree
+                    ? "EligibilityConvertedTree"
+                    : "EligibilityNativeTree");
 
             if (_convertedTree)
             {

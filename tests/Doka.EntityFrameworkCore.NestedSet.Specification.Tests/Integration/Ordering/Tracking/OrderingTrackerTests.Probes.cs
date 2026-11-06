@@ -134,7 +134,9 @@ public abstract partial class OrderingTrackerTests
                 return "";
             }
 
-            return end < 0 ? sql[start..] : sql[start..end];
+            return end < 0
+                ? sql[start..]
+                : sql[start..end];
         }
     }
 

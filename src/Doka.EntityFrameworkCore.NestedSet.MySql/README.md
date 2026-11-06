@@ -8,23 +8,26 @@ transaction/lifecycle coordination.
 ## Install
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
 ```
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
-and `Doka.EntityFrameworkCore.MySql` `[10.6.3,10.7.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. Version `10.2.0`
-is the stable six-package contract.
+and `Doka.EntityFrameworkCore.MySql` `[10.6.4,10.7.0)` transitively. Use one qualified
+NestedSet version across the application's NestedSet packages. Version `10.3.0`
+is the stable six-package source contract. Owned asynchronous operations
+require an explicit `CancellationToken`; use the caller's token or deliberately
+pass `CancellationToken.None`. See the [upgrade guide](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/upgrading-provider-packages.md#upgrade-from-1020-to-1030)
+when updating from an earlier release.
 
-The adapter requires exactly the matching common EF kernel version, `[10.2.0]`
+The adapter requires exactly the matching common EF kernel version, `[10.3.0]`
 for this release. Update all selected NestedSet adapters together.
 
-This release adds common `HasTreeRegistryTable(...)` configuration and corrects
-manual-detection/save-recovery behavior. Registration remains in the native
-provider callback; the default registry schema is unchanged.
+`10.3.0` retains the common `HasTreeRegistryTable(...)` configuration and
+manual-detection/save-recovery corrections introduced in `10.2.0`. Registration
+remains in the native provider callback; the default registry schema is unchanged.
 
 The adapter binds Doka's public engine, source-binding, and ordered-join APIs
-directly. Doka 10.6.3 also requires EF Relational below `10.1.0`; intersect
+directly. Doka 10.6.4 also requires EF Relational below `10.1.0`; intersect
 that bound with the common kernel's `[10.0.12,11.0.0)` range. MySQL and MariaDB
 share this package; Pomelo is outside the supported contract.
 

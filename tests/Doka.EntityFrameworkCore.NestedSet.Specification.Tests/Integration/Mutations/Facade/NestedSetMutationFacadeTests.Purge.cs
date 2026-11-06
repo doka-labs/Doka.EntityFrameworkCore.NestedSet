@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task PurgeRemovesTombstonedTreeIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -37,7 +37,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task PurgedTreeIdCanBeReused()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -65,7 +65,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task ActiveTreeIdCannotBePurged()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -92,7 +92,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task UnknownTreeIdCannotBePurged()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -111,7 +111,7 @@ public abstract partial class NestedSetMutationFacadeTests
     public async Task TombstoneWithNodesCannotBePurged()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -134,6 +134,10 @@ public abstract partial class NestedSetMutationFacadeTests
 
         // Assert
         Assert.Equal(NestedSetErrorCode.InvalidStructure, error.Code);
-        Assert.Equal(1, await context.Set<TreeNode>().CountAsync(CancellationToken.None));
+        Assert.Equal(
+            1,
+            await context
+                .Set<TreeNode>()
+                .CountAsync(CancellationToken.None));
     }
 }

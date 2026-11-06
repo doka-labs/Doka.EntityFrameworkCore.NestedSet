@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Coordinates ordinary asynchronous saves with configured nested-set sibling ordering.</summary>
 /// <remarks>
 ///     Applications with an existing context base class can use
-///     <see cref="NestedSetDbContextExtensions.SaveNestedSetChangesAsync" /> instead.
+/// <see cref="NestedSetDbContextExtensions.SaveNestedSetChangesAsync" /> instead.
 ///     Synchronous saves reject changes that require hierarchy ordering; use an asynchronous save for those changes.
 /// </remarks>
 public abstract class NestedSetDbContext : DbContext
@@ -46,6 +46,7 @@ public abstract class NestedSetDbContext : DbContext
     public override int SaveChanges(
         bool acceptAllChangesOnSuccess
     ) =>
+
         // ReSharper disable once MethodHasAsyncOverload
         // WHY: This explicitly synchronous API preserves native EF acceptance while guarding post-callback state.
         this.SaveNestedSetChanges(acceptAllChangesOnSuccess, () => base.SaveChanges(false));

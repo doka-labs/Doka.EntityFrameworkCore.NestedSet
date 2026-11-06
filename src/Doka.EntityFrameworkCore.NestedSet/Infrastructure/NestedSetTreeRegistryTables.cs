@@ -36,7 +36,8 @@ internal static class NestedSetTreeRegistryTables
     /// <summary>Reads the explicit name configured directly on one hierarchy.</summary>
     private static string? Explicit(
         IReadOnlyEntityType hierarchy
-    ) => hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryTable)?.Value as string;
+    ) => hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryTable)
+        ?.Value as string;
 
     /// <summary>Applies the provider's documented identifier limit in its own unit.</summary>
     private static void ValidateLength(
@@ -50,11 +51,15 @@ internal static class NestedSetTreeRegistryTables
             return;
         }
 
-        var length = provider.IdentifierLengthCountsBytes ? Encoding.UTF8.GetByteCount(name) : name.Length;
+        var length = provider.IdentifierLengthCountsBytes
+            ? Encoding.UTF8.GetByteCount(name)
+            : name.Length;
 
         if (length > limit)
         {
-            var unit = provider.IdentifierLengthCountsBytes ? "bytes" : "characters";
+            var unit = provider.IdentifierLengthCountsBytes
+                ? "bytes"
+                : "characters";
 
             throw new InvalidOperationException(
                 $"Tree-registry table name '{name}' on '{hierarchy.DisplayName()}' has {length} {unit}; "

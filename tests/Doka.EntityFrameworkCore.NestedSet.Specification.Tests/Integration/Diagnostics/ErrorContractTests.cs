@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Verifies machine-readable error distinctions against persisted hierarchy operations.</summary>
 public abstract class ErrorContractTests : ProviderTest
 {
-    private readonly RelationalFixture _relational;
     private readonly OrderingFixture _ordering;
+    private readonly RelationalFixture _relational;
 
     /// <summary>Creates cases using independently reset databases owned by the reusable fixtures.</summary>
     /// <param name="relational">The reusable unordered hierarchy databases.</param>
@@ -25,7 +25,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task UnacquiredWriteLockReportsItsOwnCode()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new LockCommandFailureProbe();
         await using var context = database.CreateContext(probe);
         var service = context
@@ -44,6 +44,7 @@ public abstract class ErrorContractTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -52,7 +53,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task ProviderLockFailureRemainsUnwrapped()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var failure = new LockProviderFailureException();
         var probe = new LockCommandFailureProbe(failure);
         await using var context = database.CreateContext(probe);
@@ -72,6 +73,7 @@ public abstract class ErrorContractTests : ProviderTest
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Null(context.Database.CurrentTransaction);
     }
 
@@ -80,7 +82,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task MovingUnderADescendantReportsACycleAndPreservesTheTree()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -114,7 +116,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task OtherScopeNodeReportsNotFoundWithoutLeakingScopeOrKey()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var source = context
             .NestedSet<TreeNode>()
@@ -147,7 +149,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task InvalidBoundsReportInvalidStructure()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -177,7 +179,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task TrackedHierarchyReportsInvalidContext()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -205,7 +207,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task AmbientTransactionReportsInvalidTransaction()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -228,7 +230,7 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task RepeatedImportEntityReportsInvalidImport()
     {
         // Arrange
-        var database = await _relational.ResetAsync(Engine);
+        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var service = context
             .NestedSet<TreeNode>()
@@ -258,7 +260,10 @@ public abstract class ErrorContractTests : ProviderTest
     public async Task StrictPlacementReportsManualPlacementNotAllowed()
     {
         // Arrange
-        await using var context = await _ordering.ResetAsync(Engine);
+        await using var context = await _ordering.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var service = context
             .NestedSet<OrderingNode>()
             .ForScope(1);

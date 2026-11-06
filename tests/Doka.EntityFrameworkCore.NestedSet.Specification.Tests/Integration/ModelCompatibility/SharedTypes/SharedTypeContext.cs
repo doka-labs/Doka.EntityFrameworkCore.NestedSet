@@ -32,6 +32,7 @@ internal sealed class SharedTypeContext : DbContext
                 entity
                     .IndexerProperty<int>(Id)
                     .ValueGeneratedNever();
+
                 entity.IndexerProperty<Guid>(TreeId);
                 entity.IndexerProperty<int?>(ParentId);
                 entity.IndexerProperty<long>(Left);
@@ -57,6 +58,7 @@ internal sealed class SharedTypeContext : DbContext
                 entity
                     .IndexerProperty<int>(Id)
                     .ValueGeneratedNever();
+
                 entity.HasKey(Id);
             });
     }

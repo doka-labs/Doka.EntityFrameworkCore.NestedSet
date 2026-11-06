@@ -20,12 +20,19 @@ public sealed class CandidateReuseSelectionTests(
         const int occurrences = 131_072;
         var candidates = Enumerable
             .Range(0, occurrences)
-            .Select(index => Candidate(21,
-                index == 0 ? 1 : 2,
-                index == 0 ? 10 : 1))
+            .Select(index => Candidate(
+                21,
+                index == 0
+                    ? 1
+                    : 2,
+                index == 0
+                    ? 10
+                    : 1))
             .ToArray();
 
-        var selection = priority ? SupervisorSelection.HighestBusinessPriority : SupervisorSelection.RequireUnique;
+        var selection = priority
+            ? SupervisorSelection.HighestBusinessPriority
+            : SupervisorSelection.RequireUnique;
 
         // WHY: Warm real selection before measuring; repeated evidence must not acquire another retained array.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -44,7 +51,12 @@ public sealed class CandidateReuseSelectionTests(
         // Assert
         Assert.Equal(SupervisorResolutionStatus.Found, result.Status);
         Assert.Equal(candidates, result.Evidence);
-        Assert.Same(candidates[priority ? 1 : 0], result.Continuation);
+        Assert.Same(
+            candidates[priority
+                ? 1
+                : 0],
+            result.Continuation);
+
         // WHY: The input already contains the complete winning person's evidence. A second 131072-reference
         // buffer cannot fit this fixed allowance, which still admits the result and small selection state.
         Assert.InRange(allocated, 0, 8_192);
@@ -135,7 +147,9 @@ public sealed class CandidateReuseSelectionTests(
         var first = Candidate(21, 1, 10);
         var second = Candidate(21, 2, 1);
         SupervisorCandidate[] candidates = [first, second];
-        var selection = priority ? SupervisorSelection.HighestBusinessPriority : SupervisorSelection.RequireUnique;
+        var selection = priority
+            ? SupervisorSelection.HighestBusinessPriority
+            : SupervisorSelection.RequireUnique;
 
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, selection);
@@ -143,7 +157,12 @@ public sealed class CandidateReuseSelectionTests(
 
         // Assert
         Assert.Equal(new[] { first, second }, result.Evidence);
-        Assert.Same(priority ? second : first, result.Continuation);
+        Assert.Same(
+            priority
+                ? second
+                : first,
+            result.Continuation);
+
         Assert.DoesNotContain(result.Evidence, row => row.CandidateUserId == 99);
     }
 
@@ -172,7 +191,8 @@ public sealed class CandidateReuseSelectionTests(
 
         var rows = Enumerable
             .Range(0, seed % 9)
-            .Select(index => Candidate((seed >> (index % 4)) % 4 - 1,
+            .Select(index => Candidate(
+                (seed >> (index % 4)) % 4 - 1,
                 (seed + index * 3) % 5,
                 (seed * 3 + index * 5) % 7 - 3))
             .ToArray();
@@ -254,8 +274,10 @@ public sealed class CandidateReuseSelectionTests(
         var selected = pool.ToArray();
         if (selected.Length != 1)
         {
-            return new(
-                selected.Length == 0 ? SupervisorResolutionStatus.NotFound : SupervisorResolutionStatus.Ambiguous,
+            return new SupervisorResolution(
+                selected.Length == 0
+                    ? SupervisorResolutionStatus.NotFound
+                    : SupervisorResolutionStatus.Ambiguous,
                 7,
                 [],
                 null);
@@ -274,7 +296,7 @@ public sealed class CandidateReuseSelectionTests(
                 .OrderBy(row => row.Distance)
                 .First();
 
-        return new(SupervisorResolutionStatus.Found, 7, evidence, cursor);
+        return new SupervisorResolution(SupervisorResolutionStatus.Found, 7, evidence, cursor);
     }
 
     /// <summary>Creates one scalar occurrence without coupling pure selection to a database fixture.</summary>

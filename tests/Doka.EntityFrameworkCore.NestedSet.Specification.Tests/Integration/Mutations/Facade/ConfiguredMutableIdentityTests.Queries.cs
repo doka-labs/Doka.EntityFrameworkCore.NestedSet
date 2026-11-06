@@ -8,8 +8,11 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task DeferredAnchorQueryOwnsConfiguredScopeAndNodeKey()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
-        await SeedQueryRowsAsync(context);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var scope = new MutableIdentity("scope");
         var nodeKey = new MutableIdentity("root");
         var query = context
@@ -29,6 +32,7 @@ public abstract partial class ConfiguredMutableIdentityTests
             ("child", "scope", "source", "root", 2L, 3L, 1, 0L),
             (child.Id.Value, child.Scope.Value, child.TreeId.Value, child.ParentId!.Value, child.Left, child.Right,
                 child.Depth, child.Position));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -38,8 +42,11 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task DeferredTreeQueryOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
-        await SeedQueryRowsAsync(context);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var scope = new MutableIdentity("scope");
         var treeId = new MutableIdentity("source");
         var tree = context
@@ -58,6 +65,7 @@ public abstract partial class ConfiguredMutableIdentityTests
             rows,
             root => Assert.Equal(("root", 1L, 4L, 0), (root.Id.Value, root.Left, root.Right, root.Depth)),
             child => Assert.Equal(("child", 2L, 3L, 1), (child.Id.Value, child.Left, child.Right, child.Depth)));
+
         Assert.All(rows, row => Assert.Equal(("scope", "source"), (row.Scope.Value, row.TreeId.Value)));
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -68,8 +76,11 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task TreeValidationOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
-        await SeedQueryRowsAsync(context);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var scope = new MutableIdentity("scope");
         var treeId = new MutableIdentity("source");
         var tree = context
@@ -77,8 +88,8 @@ public abstract partial class ConfiguredMutableIdentityTests
             .ForScope(scope)
             .InTree(treeId);
 
-        var before = await RowsAsync(context);
-        var registryBefore = await RegistriesAsync(context);
+        var before = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistriesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         scope.Value = "missing-scope";
         treeId.Value = "missing-tree";
 
@@ -88,8 +99,13 @@ public abstract partial class ConfiguredMutableIdentityTests
         // Assert
         Assert.True(report.IsValid);
         Assert.Equal(2, report.NodeCount);
-        Assert.Equal(before, await RowsAsync(context));
-        Assert.Equal(registryBefore, await RegistriesAsync(context));
+        Assert.Equal(before, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registryBefore,
+            await RegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -99,8 +115,11 @@ public abstract partial class ConfiguredMutableIdentityTests
     public async Task RebuildPlanOwnsConfiguredScopeAndTreeId()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
-        await SeedQueryRowsAsync(context);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedQueryRowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var scope = new MutableIdentity("scope");
         var treeId = new MutableIdentity("source");
         var tree = context
@@ -108,8 +127,8 @@ public abstract partial class ConfiguredMutableIdentityTests
             .ForScope(scope)
             .InTree(treeId);
 
-        var before = await RowsAsync(context);
-        var registryBefore = await RegistriesAsync(context);
+        var before = await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var registryBefore = await RegistriesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         scope.Value = "missing-scope";
         treeId.Value = "missing-tree";
 
@@ -120,14 +139,21 @@ public abstract partial class ConfiguredMutableIdentityTests
         Assert.True(plan.CanRebuild);
         Assert.Equal(2, plan.NodeCount);
         Assert.Equal(0, plan.ChangedNodeCount);
-        Assert.Equal(before, await RowsAsync(context));
-        Assert.Equal(registryBefore, await RegistriesAsync(context));
+        Assert.Equal(before, await RowsAsync(context, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal(
+            registryBefore,
+            await RegistriesAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
     /// <summary>Creates distinguishable trees in the original Scope and a foreign application partition.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedQueryRowsAsync(
-        DbContext context
+        DbContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context
@@ -137,22 +163,22 @@ public abstract partial class ConfiguredMutableIdentityTests
         await hierarchy.InsertRootAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("root") },
             new MutableIdentity("source"),
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("child") },
             new MutableIdentity("root"),
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertRootAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("other-root") },
             new MutableIdentity("other-tree"),
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("other-child") },
             new MutableIdentity("other-root"),
-            CancellationToken.None);
+            cancellationToken);
 
         var foreign = context
             .NestedSet<ConfiguredIdentityNode>()
@@ -161,11 +187,11 @@ public abstract partial class ConfiguredMutableIdentityTests
         await foreign.InsertRootAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("foreign-root") },
             new MutableIdentity("foreign-tree"),
-            CancellationToken.None);
+            cancellationToken);
 
         await foreign.InsertChildAsync(
             new ConfiguredIdentityNode { Id = new MutableIdentity("foreign-child") },
             new MutableIdentity("foreign-root"),
-            CancellationToken.None);
+            cancellationToken);
     }
 }

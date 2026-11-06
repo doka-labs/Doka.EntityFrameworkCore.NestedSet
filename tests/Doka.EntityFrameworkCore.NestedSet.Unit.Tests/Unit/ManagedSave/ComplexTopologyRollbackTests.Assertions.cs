@@ -20,7 +20,8 @@ public sealed partial class ComplexTopologyRollbackTests
             {
                 var item = rows[index];
                 var element = collection[index];
-                items[index] = new ItemObservation(item,
+                items[index] = new ItemObservation(
+                    item,
                     element.State,
                     ObserveScalar(element.Property(nameof(TopologyItem.Text))),
                     ObserveDetails(element.ComplexProperty(nameof(TopologyItem.Details)), item.Details),
@@ -28,7 +29,8 @@ public sealed partial class ComplexTopologyRollbackTests
             }
         }
 
-        return new GraphObservation(entry.State,
+        return new GraphObservation(
+            entry.State,
             ObserveScalar(entry.Property(value => value.Marker)),
             rows,
             collection.IsModified,
@@ -52,7 +54,8 @@ public sealed partial class ComplexTopologyRollbackTests
             for (var index = 0; index < leaves.Count; index++)
             {
                 var element = collection[index];
-                values[index] = new LeafObservation(leaves[index],
+                values[index] = new LeafObservation(
+                    leaves[index],
                     element.State,
                     ObserveScalar(element.Property(nameof(TopologyLeaf.Text))));
             }
@@ -66,7 +69,8 @@ public sealed partial class ComplexTopologyRollbackTests
         ComplexPropertyEntry entry,
         TopologyDetails? instance
     )
-        => new(instance,
+        => new(
+            instance,
             instance?.Text,
             instance?.Code,
             entry.IsModified,
@@ -88,7 +92,10 @@ public sealed partial class ComplexTopologyRollbackTests
         Assert.Equal(before.State, entry.State);
         AssertScalar(entry.Property(value => value.Marker), before.Marker);
         Assert.Equal(before.Marker.Current, entry.Entity.Marker);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Equal(7, entry.Entity.Id);
         Assert.Same(before.Rows, entry.Entity.Rows);
         AssertDetails(entry.ComplexProperty(value => value.Optional), entry.Entity.Optional, before.Optional);

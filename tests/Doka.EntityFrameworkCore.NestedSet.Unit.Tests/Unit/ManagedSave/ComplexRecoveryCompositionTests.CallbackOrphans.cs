@@ -49,12 +49,20 @@ public sealed partial class ComplexRecoveryCompositionTests
         AssertClr(restored.Clr, before.Clr);
         AssertNative(captured.Native, restored.Native, exactLanes: true);
         AssertPreimage(entry, before with { Native = captured.Native });
-        AssertUnregisteredCallbacks(callbackIdentities,
-            Observe(entry).Native);
-        Assert.False(entry.ComplexCollection(nameof(TopologyPayload.Rows)).IsModified);
+        AssertUnregisteredCallbacks(
+            callbackIdentities,
+            Observe(entry)
+                .Native);
+
+        Assert.False(
+            entry.ComplexCollection(nameof(TopologyPayload.Rows))
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Retains exact empty topology across two callbacks, including the second lost owner.</summary>
@@ -106,12 +114,20 @@ public sealed partial class ComplexRecoveryCompositionTests
         AssertNative(captured.Native, secondRecovery.Native, exactLanes: true);
         AssertPreimage(entry, before with { Native = captured.Native });
         Assert.All(firstStates.Concat(secondStates), state => Assert.Equal(EntityState.Added, state));
-        AssertUnregisteredCallbacks(firstIdentities.Concat(secondIdentities),
-            Observe(entry).Native);
-        Assert.False(entry.ComplexCollection(nameof(TopologyPayload.Rows)).IsModified);
+        AssertUnregisteredCallbacks(
+            firstIdentities.Concat(secondIdentities),
+            Observe(entry)
+                .Native);
+
+        Assert.False(
+            entry.ComplexCollection(nameof(TopologyPayload.Rows))
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Tracks a null or empty root with independently marked scalar payload.</summary>
@@ -123,13 +139,16 @@ public sealed partial class ComplexRecoveryCompositionTests
         var payload = new TopologyPayload
         {
             Id = 53,
-            Rows = capturedNull ? null : [],
+            Rows = capturedNull
+                ? null
+                : [],
         };
 
         var entry = context.Attach(payload);
         _ = context.Model.GetRelationalModel();
         payload.Marker = "Pending empty-root marker";
-        entry.Property(value => value.Marker).IsModified = true;
+        entry.Property(value => value.Marker)
+            .IsModified = true;
 
         return entry;
     }
@@ -145,7 +164,8 @@ public sealed partial class ComplexRecoveryCompositionTests
         entry.Entity.Rows ??= [];
         entry.Entity.Rows.Add(Item($"Callback round {round}", 2));
         context.ChangeTracker.DetectChanges();
-        var parent = entry.ComplexCollection(nameof(TopologyPayload.Rows))[0];
+        var parent = entry
+            .ComplexCollection(nameof(TopologyPayload.Rows))[0];
 
         var leaves = parent.ComplexCollection(nameof(TopologyItem.Leaves));
         ComplexElementEntry[] retained = [parent, leaves[0], leaves[1]];

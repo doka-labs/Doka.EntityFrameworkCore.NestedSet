@@ -3,9 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Providers;
 /// <summary>Owns the selected adapter's immutable identity and consumed relational behavior.</summary>
 internal abstract partial class NestedSetProviderCapabilities : INestedSetProviderBinding
 {
-    /// <inheritdoc />
-    NestedSetProviderCapabilities INestedSetProviderBinding.Provider => this;
-
     /// <summary>Gets the exact EF provider name accepted by this adapter.</summary>
     internal abstract string ProviderName { get; }
 
@@ -14,6 +11,9 @@ internal abstract partial class NestedSetProviderCapabilities : INestedSetProvid
 
     /// <summary>Gets the bounded provider family used in library telemetry.</summary>
     internal abstract string TelemetryName { get; }
+
+    /// <inheritdoc />
+    NestedSetProviderCapabilities INestedSetProviderBinding.Provider => this;
 
     /// <summary>Adds adapter-owned EF plugins to the same internal service graph as the common coordinator.</summary>
     /// <param name="services">The native provider's service collection.</param>
@@ -30,6 +30,7 @@ internal abstract partial class NestedSetProviderCapabilities : INestedSetProvid
     )
     {
         ArgumentNullException.ThrowIfNull(context);
+
         // WHY: EF caches this validated reference in the context scope. Re-reading ProviderName allocates
         // provider-enumeration and assembly-name objects; repeated options lookup can also rebuild type metadata
         // after GC. The binding factory returns the existing adapter, without a context wrapper or global cache.
@@ -60,7 +61,10 @@ internal abstract partial class NestedSetProviderCapabilities : INestedSetProvid
 
             // WHY: Equal assembly names do not identify the same provider in distinct load contexts.
             // The adapter's typed dependency is the authority; no process-wide assembly lookup is involved.
-            if (!ReferenceEquals(extension.GetType().Assembly, ProviderAssembly))
+            if (!ReferenceEquals(
+                extension.GetType()
+                    .Assembly,
+                ProviderAssembly))
             {
                 throw new InvalidOperationException(
                     "The selected NestedSet adapter must reference the context's actual native provider assembly.");

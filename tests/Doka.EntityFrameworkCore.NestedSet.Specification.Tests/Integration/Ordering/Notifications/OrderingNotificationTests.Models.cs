@@ -7,10 +7,10 @@ public abstract class OrderingNotificationEntity : INotifyPropertyChanging,
     INotifyPropertyChanged
 {
     /// <inheritdoc />
-    public event PropertyChangingEventHandler? PropertyChanging;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <inheritdoc />
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangingEventHandler? PropertyChanging;
 
     /// <summary>Raises the paired events required by EF's changing-and-changed notification strategy.</summary>
     /// <typeparam name="TValue">The mapped CLR property type.</typeparam>
@@ -37,15 +37,29 @@ public abstract class OrderingNotificationEntity : INotifyPropertyChanging,
 /// <summary>Exercises an ordered hierarchy whose scalar coordinates have no original-value slots.</summary>
 public sealed class OrderingNotificationNode : OrderingNotificationEntity, IScopedNestedSetNode<int, Guid, int>
 {
-    private Guid _treeId;
-    private int _id;
-    private int _scope;
-    private int? _parentId;
-    private string _name = "";
-    private long _left;
-    private long _right;
     private int _depth;
+    private int _id;
+    private long _left;
+    private string _name = "";
+    private int? _parentId;
     private long _position;
+    private long _right;
+    private int _scope;
+    private Guid _treeId;
+
+    /// <summary>Gets or sets the optional direct parent.</summary>
+    public int? ParentId
+    {
+        get => _parentId;
+        set => SetValue(ref _parentId, value, nameof(ParentId));
+    }
+
+    /// <summary>Gets or sets the alphabetic sibling ordering value.</summary>
+    public string Name
+    {
+        get => _name;
+        set => SetValue(ref _name, value, nameof(Name));
+    }
 
     /// <summary>Gets or sets the stable tree identity.</summary>
     public Guid TreeId
@@ -66,20 +80,6 @@ public sealed class OrderingNotificationNode : OrderingNotificationEntity, IScop
     {
         get => _scope;
         set => SetValue(ref _scope, value, nameof(Scope));
-    }
-
-    /// <summary>Gets or sets the optional direct parent.</summary>
-    public int? ParentId
-    {
-        get => _parentId;
-        set => SetValue(ref _parentId, value, nameof(ParentId));
-    }
-
-    /// <summary>Gets or sets the alphabetic sibling ordering value.</summary>
-    public string Name
-    {
-        get => _name;
-        set => SetValue(ref _name, value, nameof(Name));
     }
 
     /// <inheritdoc />
@@ -152,6 +152,7 @@ public sealed class OrderingNotificationContext : NestedSetDbContext
         node
             .Property(value => value.Id)
             .ValueGeneratedNever();
+
         node.HasNestedSet(builder => builder
             .HasTreeId(value => value.TreeId)
             .HasScope(value => value.Scope)

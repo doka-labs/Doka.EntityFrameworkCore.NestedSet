@@ -9,19 +9,20 @@ FileSystem demonstrates the same public API without a required scope.
 
 Install the NestedSet adapter for the application's database. It supplies the
 common EF kernel, the ORM-independent package, and its native EF provider.
-This command installs the stable `10.2.0` contract with the Doka
+This command installs the stable `10.3.0` contract with the Doka
 MySQL/MariaDB adapter baseline. The [qualification matrix](support-and-qualification.md)
 separates package declarations from executed evidence:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
 ```
 
 The core package is included transitively. Keep all selected adapters and the
-common EF package at `10.2.0` to satisfy the exact adapter/kernel dependency.
+common EF package at `10.3.0` to satisfy the exact adapter/kernel dependency.
 For an existing `10.0.0` application, follow the
-[provider-package upgrade guide](upgrading-provider-packages.md). The same guide
-covers the [compatible update from 10.1.0](upgrading-provider-packages.md#upgrade-from-1010-to-1020).
+[provider-package upgrade guide](upgrading-provider-packages.md). It also covers
+the [explicit-cancellation update from 10.2.0](upgrading-provider-packages.md#upgrade-from-1020-to-1030)
+and the [compatible update from 10.1.0](upgrading-provider-packages.md#upgrade-from-1010-to-1020).
 
 ## Define the entity
 

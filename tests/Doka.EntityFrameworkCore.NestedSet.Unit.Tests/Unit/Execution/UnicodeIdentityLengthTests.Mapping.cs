@@ -22,7 +22,11 @@ public sealed partial class UnicodeIdentityLengthTests
     {
         // Arrange
         using var context = new UnicodeContext(engine);
-        var entityType = context.Model.FindEntityType(fixedWidth ? UnicodeContext.Fixed : UnicodeContext.Raw)!;
+        var entityType = context.Model.FindEntityType(
+            fixedWidth
+                ? UnicodeContext.Fixed
+                : UnicodeContext.Raw)!;
+
         var original = entityType.FindProperty("TreeId")!.GetRelationalTypeMapping();
         var clone = original.WithStoreTypeAndSize(original.StoreType, original.Size);
 
@@ -34,7 +38,10 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         Assert.True(scalarLength);
         Assert.Equal(original.GetType(), clone.GetType());
-        Assert.True(NestedSetTreeRegistryMapping.For(entityType).TreeIdUsesUnicodeScalarLength);
+        Assert.True(
+            NestedSetTreeRegistryMapping.For(entityType)
+                .TreeIdUsesUnicodeScalarLength);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -89,17 +96,37 @@ public sealed partial class UnicodeIdentityLengthTests
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId",
-            Assert.IsType<ArgumentException>(error).ParamName);
-        Assert.IsType<StringTypeMapping>(entityType.FindProperty(scopeRole ? "Scope" : "TreeId")!
-            .GetRelationalTypeMapping());
-        Assert.False(NestedSetTreeRegistryMapping.For(entityType).ScopeUsesUnicodeScalarLength);
-        Assert.False(NestedSetTreeRegistryMapping.For(entityType).TreeIdUsesUnicodeScalarLength);
+        Assert.Equal(
+            scopeRole
+                ? "Scope"
+                : "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
+        Assert.IsType<StringTypeMapping>(
+            entityType.FindProperty(
+                    scopeRole
+                        ? "Scope"
+                        : "TreeId")!
+                .GetRelationalTypeMapping());
+
+        Assert.False(
+            NestedSetTreeRegistryMapping.For(entityType)
+                .ScopeUsesUnicodeScalarLength);
+
+        Assert.False(
+            NestedSetTreeRegistryMapping.For(entityType)
+                .TreeIdUsesUnicodeScalarLength);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -126,12 +153,21 @@ public sealed partial class UnicodeIdentityLengthTests
         // Act
         var request = new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing);
 
         // Assert
-        Assert.Same(input, scopeRole ? request.Scope : request.TreeId);
+        Assert.Same(
+            input,
+            scopeRole
+                ? request.Scope
+                : request.TreeId);
+
         Assert.False(request.Mapping.ScopeUsesUnicodeScalarLength);
         Assert.False(request.Mapping.TreeIdUsesUnicodeScalarLength);
         AssertNoDatabaseAccess(context);
@@ -162,9 +198,11 @@ public sealed partial class UnicodeIdentityLengthTests
         generator.Emit(OpCodes.Ldc_I4_1);
         generator.Emit(OpCodes.Ldc_I4_8);
         generator.Emit(OpCodes.Newobj, typeof(int?).GetConstructor([typeof(int)])!);
-        generator.Emit(OpCodes.Call,
+        generator.Emit(
+            OpCodes.Call,
             typeof(StringTypeMapping).GetConstructor(
                 [typeof(string), typeof(DbType?), typeof(bool), typeof(int?)])!);
+
         generator.Emit(OpCodes.Ret);
         var mapping = (RelationalTypeMapping)Activator.CreateInstance(type.CreateType()!)!;
 
@@ -175,9 +213,13 @@ public sealed partial class UnicodeIdentityLengthTests
 
         // Assert
         Assert.False(scalarLength);
-        Assert.Equal("Doka.EntityFrameworkCore.MySql.MySqlStringTypeMapping",
-            mapping.GetType().FullName);
-        Assert.Equal("NestedSet.UnicodeMappingProbe",
+        Assert.Equal(
+            "Doka.EntityFrameworkCore.MySql.MySqlStringTypeMapping",
+            mapping.GetType()
+                .FullName);
+
+        Assert.Equal(
+            "NestedSet.UnicodeMappingProbe",
             mapping
                 .GetType()
                 .Assembly
@@ -210,20 +252,30 @@ public sealed partial class UnicodeIdentityLengthTests
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Fixed)!;
         var input = "\U0001f600\U0001f601\U0001f602\U0001f603\U0001f604\U0001f605\U0001f606\U0001f607"
-            + (overflow ? "x" : string.Empty);
+            + (overflow
+                ? "x"
+                : string.Empty);
 
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
         }
         else
         {

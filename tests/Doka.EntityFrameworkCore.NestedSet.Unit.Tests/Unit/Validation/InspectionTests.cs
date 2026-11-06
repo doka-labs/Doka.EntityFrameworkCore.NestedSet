@@ -50,6 +50,7 @@ public sealed class InspectionTests
     {
         // Arrange
         var (nodes, parents) = CreateForest(LargeNodeCount, deep);
+
         // WHY: Replace existing dense slots in place so corruption setup does not retain a second million-row array.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
@@ -131,6 +132,7 @@ public sealed class InspectionTests
         // Arrange
         const int count = 20_000;
         var (nodes, parents) = CreateForest(count, false);
+
         // WHY: Corrupt every existing slot while preserving the independent parent inventory and row count.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
@@ -179,8 +181,11 @@ public sealed class InspectionTests
         // Assert
         Assert.False(result.CanRebuild);
         Assert.Empty(result.Issues);
-        Assert.Equal(NestedSetValidationCode.InvalidRootCount,
-            Assert.Single(result.TreeIssues).Code);
+        Assert.Equal(
+            NestedSetValidationCode.InvalidRootCount,
+            Assert.Single(result.TreeIssues)
+                .Code);
+
         Assert.Equal(1, result.TotalIssueCount);
     }
 
@@ -204,11 +209,14 @@ public sealed class InspectionTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 1; index < count; index++)
         {
-            var parent = deep ? index : 1;
+            var parent = deep
+                ? index
+                : 1;
+
             var optionalParent = new NestedSetParent<int>(true, parent);
             nodes[index] = deep
-                ? new NestedSetNode<int>(index + 1, index + 1, (count * 2) - index, optionalParent, index, 0)
-                : new NestedSetNode<int>(index + 1, index * 2, (index * 2) + 1, root, 1, index - 1);
+                ? new NestedSetNode<int>(index + 1, index + 1, count * 2 - index, optionalParent, index, 0)
+                : new NestedSetNode<int>(index + 1, index * 2, index * 2 + 1, root, 1, index - 1);
 
             parents.Add(index + 1, parent);
         }

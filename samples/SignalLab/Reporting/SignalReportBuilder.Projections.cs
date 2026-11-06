@@ -20,21 +20,17 @@ internal static partial class SignalReportBuilder
             };
 
         /// <summary>Retains mapped endpoint aliases before adding the scalar measurement day.</summary>
-        internal static readonly Expression<Func<SignalNode, SignalNode, int, ReportEndpoints>> Endpoints = (
-            node,
+        internal static readonly Expression<Func<SignalNode, SignalNode, int, ReportEndpoints>> Endpoints = (node,
             anchor,
-            distance
-        ) => new ReportEndpoints
+            distance) => new ReportEndpoints
         {
             Anchor = anchor,
             Node = node,
         };
 
         /// <summary>Binds one endpoint pair to one distinct measurement day without copying a physical fact.</summary>
-        internal static readonly Expression<Func<ReportEndpoints, MeasurementDay, ReportPath>> Path = (
-            pair,
-            day
-        ) => new ReportPath
+        internal static readonly Expression<Func<ReportEndpoints, MeasurementDay, ReportPath>> Path = (pair,
+            day) => new ReportPath
         {
             Anchor = pair.Anchor,
             Node = pair.Node,
@@ -48,21 +44,20 @@ internal static partial class SignalReportBuilder
         internal static readonly Expression<Func<ReportPath, SignalNode>> Anchor = row => row.Anchor;
 
         /// <summary>Removes mapped entities before the distinct day-specific path boundary.</summary>
-        internal static readonly Expression<Func<ReportPath, QualifiedReportPath>> QualifiedPath = row => new()
-        {
-            AnchorId = row.Anchor.Id,
-            TenantId = row.Node.TenantId,
-            NodeId = row.Node.Id,
-            NodeTypeId = row.Node.TypeId,
-            Day = row.Day,
-        };
+        internal static readonly Expression<Func<ReportPath, QualifiedReportPath>> QualifiedPath = row =>
+            new QualifiedReportPath
+            {
+                AnchorId = row.Anchor.Id,
+                TenantId = row.Node.TenantId,
+                NodeId = row.Node.Id,
+                NodeTypeId = row.Node.TypeId,
+                Day = row.Day,
+            };
 
         /// <summary>Restores every physical fact after the unique scalar path has been qualified.</summary>
         internal static readonly Expression<Func<QualifiedReportPath, MeasurementRow, MeasuredContribution>>
-            Measurement = (
-                path,
-                measurement
-            ) => new MeasuredContribution
+            Measurement = (path,
+                measurement) => new MeasuredContribution
             {
                 AnchorId = path.AnchorId,
                 NodeTypeId = path.NodeTypeId,
@@ -71,10 +66,8 @@ internal static partial class SignalReportBuilder
 
         /// <summary>Adds only the channel classification needed to exclude stored intermediate aggregates.</summary>
         internal static readonly Expression<Func<MeasuredContribution, SignalChannel, DefinedContribution>> Definition =
-        (
-            row,
-            definition
-        ) => new DefinedContribution
+        (row,
+            definition) => new DefinedContribution
         {
             AnchorId = row.AnchorId,
             NodeTypeId = row.NodeTypeId,

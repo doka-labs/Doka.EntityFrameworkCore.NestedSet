@@ -8,29 +8,40 @@ public sealed class ContractFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an initialized database with all contract rows removed.</summary>
     /// <param name="engine">The selected relational engine.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>The fixture-owned engine, which callers must not dispose.</returns>
     public async Task<TestDatabase> ResetAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         if (!_databases.TryGetValue(engine, out var database))
         {
-            database = await TestDatabase.CreateAsync(engine);
+            database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
             _databases.Add(engine, database);
             await using var fields = CreateFieldContext(engine, database);
             await fields
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
 
             await using var generated = CreateGeneratedContext(engine, database);
             await generated
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
         }
 
-        await database.ResetAsync();
+        await database.ResetAsync(cancellationToken: cancellationToken);
         await using var fieldReset = CreateFieldContext(engine, database);
 
         // WHY: The convention-created restrictive self-FK must be unlinked before fixture cleanup on providers
@@ -40,61 +51,56 @@ public sealed class ContractFixture : IAsyncLifetime
             .Where(node => node.ParentId != null)
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await fieldReset
             .Set<FieldNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await fieldReset.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await fieldReset.ClearNestedSetTreeRegistriesAsync(cancellationToken);
         await using var generatedReset = CreateGeneratedContext(engine, database);
         await generatedReset
             .Set<TreeNode>()
             .Where(node => node.Parent != null)
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(node => node.Parent, (int?)null),
-                CancellationToken.None);
+                cancellationToken);
 
         await generatedReset
             .Set<TreeNode>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await generatedReset.ClearNestedSetTreeRegistriesAsync(CancellationToken.None);
+        await generatedReset.ClearNestedSetTreeRegistriesAsync(cancellationToken);
 
         return database;
     }
 
     /// <summary>Creates an isolated configured-access context after resetting its fixture.</summary>
     /// <param name="engine">The selected relational engine.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A context owned by the calling test.</returns>
     public async Task<FieldContext> CreateFieldContextAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        var database = await ResetAsync(engine);
+        var database = await ResetAsync(engine, cancellationToken: cancellationToken);
 
         return CreateFieldContext(engine, database);
     }
 
     /// <summary>Creates an isolated generated-identity context after resetting its fixture.</summary>
     /// <param name="engine">The selected relational engine.</param>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A context owned by the calling test.</returns>
     public async Task<InvalidContext> CreateGeneratedContextAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
-        var database = await ResetAsync(engine);
+        var database = await ResetAsync(engine, cancellationToken: cancellationToken);
 
         return CreateGeneratedContext(engine, database);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 
     /// <summary>Creates options against an existing fixture without owning its connection.</summary>

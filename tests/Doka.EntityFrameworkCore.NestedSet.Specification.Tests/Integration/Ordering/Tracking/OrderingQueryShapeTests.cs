@@ -51,15 +51,22 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var services = CacheTestServices.Create(setup.GetService<IDbContextOptions>());
         using var warmProbe = new ScaleProbe();
         var warmOrdinals = new OrdinalProbe();
         await using var warm = CreateContext(setup, warmProbe, warmOrdinals, services);
         var warmTracked = AttachScenario(warm, 1, intervals, tail);
         warmProbe.Observe(warm);
-        var tag = "Production shape observer control " + Guid.NewGuid().ToString("N");
+        var tag = "Production shape observer control "
+            + Guid
+                .NewGuid()
+                .ToString("N");
+
         await warm
             .Set<OrderingKeyNode<string, string?>>()
             .AsNoTracking()
@@ -73,7 +80,7 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         warmOrdinals.Reset();
         await warm.SaveChangesAsync(false, CancellationToken.None);
         var warmed = Capture(warmProbe, warmOrdinals);
-        var unchangedScope = await ReadScopeAsync(setup, 1);
+        var unchangedScope = await ReadScopeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
         using var measuredProbe = new ScaleProbe();
         var measuredOrdinals = new OrdinalProbe();
         await using var measured = CreateContext(setup, measuredProbe, measuredOrdinals, services);
@@ -99,7 +106,10 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
                     + command.Sql)
                 .ToArray();
 
-            await QueryPlanTestSupport.WriteEvidenceAsync($"production-refresh-{Engine}-R64-K64", sqlEvidence);
+            await QueryPlanTestSupport.WriteEvidenceAsync(
+                $"production-refresh-{Engine}-R64-K64",
+                sqlEvidence,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         Assert.Equal(1, controlCompilations);
@@ -119,12 +129,18 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
         AssertOrdinals(observation, intervals, tail);
         AssertTracked(warm, warmTracked, intervals, tail);
         AssertTracked(measured, tracked, intervals, tail);
-        var persisted = await ReadScopeAsync(setup, 2);
+        var persisted = await ReadScopeAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken);
         AssertPersisted(persisted, intervals);
-        await AssertRootAsync(setup, 1);
-        await AssertRootAsync(setup, 2);
+        await AssertRootAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertRootAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(intervals, CountChangedIntervals(persisted));
-        Assert.Equal(unchangedScope.Select(Coordinates), (await ReadScopeAsync(setup, 1)).Select(Coordinates));
+        Assert.Equal(
+            unchangedScope.Select(Coordinates),
+            (await ReadScopeAsync(
+                setup,
+                1,
+                cancellationToken: TestContext.Current.CancellationToken)).Select(Coordinates));
+
         Assert.All(
             observation.Commands,
             command =>

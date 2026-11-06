@@ -18,8 +18,12 @@ public sealed partial class HierarchyChangeDetectionTests
         node.ParentId = 1;
         var entry = context.Attach(node);
         node.ParentId = 3;
-        entry.Property(value => value.ParentId).IsModified = true;
-        entry.Property(value => value.ParentId).IsModified = false;
+        entry.Property(value => value.ParentId)
+            .IsModified = true;
+
+        entry.Property(value => value.ParentId)
+            .IsModified = false;
+
         var plan = CapturePlan([entry]);
 
         // Act
@@ -30,9 +34,14 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(1, PlanCount(plan));
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.Equal(1, node.ParentId);
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Every raw role remains guarded even when a different property authorized the candidate.</summary>
@@ -55,7 +64,9 @@ public sealed partial class HierarchyChangeDetectionTests
         await using var context = new SnapshotContext();
         var node = CreateNode();
         var entry = context.Attach(node);
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
         ChangeRole(node, propertyName);
 
@@ -64,11 +75,16 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.Equal(propertyName == nameof(ProbeNode.Name),
-            entry.Property(propertyName).IsModified);
+        Assert.Equal(
+            propertyName == nameof(ProbeNode.Name),
+            entry.Property(propertyName)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Clearing an authorized flag cannot be hidden by equal current and original scalar values.</summary>
@@ -78,10 +94,15 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SnapshotContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
-        entry.Property(value => value.Payload).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
+        entry.Property(value => value.Payload)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
-        entry.Property(value => value.Name).IsModified = false;
+        entry.Property(value => value.Name)
+            .IsModified = false;
 
         // Act
         var changed = PlanHasChanges(context, plan);
@@ -89,9 +110,14 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(EntityState.Modified, entry.State);
-        Assert.Equal(entry.Property(value => value.Name).OriginalValue,
+        Assert.Equal(
+            entry.Property(value => value.Name)
+                .OriginalValue,
             entry.Entity.Name);
-        Assert.False(entry.Property(value => value.Name).IsModified);
+
+        Assert.False(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>A newly introduced managed flag is rejected even when its scalar value has not changed.</summary>
@@ -101,9 +127,12 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SnapshotContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
-        entry.Property(value => value.Depth).IsModified = true;
+        entry.Property(value => value.Depth)
+            .IsModified = true;
 
         // Act
         var changed = PlanHasChanges(context, plan);
@@ -111,8 +140,10 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(0, entry.Entity.Depth);
-        Assert.Equal(0,
-            entry.Property(value => value.Depth).OriginalValue);
+        Assert.Equal(
+            0,
+            entry.Property(value => value.Depth)
+                .OriginalValue);
     }
 
     /// <summary>Original-value tampering is visible independently of current values and modification flags.</summary>
@@ -122,9 +153,12 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SnapshotContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
-        entry.Property(value => value.Name).OriginalValue = "Different original";
+        entry.Property(value => value.Name)
+            .OriginalValue = "Different original";
 
         // Act
         var changed = PlanHasChanges(context, plan);
@@ -132,7 +166,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal("Alpha", entry.Entity.Name);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>Ordinary payload can change a candidate's state without changing its hierarchy plan.</summary>
@@ -144,7 +180,8 @@ public sealed partial class HierarchyChangeDetectionTests
         var entry = context.Attach(CreateNode());
         var plan = CapturePlan([entry]);
         entry.Entity.Payload = "Callback payload";
-        entry.Property(value => value.Payload).IsModified = true;
+        entry.Property(value => value.Payload)
+            .IsModified = true;
 
         // Act
         var changed = PlanHasChanges(context, plan);
@@ -152,8 +189,13 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.False(changed);
         Assert.Equal(EntityState.Modified, entry.State);
-        Assert.True(entry.Property(value => value.Payload).IsModified);
-        Assert.False(entry.Property(value => value.Name).IsModified);
+        Assert.True(
+            entry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>Detached candidates cannot be replaced with an equal-key object to reuse their authorization.</summary>
@@ -163,7 +205,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SnapshotContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
         entry.State = EntityState.Detached;
         var replacement = CreateNode();
@@ -175,8 +219,11 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(EntityState.Detached, entry.State);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(replacement).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(replacement)
+                .State);
+
         Assert.Equal(1, PlanCount(plan));
     }
 
@@ -190,8 +237,12 @@ public sealed partial class HierarchyChangeDetectionTests
         node.ParentId = 1;
         var entry = context.Attach(node);
         node.ParentId = 3;
-        entry.Property(value => value.ParentId).IsModified = true;
-        entry.Property(value => value.ParentId).IsModified = false;
+        entry.Property(value => value.ParentId)
+            .IsModified = true;
+
+        entry.Property(value => value.ParentId)
+            .IsModified = false;
+
         var plan = CapturePlan([entry]);
         entry.State = EntityState.Deleted;
 
@@ -203,10 +254,18 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(EntityState.Deleted, entry.State);
         Assert.Equal(1, node.ParentId);
         Assert.Equal(1, PlanCount(plan));
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
-        Assert.False(entry.Property(value => value.Name).IsModified);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.False(
+            entry.Property(value => value.Name)
+                .IsModified);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Unmarked secondary ordering criteria remain guarded beside an explicitly modified first one.</summary>
@@ -216,7 +275,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SecondaryOrderingPlanContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
         entry.Entity.Payload = "Changed secondary order";
 
@@ -225,7 +286,9 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.False(entry.Property(value => value.Payload).IsModified);
+        Assert.False(
+            entry.Property(value => value.Payload)
+                .IsModified);
     }
 
     /// <summary>Notification strategies without an ordering original still guard its current value.</summary>
@@ -257,7 +320,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.Equal(change, changed);
         Assert.False(update.CanHaveOriginalValue(entry.Metadata.FindProperty(nameof(ProbeNode.Name))!));
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>Shadow role changes are read through EF rather than through an unrelated CLR member.</summary>
@@ -267,7 +332,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new ShadowPositionPlanContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var property = entry
             .Property<long>("ShadowPosition")
             .Metadata;
@@ -281,9 +348,15 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.Equal(7L,
-            entry.Property<long>("ShadowPosition").CurrentValue);
-        Assert.False(entry.Property<long>("ShadowPosition").IsModified);
+        Assert.Equal(
+            7L,
+            entry.Property<long>("ShadowPosition")
+                .CurrentValue);
+
+        Assert.False(
+            entry.Property<long>("ShadowPosition")
+                .IsModified);
+
         Assert.Equal(0, entry.Entity.Position);
     }
 
@@ -294,7 +367,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new GeneratedNodePlanContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = UpdateEntry(context, entry.Entity);
         var property = entry
             .Property(value => value.Id)
@@ -321,7 +396,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new GeneratedNodePlanContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = UpdateEntry(context, entry.Entity);
         var property = entry
             .Property(value => value.Id)
@@ -348,7 +425,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new GeneratedNodePlanContext();
         var entry = context.Attach(CreateNode());
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var update = UpdateEntry(context, entry.Entity);
         var property = entry
             .Property(value => value.Id)
@@ -415,10 +494,13 @@ public sealed partial class HierarchyChangeDetectionTests
         };
 
         var entry = context.Attach(node);
-        entry.Property(value => value.Rank).IsModified = true;
+        entry.Property(value => value.Rank)
+            .IsModified = true;
+
         var plan = CapturePlan([entry]);
         var values = original
-            ? entry.Property(value => value.Rank).OriginalValue
+            ? entry.Property(value => value.Rank)
+                .OriginalValue
             : node.Rank;
 
         values[0] = 9;
@@ -428,8 +510,15 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.True(entry.Property(value => value.Rank).IsModified);
-        Assert.Equal(original ? (byte)1 : (byte)9, node.Rank[0]);
+        Assert.True(
+            entry.Property(value => value.Rank)
+                .IsModified);
+
+        Assert.Equal(
+            original
+                ? (byte)1
+                : (byte)9,
+            node.Rank[0]);
     }
 
     /// <summary>Invokes private capture without reflection inside allocation measurement loops.</summary>
@@ -457,7 +546,8 @@ public sealed partial class HierarchyChangeDetectionTests
             var methods = typeof(NestedSetSaveChanges).GetMethods(BindingFlags.Static | BindingFlags.NonPublic);
             var capture = methods.Single(method => method.Name == "CaptureGuardPlan");
             var observer = methods.Single(method => method.Name == "HasHierarchyChanges"
-                && method.GetParameters().Length
+                && method.GetParameters()
+                    .Length
                 == 4);
 
             var candidates = Expression.Parameter(typeof(List<EntityEntry>), "candidates");
@@ -472,7 +562,8 @@ public sealed partial class HierarchyChangeDetectionTests
             var parameters = observer.GetParameters();
             HasChanges = Expression
                 .Lambda<Func<DbContext, object, bool>>(
-                    Expression.Call(observer,
+                    Expression.Call(
+                        observer,
                         context,
                         Expression.Convert(plan, parameters[1].ParameterType),
                         Expression.Constant(null, parameters[2].ParameterType),

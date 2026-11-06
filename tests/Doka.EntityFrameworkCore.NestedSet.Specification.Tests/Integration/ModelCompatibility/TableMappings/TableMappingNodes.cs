@@ -84,6 +84,7 @@ internal sealed class TableSplitContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)
             .HasTreeId(entity => entity.TreeId)
@@ -121,6 +122,7 @@ internal sealed class EntitySplitContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.ToTable("EntitySplitPayload", fragment => fragment.Property(entity => entity.Name));
         node.SplitToTable(
             "EntitySplitStructure",
@@ -133,6 +135,7 @@ internal sealed class EntitySplitContext : DbContext
                 fragment.Property(entity => entity.Depth);
                 fragment.Property(entity => entity.Position);
             });
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)
             .HasTreeId(entity => entity.TreeId)

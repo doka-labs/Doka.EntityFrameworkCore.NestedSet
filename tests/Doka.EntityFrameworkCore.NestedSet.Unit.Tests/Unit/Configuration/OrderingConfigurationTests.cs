@@ -101,6 +101,7 @@ public sealed partial class OrderingConfigurationTests
                 .Metadata
                 .GetIndexes()
                 .ToArray());
+
         Assert.Null(entity.Metadata.FindProperty(nameof(ConfigurationNode.Unmapped)));
     }
 
@@ -269,8 +270,10 @@ public sealed partial class OrderingConfigurationTests
 
         // Assert
         Assert.Null(mapping.Order);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Completes mixed criteria with a unique ascending key and the default strict policy.</summary>
@@ -285,7 +288,8 @@ public sealed partial class OrderingConfigurationTests
         // Act
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order;
 
         // Assert
         Assert.NotNull(order);
@@ -295,8 +299,10 @@ public sealed partial class OrderingConfigurationTests
 
         Assert.Equal<bool>([false, true, false], order.Descending);
         Assert.Equal(NestedSetOrderMode.Strict, order.Mode);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Requires nullable criteria to declare provider-independent null placement.</summary>
@@ -326,7 +332,8 @@ public sealed partial class OrderingConfigurationTests
         // Act
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order;
 
         // Assert
         Assert.NotNull(order);
@@ -410,7 +417,8 @@ public sealed partial class OrderingConfigurationTests
         // Act
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order;
 
         // Assert
         Assert.NotNull(order);
@@ -439,8 +447,10 @@ public sealed partial class OrderingConfigurationTests
         // Assert
         var failure = Assert.IsType<InvalidOperationException>(exception, exactMatch: false);
         Assert.Contains("SQLite", failure.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Accepts a domain decimal when its explicit provider representation supports SQLite ordering.</summary>
@@ -457,17 +467,24 @@ public sealed partial class OrderingConfigurationTests
         // Act
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order;
 
         // Assert
         Assert.NotNull(order);
         Assert.Equal(nameof(ConfigurationNode.Price), order.Properties[0].Name);
         Assert.Equal(
             typeof(string),
-            order.Properties[0].GetTypeMapping().Converter
+            order
+                .Properties[0]
+                .GetTypeMapping()
+                .Converter
                 ?.ProviderClrType);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rejects criteria that can change again when hierarchy maintenance updates a stored row.</summary>
@@ -482,7 +499,8 @@ public sealed partial class OrderingConfigurationTests
         // Arrange
         using var context = new ConfigurationContext(
             builder => builder.OrderBy(node => node.Rank),
-            configureProperties: entity => entity.Property(node => node.Rank).Metadata.ValueGenerated = generation);
+            configureProperties: entity => entity.Property(node => node.Rank)
+                .Metadata.ValueGenerated = generation);
 
         // Act
         var exception = Record.Exception(() => NestedSetMapping<ConfigurationNode, int, int>.For(
@@ -535,14 +553,17 @@ public sealed partial class OrderingConfigurationTests
         // Act
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order;
 
         // Assert
         Assert.NotNull(order);
         Assert.Equal(nameof(ConfigurationNode.Rank), order.Properties[0].Name);
         Assert.Equal(ValueGenerated.OnAdd, order.Properties[0].ValueGenerated);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Prevents a consumer from changing the properties retained by a shared model mapping.</summary>
@@ -553,7 +574,8 @@ public sealed partial class OrderingConfigurationTests
         using var context = new ConfigurationContext(builder => builder.OrderBy(node => node.Name));
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order!;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order!;
 
         var properties = (IList<IProperty>)order.Properties;
         var replacement = order.Properties[^1];
@@ -575,7 +597,8 @@ public sealed partial class OrderingConfigurationTests
         using var context = new ConfigurationContext(builder => builder.OrderBy(node => node.Name));
         var order = NestedSetMapping<ConfigurationNode, int, int>.For(
                 context,
-                context.Model.FindEntityType(typeof(ConfigurationNode))!).Order!;
+                context.Model.FindEntityType(typeof(ConfigurationNode))!)
+            .Order!;
 
         var descending = (IList<bool>)order.Descending;
 

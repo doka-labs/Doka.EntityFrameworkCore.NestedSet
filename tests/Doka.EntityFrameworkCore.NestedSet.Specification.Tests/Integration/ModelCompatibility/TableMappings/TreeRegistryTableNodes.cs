@@ -40,6 +40,7 @@ internal abstract class RegistryTableNode
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.HasNestedSet(nestedSet =>
         {
             nestedSet

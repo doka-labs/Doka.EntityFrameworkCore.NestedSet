@@ -64,11 +64,9 @@ internal static class PrivilegeQueries
         */
         var applicableGroups = groups.SelectAncestorsOrSelf(
             selected => memberships.Any(membership => membership.UserGroupId == selected.Id),
-            (
-                selected,
+            (selected,
                 ancestor,
-                distance
-            ) => ancestor.Id);
+                distance) => ancestor.Id);
 
         return CodesForGroups(context, tenantId, applicableGroups)
             .ToListAsync(cancellationToken);

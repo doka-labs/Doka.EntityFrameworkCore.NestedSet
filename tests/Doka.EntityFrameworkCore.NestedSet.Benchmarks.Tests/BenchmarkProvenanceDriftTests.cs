@@ -17,7 +17,7 @@ public sealed class BenchmarkProvenanceDriftTests
     )
     {
         // Arrange
-        await using var repository = await TemporaryRepository.CreateAsync();
+        await using var repository = await TemporaryRepository.CreateAsync(TestContext.Current.CancellationToken);
         using var processState = new ProcessState(repository.Directory);
         var options = new BenchmarkRunOptions
         {
@@ -59,10 +59,29 @@ public sealed class BenchmarkProvenanceDriftTests
         // Assert
         using var completed = JsonDocument.Parse(await File.ReadAllTextAsync(path, CancellationToken.None));
         var metadata = completed.RootElement;
-        Assert.Equal(initialSource, metadata.GetProperty("source").GetRawText());
-        Assert.Equal(JsonValueKind.Null, initial.RootElement.GetProperty("endSource").ValueKind);
-        Assert.False(initial.RootElement.GetProperty("sourcesChangedDuringRun").GetBoolean());
-        Assert.Equal(changeSource, metadata.GetProperty("sourcesChangedDuringRun").GetBoolean());
+        Assert.Equal(
+            initialSource,
+            metadata
+                .GetProperty("source")
+                .GetRawText());
+
+        Assert.Equal(
+            JsonValueKind.Null,
+            initial.RootElement.GetProperty("endSource")
+                .ValueKind);
+
+        Assert.False(
+            initial
+                .RootElement
+                .GetProperty("sourcesChangedDuringRun")
+                .GetBoolean());
+
+        Assert.Equal(
+            changeSource,
+            metadata
+                .GetProperty("sourcesChangedDuringRun")
+                .GetBoolean());
+
         Assert.Equal(
             changeSource,
             metadata
@@ -73,6 +92,7 @@ public sealed class BenchmarkProvenanceDriftTests
                 .GetProperty("endSource")
                 .GetProperty("fingerprint")
                 .GetString());
+
         Assert.Equal(
             initial
                 .RootElement
@@ -83,12 +103,14 @@ public sealed class BenchmarkProvenanceDriftTests
                 .GetProperty("endSource")
                 .GetProperty("commit")
                 .GetString());
+
         Assert.False(
             initial
                 .RootElement
                 .GetProperty("source")
                 .GetProperty("dirty")
                 .GetBoolean());
+
         Assert.Equal(
             changeSource,
             metadata
@@ -102,9 +124,9 @@ public sealed class BenchmarkProvenanceDriftTests
     {
         private const string OptionsVariable = "NESTEDSET_BENCHMARK_OPTIONS";
         private const string ConnectionVariable = "NESTEDSET_BENCHMARK_CONNECTION_STRING";
+        private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
         private readonly string _directory = Directory.GetCurrentDirectory();
         private readonly string? _options = Environment.GetEnvironmentVariable(OptionsVariable);
-        private readonly string? _connection = Environment.GetEnvironmentVariable(ConnectionVariable);
 
         internal ProcessState(
             string directory
@@ -138,30 +160,6 @@ public sealed class BenchmarkProvenanceDriftTests
 
         internal string SourceFile => Path.Combine(Directory, "source.cs");
 
-        internal static async Task<TemporaryRepository> CreateAsync()
-        {
-            var directory = Path.Combine(
-                Path.GetTempPath(),
-                "nestedset-source-" + Guid.NewGuid().ToString("N"));
-
-            FileDirectory.CreateDirectory(directory);
-            var repository = new TemporaryRepository(directory);
-            await BenchmarkLifecycle.InitializeAsync(
-                repository,
-                async () =>
-                {
-                    await RunGitAsync(directory, ["init", "--quiet"]);
-                    await File.WriteAllTextAsync(
-                        repository.SourceFile,
-                        "class OriginalSource { }\n",
-                        CancellationToken.None);
-                    await RunGitAsync(directory, ["add", "source.cs"]);
-                    await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"]);
-                });
-
-            return repository;
-        }
-
         /// <inheritdoc />
         public ValueTask DisposeAsync()
         {
@@ -170,12 +168,51 @@ public sealed class BenchmarkProvenanceDriftTests
             return ValueTask.CompletedTask;
         }
 
-        /// <summary>Runs Git only against the owned fixture with hooks, signing and global identity disabled.</summary>
-        private static async Task RunGitAsync(
-            string directory,
-            string[] arguments
+        /// <summary>Creates an independently owned benchmark fixture.</summary>
+        /// <param name="cancellationToken">The caller's cancellation token for the operation.</param>
+        internal static async Task<TemporaryRepository> CreateAsync(
+            CancellationToken cancellationToken
         )
         {
+            var directory = Path.Combine(
+                Path.GetTempPath(),
+                "nestedset-source-"
+                + Guid
+                    .NewGuid()
+                    .ToString("N"));
+
+            FileDirectory.CreateDirectory(directory);
+            var repository = new TemporaryRepository(directory);
+            await BenchmarkLifecycle.InitializeAsync(
+                repository,
+                async token =>
+                {
+                    await RunGitAsync(directory, ["init", "--quiet"], token);
+                    await File.WriteAllTextAsync(
+                        repository.SourceFile,
+                        "class OriginalSource { }\n",
+                        token);
+
+                    await RunGitAsync(directory, ["add", "source.cs"], token);
+                    await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"], token);
+                },
+                cancellationToken);
+
+            return repository;
+        }
+
+        /// <summary>Runs Git only against the owned fixture with hooks, signing and global identity disabled.</summary>
+        /// <param name="directory">The owned repository working directory.</param>
+        /// <param name="arguments">The individual Git command arguments.</param>
+        /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+        private static async Task RunGitAsync(
+            string directory,
+            string[] arguments,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var start = new ProcessStartInfo("git")
             {
                 WorkingDirectory = directory,
@@ -206,14 +243,47 @@ public sealed class BenchmarkProvenanceDriftTests
             using var process = Process.Start(start)
                 ?? throw new InvalidOperationException("The source fixture could not start Git.");
 
+            // WHY: Stream drains must also finish after cancellation kills the child; only the live wait is cancelable.
             var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
             var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
-            await process.WaitForExitAsync(CancellationToken.None);
-            await output;
-            var failure = await error;
-            if (process.ExitCode != 0)
+
+            try
             {
-                throw new InvalidOperationException("Source fixture Git failed: " + failure);
+                await process.WaitForExitAsync(cancellationToken);
+                await output;
+                var failure = await error;
+
+                if (process.ExitCode != 0)
+                {
+                    throw new InvalidOperationException("Source fixture Git failed: " + failure);
+                }
+            }
+            catch (Exception original)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        try
+                        {
+                            process.Kill(entireProcessTree: true);
+                        }
+                        catch (InvalidOperationException) when (process.HasExited)
+                        {
+                            // WHY: A natural exit can race the cancellation cleanup's preceding HasExited check.
+                        }
+                    }
+
+                    // WHY: Caller cancellation cannot release the owned Process before exit and stream observation.
+                    await process.WaitForExitAsync(CancellationToken.None);
+                    await Task.WhenAll(output, error);
+                }
+                catch (Exception cleanup)
+                {
+                    throw new AggregateException(original, cleanup);
+                }
+
+                throw;
             }
         }
     }

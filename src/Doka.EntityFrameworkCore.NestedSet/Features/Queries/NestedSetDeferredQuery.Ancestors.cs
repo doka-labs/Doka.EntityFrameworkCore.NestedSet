@@ -17,7 +17,10 @@ internal static partial class NestedSetDeferredQuery
     )
         where TEntity : class
     {
-        var method = (includeSelf ? s_inclusive : s_strict).MakeGenericMethod(typeof(TEntity), typeof(TResult));
+        var method = (includeSelf
+            ? s_inclusive
+            : s_strict).MakeGenericMethod(typeof(TEntity), typeof(TResult));
+
         var marker = Expression.Call(
             method,
             visible.Expression,

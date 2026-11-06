@@ -32,8 +32,11 @@ public sealed partial class BulkIdentityRetentionTests
                     .Metadata
                     .SetValueComparer(
                         new ValueComparer<byte[]>(
-                            (left, right) => left != null && right != null && ((IEnumerable<byte>)left).SequenceEqual(right),
-                            value => value.Length == 0 ? 0 : value[0],
+                            (left, right) =>
+                                left != null && right != null && ((IEnumerable<byte>)left).SequenceEqual(right),
+                            value => value.Length == 0
+                                ? 0
+                                : value[0],
                             value => value));
             }
 
@@ -45,6 +48,7 @@ public sealed partial class BulkIdentityRetentionTests
                 .HasBounds(node => node.Left, node => node.Right)
                 .HasDepth(node => node.Depth)
                 .HasPosition(node => node.Position));
+
             binary.OwnsOne(node => node.Payload);
             builder
                 .Entity<IdentityMarker>()
@@ -63,6 +67,7 @@ public sealed partial class BulkIdentityRetentionTests
             builder
                 .Entity<ScalarNode>()
                 .ToTable("ImportIdentityScalarNodes");
+
             builder
                 .Entity<ScalarNode>()
                 .HasNestedSet(set => set
@@ -83,6 +88,7 @@ public sealed partial class BulkIdentityRetentionTests
             binary
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             binary.HasNestedSet(set => set
                 .HasNodeKey(node => node.Id)
                 .HasTreeId(node => node.TreeId)
@@ -91,20 +97,22 @@ public sealed partial class BulkIdentityRetentionTests
                 .HasBounds(node => node.Left, node => node.Right)
                 .HasDepth(node => node.Depth)
                 .HasPosition(node => node.Position));
+
             binary.OwnsOne(node => node.Payload);
 
             var mutable = builder.Entity<MutableNode>();
             mutable.ToTable("ImportIdentityMutableNodes");
 
             foreach (var name in new[]
-                     {
-                         nameof(MutableNode.Id), nameof(MutableNode.Scope), nameof(MutableNode.ParentId),
-                     })
+                {
+                    nameof(MutableNode.Id), nameof(MutableNode.Scope), nameof(MutableNode.ParentId),
+                })
             {
                 var property = mutable.Property<MutableIdentity>(name);
                 property
                     .HasMaxLength(40)
                     .HasConversion(value => value.Value, value => new MutableIdentity(value));
+
                 property.Metadata.SetValueComparer(
                     new ValueComparer<MutableIdentity>(
                         (left, right) => left != null && right != null && left.Value == right.Value,
@@ -121,6 +129,7 @@ public sealed partial class BulkIdentityRetentionTests
             mutable
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             mutable.HasNestedSet(set => set
                 .HasNodeKey(node => node.Id)
                 .HasTreeId(node => node.TreeId)
@@ -129,6 +138,7 @@ public sealed partial class BulkIdentityRetentionTests
                 .HasBounds(node => node.Left, node => node.Right)
                 .HasDepth(node => node.Depth)
                 .HasPosition(node => node.Position));
+
             mutable.OwnsOne(node => node.Payload);
             builder
                 .Entity<IdentityMarker>()

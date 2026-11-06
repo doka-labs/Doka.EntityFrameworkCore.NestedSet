@@ -11,6 +11,7 @@ internal static class NestedSetDetachedValueSetter
     internal static IClrPropertySetter? Get(
         IPropertyBase property
     ) => property.IsShadowProperty()
+
         // WHY: Imported inputs leave the tracker after each payload batch. Shadow state has no observable
         // detached CLR representation; persisted values remain available through the public query API.
         ? null
@@ -20,6 +21,7 @@ internal static class NestedSetDetachedValueSetter
     private static IClrPropertySetter CreateSetter(
         IPropertyBase property
     ) =>
+
         // WHY: IClrPropertySetter is a public extension contract, but EF exposes its acquisition only through
         // IRuntimePropertyBase. This metadata-only seam avoids duplicating EF's field, indexer, proxy and complex
         // value-copyback logic. Reflection stays outside the row loop and neither cache captures a context.

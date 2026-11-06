@@ -11,7 +11,11 @@ internal class InheritedBinaryScopeContext(DbContextOptions options) : BroadScop
     {
         base.OnModelCreating(modelBuilder);
         var node = modelBuilder.Entity<BroadScopeNode>();
-        node.ToTable(GetType().Name + "Nodes");
+        node.ToTable(
+            GetType()
+                .Name
+            + "Nodes");
+
         node
             .Property(value => value.Scope)
             .UseCollation(null);
@@ -80,7 +84,10 @@ internal class UnknownDatabaseScopeContext(DbContextOptions options) : BroadScop
     {
         base.OnModelCreating(modelBuilder);
         var node = modelBuilder.Entity<BroadScopeNode>();
-        node.ToTable(GetType().Name + "Nodes");
+        node.ToTable(
+            GetType()
+                .Name
+            + "Nodes");
 
         // WHY: The database owns this comparison. Removing every explicit EF facet distinguishes unknown native
         // semantics from the separately configured inherited-table cases without changing the database default.

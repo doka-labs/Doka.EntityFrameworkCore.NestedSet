@@ -26,14 +26,22 @@ public sealed class MappedMemberConstructionTests
         var incompatible = NestedSetExpressions.QueryProperty(unrelated, property);
 
         // Assert
-        Assert.Same(second,
-            Assert.IsAssignableFrom<MemberExpression>(compatible).Expression);
-        Assert.Same(property.PropertyInfo,
-            Assert.IsAssignableFrom<MemberExpression>(compatible).Member);
+        Assert.Same(
+            second,
+            Assert.IsAssignableFrom<MemberExpression>(compatible)
+                .Expression);
+
+        Assert.Same(
+            property.PropertyInfo,
+            Assert.IsAssignableFrom<MemberExpression>(compatible)
+                .Member);
+
         var marker = Assert.IsAssignableFrom<MethodCallExpression>(incompatible);
         Assert.Same(unrelated, marker.Arguments[0]);
-        Assert.Equal(nameof(MemberNode.Value),
-            Assert.IsType<ConstantExpression>(marker.Arguments[1]).Value);
+        Assert.Equal(
+            nameof(MemberNode.Value),
+            Assert.IsType<ConstantExpression>(marker.Arguments[1])
+                .Value);
     }
 
     /// <summary>Equal property names in independent mappings retain their own CLR and shadow storage.</summary>
@@ -47,7 +55,10 @@ public sealed class MappedMemberConstructionTests
     {
         // Arrange
         var (model, _, mapped) = RuntimeProperty();
-        var otherModel = sameModel ? model : NewModel();
+        var otherModel = sameModel
+            ? model
+            : NewModel();
+
         var other = otherModel.AddEntityType("Other", typeof(MemberNode), sharedClrType: true);
         var shadow = other.AddProperty(nameof(MemberNode.Value), typeof(int));
         var alias = Expression.Parameter(typeof(MemberNode), "node");
@@ -59,11 +70,18 @@ public sealed class MappedMemberConstructionTests
 
         // Assert
         Assert.NotSame(mapped, shadow);
-        Assert.Same(mapped.PropertyInfo,
-            Assert.IsAssignableFrom<MemberExpression>(direct).Member);
-        Assert.Equal(nameof(MemberNode.Value),
+        Assert.Same(
+            mapped.PropertyInfo,
+            Assert.IsAssignableFrom<MemberExpression>(direct)
+                .Member);
+
+        Assert.Equal(
+            nameof(MemberNode.Value),
             Assert.IsType<ConstantExpression>(
-                    Assert.IsAssignableFrom<MethodCallExpression>(indirect).Arguments[1]).Value);
+                    Assert
+                        .IsAssignableFrom<MethodCallExpression>(indirect)
+                        .Arguments[1])
+                .Value);
     }
 
     /// <summary>Design-time and convention metadata observe a removed property mapping on the next call.</summary>
@@ -95,8 +113,11 @@ public sealed class MappedMemberConstructionTests
         var after = NestedSetExpressions.QueryProperty(alias, (IProperty)property);
 
         // Assert
-        Assert.Equal(nameof(MemberNode.Stored),
-            Assert.IsAssignableFrom<MemberExpression>(before).Member.Name);
+        Assert.Equal(
+            nameof(MemberNode.Stored),
+            Assert.IsAssignableFrom<MemberExpression>(before)
+                .Member.Name);
+
         Assert.IsAssignableFrom<MethodCallExpression>(after);
     }
 
@@ -134,8 +155,11 @@ public sealed class MappedMemberConstructionTests
         var model = NewModel();
         var entity = model.AddEntityType("Custom", typeof(MemberNode));
         var declaringType = new MutableDeclaringType(typeof(MemberNode));
-        var member = new MutableProperty(typeof(MemberNode).GetProperty(nameof(MemberNode.Value))!,
-            customDeclaringType ? declaringType : typeof(MemberNode));
+        var member = new MutableProperty(
+            typeof(MemberNode).GetProperty(nameof(MemberNode.Value))!,
+            customDeclaringType
+                ? declaringType
+                : typeof(MemberNode));
 
         var property = entity.AddProperty(nameof(MemberNode.Value), typeof(int), propertyInfo: member);
         var alias = Expression.Parameter(typeof(MemberNode), "node");
@@ -184,9 +208,13 @@ public sealed class MappedMemberConstructionTests
         var reference = Expression.MakeMemberAccess(referenceAlias, property.PropertyInfo!);
 
         // Assert
-        Assert.Same(actualAlias,
-            Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
+        Assert.Same(
+            actualAlias,
+            Assert.IsAssignableFrom<MemberExpression>(actual)
+                .Expression);
+
         Assert.Same(referenceAlias, reference.Expression);
+
         // WHY: QueryProperty must test alias assignability once. An additional Type read would be
         // an observable behavior change for a custom expression, even when its result is RuntimeType.
         Assert.Equal(referenceAlias.TypeReads + 1, actualAlias.TypeReads);
@@ -206,15 +234,19 @@ public sealed class MappedMemberConstructionTests
         var expressions = new Expression[aliases.Length];
 
         // Act
-        Parallel.For(0,
+        Parallel.For(
+            0,
             aliases.Length,
             index => expressions[index] = NestedSetExpressions.QueryProperty(aliases[index], property));
 
         // Assert
-        Assert.All(Enumerable.Range(0, aliases.Length),
+        Assert.All(
+            Enumerable.Range(0, aliases.Length),
             index =>
-                Assert.Same(aliases[index],
-                    Assert.IsAssignableFrom<MemberExpression>(expressions[index]).Expression));
+                Assert.Same(
+                    aliases[index],
+                    Assert.IsAssignableFrom<MemberExpression>(expressions[index])
+                        .Expression));
     }
 
     /// <summary>
@@ -266,7 +298,8 @@ public sealed class MappedMemberConstructionTests
     {
         var model = NewModel();
         var entity = model.AddEntityType("Mapped", typeof(MemberNode), sharedClrType: true);
-        var property = entity.AddProperty(nameof(MemberNode.Value),
+        var property = entity.AddProperty(
+            nameof(MemberNode.Value),
             typeof(int),
             propertyInfo: typeof(MemberNode).GetProperty(nameof(MemberNode.Value)));
 
@@ -287,9 +320,10 @@ public sealed class MappedMemberConstructionTests
         }
 
         using var provider = services.BuildServiceProvider();
-        using var context = new ModelContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        using var context = new ModelContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         return Assert.IsType<RuntimeModel>(context.Model);
     }
@@ -310,15 +344,18 @@ public sealed class MappedMemberConstructionTests
         }
 
         using var provider = services.BuildServiceProvider();
-        using var context = new ModelContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        using var context = new ModelContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
-        var builder = new ModelBuilder(context
-            .GetService<IConventionSetBuilder>()
-            .CreateConventionSet());
+        var builder = new ModelBuilder(
+            context
+                .GetService<IConventionSetBuilder>()
+                .CreateConventionSet());
 
-        builder.SharedTypeEntity<MemberNode>("Mapped",
+        builder.SharedTypeEntity<MemberNode>(
+            "Mapped",
             mapping =>
             {
                 mapping.HasNoKey();
@@ -328,16 +365,19 @@ public sealed class MappedMemberConstructionTests
         // WHY: Pending DI resolver compilation can retain the provider and its cached context model.
         // Initialize this independent model through EF's public services without entering ModelSource's
         // cache, so that unrelated background work cannot become a root in this ownership counterexample.
-        var model = Assert.IsType<RuntimeModel>(context
-            .GetService<IModelRuntimeInitializer>()
-            .Initialize(builder.FinalizeModel(), designTime: false));
+        var model = Assert.IsType<RuntimeModel>(
+            context
+                .GetService<IModelRuntimeInitializer>()
+                .Initialize(builder.FinalizeModel(), designTime: false));
 
         var entity = ((IModel)model).FindEntityType("Mapped")!;
         var property = entity.FindProperty(nameof(MemberNode.Value))!;
 
         var alias = Expression.Parameter(typeof(MemberNode), "node");
         _ = NestedSetExpressions.QueryProperty(alias, property);
-        retained = retainModel ? model : null;
+        retained = retainModel
+            ? model
+            : null;
 
         return
         [
@@ -393,14 +433,14 @@ public sealed class MappedMemberConstructionTests
     /// <summary>Exposes metadata without ever permitting query construction to execute a CLR getter.</summary>
     private class MemberNode
     {
+        /// <summary>Supplies a real field for changing the mutable model's storage mapping.</summary>
+        public int Stored = -1;
+
         /// <summary>Throws if a query builder accidentally reads the application instance.</summary>
         public int Value => throw new InvalidOperationException($"{GetType().Name}.Value must remain deferred.");
 
         /// <summary>Supplies an alternative member name for the mutable reflection counterexample.</summary>
         public int Other => throw new InvalidOperationException($"{GetType().Name}.Other must remain deferred.");
-
-        /// <summary>Supplies a real field for changing the mutable model's storage mapping.</summary>
-        public int Stored = -1;
     }
 
     /// <summary>Provides a compatible but distinct alias type for the same mapped CLR declaration.</summary>

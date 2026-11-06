@@ -31,13 +31,30 @@ public abstract partial class GroupSupervisorTests
         const int occurrences = 2 * people;
         var probe = new SupervisorCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, planProbe);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        var users = await SeedFanInAsync(context, data, people);
-        await SeedRankingOccurrencesAsync(context, data, users, profile);
+        var users = await SeedFanInAsync(
+            context,
+            data,
+            people,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedRankingOccurrencesAsync(
+            context,
+            data,
+            users,
+            profile,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[5]) with
         {
-            Roles = new App.NoRoleFilter(), Groups = new App.AllEligibleGroups(), Matches = [],
+            Roles = new App.NoRoleFilter(),
+            Groups = new App.AllEligibleGroups(),
+            Matches = [],
         };
 
         var selection = profile switch
@@ -52,6 +69,7 @@ public abstract partial class GroupSupervisorTests
         // comparison of every distinct person with the entire candidate occurrence population.
         var linearRankWorkBudget = 2L * (people + occurrences + data.Users.Length + data.Groups.Length);
         var materializedRankOutputBudget = 2L * occurrences;
+
         // WHY: The pipeline has membership/user/group inputs, per-person reduction, origin witnesses and the
         // final evidence join. Eight input passes with eight handler operations each allow fixed linear work;
         // source/group fixture roots receive 32 additional probes each, never a people-by-occurrences allowance.
@@ -61,8 +79,14 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            handlersBefore = await ReadRankingHandlersAsync(context);
+            calibration = await CalibrateRankingHandlersAsync(
+                context,
+                data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            handlersBefore = await ReadRankingHandlersAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var commandIndex = planProbe.Commands.Count;
@@ -72,7 +96,11 @@ public abstract partial class GroupSupervisorTests
         App.SupervisorResolutionBatch batch;
         try
         {
-            batch = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request, selection,
+            batch = await App.SupervisorQueries.ResolveAsync(
+                context,
+                data.TenantId,
+                request,
+                selection,
                 CancellationToken.None);
         }
         catch (Exception error)
@@ -83,7 +111,12 @@ public abstract partial class GroupSupervisorTests
                 failure.Add(planProbe.Commands[commandIndex]);
                 try
                 {
-                    failure.Add(await EstimatedOriginPlanAsync(context, planProbe, commandIndex));
+                    failure.Add(
+                        await EstimatedOriginPlanAsync(
+                            context,
+                            planProbe,
+                            commandIndex,
+                            cancellationToken: TestContext.Current.CancellationToken));
                 }
                 catch (Exception captureError)
                 {
@@ -92,33 +125,54 @@ public abstract partial class GroupSupervisorTests
                 }
             }
 
-            await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-ranking-failed-" + profile,
-                failure);
+            await QueryPlanTestSupport.WriteEvidenceAsync(
+                Engine + "-usergroups-ranking-failed-" + profile,
+                failure,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
-        var handlerReads = handlersBefore is null ? null
-            : RankingHandlerDelta(handlersBefore, await ReadRankingHandlersAsync(context));
+        var handlerReads = handlersBefore is null
+            ? null
+            : RankingHandlerDelta(
+                handlersBefore,
+                await ReadRankingHandlersAsync(
+                    context,
+                    cancellationToken: TestContext.Current.CancellationToken));
 
         var commandCount = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         var sql = planProbe.Commands[commandIndex];
         var commandBytes = Encoding.UTF8.GetByteCount(sql);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
-        await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-ranking-native-" + profile,
-        [
-            $"People={people}; occurrences={occurrences}; SQL={commandBytes} B; "
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            commandIndex,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await QueryPlanTestSupport.WriteEvidenceAsync(
+            Engine + "-usergroups-ranking-native-" + profile,
+            [
+                $"People={people}; occurrences={occurrences}; SQL={commandBytes} B; "
                 + $"linearWorkBudget={linearRankWorkBudget}; materializedOutputBudget={materializedRankOutputBudget}",
-            $"SESSION read-request budget={handlerReadBudget}; actual-command deltas: "
+                $"SESSION read-request budget={handlerReadBudget}; actual-command deltas: "
                 + FormatRankingHandlers(handlerReads),
-            "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
-            "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
-            string.Join(Environment.NewLine, planProbe.ParameterBindings[commandIndex]
-                .Select(parameter => parameter.ParameterName + ":" + parameter.DbType + "="
-                    + JsonSerializer.Serialize(parameter.Value))),
-            sql, plan,
-        ]);
+                "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
+                "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
+                string.Join(
+                    Environment.NewLine,
+                    planProbe
+                        .ParameterBindings[commandIndex]
+                        .Select(parameter => parameter.ParameterName
+                            + ":"
+                            + parameter.DbType
+                            + "="
+                            + JsonSerializer.Serialize(parameter.Value))),
+                sql, plan,
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, batch.Status);
@@ -127,9 +181,13 @@ public abstract partial class GroupSupervisorTests
         Assert.Equal(status, origin.Status.ToString());
         Assert.Equal(data.Groups[5], origin.StartGroupId);
         Assert.Equal(1, commandCount);
-        var expectedReaderRows = winner >= 0 ? 3 : 2;
+        var expectedReaderRows = winner >= 0
+            ? 3
+            : 2;
+
         Assert.InRange(readerAdvances, expectedReaderRows, expectedReaderRows + 1);
         Assert.InRange(probe.ParameterCounts[0], 0, 999);
+
         // WHY: Reuse the existing frontier transport ceiling; candidate cardinality belongs in rows, not SQL text.
         Assert.InRange(commandBytes, 1, 2_000_000);
         Assert.Equal(0, probe.Entities);
@@ -137,7 +195,8 @@ public abstract partial class GroupSupervisorTests
         if (calibration is { } calibrated)
         {
             Assert.Equal(1, calibrated.Rows);
-            Assert.True(calibrated.Lookup.Values.Sum() > calibrated.Empty.Values.Sum(),
+            Assert.True(
+                calibrated.Lookup.Values.Sum() > calibrated.Empty.Values.Sum(),
                 "A real fixture lookup must add read requests beyond the SHOW SESSION STATUS control.");
         }
 
@@ -146,6 +205,7 @@ public abstract partial class GroupSupervisorTests
             var actualHandlerReads = handlerReads.Values.Sum();
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"Profile={profile}; SESSION handler read requests={actualHandlerReads}; budget={handlerReadBudget}.");
+
             Assert.InRange(actualHandlerReads, 0, handlerReadBudget);
         }
 
@@ -166,7 +226,7 @@ public abstract partial class GroupSupervisorTests
             // WHY: MySQL may fetch ranking witnesses before its displayed iterator execution starts.
             // Iterator tuples alone do not establish total ranking work; the original-command handlers do.
             var work = CompositionPlanWork.ReadMySqlTree(plan);
-            Assert.Equal((double)expectedReaderRows, work.RootOutputTuples);
+            Assert.Equal(expectedReaderRows, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, linearRankWorkBudget);
             Assert.InRange(work.MaximumMaterializedTuples, 0, materializedRankOutputBudget);
             TestContext.Current.TestOutputHelper?.WriteLine(
@@ -187,44 +247,73 @@ public abstract partial class GroupSupervisorTests
         App.UserGroupContext context,
         App.SupervisorScenarioFixture data,
         IReadOnlyList<App.User> users,
-        string profile
+        string profile,
+        CancellationToken cancellationToken
     )
     {
         var source = data.Users[0];
-        await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
-                && Enumerable.Contains(data.Users, member.UserId) && member.UserId != source)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.Visible, false),
-                CancellationToken.None);
-        var priorities = users.Select((user, index) => new { user.Id, Priority = RankPriority(profile, index) })
+        await context
+            .UserGroupMemberships
+            .Where(member => member.TenantId == data.TenantId
+                && Enumerable.Contains(data.Users, member.UserId)
+                && member.UserId != source)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(member => member.Visible, false),
+                cancellationToken);
+
+        var priorities = users
+            .Select((user, index) => new
+            {
+                user.Id,
+                Priority = RankPriority(profile, index),
+            })
             .ToDictionary(row => row.Id, row => row.Priority);
 
-        var near = await context.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
-                && member.UserGroupId == data.Groups[5] && member.UserId != source)
-            .ToArrayAsync(CancellationToken.None);
+        var near = await context
+            .UserGroupMemberships
+            .Where(member => member.TenantId == data.TenantId
+                && member.UserGroupId == data.Groups[5]
+                && member.UserId != source)
+            .ToArrayAsync(cancellationToken);
 
         foreach (var member in near)
         {
             member.LeadershipPriority = priorities[member.UserId];
-            await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
-            {
-                TenantId = data.TenantId, UserId = member.UserId, UserGroupId = data.Groups[4],
-                LeadershipPriority = FarRankPriority(profile, member.LeadershipPriority),
-            }, CancellationToken.None);
+            await context.UserGroupMemberships.AddAsync(
+                new App.UserGroupMembership
+                {
+                    TenantId = data.TenantId,
+                    UserId = member.UserId,
+                    UserGroupId = data.Groups[4],
+                    LeadershipPriority = FarRankPriority(profile, member.LeadershipPriority),
+                },
+                cancellationToken);
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
-        await PrepareConsumerStatisticsAsync(context);
+        await PrepareConsumerStatisticsAsync(context, cancellationToken: cancellationToken);
     }
 
     /// <summary>Defines priorities by fixture position rather than generated user identities.</summary>
-    private static int RankPriority(string profile, int index)
-        => profile == "HighestAllTie" || (profile == "HighestTie" && index == 1) ? 1
-            : (profile is "NthTieFirstSlot" or "NthTieSecondSlot") && index == 500 ? 500 : index + 1;
+    private static int RankPriority(
+        string profile,
+        int index
+    )
+        => profile == "HighestAllTie" || (profile == "HighestTie" && index == 1)
+            ? 1
+            : profile is "NthTieFirstSlot" or "NthTieSecondSlot" && index == 500
+                ? 500
+                : index + 1;
 
     /// <summary>Keeps better-priority farther duplicates behind the nearer canonical Nth-person occurrence.</summary>
-    private static int FarRankPriority(string profile, int priority)
-        => profile.StartsWith("Nth", StringComparison.Ordinal) ? 1 : 10_000 + priority;
+    private static int FarRankPriority(
+        string profile,
+        int priority
+    )
+        => profile.StartsWith("Nth", StringComparison.Ordinal)
+            ? 1
+            : 10_000 + priority;
 
     /// <summary>Retains expected scalar occurrences independently of server or application rank reduction.</summary>
     private static App.SupervisorCandidate[] ExpectedRankedEvidence(
@@ -238,17 +327,27 @@ public abstract partial class GroupSupervisorTests
 
         return
         [
-            new()
+            new App.SupervisorCandidate
             {
-                TenantId = data.TenantId, SourceUserId = data.Users[0], StartGroupId = data.Groups[5],
-                StartTreeId = data.TreeId, FoundGroupId = data.Groups[5], CandidateUserId = user,
-                Distance = 0, LeadershipPriority = priority,
+                TenantId = data.TenantId,
+                SourceUserId = data.Users[0],
+                StartGroupId = data.Groups[5],
+                StartTreeId = data.TreeId,
+                FoundGroupId = data.Groups[5],
+                CandidateUserId = user,
+                Distance = 0,
+                LeadershipPriority = priority,
             },
-            new()
+            new App.SupervisorCandidate
             {
-                TenantId = data.TenantId, SourceUserId = data.Users[0], StartGroupId = data.Groups[5],
-                StartTreeId = data.TreeId, FoundGroupId = data.Groups[4], CandidateUserId = user,
-                Distance = 1, LeadershipPriority = FarRankPriority(profile, priority),
+                TenantId = data.TenantId,
+                SourceUserId = data.Users[0],
+                StartGroupId = data.Groups[5],
+                StartTreeId = data.TreeId,
+                FoundGroupId = data.Groups[4],
+                CandidateUserId = user,
+                Distance = 1,
+                LeadershipPriority = FarRankPriority(profile, priority),
             },
         ];
     }

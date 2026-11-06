@@ -16,15 +16,17 @@ public sealed partial class SampleReadSnapshotTests
         using var stop = new CancellationTokenSource();
         await using var connection = new CancelingSnapshotConnection(stop);
         var observer = new CancelAfterSnapshotOpen(stop);
-        await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection)
-            .AddInterceptors(observer)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>()
+                .UseSqlite(connection)
+                .AddInterceptors(observer)
+                .Options);
 
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(
+            context,
             _ =>
             {
                 readInvoked = true;
@@ -34,8 +36,11 @@ public sealed partial class SampleReadSnapshotTests
             stop.Token));
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
+
         Assert.False(readInvoked);
         Assert.Equal(1, observer.Opened);
         Assert.Null(connection.Begun);
@@ -56,9 +61,10 @@ public sealed partial class SampleReadSnapshotTests
         // Arrange
         using var stop = new CancellationTokenSource();
         await using var connection = new CancelingSnapshotConnection(stop);
-        await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite(connection)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>()
+                .UseSqlite(connection)
+                .Options);
 
         if (alreadyOpen)
         {
@@ -68,7 +74,8 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(
+            context,
             _ =>
             {
                 readInvoked = true;
@@ -86,13 +93,21 @@ public sealed partial class SampleReadSnapshotTests
         }
 
         // Assert
-        Assert.Equal(stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+        Assert.Equal(
+            stop.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(error)
+                .CancellationToken);
+
         Assert.False(readInvoked);
         Assert.NotNull(connection.Begun);
         Assert.Null(remainingNativeConnection);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, connectionState);
+        Assert.Equal(
+            alreadyOpen
+                ? ConnectionState.Open
+                : ConnectionState.Closed,
+            connectionState);
+
         Assert.Equal(ConnectionState.Closed, connection.State);
     }
 

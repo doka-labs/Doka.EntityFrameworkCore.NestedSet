@@ -73,9 +73,11 @@ internal sealed class OffsetScopeContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(40);
+
         node
             .HasOne<OffsetScopeNode>()
             .WithMany()

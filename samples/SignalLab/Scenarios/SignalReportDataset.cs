@@ -93,7 +93,9 @@ internal sealed record SignalReportDataset(
         }
 
         await hierarchy.InsertForestAsync([new NestedSetTreeImport<SignalNode, Guid>(tree, branch)], cancellationToken);
-        var edges = nearest? new[] { (1, 3), (3, 4), (4, 5), (5, 6) } : [(1, 2), (2, 3), (3, 4), (3, 5)];
+        var edges = nearest
+            ? new[] { (1, 3), (3, 4), (4, 5), (5, 6) }
+            : [(1, 2), (2, 3), (3, 4), (3, 5)];
 
         foreach (var (parent, child) in edges)
         {
@@ -105,7 +107,9 @@ internal sealed record SignalReportDataset(
                     ParentId = Id(parent),
                     ChildId = Id(child),
                     FromDate = new DateOnly(2042, 1, 1),
-                    ToDate = !nearest && child == 5 ? FirstDay : null,
+                    ToDate = !nearest && child == 5
+                        ? FirstDay
+                        : null,
                 });
         }
 
@@ -121,6 +125,7 @@ internal sealed record SignalReportDataset(
             AddMeasurements(context, tenant, Id(4), FirstDay.AddDays(1), 20);
             AddMeasurements(context, tenant, Id(5), FirstDay, 40);
             AddMeasurements(context, tenant, Id(5), FirstDay.AddDays(1), 50);
+
             // WHY: Stored intermediate and monthly aggregates deliberately exist; the report's type and grain exclude
             // them.
             context.PulseRecords.Add(
@@ -133,6 +138,7 @@ internal sealed record SignalReportDataset(
                     Granularity = MeasurementGranularity.Daily,
                     PulseCount = 1000,
                 });
+
             context.PulseRecords.Add(
                 new PulseRecord
                 {
@@ -149,7 +155,13 @@ internal sealed record SignalReportDataset(
         context.ChangeTracker.Clear();
         await SeedIsolationAsync(context, tenant, tree, scenario, cancellationToken);
 
-        return new SignalReportDataset(tenant, tree, nearest ? [Id(1), Id(6)] : [Id(1), Id(2), Id(3), Id(4)], nearest);
+        return new SignalReportDataset(
+            tenant,
+            tree,
+            nearest
+                ? [Id(1), Id(6)]
+                : [Id(1), Id(2), Id(3), Id(4)],
+            nearest);
     }
 
     /// <summary>Stores deliberate lookalike facts in another tree and another tenant with the same TreeId.</summary>
@@ -164,6 +176,7 @@ internal sealed record SignalReportDataset(
         var hierarchy = context
             .NestedSet<SignalNode>()
             .ForScope(tenant);
+
         await hierarchy.InsertForestAsync(
             [new NestedSetTreeImport<SignalNode, Guid>(Id(4000 + scenario), IsolationBranch(tenant, 10, "Other tree"))],
             cancellationToken);
@@ -298,13 +311,26 @@ internal sealed record SignalReportDataset(
             return "Sensor A";
         }
 
-        return id == Id(5) ? "Sensor B" : "Sensor P";
+        return id == Id(5)
+            ? "Sensor B"
+            : "Sensor P";
     }
 
     /// <summary>Provides repeatable identities without using GUID order as a hierarchy rule.</summary>
     internal static Guid Id(
         int ordinal
-    ) => new(ordinal, 0x51ab, 0x4000, 0x80, 0, 0, 0, 0, 0, 0, 1);
+    ) => new(
+        ordinal,
+        0x51ab,
+        0x4000,
+        0x80,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1);
 
     /// <summary>Creates detached payload with no public structural coordinates.</summary>
     private static SignalNode Node(
@@ -403,6 +429,7 @@ internal sealed record SignalReportDataset(
                 Name = "Sweep ticks",
                 UnitCode = "count",
             });
+
         await context.SaveChangesAsync(cancellationToken);
     }
 
@@ -419,8 +446,21 @@ internal sealed record SignalReportDataset(
         }
 
         Add(3, ModuleKind, "ModuleClass", "Receiver");
-        Add(nearest ? 5 : 4, SensorKind, "CaptureMode", "Continuous");
-        Add(nearest ? 6 : 5, SensorKind, "CaptureMode", "Continuous");
+        Add(
+            nearest
+                ? 5
+                : 4,
+            SensorKind,
+            "CaptureMode",
+            "Continuous");
+
+        Add(
+            nearest
+                ? 6
+                : 5,
+            SensorKind,
+            "CaptureMode",
+            "Continuous");
 
         if (nearest)
         {
@@ -477,6 +517,7 @@ internal sealed record SignalReportDataset(
                     Day = day,
                     PulseCount = amount * multiplier,
                 });
+
             context.SweepRecords.Add(
                 new SweepRecord
                 {
@@ -487,6 +528,7 @@ internal sealed record SignalReportDataset(
                     CompletedOn = day,
                     IntegratedTicks = amount * multiplier * 2,
                 });
+
             context.BurstRecords.Add(
                 new BurstRecord
                 {

@@ -7,31 +7,31 @@
 
   <ItemGroup>
     <!-- WHY: Provider fixtures own their image data directly so qualification does not depend on optional tools. -->
-    <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs"/>
-    <Compile Include="../Shared/SqlServerTestPlatform.cs" Link="Infrastructure/SqlServerTestPlatform.cs"/>
-    <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false"/>
+    <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs" />
+    <Compile Include="../Shared/SqlServerTestPlatform.cs" Link="Infrastructure/SqlServerTestPlatform.cs" />
+    <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj"/>
-    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Doka.EntityFrameworkCore.NestedSet.Postgres.csproj"/>
-    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj"/>
-    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/Doka.EntityFrameworkCore.NestedSet.SqlServer.csproj"/>
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj" />
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Doka.EntityFrameworkCore.NestedSet.Postgres.csproj" />
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj" />
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/Doka.EntityFrameworkCore.NestedSet.SqlServer.csproj" />
     <!-- WHY: Provider tests invoke the actual sample query builders rather than maintaining test-only copies. -->
-    <ProjectReference Include="../../samples/SignalLab/SignalLab.csproj"/>
-    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj"/>
+    <ProjectReference Include="../../samples/SignalLab/SignalLab.csproj" />
+    <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj" />
     <!-- WHY: These existing xUnit components support a library without the executable runner targets. -->
-    <PackageReference Include="xunit.v3.extensibility.core"/>
-    <PackageReference Include="xunit.v3.assert"/>
+    <PackageReference Include="xunit.v3.extensibility.core" />
+    <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"
-                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive; compile"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"/>
-    <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
-    <PackageReference Include="Testcontainers.MySql"/>
-    <PackageReference Include="Testcontainers.MsSql"/>
-    <PackageReference Include="Testcontainers.PostgreSql"/>
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive; compile" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Testcontainers.MySql" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
     <Compile Update="Integration/Querying/Composition/Models/AncestorIndexMappedContext.*.cs">

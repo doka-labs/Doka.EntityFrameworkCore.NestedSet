@@ -16,10 +16,15 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var setup = await CreateContextAsync(scope, probe);
+        await using var setup = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var writer = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
-            static options => new CompositionContext(options));
+            static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var committedDuringRead = false;
         var boundary = new CompositionReadBoundaryProbe(async token =>
@@ -31,15 +36,21 @@ public abstract partial class HierarchyCompositionConsistencyTests
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             boundary);
 
-        await ConfigureSnapshotAsync(context);
+        await ConfigureSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
-        await using var native = Engine == "Sqlite" ? BeginDeferredSqliteTransaction(context) : null;
+        await using var native = Engine == "Sqlite"
+            ? BeginDeferredSqliteTransaction(context)
+            : null;
+
         await using var transaction = native is null
             ? await context.Database.BeginTransactionAsync(
-                Engine == "SqlServer" ? IsolationLevel.Snapshot : IsolationLevel.RepeatableRead,
+                Engine == "SqlServer"
+                    ? IsolationLevel.Snapshot
+                    : IsolationLevel.RepeatableRead,
                 CancellationToken.None)
             : await context.Database.UseTransactionAsync(native, CancellationToken.None)
             ?? throw new InvalidOperationException("The SQLite snapshot transaction must be enlisted in EF.");
@@ -53,11 +64,13 @@ public abstract partial class HierarchyCompositionConsistencyTests
         var preservedTransaction = ReferenceEquals(transaction, context.Database.CurrentTransaction);
         var actualIsolation = transaction.GetDbTransaction()
             .IsolationLevel;
+
         boundary.Armed = false;
         await transaction.RollbackAsync(CancellationToken.None);
         await using var verification = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
-            static options => new CompositionContext(options));
+            static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var after = await BuildMixedQuery(verification, scope)
             .ToArrayAsync(CancellationToken.None);
@@ -86,7 +99,8 @@ public abstract partial class HierarchyCompositionConsistencyTests
     ///     Enables only test-owned provider options required for a nonblocking snapshot-versus-writer proof.
     /// </summary>
     private async Task ConfigureSnapshotAsync(
-        CompositionContext context
+        CompositionContext context,
+        CancellationToken cancellationToken
     )
     {
         if (Engine == "SqlServer")
@@ -95,13 +109,13 @@ public abstract partial class HierarchyCompositionConsistencyTests
             // the query library must neither alter database options nor silently change caller isolation.
             await context.Database.ExecuteSqlRawAsync(
                 "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                CancellationToken.None);
+                cancellationToken);
         }
         else if (Engine == "Sqlite")
         {
             // WHY: WAL permits the competing commit while the reader retains its original version.
             // Rollback journaling would block that writer and make an await-inside-reader barrier deadlock.
-            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL", CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL", cancellationToken);
         }
     }
 
@@ -130,7 +144,9 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // WHY: Structural writers require READ COMMITTED on server engines independently of the reader's
         // stable snapshot. InnoDB's connection default is REPEATABLE READ; SQLite uses its serializable writer.
         await using var transaction = await writer.Database.BeginTransactionAsync(
-            writer.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            writer.Database.IsSqlite()
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             cancellationToken);
 
         var hierarchy = writer
@@ -186,19 +202,32 @@ public abstract partial class HierarchyCompositionConsistencyTests
         bool afterChange
     )
     {
-        (int Upper, int Distance)[] ancestors = afterChange ? [(1, 2), (3, 0), (5, 1)] : [(1, 2), (2, 1), (3, 0)];
+        (int Upper, int Distance)[] ancestors = afterChange
+            ? [(1, 2), (3, 0), (5, 1)]
+            : [(1, 2), (2, 1), (3, 0)];
 
         return ancestors
             .Select(ancestor => new CompositionSnapshotRow
             {
                 Upper = ancestor.Upper,
-                Parent = afterChange ? 5 : 2,
+                Parent = afterChange
+                    ? 5
+                    : 2,
                 DownDistance = 2,
                 UpDistance = ancestor.Distance,
                 Matches = afterChange,
-                FromDate = new DateOnly(2044, afterChange ? 9 : 10, 1),
-                ToDate = afterChange ? new DateOnly(2044, 10, 31) : null,
-                Amount = afterChange ? 20 : 10,
+                FromDate = new DateOnly(
+                    2044,
+                    afterChange
+                        ? 9
+                        : 10,
+                    1),
+                ToDate = afterChange
+                    ? new DateOnly(2044, 10, 31)
+                    : null,
+                Amount = afterChange
+                    ? 20
+                    : 10,
             })
             .ToArray();
     }

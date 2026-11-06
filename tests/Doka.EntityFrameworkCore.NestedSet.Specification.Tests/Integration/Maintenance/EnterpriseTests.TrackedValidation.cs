@@ -17,16 +17,28 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
-        await using var transaction = caller ? await BeginCallerAsync(context) : null;
+        await using var transaction = caller
+            ? await BeginCallerAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            : null;
+
         var tracked = await context
             .Set<TreeNode>()
             .SingleAsync(node => node.NodeId == 2, CancellationToken.None);
 
-        tracked.Depth = pending ? 100 : 1;
+        tracked.Depth = pending
+            ? 100
+            : 1;
+
         context.ChangeTracker.DetectChanges();
         var tree = context
             .NestedSet<TreeNode>()
@@ -39,8 +51,19 @@ public abstract partial class EnterpriseTests
         // Assert
         Assert.Empty(issues);
         Assert.Same(transaction, context.Database.CurrentTransaction);
-        Assert.Equal(pending ? 100 : 1, tracked.Depth);
-        Assert.Equal(pending ? EntityState.Modified : EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            pending
+                ? 100
+                : 1,
+            tracked.Depth);
+
+        Assert.Equal(
+            pending
+                ? EntityState.Modified
+                : EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal(
             1,
             await context

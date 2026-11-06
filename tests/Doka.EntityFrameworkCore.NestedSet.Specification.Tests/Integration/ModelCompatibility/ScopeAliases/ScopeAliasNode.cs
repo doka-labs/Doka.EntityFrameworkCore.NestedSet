@@ -106,13 +106,14 @@ internal sealed class ScopedScopeAliasContext : DbContext
                 entity.Scope,
                 entity.Id,
             });
+
             node
                 .HasOne<ScopeAliasNode>()
                 .WithMany()
                 .HasForeignKey(entity => new
                 {
                     entity.Scope,
-                    entity.ParentId
+                    entity.ParentId,
                 })
                 .OnDelete(DeleteBehavior.Restrict);
         });
@@ -152,13 +153,16 @@ internal static class ScopeAliasModel
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.Scope)
             .HasMaxLength(40)
             .UseCollation(collation);
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(100);
+
         identity(node);
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.Id)

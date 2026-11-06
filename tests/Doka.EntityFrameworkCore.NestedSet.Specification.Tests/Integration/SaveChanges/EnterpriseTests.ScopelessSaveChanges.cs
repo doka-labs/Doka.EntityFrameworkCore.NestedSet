@@ -7,7 +7,7 @@ public abstract partial class EnterpriseTests
     public async Task ScopelessParentChangeUsesTreeIdentity()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context.NestedSet<UnscopedQueryNode>();
         var treeId = Guid.NewGuid();
@@ -38,8 +38,16 @@ public abstract partial class EnterpriseTests
         Assert.Equal(1, nodes[0].Id);
         Assert.Equal(3, nodes[1].Id);
         Assert.Equal(2, nodes[2].Id);
-        Assert.Equal(3, nodes.Single(node => node.Id == 2).ParentId);
-        Assert.Equal(2, nodes.Single(node => node.Id == 2).Depth);
+        Assert.Equal(
+            3,
+            nodes.Single(node => node.Id == 2)
+                .ParentId);
+
+        Assert.Equal(
+            2,
+            nodes.Single(node => node.Id == 2)
+                .Depth);
+
         Assert.All(nodes, node => Assert.Equal(treeId, node.TreeId));
         Assert.Equal(
             Enumerable
@@ -55,5 +63,9 @@ public abstract partial class EnterpriseTests
     /// <returns>A detached visible node.</returns>
     private static UnscopedQueryNode Node(
         int id
-    ) => new() { Id = id, Visible = true };
+    ) => new()
+    {
+        Id = id,
+        Visible = true,
+    };
 }

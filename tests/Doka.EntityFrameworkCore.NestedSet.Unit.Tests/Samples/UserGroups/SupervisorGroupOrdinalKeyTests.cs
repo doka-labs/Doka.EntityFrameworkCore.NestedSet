@@ -25,15 +25,17 @@ public sealed class SupervisorGroupOrdinalKeyTests
     )
     {
         // Arrange
-        await using var context = new UserGroupContext(new DbContextOptionsBuilder<UserGroupContext>()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
-            .Options);
+        await using var context = new UserGroupContext(
+            new DbContextOptionsBuilder<UserGroupContext>()
+                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+                .Options);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var tenant = Guid.NewGuid();
         var tree = Guid.NewGuid();
-        context.GroupTypes.AddRange(new GroupType
+        context.GroupTypes.AddRange(
+            new GroupType
             {
                 TenantId = tenant,
                 Id = 1,
@@ -45,6 +47,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
                 Id = 2,
                 Name = "Cluster",
             });
+
         await context.SaveChangesAsync(CancellationToken.None);
         var source = new User
         {
@@ -62,6 +65,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
             .NestedSet<User>()
             .ForScope(tenant)
             .InsertRootAsync(source, Guid.NewGuid(), CancellationToken.None);
+
         await context
             .NestedSet<User>()
             .ForScope(tenant)
@@ -70,7 +74,8 @@ public sealed class SupervisorGroupOrdinalKeyTests
         // WHY: Raw parameterized fixture inserts preserve key zero, which EF's generated identity sentinel
         // would otherwise replace, including its dependent membership key. The complete valid parent chain
         // is unrelated to identity generation.
-        await InsertGroupAsync(context,
+        await InsertGroupAsync(
+            context,
             tenant,
             tree,
             rootKey,
@@ -78,8 +83,11 @@ public sealed class SupervisorGroupOrdinalKeyTests
             1,
             6,
             0,
-            1);
-        await InsertGroupAsync(context,
+            1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await InsertGroupAsync(
+            context,
             tenant,
             tree,
             10,
@@ -87,8 +95,11 @@ public sealed class SupervisorGroupOrdinalKeyTests
             2,
             5,
             1,
-            1);
-        await InsertGroupAsync(context,
+            1,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await InsertGroupAsync(
+            context,
             tenant,
             tree,
             20,
@@ -96,7 +107,9 @@ public sealed class SupervisorGroupOrdinalKeyTests
             3,
             4,
             2,
-            2);
+            2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.Database.ExecuteSqlRawAsync(
             """
             INSERT INTO "UserGroupMemberships" ("TenantId", "UserId", "UserGroupId", "LeadershipPriority", "Visible")
@@ -104,6 +117,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
             """,
             [tenant, source.Id, manager.Id, rootKey],
             CancellationToken.None);
+
         context.ChangeTracker.Clear();
         var request = new SupervisorRequest
         {
@@ -112,7 +126,9 @@ public sealed class SupervisorGroupOrdinalKeyTests
             SearchStart = SearchStart.ParentsOnly,
             Roles = new NoRoleFilter(),
             Matches = [],
-            Groups = typeFirst ? new NthTypeGroupThenValidate(1, number) : new NthEligibleGroup([], number),
+            Groups = typeFirst
+                ? new NthTypeGroupThenValidate(1, number)
+                : new NthEligibleGroup([], number),
         };
 
         // Act
@@ -126,21 +142,53 @@ public sealed class SupervisorGroupOrdinalKeyTests
         // Assert
         Assert.Equal(SupervisorBatchStatus.Completed, result.Status);
         var origin = Assert.Single(result.Origins);
-        Assert.Equal(found ? SupervisorResolutionStatus.Found : SupervisorResolutionStatus.NotFound, origin.Status);
-        Assert.Equal(found ? manager.Id : (int?)null, origin.Continuation?.CandidateUserId);
-        Assert.Equal(found ? rootKey : (int?)null, origin.Continuation?.FoundGroupId);
-        Assert.Equal(found ? 1 : 0, origin.Evidence.Count);
-        Assert.All(origin.Evidence,
+        Assert.Equal(
+            found
+                ? SupervisorResolutionStatus.Found
+                : SupervisorResolutionStatus.NotFound,
+            origin.Status);
+
+        Assert.Equal(
+            found
+                ? manager.Id
+                : null,
+            origin.Continuation?.CandidateUserId);
+
+        Assert.Equal(
+            found
+                ? rootKey
+                : null,
+            origin.Continuation?.FoundGroupId);
+
+        Assert.Equal(
+            found
+                ? 1
+                : 0,
+            origin.Evidence.Count);
+
+        Assert.All(
+            origin.Evidence,
             row =>
             {
                 Assert.Equal(rootKey, row.FoundGroupId);
                 Assert.Equal(2, row.Distance);
                 Assert.Equal(tree, row.StartTreeId);
             });
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
     /// <summary>Inserts one trusted SQLite fixture row with parameterized scalar values.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="tenant">The tenant key of the inserted group.</param>
+    /// <param name="tree">The tree identity of the inserted group.</param>
+    /// <param name="key">The assigned group key.</param>
+    /// <param name="parent">The optional direct parent key.</param>
+    /// <param name="left">The precomputed left interval bound.</param>
+    /// <param name="right">The precomputed right interval bound.</param>
+    /// <param name="depth">The precomputed hierarchy depth.</param>
+    /// <param name="type">The synthetic group-type key.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static Task<int> InsertGroupAsync(
         UserGroupContext context,
         Guid tenant,
@@ -150,7 +198,8 @@ public sealed class SupervisorGroupOrdinalKeyTests
         long left,
         long right,
         int depth,
-        int type
+        int type,
+        CancellationToken cancellationToken
     ) => context.Database.ExecuteSqlRawAsync(
         """
         INSERT INTO "UserGroups" ("Id", "TenantId", "TreeId", "ParentId", "Name", "Left", "Right", "Depth",
@@ -165,5 +214,5 @@ public sealed class SupervisorGroupOrdinalKeyTests
             },
             $"Group {key}", left, right, depth, DateTime.UnixEpoch, type,
         ],
-        CancellationToken.None);
+        cancellationToken);
 }

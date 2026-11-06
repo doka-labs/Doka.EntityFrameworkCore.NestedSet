@@ -68,8 +68,8 @@ internal static class NestedSetIndexes
         }
 
         foreach (var obsolete in owned
-                     .Where(index => !retained.Contains(index))
-                     .ToArray())
+            .Where(index => !retained.Contains(index))
+            .ToArray())
         {
             // WHY: Reference ownership plus unmodified convention metadata cannot delete a user-created index.
             entity.RemoveIndex(obsolete);
@@ -80,7 +80,10 @@ internal static class NestedSetIndexes
     /// <summary>Applies a native access predicate only to this convention's unmodified owned indexes.</summary>
     /// <param name="entity">The hierarchy whose ordinary index roles were reconciled.</param>
     /// <param name="filter">The model-derived native predicate supplied by the selected adapter.</param>
-    internal static void ApplyOwnedIndexFilter(IConventionEntityType entity, string filter)
+    internal static void ApplyOwnedIndexFilter(
+        IConventionEntityType entity,
+        string filter
+    )
     {
         if (!s_owned.TryGetValue(entity, out var indexes))
         {
@@ -122,7 +125,10 @@ internal static class NestedSetIndexes
         var parent = mapping.Parent.Resolve(entity);
         var position = mapping.Position.Resolve(entity);
 
-        var desired = new List<DesiredIndex>(mapping.Order.Count == 0 ? 3 : 4)
+        var desired = new List<DesiredIndex>(
+            mapping.Order.Count == 0
+                ? 3
+                : 4)
         {
             Ascending(prefix.Append(left)),
             Ascending(prefix.Append(right)),
@@ -230,6 +236,7 @@ internal static class NestedSetIndexes
     {
         RelationalAnnotationNames.Name => true,
         RelationalAnnotationNames.Filter => annotation.Value is null,
+
         // WHY: Early provider-free mapping stays conservative; selected native conventions reconcile again
         // before their physical index budgeting and can adopt proven equivalent application indexes.
         _ => provider?.IsCompatibleIndexAnnotation(annotation) is true,
@@ -238,6 +245,7 @@ internal static class NestedSetIndexes
     /// <summary>Allows cleanup only while the application has not adopted or customized an owned index.</summary>
     /// <param name="index">The convention-created index to inspect.</param>
     /// <returns>Whether the index remains owned exclusively by this convention.</returns>
+
     // WHY: NestedSet itself assigns convention-level directions to these owned structural indexes. The separate
     // parent-index adoption rule accepts only an untouched EF self-FK index and must not share this broader test.
     private static bool IsUnmodified(
@@ -267,7 +275,10 @@ internal static class NestedSetIndexes
             + "\n"
             + string.Join("\n", properties.Select(property => property.Name))
             + "\n"
-            + string.Concat(descending.Select(value => value ? 'D' : 'A'));
+            + string.Concat(
+                descending.Select(value => value
+                    ? 'D'
+                    : 'A'));
 
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
         var stem = string.Concat("IX_NestedSet_", digest.AsSpan(0, 24));
@@ -302,7 +313,10 @@ internal static class NestedSetIndexes
 
         var directions = index.IsDescending is null
             ? string.Empty
-            : string.Concat(index.IsDescending.Select(value => value ? 'D' : 'A'));
+            : string.Concat(
+                index.IsDescending.Select(value => value
+                    ? 'D'
+                    : 'A'));
 
         // WHY: Separate contexts can map the same CLR type into different tables in one schema. NUL separators
         // distinguish identifier parts without ambiguities from legal punctuation in database names.

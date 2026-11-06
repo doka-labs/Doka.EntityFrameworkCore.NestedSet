@@ -3,11 +3,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Mapping;
 /// <summary>Resolves immutable sibling-order metadata and composes provider-native ordered queries.</summary>
 internal sealed class NestedSetOrdering
 {
-    /// <summary>Stores selectors that contain only mapped names and never capture a context or scope.</summary>
-    private readonly LambdaExpression[] _selectors;
-
     /// <summary>Stores provider-independent null-rank selectors only for nullable criteria.</summary>
     private readonly LambdaExpression?[] _nullRankSelectors;
+
+    /// <summary>Stores selectors that contain only mapped names and never capture a context or scope.</summary>
+    private readonly LambdaExpression[] _selectors;
 
     /// <summary>Creates the finalized order, including its unique ascending node-key tiebreaker.</summary>
     /// <param name="entity">The finalized entity whose CLR type defines the selectors.</param>
@@ -47,7 +47,10 @@ internal sealed class NestedSetOrdering
                 // WHY: Providers use different implicit null ordering. An integer rank makes the configured
                 // placement identical for LINQ queries, raw SQL windows, rebuilds, and automatic mutations.
                 var isNull = Expression.Equal(access, Expression.Constant(null, property.ClrType));
-                var nullRank = nullSortOrder == NullSortOrder.First ? 0 : 1;
+                var nullRank = nullSortOrder == NullSortOrder.First
+                    ? 0
+                    : 1;
+
                 var nonNullRank = 1 - nullRank;
 
                 _nullRankSelectors[index] = Expression.Lambda(
@@ -238,7 +241,9 @@ internal sealed class NestedSetOrdering
         where TEntity : class
     {
         var method = first
-            ? descending ? nameof(Queryable.OrderByDescending) : nameof(Queryable.OrderBy)
+            ? descending
+                ? nameof(Queryable.OrderByDescending)
+                : nameof(Queryable.OrderBy)
             : descending
                 ? nameof(Queryable.ThenByDescending)
                 : nameof(Queryable.ThenBy);

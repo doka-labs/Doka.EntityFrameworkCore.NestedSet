@@ -28,6 +28,30 @@ internal static partial class NestedSetInsertionTracking
         return new KeyShape(readers, requiresSnapshot);
     }
 
+    /// <summary>Compares exact key snapshots without allocating callbacks inside a row loop.</summary>
+    private static bool SameKey(
+        IKey key,
+        IReadOnlyList<object?> left,
+        IReadOnlyList<object?> right
+    )
+    {
+        // WHY: Compare property-specific key comparers and both value vectors at matching ordinals.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 0; index < key.Properties.Count; index++)
+        {
+            if (!key
+                .Properties[index]
+                .GetKeyValueComparer()
+                .Equals(left[index], right[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /// <summary>Stores model-scoped typed readers without allocating snapshot flags for each inserted row.</summary>
     private sealed record KeyShape(
         ValueReader[] Readers,
@@ -60,11 +84,11 @@ internal static partial class NestedSetInsertionTracking
     /// <typeparam name="TValue">The exact mapped CLR type, including nullable and converted domain types.</typeparam>
     private sealed class ValueReader<TValue> : ValueReader
     {
-        private readonly IProperty _property;
-        private readonly Func<TValue, TValue, bool> _equals;
         private readonly Func<object, TValue>? _clr;
-        private readonly bool _typedCurrent;
+        private readonly Func<TValue, TValue, bool> _equals;
+        private readonly IProperty _property;
         private readonly Func<IUpdateEntry, TValue>? _relationship;
+        private readonly bool _typedCurrent;
 
         /// <summary>Compiles the effective EF key comparer and metadata-selected CLR member.</summary>
         public ValueReader(
@@ -83,7 +107,10 @@ internal static partial class NestedSetInsertionTracking
                     right)
                 .Compile();
 
-            _clr = property.IsShadowProperty() ? null : NestedSetClrGetter<TValue>.For(property);
+            _clr = property.IsShadowProperty()
+                ? null
+                : NestedSetClrGetter<TValue>.For(property);
+
             _typedCurrent = property.IsShadowProperty()
                 || property.GetMemberInfo(false, false) switch
                 {
@@ -92,7 +119,9 @@ internal static partial class NestedSetInsertionTracking
                     _ => false,
                 };
 
-            _relationship = _typedCurrent ? Contract.RelationshipReader<TValue>(property) : null;
+            _relationship = _typedCurrent
+                ? Contract.RelationshipReader<TValue>(property)
+                : null;
         }
 
         /// <inheritdoc />
@@ -162,30 +191,8 @@ internal static partial class NestedSetInsertionTracking
         private bool MatchesValue(
             TValue current,
             object? expected
-        ) => expected is null ? current is null : current is not null && _equals(current, (TValue)expected);
-    }
-
-    /// <summary>Compares exact key snapshots without allocating callbacks inside a row loop.</summary>
-    private static bool SameKey(
-        IKey key,
-        IReadOnlyList<object?> left,
-        IReadOnlyList<object?> right
-    )
-    {
-        // WHY: Compare property-specific key comparers and both value vectors at matching ordinals.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < key.Properties.Count; index++)
-        {
-            if (!key
-                    .Properties[index]
-                    .GetKeyValueComparer()
-                    .Equals(left[index], right[index]))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        ) => expected is null
+            ? current is null
+            : current is not null && _equals(current, (TValue)expected);
     }
 }

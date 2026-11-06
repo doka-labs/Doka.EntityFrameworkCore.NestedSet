@@ -49,7 +49,7 @@ internal static class BenchmarkDiagnostics
             try
             {
                 benchmark.Initialize();
-                await benchmark.PrepareAsync();
+                await benchmark.PrepareAsync(cancellationToken: cancellationToken);
                 benchmark.Observation.Reset();
 
                 // WHY: Reflection belongs to untimed discovery only; retain the original operation exception.
@@ -74,7 +74,7 @@ internal static class BenchmarkDiagnostics
                     observation.Updates,
                     observation.UpdatedRows);
 
-                await benchmark.VerifyAsync();
+                await benchmark.VerifyAsync(cancellationToken: cancellationToken);
                 results.Add(result);
             }
             catch

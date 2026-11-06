@@ -16,6 +16,7 @@ internal sealed class NestedSetKeyComparer<TKey> : IEqualityComparer<TKey>
     )
     {
         _comparer = comparer;
+
         // WHY: Typed EF comparers avoid boxing dictionary keys; unusual custom comparers retain their exact fallback.
         _typedComparer = comparer as ValueComparer<TKey>;
     }

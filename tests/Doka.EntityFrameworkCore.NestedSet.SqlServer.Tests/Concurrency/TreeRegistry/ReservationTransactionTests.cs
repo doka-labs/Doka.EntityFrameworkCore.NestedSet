@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
 
 /// <summary>Verifies SQL Server reservation failures preserve caller transactions.</summary>
@@ -22,7 +24,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
     public async Task DuplicateReservationPreservesCallerTransaction()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
@@ -33,7 +35,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
             context,
             7,
             treeId,
-            Execution.NestedSetTreeLockMode.New,
+            NestedSetTreeLockMode.New,
             CancellationToken.None);
 
         // Act
@@ -41,7 +43,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
             context,
             7,
             treeId,
-            Execution.NestedSetTreeLockMode.New,
+            NestedSetTreeLockMode.New,
             CancellationToken.None));
 
         var state = await context
@@ -52,10 +54,20 @@ public sealed class ReservationTransactionTests : ProviderTest,
         await transaction.CommitAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, state);
         await using var verification = database.CreateContext();
-        Assert.Equal(0, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId));
+        Assert.Equal(
+            0,
+            await TreeRegistryLockTestSupport.ReadRevisionAsync(
+                verification,
+                7,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>XACT_ABORT ON is rejected before a duplicate can invalidate the caller transaction.</summary>
@@ -63,7 +75,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
     public async Task XactAbortOnRejectsAndPreservesCallerTransaction()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = Guid.NewGuid();
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
@@ -74,7 +86,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
             context,
             7,
             treeId,
-            Execution.NestedSetTreeLockMode.New,
+            NestedSetTreeLockMode.New,
             CancellationToken.None);
 
         await context.Database.ExecuteSqlRawAsync("SET XACT_ABORT ON", CancellationToken.None);
@@ -84,7 +96,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
             context,
             7,
             treeId,
-            Execution.NestedSetTreeLockMode.New,
+            NestedSetTreeLockMode.New,
             CancellationToken.None));
 
         var state = await context
@@ -96,9 +108,19 @@ public sealed class ReservationTransactionTests : ProviderTest,
         await context.Database.ExecuteSqlRawAsync("SET XACT_ABORT OFF", CancellationToken.None);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidTransaction, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidTransaction,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, state);
         await using var verification = database.CreateContext();
-        Assert.Equal(0, await TreeRegistryLockTestSupport.ReadRevisionAsync(verification, 7, treeId));
+        Assert.Equal(
+            0,
+            await TreeRegistryLockTestSupport.ReadRevisionAsync(
+                verification,
+                7,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -51,7 +51,10 @@ public sealed partial class DokaStraightJoinTests
         var outer = root.Concat(root);
         var inner = root
             .OrderBy(value => value)
-            .Take(empty ? 0 : 4);
+            .Take(
+                empty
+                    ? 0
+                    : 4);
 
         var firstOffset = 2;
         var secondOffset = 7;
@@ -60,18 +63,22 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        adapter.TryOrderedJoin(outer,
+        adapter.TryOrderedJoin(
+            outer,
             inner,
             firstKey,
             firstKey,
             (left, right) => left + right,
             out var first);
-        adapter.TryOrderedJoin(outer,
+
+        adapter.TryOrderedJoin(
+            outer,
             inner,
             secondKey,
             secondKey,
             (left, right) => left + right,
             out var second);
+
         firstOffset = 4;
         secondOffset = 8;
         var firstSelector = KeySelector(first!);
@@ -109,7 +116,8 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine(engine);
 
         // Act
-        var available = adapter.TryOrderedJoin(source,
+        var available = adapter.TryOrderedJoin(
+            source,
             source,
             value => value,
             value => value,
@@ -135,7 +143,8 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        var error = Record.Exception(() => adapter.TryOrderedJoin(source,
+        var error = Record.Exception(() => adapter.TryOrderedJoin(
+            source,
             source,
             value => value,
             value => value,
@@ -158,7 +167,8 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetTestAdapters.ForEngine("MySql");
 
         // Act
-        var error = Record.Exception(() => adapter.TryOrderedJoin(source,
+        var error = Record.Exception(() => adapter.TryOrderedJoin(
+            source,
             source,
             value => value,
             value => value,

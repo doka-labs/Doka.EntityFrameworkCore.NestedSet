@@ -40,7 +40,10 @@ internal sealed record NestedSetImportInputs(
             if (!activeEntries.Contains(entry)
                 && !entry.EntityType.IsOwned()
                 && EntityType.IsAssignableFrom(entry.EntityType)
-                && Mapping(entry.ToEntityEntry().Entity) == entry.EntityType)
+                && Mapping(
+                    entry.ToEntityEntry()
+                        .Entity)
+                == entry.EntityType)
             {
                 roots.Add(entry);
             }
@@ -101,7 +104,8 @@ internal sealed record NestedSetImportInputs(
         {
             try
             {
-                introduced[index].Detach();
+                introduced[index]
+                    .Detach();
             }
             catch (Exception error)
             {

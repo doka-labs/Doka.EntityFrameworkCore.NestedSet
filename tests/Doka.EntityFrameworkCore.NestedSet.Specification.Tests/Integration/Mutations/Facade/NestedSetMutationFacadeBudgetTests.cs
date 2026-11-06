@@ -20,7 +20,7 @@ public abstract class NestedSetMutationFacadeBudgetTests : ProviderTest
     public async Task InsertChildHasBoundedCommandCount()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using (var setup = database.CreateContext())
         {
             await setup

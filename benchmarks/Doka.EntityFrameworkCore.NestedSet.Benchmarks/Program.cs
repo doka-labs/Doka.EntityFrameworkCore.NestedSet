@@ -50,7 +50,9 @@ public static class Program
 
             if (!parsed.isSuccess)
             {
-                return help ? 0 : 2;
+                return help
+                    ? 0
+                    : 2;
             }
 
             options = options with
@@ -101,6 +103,7 @@ public static class Program
             using (selected)
             {
 #if DEBUG
+
                 // WHY: Timing needs optimized code; untimed command diagnostics must remain debuggable in Rider.
                 if (!options.Diagnostics)
                 {
@@ -145,7 +148,10 @@ public static class Program
                     }
 
                     // WHY: The native switcher owns ApplesToApples handling, child execution and framework reporting.
-                    summaries = switcher.Run(options.Arguments, config).ToArray();
+                    summaries = switcher
+                        .Run(options.Arguments, config)
+                        .ToArray();
+
                     var valid = summaries.Length > 0
                         && summaries.All(summary => !summary.HasCriticalValidationErrors
                             && summary.Reports.Length > 0
@@ -156,10 +162,14 @@ public static class Program
                         environment,
                         runStartedAtUtc,
                         summaries,
-                        valid ? "completed" : "invalid",
+                        valid
+                            ? "completed"
+                            : "invalid",
                         CancellationToken.None);
 
-                    return valid ? 0 : 1;
+                    return valid
+                        ? 0
+                        : 1;
                 }
                 catch
                 {

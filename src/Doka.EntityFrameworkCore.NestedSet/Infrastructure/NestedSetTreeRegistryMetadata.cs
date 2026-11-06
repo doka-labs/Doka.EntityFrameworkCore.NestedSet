@@ -74,10 +74,14 @@ internal static class NestedSetTreeRegistryMetadata
         // separate hierarchy mappings that share a table through EF table sharing.
         var storeIdentity = string.Join(
             "\0",
-            schema is null ? "0" : "1" + schema,
+            schema is null
+                ? "0"
+                : "1" + schema,
             tableName,
             nodeKeyColumn,
-            scopeColumn is null ? "0" : "1" + scopeColumn,
+            scopeColumn is null
+                ? "0"
+                : "1" + scopeColumn,
             treeIdColumn);
 
         var digest = Convert

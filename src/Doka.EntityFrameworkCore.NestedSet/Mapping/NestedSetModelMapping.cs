@@ -9,8 +9,8 @@ internal sealed class NestedSetModelMapping
     private static readonly ConditionalWeakTable<IModel, NestedSetModelMapping> s_models = new();
 
     private readonly Dictionary<IEntityType, NestedSetModelDescriptor> _descriptors = new();
-    private readonly Dictionary<IEntityType, IEntityType> _owners = new();
     private readonly Dictionary<IEntityType, NestedSetOrdering> _ordering = new();
+    private readonly Dictionary<IEntityType, IEntityType> _owners = new();
     private readonly Dictionary<IEntityType, IReadOnlyList<IProperty>> _structure = new();
 
     /// <summary>Resolves guarded structure for every hierarchy and ordering for configured entities.</summary>
@@ -76,16 +76,16 @@ internal sealed class NestedSetModelMapping
         }
     }
 
-    /// <summary>Returns shared finalized metadata without retaining the requesting context.</summary>
-    internal static NestedSetModelMapping For(
-        IModel model
-    ) => s_models.GetValue(model, static value => new NestedSetModelMapping(value));
-
     /// <summary>Gets whether any hierarchy in the model participates in configured ordering.</summary>
     internal bool HasOrdering => _ordering.Count != 0;
 
     /// <summary>Gets whether the model contains at least one configured hierarchy.</summary>
     internal bool HasHierarchies => _descriptors.Count != 0;
+
+    /// <summary>Returns shared finalized metadata without retaining the requesting context.</summary>
+    internal static NestedSetModelMapping For(
+        IModel model
+    ) => s_models.GetValue(model, static value => new NestedSetModelMapping(value));
 
     /// <summary>Gets the exact entity that declares a node's hierarchy contract and owns its queries.</summary>
     /// <param name="entity">The concrete or configured hierarchy entity metadata.</param>

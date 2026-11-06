@@ -70,7 +70,8 @@ public sealed partial class AncestorIndexTests
             string engine,
             Action<ModelBuilder> configure
         ) : this(
-            OwnedModelTestServices<AncestorContext>.Create(Options(engine),
+            OwnedModelTestServices<AncestorContext>.Create(
+                Options(engine),
                 static services =>
                     services.Replace(ServiceDescriptor.Singleton<IModelCacheKeyFactory, TestModelCacheKeyFactory>())),
             configure) { }
@@ -84,6 +85,9 @@ public sealed partial class AncestorIndexTests
             _services = services;
             _configure = configure;
         }
+
+        /// <inheritdoc />
+        object ITestModelVariant.ModelVariant { get; } = Guid.NewGuid();
 
         /// <inheritdoc />
         public override void Dispose()
@@ -112,9 +116,6 @@ public sealed partial class AncestorIndexTests
         }
 
         /// <inheritdoc />
-        object ITestModelVariant.ModelVariant { get; } = Guid.NewGuid();
-
-        /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
         ) => _configure(modelBuilder);
@@ -136,22 +137,26 @@ public sealed partial class AncestorIndexTests
                         "Server=127.0.0.1;Database=Ancestor;User ID=unused",
                         DatabaseTestTargets.MySql,
                         provider => provider.UseNestedSets());
+
                     break;
                 case "MariaDb":
                     options.UseMySql(
                         "Server=127.0.0.1;Database=Ancestor;User ID=unused",
                         DatabaseTestTargets.MariaDb,
                         provider => provider.UseNestedSets());
+
                     break;
                 case "PostgreSql":
                     options.UseNpgsql(
                         "Host=127.0.0.1;Database=Ancestor;Username=unused",
                         provider => provider.UseNestedSets());
+
                     break;
                 case "SqlServer":
                     options.UseSqlServer(
                         "Server=127.0.0.1;Database=Ancestor;User ID=unused;Password=unused",
                         provider => provider.UseNestedSets());
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(engine));

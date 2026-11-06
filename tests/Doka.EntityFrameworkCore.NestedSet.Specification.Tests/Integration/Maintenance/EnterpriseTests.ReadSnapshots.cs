@@ -11,7 +11,7 @@ public abstract partial class EnterpriseTests
     public async Task ValidationSnapshotSurvivesConcurrentDeleteBetweenReads()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
             [
@@ -58,7 +58,11 @@ public abstract partial class EnterpriseTests
         Assert.Equal(2, barrier.Reads);
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        var root = Assert.Single(await verification.Set<TextNode>().ToArrayAsync(CancellationToken.None));
+        var root = Assert.Single(
+            await verification
+                .Set<TextNode>()
+                .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal("ROOT", root.Id);
         Assert.Equal(2, root.Right);
     }
@@ -69,9 +73,13 @@ public abstract partial class EnterpriseTests
     public async Task ValidationPreservesCallerSerializableTransaction()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await EnterpriseForestTestSupport.SeedForestAsync(setup, EnterpriseForestTestSupport.CreateForest(3));
+        await EnterpriseForestTestSupport.SeedForestAsync(
+            setup,
+            EnterpriseForestTestSupport.CreateForest(3),
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -100,6 +108,7 @@ public abstract partial class EnterpriseTests
                 .Where(node => node.NodeId == 2)
                 .Select(node => node.Payload)
                 .SingleAsync(CancellationToken.None));
+
         await transaction.RollbackAsync(CancellationToken.None);
         await using var verification = database.CreateContext();
         Assert.Equal(

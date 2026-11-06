@@ -22,10 +22,11 @@ public abstract partial class AncestorIndexWorkTestBase
         await using var context = await _fixture.CreateContextAsync<AncestorIndexConsumerContext>(
             Engine,
             static options => new AncestorIndexConsumerContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedConsumerChainAsync(context, nodes);
+        await SeedConsumerChainAsync(context, nodes, cancellationToken: TestContext.Current.CancellationToken);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
             .Range(1_001, sources)
@@ -50,15 +51,13 @@ public abstract partial class AncestorIndexWorkTestBase
                 .Where(occurrence => occurrence.Selection == "dense"),
             pair => pair.Source,
             occurrence => occurrence.Node,
-            (
-                pair,
-                occurrence
-            ) => new
+            (pair,
+                occurrence) => new
             {
                 Occurrence = occurrence.Id,
                 pair.Source,
                 pair.Owner,
-                pair.Distance
+                pair.Distance,
             });
 
         var hasBinding = NestedSetProviderCapabilities.Resolve(context)
@@ -69,7 +68,10 @@ public abstract partial class AncestorIndexWorkTestBase
 
         var hasOptimizedPath = hasBinding && hasOrderedJoin;
         var seen = new BitArray(checked((int)expected));
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
+        var traversalsBefore = await NativeTraversalCounterAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -79,11 +81,11 @@ public abstract partial class AncestorIndexWorkTestBase
 
         // Act
         await foreach (var pair in query
-                           .AsAsyncEnumerable()
-                           .WithCancellation(CancellationToken.None))
+            .AsAsyncEnumerable()
+            .WithCancellation(CancellationToken.None))
         {
             var sourceIndex = pair.Source - 1_001;
-            var offset = ((long)sourceIndex * 1_001) + ((long)sourceIndex * (sourceIndex - 1) / 2);
+            var offset = (long)sourceIndex * 1_001 + (long)sourceIndex * (sourceIndex - 1) / 2;
             var slot = offset + pair.Owner - 1;
 
             if (sourceIndex is < 0 or >= sources
@@ -105,7 +107,10 @@ public abstract partial class AncestorIndexWorkTestBase
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
+        var traversals = await NativeTraversalCounterAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            - traversalsBefore;
 
         // WHY: Plan replay is a separate execution. Its failure must not erase the already
         // completed occurrence oracle or the measured original command's session work.
@@ -116,14 +121,20 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"optimized={hasOptimizedPath}; expected={expected}; actual={count}; "
                 + $"commands={commandCount}; traversals={traversals}; budget={traversalBudget}",
                 sql,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: A failed work bound already proves the regression. Repeating that slow query merely
         // to collect ANALYZE would add another full source-mode scan; retain its static plan instead.
         var executedPlan = hasOptimizedPath && traversals <= traversalBudget;
         var plan = executedPlan
-            ? await Specifications.QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine)
-            : await FailurePlanAsync(context, capture);
+            ? await QueryPlanTestSupport.ExplainAsync(
+                context,
+                capture,
+                0,
+                Engine,
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await FailurePlanAsync(context, capture, cancellationToken: TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-ancestor-index-dense-consumer-source-lookup",
@@ -133,11 +144,14 @@ public abstract partial class AncestorIndexWorkTestBase
                 + $"commands={commandCount}; traversals={traversals}; budget={traversalBudget}; executedPlan={executedPlan}",
                 sql,
                 plan,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _output.WriteLine($"Binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
+        _output.WriteLine(
+            $"Binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
             + $"rows={count}; traversals={traversals}; budget={traversalBudget}.");
+
         Assert.True(hasOptimizedPath);
         Assert.Equal(expected, count);
         Assert.Equal(1, commandCount);
@@ -147,9 +161,13 @@ public abstract partial class AncestorIndexWorkTestBase
     }
 
     /// <summary>Loads a valid chain and independent application occurrences in bounded SQL batches.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
     private static async Task SeedConsumerChainAsync(
         AncestorIndexConsumerContext context,
-        int nodes
+        int nodes,
+        CancellationToken cancellationToken
     )
     {
         for (var start = 1; start <= nodes; start += 1_000)
@@ -168,10 +186,10 @@ public abstract partial class AncestorIndexWorkTestBase
                 sql.Append(
                     CultureInfo.InvariantCulture,
                     $"({id},1,1,{(id == 1 ? "NULL" : (id - 1).ToString(CultureInfo.InvariantCulture))},"
-                    + $"{id},{(2L * nodes) - id + 1},{id - 1},0)");
+                    + $"{id},{2L * nodes - id + 1},{id - 1},0)");
             }
 
-            await context.Database.ExecuteSqlRawAsync(sql.ToString(), CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(sql.ToString(), cancellationToken);
         }
 
         var occurrences = "INSERT INTO `AncestorIndexConsumerOccurrences` (`Id`,`Node`,`Selection`) VALUES "
@@ -182,8 +200,8 @@ public abstract partial class AncestorIndexWorkTestBase
                     .Select(id => string.Create(CultureInfo.InvariantCulture, $"({id},{id},'dense')")))
             + ", (1,1001,'sparse')";
 
-        await context.Database.ExecuteSqlRawAsync(occurrences, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(occurrences, cancellationToken);
         const string analyze = "ANALYZE TABLE `AncestorIndexConsumerNodes`,`AncestorIndexConsumerOccurrences`";
-        await context.Database.ExecuteSqlRawAsync(analyze, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(analyze, cancellationToken);
     }
 }

@@ -24,7 +24,12 @@ public sealed partial class QueryPlanReplayTests
         var probe = Probe();
 
         // Act
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, "PostgreSql");
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            "PostgreSql",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains("complete plan", plan, StringComparison.Ordinal);
@@ -47,7 +52,12 @@ public sealed partial class QueryPlanReplayTests
         var probe = Probe();
 
         // Act
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, "MySql");
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            "MySql",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains("query_block", plan, StringComparison.Ordinal);
@@ -72,11 +82,18 @@ public sealed partial class QueryPlanReplayTests
         var probe = Probe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => QueryPlanTestSupport.ExplainAsync(context, probe, 0, "MySql"));
+        var error = await Record.ExceptionAsync(() => QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            "MySql",
+            cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Contains("1317",
-            Assert.IsType<InvalidOperationException>(error).Message,
+        Assert.Contains(
+            "1317",
+            Assert.IsType<InvalidOperationException>(error)
+                .Message,
             StringComparison.Ordinal);
     }
 
@@ -93,7 +110,12 @@ public sealed partial class QueryPlanReplayTests
         var probe = Probe();
 
         // Act
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, probe, 0, "SqlServer");
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            "SqlServer",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("<ShowPlanXML />" + Environment.NewLine, plan);
@@ -102,10 +124,11 @@ public sealed partial class QueryPlanReplayTests
     /// <summary>Creates a small provider graph owned entirely by the test's context.</summary>
     private static DbContext CreateContext(
         PlanReplayConnection connection
-    ) => new(new DbContextOptionsBuilder()
-        .UseSqlite(connection)
-        .EnableServiceProviderCaching(false)
-        .Options);
+    ) => new(
+        new DbContextOptionsBuilder()
+            .UseSqlite(connection)
+            .EnableServiceProviderCaching(false)
+            .Options);
 
     /// <summary>Supplies an exact recorded statement without creating an unrelated EF command.</summary>
     private static EnterpriseProbe Probe()

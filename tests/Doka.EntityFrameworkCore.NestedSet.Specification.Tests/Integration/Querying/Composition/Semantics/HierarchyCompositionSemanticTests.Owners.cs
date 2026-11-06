@@ -18,12 +18,22 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == nodeId);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == nodeId);
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 source,
                 node => node,
                 (node, owner) => true,
@@ -32,7 +42,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = accepted ? [nodeId] : [];
+        int[] expected = accepted
+            ? [nodeId]
+            : [];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
@@ -51,16 +63,27 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 3);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 3);
 
         // Act
         var query = nearest
             ? hierarchy.WhereNearestAncestorOrSelf(source, node => node, (node, owner) => false, (node, owner) => true)
             : hierarchy.WhereAnyAncestorOrSelf(source, node => node, (node, owner) => false);
 
-        var actual = await query.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Empty(actual);
@@ -74,14 +97,37 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var nodes = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 3);
-        var source = nodes.Select(node => new { Node = node, CandidateId = 1, AcceptedId = 1 })
-            .Concat(nodes.Select(node => new { Node = node, CandidateId = 2, AcceptedId = 1 }));
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var nodes = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 3);
+
+        var source = nodes
+            .Select(node => new
+            {
+                Node = node,
+                CandidateId = 1,
+                AcceptedId = 1,
+            })
+            .Concat(
+                nodes.Select(node => new
+                {
+                    Node = node,
+                    CandidateId = 2,
+                    AcceptedId = 1,
+                }));
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 source,
                 row => row.Node,
                 (row, owner) => owner.Id == row.CandidateId,
@@ -107,19 +153,34 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var source = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 3);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var source = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 3);
 
         // Act
         var query = nearest
             ? hierarchy.WhereNearestAncestorOrSelf(
-                source, node => node, (node, owner) => owner.Candidate,
+                source,
+                node => node,
+                (node, owner) => owner.Candidate,
                 (node, owner) => owner.Id == 2 && owner.Matches)
             : hierarchy.WhereAnyAncestorOrSelf(
-                source, node => node, (node, owner) => owner.Id == 2 && owner.Matches);
+                source,
+                node => node,
+                (node, owner) => owner.Id == 2 && owner.Matches);
 
-        var actual = await query.Select(node => node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(node => node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Empty(actual);
@@ -133,14 +194,26 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
         var pairs = hierarchy.SelectSubtrees(
             node => node.Id == 2,
-            (origin, node, distance) => new { Origin = origin, Node = node });
+            (origin, node, distance) => new
+            {
+                Origin = origin,
+                Node = node,
+            });
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 pairs,
                 row => row.Node,
                 (row, owner) => owner.Candidate,
@@ -161,41 +234,78 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = Guid.NewGuid();
         await context.AddRangeAsync(
-        [
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 90, Left = 1, Right = 6, Candidate = true,
-                FromDate = new DateOnly(2029, 1, 1),
-            },
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 7, ParentId = 90, Left = 2, Right = 5, Depth = 1,
-                Candidate = true, FromDate = new DateOnly(2020, 1, 1),
-            },
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 40, ParentId = 7, Left = 3, Right = 4, Depth = 2,
-                Candidate = true,
-            },
-        ], CancellationToken.None);
+            [
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 90,
+                    Left = 1,
+                    Right = 6,
+                    Candidate = true,
+                    FromDate = new DateOnly(2029, 1, 1),
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 7,
+                    ParentId = 90,
+                    Left = 2,
+                    Right = 5,
+                    Depth = 1,
+                    Candidate = true,
+                    FromDate = new DateOnly(2020, 1, 1),
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 40,
+                    ParentId = 7,
+                    Left = 3,
+                    Right = 4,
+                    Depth = 2,
+                    Candidate = true,
+                },
+            ],
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var pairs = hierarchy.SelectAncestors(node => node.Id == 40,
-            (source, owner, distance) => new { Source = source, Owner = owner, Distance = distance });
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var pairs = hierarchy.SelectAncestors(
+            node => node.Id == 40,
+            (source, owner, distance) => new
+            {
+                Source = source,
+                Owner = owner,
+                Distance = distance,
+            });
 
         // Act
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
                 pairs,
                 row => row.Source,
                 (row, owner) => owner.Candidate && owner.Id != row.Source.Id,
                 (row, owner) => owner == row.Owner)
-            .Select(row => new { Id = row.Owner.Id, row.Distance })
+            .Select(row => new
+            {
+                row.Owner.Id,
+                row.Distance,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
@@ -217,10 +327,22 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var pairs = hierarchy.SelectAncestorsOrSelf(node => node.Id == 2,
-            (source, pivot, distance) => new { Source = source, Pivot = pivot });
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var pairs = hierarchy.SelectAncestorsOrSelf(
+            node => node.Id == 2,
+            (source, pivot, distance) => new
+            {
+                Source = source,
+                Pivot = pivot,
+            });
 
         // Act
         var selected = hierarchy.WhereNearestAncestorOrSelf(
@@ -229,16 +351,27 @@ public abstract partial class HierarchyCompositionSemanticTests
             (row, owner) => owner.Candidate && (!strictCandidates || owner.Id != row.Source.Id),
             (row, owner) => owner == row.Pivot && owner.Matches);
 
-        var targets = hierarchy.SelectSubtrees(pivot => selected.Any(row => row.Pivot == pivot),
-            (pivot, node, distance) => new { Pivot = pivot, Node = node });
+        var targets = hierarchy.SelectSubtrees(
+            pivot => selected.Any(row => row.Pivot == pivot),
+            (pivot, node, distance) => new
+            {
+                Pivot = pivot,
+                Node = node,
+            });
 
-        var actual = await selected.Join(targets, row => row.Pivot, row => row.Pivot,
+        var actual = await selected
+            .Join(
+                targets,
+                row => row.Pivot,
+                row => row.Pivot,
                 (left, right) => right.Node.Id)
             .OrderBy(id => id)
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = strictCandidates ? [1, 2, 3, 4, 5, 6] : [];
+        int[] expected = strictCandidates
+            ? [1, 2, 3, 4, 5, 6]
+            : [];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);

@@ -5,11 +5,11 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Adds nested-set conventions to each context's provider convention set.</summary>
 internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
 {
-    /// <summary>The active provider's SQL identifier service.</summary>
-    private readonly ISqlGenerationHelper _sql;
-
     /// <summary>The selected native policy validated for this context scope.</summary>
     private readonly NestedSetProviderCapabilities _provider;
+
+    /// <summary>The active provider's SQL identifier service.</summary>
+    private readonly ISqlGenerationHelper _sql;
 
     /// <summary>The provider service resolving implicit property conversions before model finalization.</summary>
     private readonly ITypeMappingSource _typeMappings;

@@ -6,28 +6,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 /// <summary>Pauses only EF's handlers while rollback restores a captured notification graph.</summary>
 internal sealed class NestedSetNotificationPause : IDisposable
 {
+    private readonly INotifyPropertyChanged? _changed;
+    private readonly PropertyChangedEventHandler _changedHandler;
+    private readonly INotifyPropertyChanging? _changing;
+    private readonly PropertyChangingEventHandler _changingHandler;
+    private readonly NotifyCollectionChangedEventHandler _collectionHandler;
     private readonly IUpdateEntry _entry;
     private readonly INavigationBase _navigation;
-    private readonly INotifyPropertyChanging? _changing;
-    private readonly INotifyPropertyChanged? _changed;
-    private readonly PropertyChangingEventHandler _changingHandler;
-    private readonly PropertyChangedEventHandler _changedHandler;
-    private readonly NotifyCollectionChangedEventHandler _collectionHandler;
     private bool _disposed;
-
-    /// <summary>Pauses a tracked notification owner without initializing null collection storage.</summary>
-    /// <param name="entry">The exact tracked owner whose captured graph is being restored.</param>
-    /// <param name="navigation">The reference or collection whose CLR storage will be restored.</param>
-    /// <param name="originalCollection">The captured collection object, or null for absent/reference storage.</param>
-    /// <returns>A recovery-only scope, or null when no EF notifications are subscribed.</returns>
-    internal static NestedSetNotificationPause? Begin(
-        IUpdateEntry entry,
-        INavigationBase navigation,
-        object? originalCollection
-    ) => entry.EntityState == EntityState.Detached
-        || entry.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot
-            ? null
-            : new NestedSetNotificationPause(entry, navigation, originalCollection);
 
     /// <summary>Removes exact native delegates while leaving every application listener installed.</summary>
     private NestedSetNotificationPause(
@@ -42,7 +28,9 @@ internal sealed class NestedSetNotificationPause : IDisposable
         _changingHandler = contract.PropertyChangingHandler(entry);
         _changedHandler = contract.PropertyChangedHandler(entry);
         _collectionHandler = contract.CollectionChangedHandler(entry);
-        var entity = entry.ToEntityEntry().Entity;
+        var entity = entry.ToEntityEntry()
+            .Entity;
+
         var strategy = entry.EntityType.GetChangeTrackingStrategy();
         _changing = strategy is ChangeTrackingStrategy.ChangingAndChangedNotifications
             or ChangeTrackingStrategy.ChangingAndChangedNotificationsWithOriginalValues
@@ -102,4 +90,18 @@ internal sealed class NestedSetNotificationPause : IDisposable
             _disposed = true;
         }
     }
+
+    /// <summary>Pauses a tracked notification owner without initializing null collection storage.</summary>
+    /// <param name="entry">The exact tracked owner whose captured graph is being restored.</param>
+    /// <param name="navigation">The reference or collection whose CLR storage will be restored.</param>
+    /// <param name="originalCollection">The captured collection object, or null for absent/reference storage.</param>
+    /// <returns>A recovery-only scope, or null when no EF notifications are subscribed.</returns>
+    internal static NestedSetNotificationPause? Begin(
+        IUpdateEntry entry,
+        INavigationBase navigation,
+        object? originalCollection
+    ) => entry.EntityState == EntityState.Detached
+        || entry.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot
+            ? null
+            : new NestedSetNotificationPause(entry, navigation, originalCollection);
 }

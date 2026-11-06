@@ -14,11 +14,14 @@ public abstract partial class EnterpriseTests
     public async Task DifferentScopeCommitsWhileFirstCallerHoldsTreeLock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
         var probe = new EnterpriseProbe();
         await using var second = database.CreateContext((IInterceptor)probe);
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(
+            first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -53,6 +56,7 @@ public abstract partial class EnterpriseTests
             timeout.Token));
 
         var firstStillOwnsTransaction = ReferenceEquals(transaction, first.Database.CurrentTransaction);
+
         // WHY: Releasing the retained lock must complete even if the competing writer exceeded its timeout.
         await transaction.RollbackAsync(CancellationToken.None);
 
@@ -61,6 +65,7 @@ public abstract partial class EnterpriseTests
             error is null,
             $"The independent-scope write failed: {error}{Environment.NewLine}Commands:{Environment.NewLine}"
             + string.Join(Environment.NewLine, probe.Commands));
+
         Assert.True(firstStillOwnsTransaction);
         await using var verification = database.CreateContext();
         var persisted = await verification
@@ -81,11 +86,14 @@ public abstract partial class EnterpriseTests
     public async Task SameTreeReservationRemainsLockedUntilCallerCommit()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
         var probe = new RegistryLockProbe();
         await using var second = database.CreateContext(probe);
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(
+            first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -108,7 +116,10 @@ public abstract partial class EnterpriseTests
         var error = await competing;
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdUnavailable, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.TreeIdUnavailable,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
 
         await using var verification = database.CreateContext();
         var nodes = await verification
@@ -129,9 +140,12 @@ public abstract partial class EnterpriseTests
     public async Task SameTreeContenderTimesOutAtRegistryBeforeReadingStructure()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var first = database.CreateContext();
-        await using var transaction = await BeginCallerAsync(first);
+        await using var transaction = await BeginCallerAsync(
+            first,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var firstTree = first
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
@@ -166,15 +180,24 @@ public abstract partial class EnterpriseTests
         if (Engine == "PostgreSql")
         {
             // WHY: Npgsql's nonretrying strategy wraps transient provider errors; the SQLSTATE proves lock contention.
-            Assert.Equal("55P03", Assert.IsType<PostgresException>(exception?.GetBaseException()).SqlState);
+            Assert.Equal(
+                "55P03",
+                Assert.IsType<PostgresException>(exception?.GetBaseException())
+                    .SqlState);
         }
         else if (Engine == "SqlServer")
         {
-            Assert.Equal(1222, Assert.IsType<SqlException>(exception?.GetBaseException()).Number);
+            Assert.Equal(
+                1222,
+                Assert.IsType<SqlException>(exception?.GetBaseException())
+                    .Number);
         }
         else
         {
-            Assert.Equal(1205, Assert.IsType<MySqlException>(exception).Number);
+            Assert.Equal(
+                1205,
+                Assert.IsType<MySqlException>(exception)
+                    .Number);
         }
 
         Assert.Same(transaction, first.Database.CurrentTransaction);
@@ -192,6 +215,7 @@ public abstract partial class EnterpriseTests
         Assert.DoesNotContain(
             probe.Commands,
             command => command.Contains(nameof(ConcurrentNode), StringComparison.OrdinalIgnoreCase));
+
         Assert.Equal(
             1,
             await firstTree
@@ -207,7 +231,7 @@ public abstract partial class EnterpriseTests
     public async Task FirstMutationCreatesRegistryWithoutDomainAnchor()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<ConcurrentNode>()
@@ -222,7 +246,9 @@ public abstract partial class EnterpriseTests
             .SingleAsync(CancellationToken.None);
 
         var hierarchy = context.Model.FindEntityType(typeof(ConcurrentNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
+
         var registryCount = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .CountAsync(CancellationToken.None);
@@ -247,7 +273,7 @@ public abstract partial class EnterpriseTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var pending = Enumerable
@@ -256,8 +282,12 @@ public abstract partial class EnterpriseTests
                 () => InsertAfterGateAsync(
                     database,
                     id,
-                    separateScopes ? id : 1,
-                    separateScopes ? Guid.Empty : TreeId(id),
+                    separateScopes
+                        ? id
+                        : 1,
+                    separateScopes
+                        ? Guid.Empty
+                        : TreeId(id),
                     gate.Task,
                     timeout.Token),
                 timeout.Token))
@@ -284,12 +314,16 @@ public abstract partial class EnterpriseTests
                 Assert.Equal(0, node.Depth);
                 Assert.Equal((1L, 2L, 0L), (node.Left, node.Right, node.Position));
             });
+
         Assert.Equal(
-            separateScopes ? writers : 1,
+            separateScopes
+                ? writers
+                : 1,
             nodes
                 .Select(node => node.Tree)
                 .Distinct()
                 .Count());
+
         Assert.Equal(
             writers,
             nodes
@@ -320,5 +354,16 @@ public abstract partial class EnterpriseTests
     /// <summary>Creates a deterministic nonempty TreeId for one independently written test tree.</summary>
     private static Guid TreeId(
         int value
-    ) => new(value, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    ) => new(
+        value,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0);
 }

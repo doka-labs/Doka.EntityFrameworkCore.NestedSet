@@ -5,6 +5,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class ExpressionInliningTests
 {
+    /// <summary>Provides a static getter that expression composition must never invoke.</summary>
+    private static int UnreadStaticValue =>
+        throw new InvalidOperationException("Static getters must remain unevaluated.");
+
     /// <summary>Static and directly captured members retain their exact expression without visiting getters.</summary>
     /// <param name="arity">The fixed overload's binding count.</param>
     /// <param name="staticMember">Whether the selected getter is static instead of directly captured.</param>
@@ -24,7 +28,8 @@ public sealed partial class ExpressionInliningTests
         // Arrange
         var probe = new GetterProbe();
         var member = staticMember
-            ? Expression.Property(null,
+            ? Expression.Property(
+                null,
                 typeof(ExpressionInliningTests).GetProperty(
                     nameof(UnreadStaticValue),
                     BindingFlags.NonPublic | BindingFlags.Static)!)
@@ -65,10 +70,6 @@ public sealed partial class ExpressionInliningTests
         Assert.Equal(0, probe.Reads);
         Assert.InRange(allocated, 0, 4096);
     }
-
-    /// <summary>Provides a static getter that expression composition must never invoke.</summary>
-    private static int UnreadStaticValue =>
-        throw new InvalidOperationException("Static getters must remain unevaluated.");
 
     /// <summary>
     /// Every fixed binding slot returns the exact supplied expression without revisiting its parameters.
@@ -138,7 +139,8 @@ public sealed partial class ExpressionInliningTests
             parameters);
 
         var initializer = Assert.IsType<MemberInitExpression>(projection.Body);
-        var expected = Assert.IsType<MemberAssignment>(initializer.Bindings[2]).Expression;
+        var expected = Assert.IsType<MemberAssignment>(initializer.Bindings[2])
+            .Expression;
 
         var arguments = Enumerable
             .Repeat<Expression>(initializer, arity)
@@ -180,8 +182,10 @@ public sealed partial class ExpressionInliningTests
 
         // Assert
         Assert.Same(member, actual);
-        Assert.Same(foreign,
-            Assert.IsAssignableFrom<MemberExpression>(actual).Expression);
+        Assert.Same(
+            foreign,
+            Assert.IsAssignableFrom<MemberExpression>(actual)
+                .Expression);
     }
 
     /// <summary>Selected projection assignments retain any other lambda parameter they contain.</summary>
@@ -207,9 +211,10 @@ public sealed partial class ExpressionInliningTests
 
         var expression = Expression.Lambda(Expression.Property(first, property), parameters);
         var arguments = new Expression[] { initializer }
-            .Concat(Enumerable
-                .Range(1, arity - 1)
-                .Select(value => Expression.Constant(value)))
+            .Concat(
+                Enumerable
+                    .Range(1, arity - 1)
+                    .Select(value => Expression.Constant(value)))
             .ToArray();
 
         // Act
@@ -272,7 +277,11 @@ public sealed partial class ExpressionInliningTests
         // Arrange
         var parameters = Enumerable
             .Range(0, arity)
-            .Select(_ => Expression.Parameter(member ? typeof(ProjectionMembers) : typeof(int), "row"))
+            .Select(_ => Expression.Parameter(
+                member
+                    ? typeof(ProjectionMembers)
+                    : typeof(int),
+                "row"))
             .ToArray();
 
         Expression body = member

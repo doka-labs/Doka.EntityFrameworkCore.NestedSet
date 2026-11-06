@@ -55,7 +55,8 @@ internal static class NestedSetModelValidator
         }
 
         IConventionProperty[] roles = scope is null
-            ? [
+            ?
+            [
                 nodeKey,
                 treeId,
                 parent,
@@ -64,7 +65,8 @@ internal static class NestedSetModelValidator
                 depth,
                 position,
             ]
-            : [
+            :
+            [
                 nodeKey,
                 scope,
                 treeId,
@@ -102,7 +104,10 @@ internal static class NestedSetModelValidator
                 ancestorIndex);
         }
 
-        if (roles.Distinct().Count() != roles.Length)
+        if (roles
+                .Distinct()
+                .Count()
+            != roles.Length)
         {
             throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' requires a different property for every structural role.");
@@ -137,13 +142,13 @@ internal static class NestedSetModelValidator
         RequireCompatibleIdentity(nodeKey, parent, entity);
 
         foreach (var (property, role) in new[]
-                 {
-                     (parent, NestedSetPropertyRoles.Parent),
-                     (left, NestedSetPropertyRoles.Left),
-                     (right, NestedSetPropertyRoles.Right),
-                     (depth, NestedSetPropertyRoles.Depth),
-                     (position, NestedSetPropertyRoles.Position),
-                 })
+            {
+                (parent, NestedSetPropertyRoles.Parent),
+                (left, NestedSetPropertyRoles.Left),
+                (right, NestedSetPropertyRoles.Right),
+                (depth, NestedSetPropertyRoles.Depth),
+                (position, NestedSetPropertyRoles.Position),
+            })
         {
             Writable(property, entity, role);
         }
@@ -288,7 +293,9 @@ internal static class NestedSetModelValidator
     )
     {
         var annotation = entity.FindAnnotation(NestedSetAnnotationNames.Prefix + role);
-        var property = annotation?.Value is string name ? entity.FindProperty(name) : null;
+        var property = annotation?.Value is string name
+            ? entity.FindProperty(name)
+            : null;
 
         if (property is null && required)
         {
@@ -451,7 +458,9 @@ internal static class NestedSetModelValidator
         if (!hasScalarIdentity
             && !hasScopedIdentity)
         {
-            var expected = scope is null ? "NodeKey" : "NodeKey or (Scope, NodeKey)";
+            var expected = scope is null
+                ? "NodeKey"
+                : "NodeKey or (Scope, NodeKey)";
 
             throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' requires an EF primary or alternate key over {expected}.");
@@ -474,10 +483,17 @@ internal static class NestedSetModelValidator
             bool validateNullability
         )
     {
-        var namesValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)?.Value;
-        var descendingValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderDescending)?.Value;
-        var nullSortValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)?.Value;
-        var modeValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderMode)?.Value;
+        var namesValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderProperties)
+            ?.Value;
+
+        var descendingValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderDescending)
+            ?.Value;
+
+        var nullSortValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderNullSort)
+            ?.Value;
+
+        var modeValue = entity.FindAnnotation(NestedSetAnnotationNames.OrderMode)
+            ?.Value;
 
         if (namesValue is null
             && descendingValue is null
@@ -510,7 +526,9 @@ internal static class NestedSetModelValidator
             .ToArray();
 
         var nullSortOrders = nullSort
-            .Select(innerValue => innerValue == -1 ? (NullSortOrder?)null : (NullSortOrder)innerValue)
+            .Select(innerValue => innerValue == -1
+                ? (NullSortOrder?)null
+                : (NullSortOrder)innerValue)
             .ToArray();
 
         NestedSetOrdering.ValidateProperties(entity, names, structuralNames, nullSortOrders, validateNullability);
@@ -528,7 +546,9 @@ internal static class NestedSetModelValidator
                     $"Nested-set sibling-order property '{name}' on '{entity.Name}' is not mapped."))
             .ToArray();
 
-        var orderMode = modeValue is int value ? (NestedSetOrderMode)value : NestedSetOrderMode.Strict;
+        var orderMode = modeValue is int value
+            ? (NestedSetOrderMode)value
+            : NestedSetOrderMode.Strict;
 
         return (properties, descending.ToArray(), nullSortOrders, orderMode);
     }

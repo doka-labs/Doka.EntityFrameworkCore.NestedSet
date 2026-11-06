@@ -142,14 +142,15 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     /// <summary>Retains non-sentinel values and dictionary membership without allocating for conventional sentinels.</summary>
     internal sealed class OriginalStructure
     {
+        private readonly int _depth;
+
         // WHY: Each role uses (_fields, _membership): 00 sentinel, 10 captured value,
         // 01 absent key, 11 present null. The second byte fits existing scalar padding.
         private readonly byte _fields;
-        private readonly byte _membership;
         private readonly long _left;
-        private readonly long _right;
-        private readonly int _depth;
+        private readonly byte _membership;
         private readonly long _position;
+        private readonly long _right;
 
         // WHY: Detached inputs may contain null or sentinel values that are not valid runtime identities.
         // Sparse metadata-shaped snapshots preserve exact rollback values; active Scope, TreeId and Parent stay typed.
@@ -188,10 +189,16 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         internal object? Parent { get; }
 
         /// <summary>Distinguishes an originally absent structural key from a present null or sentinel.</summary>
-        internal bool IsMissing(byte field) => (_membership & field) != 0 && (_fields & field) == 0;
+        internal bool IsMissing(
+            byte field
+        ) => (_membership & field) != 0 && (_fields & field) == 0;
 
         /// <summary>Retains a present null key that EF's typed getter normalizes to the nonnullable CLR default.</summary>
-        internal object? KeyOr(object? original) => (_fields & (1 << 7)) != 0 ? null : original;
+        internal object? KeyOr(
+            object? original
+        ) => (_fields & (1 << 7)) != 0
+            ? null
+            : original;
 
         /// <summary>Returns the captured Scope representation, including null, or the mapped sentinel.</summary>
         internal object? ScopeOr(
@@ -211,22 +218,38 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         /// <summary>Returns the captured left representation, including null, or the mapped sentinel.</summary>
         internal object? LeftOr(
             object? sentinel
-        ) => (_fields & _membership & (1 << 3)) != 0 ? null : (_fields & (1 << 3)) != 0 ? _left : sentinel;
+        ) => (_fields & _membership & (1 << 3)) != 0
+            ? null
+            : (_fields & (1 << 3)) != 0
+                ? _left
+                : sentinel;
 
         /// <summary>Returns the captured right representation, including null, or the mapped sentinel.</summary>
         internal object? RightOr(
             object? sentinel
-        ) => (_fields & _membership & (1 << 4)) != 0 ? null : (_fields & (1 << 4)) != 0 ? _right : sentinel;
+        ) => (_fields & _membership & (1 << 4)) != 0
+            ? null
+            : (_fields & (1 << 4)) != 0
+                ? _right
+                : sentinel;
 
         /// <summary>Returns the captured depth representation, including null, or the mapped sentinel.</summary>
         internal object? DepthOr(
             object? sentinel
-        ) => (_fields & _membership & (1 << 5)) != 0 ? null : (_fields & (1 << 5)) != 0 ? _depth : sentinel;
+        ) => (_fields & _membership & (1 << 5)) != 0
+            ? null
+            : (_fields & (1 << 5)) != 0
+                ? _depth
+                : sentinel;
 
         /// <summary>Returns the captured position representation, including null, or the mapped sentinel.</summary>
         internal object? PositionOr(
             object? sentinel
-        ) => (_fields & _membership & (1 << 6)) != 0 ? null : (_fields & (1 << 6)) != 0 ? _position : sentinel;
+        ) => (_fields & _membership & (1 << 6)) != 0
+            ? null
+            : (_fields & (1 << 6)) != 0
+                ? _position
+                : sentinel;
 
         /// <summary>Captures exact non-sentinel structure without allocating for a conventional new entity.</summary>
         internal static OriginalStructure? Capture(
@@ -244,7 +267,8 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             var depth = CaptureValue(entity, map.DepthProperty, 1 << 5, ref fields, ref membership);
             var position = CaptureValue(entity, map.PositionProperty, 1 << 6, ref fields, ref membership);
 
-            if (map.KeyProperty.IsIndexerProperty() && entity is IDictionary<string, object?> dictionary)
+            if (map.KeyProperty.IsIndexerProperty()
+                && entity is IDictionary<string, object?> dictionary)
             {
                 if (!dictionary.TryGetValue(map.KeyProperty.Name, out var key))
                 {
@@ -264,10 +288,18 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
                     scope,
                     treeId,
                     parent,
-                    left is null ? 0L : (long)left,
-                    right is null ? 0L : (long)right,
-                    depth is null ? 0 : (int)depth,
-                    position is null ? 0L : (long)position);
+                    left is null
+                        ? 0L
+                        : (long)left,
+                    right is null
+                        ? 0L
+                        : (long)right,
+                    depth is null
+                        ? 0
+                        : (int)depth,
+                    position is null
+                        ? 0L
+                        : (long)position);
         }
 
         /// <summary>Returns an exact snapshot only when the detached value differs from its mapped sentinel.</summary>
@@ -315,7 +347,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             int field,
             object? value,
             object? sentinel
-        ) => (_fields & field) != 0 ? value : sentinel;
+        ) => (_fields & field) != 0
+            ? value
+            : sentinel;
     }
 
     /// <summary>Stores complete geometry independently of generated keys and repair allocations.</summary>

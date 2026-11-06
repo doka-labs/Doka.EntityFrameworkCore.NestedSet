@@ -13,8 +13,11 @@ public abstract partial class SignalReportTests
         // earlier scenarios and concurrently executing suites, without disposing the shared fixture.
         await using var owned = new ModelCompatibilityDatabase();
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync<SignalLabContext>(owned,
-            static options => new SignalLabContext(options), probe);
+        await using var context = await CreateContextAsync<SignalLabContext>(
+            owned,
+            static options => new SignalLabContext(options),
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var firstTenant = Guid.NewGuid();
         var secondTenant = Guid.NewGuid();
@@ -24,18 +27,33 @@ public abstract partial class SignalReportTests
         var second = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, secondTenant);
         var firstReport = await SignalReportBuilder.ReadAsync(context, SingleAnchor(first), CancellationToken.None);
         var secondReport = await SignalReportBuilder.ReadAsync(context, SingleAnchor(second), CancellationToken.None);
-        var tenants = await context.Nodes.Select(node => node.TenantId).Distinct()
+        var tenants = await context
+            .Nodes
+            .Select(node => node.TenantId)
+            .Distinct()
             .ToArrayAsync(CancellationToken.None);
 
-        var treeCount = await context.Nodes.Select(node => new
-        {
-            node.TenantId,
-            TreeId = EF.Property<Guid>(node, SignalStorage.TreeId),
-        }).Distinct().CountAsync(CancellationToken.None);
+        var treeCount = await context
+            .Nodes
+            .Select(node => new
+            {
+                node.TenantId,
+                TreeId = EF.Property<Guid>(node, SignalStorage.TreeId),
+            })
+            .Distinct()
+            .CountAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(70, Assert.Single(firstReport).Value);
-        Assert.Equal(70, Assert.Single(secondReport).Value);
+        Assert.Equal(
+            70,
+            Assert.Single(firstReport)
+                .Value);
+
+        Assert.Equal(
+            70,
+            Assert.Single(secondReport)
+                .Value);
+
         Assert.Equal(4, tenants.Length);
         Assert.Contains(firstTenant, tenants);
         Assert.Contains(secondTenant, tenants);

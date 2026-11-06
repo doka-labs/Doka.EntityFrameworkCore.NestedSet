@@ -49,7 +49,8 @@ public sealed class ProviderEngineOwnershipTests
     public void SharedSpecificationAssemblyIsRejected()
     {
         // Arrange
-        var assembly = typeof(ProviderEngineOwnership).Assembly.GetName().Name!;
+        var assembly = typeof(ProviderEngineOwnership).Assembly.GetName()
+            .Name!;
 
         // Act
         var error = Record.Exception(() => ProviderEngineOwnership.Includes("Sqlite", assembly));

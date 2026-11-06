@@ -21,7 +21,10 @@ public sealed partial class SqlServerPathFailureTranslationTests
                 .UseInternalServiceProvider(services)
                 .Options);
 
-        var mapping = scoped ? "ScopedPaths" : "UnscopedPaths";
+        var mapping = scoped
+            ? "ScopedPaths"
+            : "UnscopedPaths";
+
         var root = new NestedSetQuery<Dictionary<string, object>>(context, context.Model.FindEntityType(mapping)!);
 
         if (scoped)
@@ -32,14 +35,16 @@ public sealed partial class SqlServerPathFailureTranslationTests
         var nodes = root.OrderedNodes;
         var rows = nodes
             .Where(node => EF.Property<int>(node, "Key") == 0)
-            .SelectMany(_ => nodes.Where(node => EF.Property<int>(node, "Level") == 12),
+            .SelectMany(
+                _ => nodes.Where(node => EF.Property<int>(node, "Level") == 12),
                 (upper, lower) => new
                 {
                     Upper = upper,
                     Lower = lower,
                 });
 
-        var query = root.WherePathEdges(rows,
+        var query = root.WherePathEdges(
+            rows,
             row => row.Upper,
             row => row.Lower,
             (_, parent, child) => EF.Property<bool>(child, "Open"),
@@ -56,7 +61,13 @@ public sealed partial class SqlServerPathFailureTranslationTests
         // Assert
         AssertUncorrelated(Assert.Single(fenced));
         Assert.Contains(mapping, sql, StringComparison.Ordinal);
-        Assert.DoesNotContain(scoped ? "UnscopedPaths" : "ScopedPaths", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            scoped
+                ? "UnscopedPaths"
+                : "ScopedPaths",
+            sql,
+            StringComparison.Ordinal);
+
         Assert.Equal(scoped, sql.Contains("[Tenant]", StringComparison.Ordinal));
         Assert.DoesNotContain("GROUP BY", sql, StringComparison.Ordinal);
 
@@ -77,15 +88,20 @@ public sealed partial class SqlServerPathFailureTranslationTests
         {
             foreach (var scoped in new[] { false, true })
             {
-                var mapping = scoped ? "ScopedPaths" : "UnscopedPaths";
+                var mapping = scoped
+                    ? "ScopedPaths"
+                    : "UnscopedPaths";
+
                 var node = modelBuilder.SharedTypeEntity<Dictionary<string, object>>(mapping);
                 node.ToTable(mapping);
                 node
                     .Property<int>("Key")
                     .ValueGeneratedNever();
+
                 node
                     .Property<Guid>("Tree")
                     .HasConversion<string>();
+
                 node.Property<int?>("Parent");
                 node.Property<long>("Begin");
                 node.Property<long>("End");

@@ -14,45 +14,69 @@ public abstract partial class GroupSupervisorTests
     [InlineData(1)]
     [InlineData(4)]
     [InlineData(16)]
-    public async Task FrontierBatchesFollowPhysicalStatesInsteadOfLogicalPeopleQueries(int fields)
+    public async Task FrontierBatchesFollowPhysicalStatesInsteadOfLogicalPeopleQueries(
+        int fields
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 1, fields);
-        var leaf = await context.UserGroupMemberships
+        await SeedOriginProfileAsync(
+            context,
+            data,
+            1,
+            fields,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var leaf = await context
+            .UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[0])
             .Select(member => member.UserGroupId)
             .SingleAsync(CancellationToken.None);
 
-        foreach (var index in new[] { 2, 3, 4, 5, 6 })
+        foreach (var index in new[]
+            {
+                2,
+                3,
+                4,
+                5,
+                6,
+            })
         {
-            await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
-            {
-                TenantId = data.TenantId,
-                UserId = data.Users[index],
-                UserGroupId = leaf,
-                LeadershipPriority = index,
-            }, CancellationToken.None);
-            await context.MembershipRoles.AddAsync(new App.MembershipRole
-            {
-                TenantId = data.TenantId,
-                UserId = data.Users[index],
-                UserGroupId = leaf,
-                RoleId = data.ManagerRoleId,
-            }, CancellationToken.None);
-            foreach (var field in s_profileFields.Take(fields))
-            {
-                await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
+            await context.UserGroupMemberships.AddAsync(
+                new App.UserGroupMembership
                 {
                     TenantId = data.TenantId,
                     UserId = data.Users[index],
                     UserGroupId = leaf,
-                    GroupTypeId = 4,
-                    FieldCode = field,
-                    Value = "lane-blue",
-                }, CancellationToken.None);
+                    LeadershipPriority = index,
+                },
+                CancellationToken.None);
+
+            await context.MembershipRoles.AddAsync(
+                new App.MembershipRole
+                {
+                    TenantId = data.TenantId,
+                    UserId = data.Users[index],
+                    UserGroupId = leaf,
+                    RoleId = data.ManagerRoleId,
+                },
+                CancellationToken.None);
+
+            foreach (var field in s_profileFields.Take(fields))
+            {
+                await context.MembershipMetadatas.AddAsync(
+                    new App.MembershipMetadata
+                    {
+                        TenantId = data.TenantId,
+                        UserId = data.Users[index],
+                        UserGroupId = leaf,
+                        GroupTypeId = 4,
+                        FieldCode = field,
+                        Value = "lane-blue",
+                    },
+                    CancellationToken.None);
             }
         }
 
@@ -61,30 +85,40 @@ public abstract partial class GroupSupervisorTests
             var field = s_profileFields[index];
             if (index >= 4)
             {
-                await context.MembershipMetadataDefinitions.AddAsync(new App.MembershipMetadataDefinition
-                {
-                    TenantId = data.TenantId,
-                    GroupTypeId = 1,
-                    FieldCode = field,
-                }, CancellationToken.None);
+                await context.MembershipMetadataDefinitions.AddAsync(
+                    new App.MembershipMetadataDefinition
+                    {
+                        TenantId = data.TenantId,
+                        GroupTypeId = 1,
+                        FieldCode = field,
+                    },
+                    CancellationToken.None);
             }
 
-            await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
-            {
-                TenantId = data.TenantId,
-                UserId = data.Users[5],
-                UserGroupId = data.Groups[0],
-                GroupTypeId = 1,
-                FieldCode = field,
-                Value = "lane-blue",
-            }, CancellationToken.None);
+            await context.MembershipMetadatas.AddAsync(
+                new App.MembershipMetadata
+                {
+                    TenantId = data.TenantId,
+                    UserId = data.Users[5],
+                    UserGroupId = data.Groups[0],
+                    GroupTypeId = 1,
+                    FieldCode = field,
+                    Value = "lane-blue",
+                },
+                CancellationToken.None);
         }
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
-        var matches = s_profileFields.Take(fields).Select(field => new App.MetadataMatch(
-            App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray();
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        var matches = s_profileFields
+            .Take(fields)
+            .Select(field => new App.MetadataMatch(
+                App.MetadataOwner.SourceUser,
+                field,
+                App.MetadataOwner.CandidateMembership,
+                field))
+            .ToArray();
 
         var request = new App.SupervisorChainRequest
         {
@@ -96,10 +130,20 @@ public abstract partial class GroupSupervisorTests
             MaxResultRows = 512,
             Steps =
             [
-                new(App.SearchStart.IncludeSelf, new App.MembershipRoleFilter(data.ManagerRoleId),
-                    new App.NthTypeGroupThenValidate(4, 1), matches, null, App.SupervisorSelection.All),
-                new(App.SearchStart.ParentsOnly, new App.MembershipRoleFilter(data.ManagerRoleId),
-                    new App.NthTypeGroupThenValidate(1, 1), matches, null, App.SupervisorSelection.RequireUnique),
+                new App.SupervisorStep(
+                    App.SearchStart.IncludeSelf,
+                    new App.MembershipRoleFilter(data.ManagerRoleId),
+                    new App.NthTypeGroupThenValidate(4, 1),
+                    matches,
+                    null,
+                    App.SupervisorSelection.All),
+                new App.SupervisorStep(
+                    App.SearchStart.ParentsOnly,
+                    new App.MembershipRoleFilter(data.ManagerRoleId),
+                    new App.NthTypeGroupThenValidate(1, 1),
+                    matches,
+                    null,
+                    App.SupervisorSelection.RequireUnique),
             ],
         };
 
@@ -107,13 +151,18 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         // Assert
         Assert.True(result.Complete);
         Assert.Equal(6, result.Branches.Count);
         Assert.Equal(
-            5, result.Branches.Count(branch => branch.Status == App.SupervisorChainStatus.ReachedRequestedHop));
+            5,
+            result.Branches.Count(branch => branch.Status == App.SupervisorChainStatus.ReachedRequestedHop));
+
         Assert.Equal(1, result.Branches.Count(branch => branch.Status == App.SupervisorChainStatus.NoSupervisor));
         Assert.Equal(3, probe.Commands.Count);
         Assert.All(probe.ParameterCounts, count => Assert.InRange(count, 1, 1800));
@@ -138,10 +187,13 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var secondTree = Guid.NewGuid();
-        var hierarchy = context.NestedSet<App.UserGroup>().ForScope(data.TenantId);
+        var hierarchy = context
+            .NestedSet<App.UserGroup>()
+            .ForScope(data.TenantId);
+
         var root = new App.UserGroup
         {
             Name = "Other own tree manager",
@@ -156,51 +208,71 @@ public abstract partial class GroupSupervisorTests
 
         await hierarchy.InsertRootAsync(root, secondTree, CancellationToken.None);
         await hierarchy.InsertChildAsync(child, root.Id, CancellationToken.None);
-        await context.UserGroupMemberships.AddRangeAsync([
-            new App.UserGroupMembership
-            {
-                TenantId = data.TenantId,
-                UserId = data.Users[1],
-                UserGroupId = child.Id,
-                LeadershipPriority = 10,
-            },
-            new App.UserGroupMembership
+        await context.UserGroupMemberships.AddRangeAsync(
+            [
+                new App.UserGroupMembership
+                {
+                    TenantId = data.TenantId,
+                    UserId = data.Users[1],
+                    UserGroupId = child.Id,
+                    LeadershipPriority = 10,
+                },
+                new App.UserGroupMembership
+                {
+                    TenantId = data.TenantId,
+                    UserId = data.Users[6],
+                    UserGroupId = root.Id,
+                    LeadershipPriority = 10,
+                },
+            ],
+            CancellationToken.None);
+
+        await context.MembershipRoles.AddAsync(
+            new App.MembershipRole
             {
                 TenantId = data.TenantId,
                 UserId = data.Users[6],
                 UserGroupId = root.Id,
-                LeadershipPriority = 10,
-            }], CancellationToken.None);
-        await context.MembershipRoles.AddAsync(new App.MembershipRole
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[6],
-            UserGroupId = root.Id,
-            RoleId = data.ManagerRoleId,
-        }, CancellationToken.None);
-        await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[6],
-            UserGroupId = root.Id,
-            GroupTypeId = 1,
-            FieldCode = "Route",
-            Value = "lane-blue",
-        }, CancellationToken.None);
+                RoleId = data.ManagerRoleId,
+            },
+            CancellationToken.None);
+
+        await context.MembershipMetadatas.AddAsync(
+            new App.MembershipMetadata
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[6],
+                UserGroupId = root.Id,
+                GroupTypeId = 1,
+                FieldCode = "Route",
+                Value = "lane-blue",
+            },
+            CancellationToken.None);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var original = ChainRequest(data, false);
-        var steps = original.Steps.Select(step => step with { OnDay = null }).ToArray();
+        var steps = original
+            .Steps
+            .Select(step => step with { OnDay = null })
+            .ToArray();
+
         var request = original with { Steps = steps };
         probe.Enabled = true;
 
         // Act
         var result = expanded
             ? await App.SupervisorQueries.FollowAllMembershipsAsync(
-                context, data.TenantId, request, CancellationToken.None)
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None)
             : await App.SupervisorQueries.FollowOriginalPathAsync(
-                context, data.TenantId, request, CancellationToken.None);
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None);
 
         // Assert
         Assert.True(result.Complete);
@@ -208,8 +280,16 @@ public abstract partial class GroupSupervisorTests
         Assert.All(
             result.Branches.SelectMany(branch => branch.Hops),
             hop => Assert.Equal(data.TenantId, hop.Evidence.TenantId));
-        Assert.Equal(expanded ? new[] { data.TreeId, secondTree }.Order() : new[] { data.TreeId },
-            result.Branches.Select(branch => branch.Hops[^1].Evidence.StartTreeId).Order());
+
+        Assert.Equal(
+            expanded
+                ? new[] { data.TreeId, secondTree }.Order()
+                : new[] { data.TreeId },
+            result
+                .Branches
+                .Select(branch => branch.Hops[^1].Evidence.StartTreeId)
+                .Order());
+
         Assert.All(result.Branches, branch => Assert.Equal(data.TreeId, branch.Hops[^1].InitialTreeId));
         Assert.Equal(2, probe.Commands.Count);
     }

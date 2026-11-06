@@ -14,6 +14,7 @@ internal static partial class SupervisorQueries
     )
     {
         var results = new SupervisorResolutionBatch[searches.Count];
+
         // WHY: Four UNION branches bound SQL/parameter growth even with sixteen metadata matches per state.
         // The provider tests inspect this actual transport boundary instead of relying on a nominal engine maximum.
         const int statesPerBatch = 4;
@@ -21,6 +22,7 @@ internal static partial class SupervisorQueries
         {
             IQueryable<SupervisorReadRow>? query = null;
             var count = Math.Min(statesPerBatch, searches.Count - offset);
+
             // WHY: Bind each bounded UNION branch to its stable batch-local state ordinal.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
@@ -45,7 +47,9 @@ internal static partial class SupervisorQueries
                         LeadershipPriority = row.LeadershipPriority,
                     });
 
-                query = query is null ? part : query.Concat(part);
+                query = query is null
+                    ? part
+                    : query.Concat(part);
             }
 
             var remaining = budget.RemainingReads;
@@ -72,8 +76,8 @@ internal static partial class SupervisorQueries
                 .ToArray();
 
             await foreach (var row in bounded
-                               .AsAsyncEnumerable()
-                               .WithCancellation(cancellationToken))
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken))
             {
                 if (!budget.Read())
                 {

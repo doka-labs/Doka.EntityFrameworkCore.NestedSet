@@ -22,7 +22,11 @@ public sealed class ConsumerReferenceTests
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None);
         var request = SignalReportValidation.Snapshot(
-            data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any, includeSensor: false));
+            data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any,
+                includeSensor: false));
 
         // Act
         var actual = await SignalReportBuilder
@@ -35,10 +39,16 @@ public sealed class ConsumerReferenceTests
 
         // Assert
         Assert.Equal(Normalize(actual), Normalize(reference));
-        Assert.Equal(nearest ? 0 : 10,
-            actual.Where(row => row.AnchorId == SignalReportDataset.Id(1)
-                && row.ChannelId == SignalReportDataset.PulseChannel && row.Source == CapturePort.Pulse)
+        Assert.Equal(
+            nearest
+                ? 0
+                : 10,
+            actual
+                .Where(row => row.AnchorId == SignalReportDataset.Id(1)
+                    && row.ChannelId == SignalReportDataset.PulseChannel
+                    && row.Source == CapturePort.Pulse)
                 .Sum(row => row.Value));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -90,8 +100,12 @@ public sealed class ConsumerReferenceTests
         // Assert
         Assert.Equal(Normalize(actual), Normalize(reference));
         Assert.DoesNotContain(actual, row => row.AnchorId == SignalReportDataset.Id(1));
-        Assert.Contains(actual, row => row.AnchorId == SignalReportDataset.Id(4)
-            && row.ChannelId == SignalReportDataset.PulseChannel && row is { Source: CapturePort.Pulse, Value: 30 });
+        Assert.Contains(
+            actual,
+            row => row.AnchorId == SignalReportDataset.Id(4)
+                && row.ChannelId == SignalReportDataset.PulseChannel
+                && row is { Source: CapturePort.Pulse, Value: 30 });
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -108,11 +122,13 @@ public sealed class ConsumerReferenceTests
         using var native = BenchmarkConverter.TypeToBenchmarks(
             typeof(SignalReportConstructionBenchmarks),
             configuration);
+
         await using var benchmark = new SignalReportConstructionBenchmarks
         {
             Anchors = 16,
-            NearestMetadata = true
+            NearestMetadata = true,
         };
+
         benchmark.Initialize();
 
         // Act
@@ -133,7 +149,9 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MetadataOwnersKeepScalarExistenceBoundaries(bool nearest)
+    public async Task MetadataOwnersKeepScalarExistenceBoundaries(
+        bool nearest
+    )
     {
         // Arrange
         await using var context = CreateContext();
@@ -142,7 +160,12 @@ public sealed class ConsumerReferenceTests
             SignalReportDataset.Id(2005),
             [SignalReportDataset.Id(1)],
             nearest);
-        var request = SignalReportValidation.Snapshot(data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any));
+
+        var request = SignalReportValidation.Snapshot(
+            data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any));
 
         // Act
         var sql = SignalReportReference
@@ -159,7 +182,9 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalReferencePreservesEqualEventsAndCompleteGrain(bool nearest)
+    public async Task SignalReferencePreservesEqualEventsAndCompleteGrain(
+        bool nearest
+    )
     {
         // Arrange
         await using var context = CreateContext();
@@ -206,7 +231,11 @@ public sealed class ConsumerReferenceTests
 
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        var request = SignalReportValidation.Snapshot(data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any));
+        var request = SignalReportValidation.Snapshot(
+            data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any));
 
         // Act
         var actual = await SignalReportBuilder
@@ -220,21 +249,46 @@ public sealed class ConsumerReferenceTests
         // Assert
         Assert.Equal(Normalize(actual), Normalize(reference));
         Assert.All(events, value => Assert.True(value.Sequence > 0));
-        Assert.Equal(events.Length, events.Select(value => value.Sequence).Distinct().Count());
+        Assert.Equal(
+            events.Length,
+            events
+                .Select(value => value.Sequence)
+                .Distinct()
+                .Count());
+
         foreach (var anchor in request.AnchorIds.Take(3))
         {
-            Assert.Contains(reference, row => row.AnchorId == anchor && row.ChannelId == pulse
-                && row is { Source: CapturePort.Pulse, Value: 90 });
+            Assert.Contains(
+                reference,
+                row => row.AnchorId == anchor
+                    && row.ChannelId == pulse
+                    && row is { Source: CapturePort.Pulse, Value: 90 });
         }
 
-        Assert.Contains(reference, row => row.AnchorId == sensor && row.ChannelId == pulse
-            && row is { Source: CapturePort.Pulse, Value: 50 });
-        Assert.Contains(reference, row => row.AnchorId == SignalReportDataset.Id(1) && row.ChannelId == sweep
-            && row is { Source: CapturePort.Pulse, Value: 150 });
-        Assert.Contains(reference, row => row.AnchorId == SignalReportDataset.Id(1) && row.ChannelId == pulse
-            && row is { Source: CapturePort.Sweep, Value: 150 });
-        Assert.Contains(reference, row => row.AnchorId == SignalReportDataset.Id(1) && row.ChannelId == pulse
-            && row is { Source: CapturePort.Burst, Value: 210 });
+        Assert.Contains(
+            reference,
+            row => row.AnchorId == sensor
+                && row.ChannelId == pulse
+                && row is { Source: CapturePort.Pulse, Value: 50 });
+
+        Assert.Contains(
+            reference,
+            row => row.AnchorId == SignalReportDataset.Id(1)
+                && row.ChannelId == sweep
+                && row is { Source: CapturePort.Pulse, Value: 150 });
+
+        Assert.Contains(
+            reference,
+            row => row.AnchorId == SignalReportDataset.Id(1)
+                && row.ChannelId == pulse
+                && row is { Source: CapturePort.Sweep, Value: 150 });
+
+        Assert.Contains(
+            reference,
+            row => row.AnchorId == SignalReportDataset.Id(1)
+                && row.ChannelId == pulse
+                && row is { Source: CapturePort.Burst, Value: 210 });
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

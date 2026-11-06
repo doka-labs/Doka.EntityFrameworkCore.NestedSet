@@ -71,9 +71,11 @@ internal static partial class SupervisorQueries
                         || context.UserMetadataDefinitions.LongCount(definition => definition.TenantId == tenantId
                             && Enumerable.Contains(
                                 EF.Parameter(userFields),
+
                                 // WHY: The text inliner expands this suffix to concatenation before EF translation.
                                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 SupervisorExactText.Suffix(definition.FieldCode))
+
                             // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                             // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
@@ -84,9 +86,11 @@ internal static partial class SupervisorQueries
                             .Where(definition => definition.TenantId == tenantId
                                 && Enumerable.Contains(
                                     EF.Parameter(membershipFields),
+
                                     // WHY: The text inliner expands this suffix to concatenation before EF translation.
                                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                     SupervisorExactText.Suffix(definition.FieldCode))
+
                                 // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
@@ -97,9 +101,11 @@ internal static partial class SupervisorQueries
                     && !context.MembershipMetadataDefinitions.Any(definition => definition.TenantId == tenantId
                         && Enumerable.Contains(
                             EF.Parameter(membershipFields),
+
                             // WHY: The text inliner expands this suffix to concatenation before EF translation.
                             // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             SupervisorExactText.Suffix(definition.FieldCode))
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && !SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
@@ -109,9 +115,11 @@ internal static partial class SupervisorQueries
                             .Where(definition => definition.TenantId == tenantId
                                 && Enumerable.Contains(
                                     EF.Parameter(groupFields),
+
                                     // WHY: The text inliner expands this suffix to concatenation before EF translation.
                                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                     SupervisorExactText.Suffix(definition.FieldCode))
+
                                 // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
@@ -122,9 +130,11 @@ internal static partial class SupervisorQueries
                     && !context.GroupMetadataDefinitions.Any(definition => definition.TenantId == tenantId
                         && Enumerable.Contains(
                             EF.Parameter(groupFields),
+
                             // WHY: The text inliner expands this suffix to concatenation before EF translation.
                             // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                             SupervisorExactText.Suffix(definition.FieldCode))
+
                         // WHY: The text inliner replaces this marker with string comparisons before EF translation.
                         // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                         && !SupervisorExactText.FieldEquals(definition.ValueKind, "Text")),
@@ -187,7 +197,9 @@ internal static partial class SupervisorQueries
         {
             // WHY: SQL Server pushed each origin's group key into this grouped relation and rebuilt every
             // ancestor path per origin. Behind OFFSET 0 the measured plans completed the witnesses once.
-            witnesses = witnesses.OrderBy(witness => witness.StartGroupId).Skip(0);
+            witnesses = witnesses
+                .OrderBy(witness => witness.StartGroupId)
+                .Skip(0);
         }
 
         // WHY: This statement also joins evidence to unique people. Its optimizer search ends at a timeout;
@@ -201,7 +213,7 @@ internal static partial class SupervisorQueries
                 (origin, matching) => new
                 {
                     origin,
-                    matching
+                    matching,
                 })
             .SelectMany(
                 row => row.matching.DefaultIfEmpty(),
@@ -216,7 +228,9 @@ internal static partial class SupervisorQueries
                         : witness.Minimum == witness.Maximum
                             ? 1L
                             : 2L,
-                    PersonId = witness.Minimum == witness.Maximum ? witness.Minimum : null,
+                    PersonId = witness.Minimum == witness.Maximum
+                        ? witness.Minimum
+                        : null,
                     FoundGroupId = witness.FoundGroupId,
                     Distance = witness.Distance,
                     LeadershipPriority = witness.LeadershipPriority,
@@ -267,8 +281,12 @@ internal static partial class SupervisorQueries
     ) => matches
         .SelectMany(match => new[]
         {
-            match.SourceOwner == source ? match.SourceFieldCode : null,
-            match.CandidateOwner == candidate ? match.CandidateFieldCode : null,
+            match.SourceOwner == source
+                ? match.SourceFieldCode
+                : null,
+            match.CandidateOwner == candidate
+                ? match.CandidateFieldCode
+                : null,
         })
         .OfType<string>()
         .Distinct(StringComparer.Ordinal)

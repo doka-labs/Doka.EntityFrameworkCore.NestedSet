@@ -73,7 +73,7 @@ public sealed class MigrationContext : NestedSetDbContext
                 {
                     x.Scope,
                     x.TreeId,
-                    x.Left
+                    x.Left,
                 })
                 .HasFilter("left_bound > 0")
                 .HasDatabaseName("application_filtered_left_lookup");
@@ -116,37 +116,47 @@ public sealed class MigrationContext : NestedSetDbContext
         node.HasAlternateKey(x => new
         {
             x.Scope,
-            x.NodeId
+            x.NodeId,
         });
+
         node
             .Property(x => x.NodeId)
             .HasColumnName("entry_id")
             .ValueGeneratedNever();
+
         node
             .Property(x => x.Scope)
             .HasColumnName("tree_scope");
+
         node
             .Property(x => x.TreeId)
             .HasColumnName("tree_id");
+
         node
             .Property(x => x.ParentId)
             .HasColumnName("parent_entry");
+
         node
             .Property(x => x.Left)
             .HasColumnName("left_bound");
+
         node
             .Property(x => x.Right)
             .HasColumnName("right_bound");
+
         node
             .Property(x => x.Depth)
             .HasColumnName("entry_depth");
+
         node
             .Property(x => x.Position)
             .HasColumnName("sibling_position");
+
         node
             .Property(x => x.Payload)
             .HasColumnName("entry_payload")
             .HasMaxLength(100);
+
         node
             .Property(x => x.Category)
             .HasColumnName("entry_category");
@@ -154,19 +164,22 @@ public sealed class MigrationContext : NestedSetDbContext
         node.HasIndex(x => new
         {
             x.Scope,
-            x.Left
+            x.Left,
         });
+
         node.HasIndex(x => new
         {
             x.Scope,
-            x.Right
+            x.Right,
         });
+
         node.HasIndex(x => new
         {
             x.Scope,
             x.ParentId,
-            x.Position
+            x.Position,
         });
+
         node
             .HasIndex(x => x.Payload)
             .HasDatabaseName("application_payload_lookup");
@@ -182,31 +195,40 @@ public sealed class MigrationContext : NestedSetDbContext
             .Property(x => x.NodeId)
             .HasColumnName("entry_id")
             .ValueGeneratedNever();
+
         node
             .Property(x => x.Scope)
             .HasColumnName("tree_scope");
+
         node
             .Property(x => x.TreeId)
             .HasColumnName("tree_id");
+
         node
             .Property(x => x.ParentId)
             .HasColumnName("parent_entry");
+
         node
             .Property(x => x.Left)
             .HasColumnName("left_bound");
+
         node
             .Property(x => x.Right)
             .HasColumnName("right_bound");
+
         node
             .Property(x => x.Depth)
             .HasColumnName("entry_depth");
+
         node
             .Property(x => x.Position)
             .HasColumnName("sibling_position");
+
         node
             .Property(x => x.Payload)
             .HasColumnName("entry_payload")
             .HasMaxLength(100);
+
         node
             .Property(x => x.Category)
             .HasColumnName("entry_category");

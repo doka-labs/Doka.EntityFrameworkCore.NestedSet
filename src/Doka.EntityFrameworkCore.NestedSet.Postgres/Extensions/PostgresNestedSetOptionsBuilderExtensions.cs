@@ -1,3 +1,4 @@
+using Doka.EntityFrameworkCore.NestedSet.Postgres;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace Doka.EntityFrameworkCore.NestedSet;
@@ -18,7 +19,7 @@ public static class PostgresNestedSetOptionsBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
         var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
-        NestedSetProviderRegistration.Register(core, Postgres.PostgresNestedSetProvider.Instance);
+        NestedSetProviderRegistration.Register(core, PostgresNestedSetProvider.Instance);
 
         return optionsBuilder;
     }

@@ -101,13 +101,16 @@ internal abstract class ConvertedTextCollationContext<TKey, TParent> : DbContext
             .ValueGeneratedNever()
             .HasMaxLength(64)
             .UseCollation(principalCollation);
+
         node
             .Property(value => value.ParentId)
             .HasMaxLength(64)
             .UseCollation(parentCollation);
+
         node
             .Property(value => value.Name)
             .HasMaxLength(64);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(value => value.Id)
             .HasTreeId(value => value.TreeId)
@@ -134,6 +137,7 @@ internal sealed class ReferenceTextCollationContext(DbContextOptions<ReferenceTe
         node
             .Property(value => value.Id)
             .HasConversion(value => value.Value, value => new ReferenceTextKey(value));
+
         node
             .Property(value => value.ParentId)
             .HasConversion(value => value!.Value, value => new ReferenceTextKey(value));
@@ -155,11 +159,16 @@ internal sealed class ValueTextCollationContext(DbContextOptions<ValueTextCollat
         node
             .Property(value => value.Id)
             .HasConversion(value => value.Value, value => new ValueTextKey(value));
+
         node
             .Property(value => value.ParentId)
             .HasConversion(
-                value => value.HasValue ? value.Value.Value : null,
-                value => value == null ? null : new ValueTextKey(value));
+                value => value.HasValue
+                    ? value.Value.Value
+                    : null,
+                value => value == null
+                    ? null
+                    : new ValueTextKey(value));
     }
 }
 
@@ -178,6 +187,7 @@ internal sealed class EnumTextCollationContext(DbContextOptions<EnumTextCollatio
         node
             .Property(value => value.Id)
             .HasConversion<string>();
+
         node
             .Property(value => value.ParentId)
             .HasConversion<string>();
@@ -199,6 +209,7 @@ internal sealed class NullableEnumTextCollationContext(DbContextOptions<Nullable
         node
             .Property(value => value.Id)
             .HasConversion<string>();
+
         node
             .Property(value => value.ParentId)
             .HasConversion<string>();
@@ -226,6 +237,7 @@ internal sealed class ImplicitEnumTextCollationContext(DbContextOptions<Implicit
         node
             .Property(value => value.Id)
             .HasColumnType(storeType);
+
         node
             .Property(value => value.ParentId)
             .HasColumnType(storeType);
@@ -256,6 +268,7 @@ internal sealed class ImplicitRegistryTextCollationContext(
         node
             .Property(value => value.Id)
             .HasColumnType(TextStore);
+
         node
             .Property(value => value.ParentId)
             .HasColumnType(TextStore);

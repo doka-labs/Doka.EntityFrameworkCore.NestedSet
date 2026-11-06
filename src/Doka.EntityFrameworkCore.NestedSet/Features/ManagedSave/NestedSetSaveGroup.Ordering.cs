@@ -7,7 +7,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
     where TScope : notnull
 {
     // WHY: The immutable DTO constructor is shared by typed projections; no reflection is repeated per key batch.
-    private static readonly ConstructorInfo s_reorderIdentity = typeof(ReorderIdentity).GetConstructors()[0];
+    private static readonly ConstructorInfo s_reorderIdentity = typeof(ReorderIdentity)
+        .GetConstructors()[0];
 
     /// <inheritdoc />
     internal override async Task ReorderAsync(
@@ -64,11 +65,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
             if (_map.Order.Mode == NestedSetOrderMode.Strict)
             {
-                await ReorderStrictAsync(scope.Key, source, keys, cancellationToken).ConfigureAwait(false);
+                await ReorderStrictAsync(scope.Key, source, keys, cancellationToken)
+                    .ConfigureAwait(false);
             }
             else
             {
-                await ReorderPlacedAsync(_map.Order, scope.Key, source, keys, cancellationToken).ConfigureAwait(false);
+                await ReorderPlacedAsync(_map.Order, scope.Key, source, keys, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
     }
@@ -118,8 +121,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
             }
 
             foreach (var parent in treeRows
-                         .Where(row => row.Parent.HasValue)
-                         .GroupBy(row => row.Parent.Value, _map.KeyComparer))
+                .Where(row => row.Parent.HasValue)
+                .GroupBy(row => row.Parent.Value, _map.KeyComparer))
             {
                 AddIntervals(
                     scope,
@@ -189,7 +192,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
             var orderer = new NestedSetOrderer<TEntity, TKey, TTreeId, TScope>(store);
             var ordered = tree.SpansBatches
-                ? await OrderPlacedTreeAsync(order, store, tree.Keys, cancellationToken).ConfigureAwait(false)
+                ? await OrderPlacedTreeAsync(order, store, tree.Keys, cancellationToken)
+                    .ConfigureAwait(false)
                 : tree.Keys;
 
             // WHY: Each placement reads the current rule predecessor. Changed siblings must therefore move in
@@ -234,11 +238,11 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
         var ordered = new List<TKey>(keys.Count);
 
         await foreach (var key in order
-                           .Apply(store.Nodes)
-                           .Select(node => EF.Property<TKey>(node, _map.Key))
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false))
+            .Apply(store.Nodes)
+            .Select(node => EF.Property<TKey>(node, _map.Key))
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
         {
             if (pending.Remove(key))
             {

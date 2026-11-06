@@ -22,7 +22,8 @@ public sealed class CompositionDeferredTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var source = hierarchy.SelectSubtrees(node => node.Id > 0,
+        var source = hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -59,7 +60,8 @@ public sealed class CompositionDeferredTests
             .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .ForScope(7);
 
-        var source = hierarchy.SelectSubtrees(node => node.Id > 0,
+        var source = hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -97,7 +99,8 @@ public sealed class CompositionDeferredTests
             .ForScope(7)
             .InTree(s_treeId);
 
-        var source = hierarchy.SelectSubtrees(node => node.Id > 0,
+        var source = hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -122,7 +125,8 @@ public sealed class CompositionDeferredTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var down = hierarchy.SelectSubtrees(node => node.Id > 0,
+        var down = hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -130,7 +134,8 @@ public sealed class CompositionDeferredTests
                 Distance = distance,
             });
 
-        var up = hierarchy.SelectAncestors(node => node.Id > 0,
+        var up = hierarchy.SelectAncestors(
+            node => node.Id > 0,
             (lower, upper, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -138,7 +143,8 @@ public sealed class CompositionDeferredTests
                 Distance = distance,
             });
 
-        var mixed = up.Join(down,
+        var mixed = up.Join(
+            down,
             upward => upward.Upper.Id,
             downward => downward.Upper.Id,
             (upward, downward) => new CompositionGuardRow
@@ -168,21 +174,26 @@ public sealed class CompositionDeferredTests
         string operation
     ) => operation switch
     {
-        "Subtrees" => hierarchy.SelectSubtrees(node => node.Id > 0,
+        "Subtrees" => hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => distance),
-        "Ancestors" => hierarchy.SelectAncestors(node => node.Id > 0,
+        "Ancestors" => hierarchy.SelectAncestors(
+            node => node.Id > 0,
             (lower, upper, distance) => distance),
-        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(node => node.Id > 0,
+        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(
+            node => node.Id > 0,
             (node, owner, distance) => distance),
         "Path" => hierarchy.WherePathEdges(
             source,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => parent.Id != child.Id),
-        "Any" => hierarchy.WhereAnyAncestorOrSelf(source,
+        "Any" => hierarchy.WhereAnyAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Id == row.Upper.Id),
-        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Depth == 1,
             (row, owner) => owner.Id == row.Upper.Id),
@@ -196,21 +207,26 @@ public sealed class CompositionDeferredTests
         string operation
     ) => operation switch
     {
-        "Subtrees" => hierarchy.SelectSubtrees(node => node.Id > 0,
+        "Subtrees" => hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => distance),
-        "Ancestors" => hierarchy.SelectAncestors(node => node.Id > 0,
+        "Ancestors" => hierarchy.SelectAncestors(
+            node => node.Id > 0,
             (lower, upper, distance) => distance),
-        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(node => node.Id > 0,
+        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(
+            node => node.Id > 0,
             (node, owner, distance) => distance),
         "Path" => hierarchy.WherePathEdges(
             source,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => parent.Id != child.Id),
-        "Any" => hierarchy.WhereAnyAncestorOrSelf(source,
+        "Any" => hierarchy.WhereAnyAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Id == row.Upper.Id),
-        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Depth == 1,
             (row, owner) => owner.Id == row.Upper.Id),
@@ -224,21 +240,26 @@ public sealed class CompositionDeferredTests
         string operation
     ) => operation switch
     {
-        "Subtrees" => hierarchy.SelectSubtrees(node => node.Id > 0,
+        "Subtrees" => hierarchy.SelectSubtrees(
+            node => node.Id > 0,
             (upper, lower, distance) => distance),
-        "Ancestors" => hierarchy.SelectAncestors(node => node.Id > 0,
+        "Ancestors" => hierarchy.SelectAncestors(
+            node => node.Id > 0,
             (lower, upper, distance) => distance),
-        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(node => node.Id > 0,
+        "AncestorsOrSelf" => hierarchy.SelectAncestorsOrSelf(
+            node => node.Id > 0,
             (node, owner, distance) => distance),
         "Path" => hierarchy.WherePathEdges(
             source,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => parent.Id != child.Id),
-        "Any" => hierarchy.WhereAnyAncestorOrSelf(source,
+        "Any" => hierarchy.WhereAnyAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Id == row.Upper.Id),
-        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+        "Nearest" => hierarchy.WhereNearestAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Depth == 1,
             (row, owner) => owner.Id == row.Upper.Id),

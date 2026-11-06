@@ -41,7 +41,13 @@ internal sealed class BenchmarkFixture : IAsyncDisposable
             .ForScope(1);
 
     /// <summary>Gets the last key of the first tree, which is always a leaf in the supported shapes.</summary>
-    internal int LeafKey => (Scenario.Nodes / Scenario.Trees) + (Scenario.Nodes % Scenario.Trees > 0 ? 1 : 0);
+    internal int LeafKey => Scenario.Nodes / Scenario.Trees
+        + (Scenario.Nodes % Scenario.Trees > 0
+            ? 1
+            : 0);
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync() => Context.DisposeAsync();
 
     /// <summary>Creates a correctly cached manual or configured-order model over an owned provider.</summary>
     /// <param name="scenario">The forest and tracker population to prepare.</param>
@@ -157,7 +163,4 @@ internal sealed class BenchmarkFixture : IAsyncDisposable
             throw new InvalidOperationException("Invalid benchmark result: " + message);
         }
     }
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync() => Context.DisposeAsync();
 }

@@ -34,6 +34,7 @@ internal sealed class ShadowPropertyContext : DbContext
         node
             .Property(entity => entity.Id)
             .ValueGeneratedNever();
+
         node.Property<Guid>(TreeId);
         node.Property<int?>(ParentId);
         node.Property<long>(Left);

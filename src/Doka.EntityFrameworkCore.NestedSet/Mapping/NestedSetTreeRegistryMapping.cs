@@ -11,7 +11,8 @@ internal sealed class NestedSetTreeRegistryMapping
         IEntityType hierarchy
     )
     {
-        var registryName = hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)?.Value as string
+        var registryName = hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)
+                ?.Value as string
             ?? throw new InvalidOperationException(
                 $"Hierarchy '{hierarchy.Name}' has no typed tree registry. "
                 + "Call UseNestedSets() inside the matching native provider callback.");
@@ -29,7 +30,7 @@ internal sealed class NestedSetTreeRegistryMapping
         Revision = RequiredProperty(NestedSetTreeRegistryMetadata.Revision);
         Lifecycle = RequiredProperty(NestedSetTreeRegistryMetadata.Lifecycle);
 
-        if ((SourceScope is null) != (Scope is null))
+        if (SourceScope is null != Scope is null)
         {
             throw new InvalidOperationException(
                 $"Hierarchy '{hierarchy.Name}' and its tree registry disagree about Scope.");
@@ -41,9 +42,12 @@ internal sealed class NestedSetTreeRegistryMapping
         // WHY: Native recognition belongs to the selected model finalizer. Captured Boolean facts keep
         // lock-request construction independent of live services and preserve compiled-model reuse.
         ScopeUsesUnicodeScalarLength = NestedSetIdentityLength.CapturedPolicy(
-            hierarchy, NestedSetAnnotationNames.ScopeUnicodeScalarLength);
+            hierarchy,
+            NestedSetAnnotationNames.ScopeUnicodeScalarLength);
+
         TreeIdUsesUnicodeScalarLength = NestedSetIdentityLength.CapturedPolicy(
-            hierarchy, NestedSetAnnotationNames.TreeIdUnicodeScalarLength);
+            hierarchy,
+            NestedSetAnnotationNames.TreeIdUnicodeScalarLength);
 
         var tableName = Registry.GetTableName()
             ?? throw new InvalidOperationException("A physical tree-registry table is required.");

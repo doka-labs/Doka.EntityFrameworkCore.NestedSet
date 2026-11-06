@@ -20,9 +20,9 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task ValidTreePassesQuickValidation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await setup.AddRangeAsync([Node(1, null, 1, 4, 0, 0), Node(2, 1, 2, 3, 1, 0),], CancellationToken.None);
+        await setup.AddRangeAsync([Node(1, null, 1, 4, 0, 0), Node(2, 1, 2, 3, 1, 0)], CancellationToken.None);
 
         await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
         await using var context = database.CreateContext();
@@ -46,7 +46,7 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task EmptyTreeReportsMissingRoot()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -70,7 +70,7 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task EmptyTreeFullReportHasTypedRootIssue()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -87,6 +87,7 @@ public abstract class QuickValidationTests : ProviderTest
         Assert.Null(
             Assert.Single(report.Issues)
                 .NodeKey);
+
         Assert.False(report.IssuesTruncated);
     }
 
@@ -96,13 +97,13 @@ public abstract class QuickValidationTests : ProviderTest
     {
         // Arrange
         const int damagedChildren = 1_100;
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         var nodes = new TreeNode[damagedChildren + 1];
         nodes[0] = Node(1, null, 1, 2L * nodes.Length, 0, 0);
         for (var index = 1; index < nodes.Length; index++)
         {
-            var left = 10_000L + (index * 2L);
+            var left = 10_000L + index * 2L;
             nodes[index] = Node(index + 1, 1, left, left + 1, 1, index - 1);
         }
 
@@ -130,9 +131,9 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task MultipleRootsReportRootCount()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await setup.AddRangeAsync([Node(1, null, 1, 2, 0, 0), Node(2, null, 3, 4, 0, 1),], CancellationToken.None);
+        await setup.AddRangeAsync([Node(1, null, 1, 2, 0, 0), Node(2, null, 3, 4, 0, 1)], CancellationToken.None);
 
         await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
         await using var context = database.CreateContext();
@@ -156,10 +157,10 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task DuplicateBoundaryReportsInvalidBounds()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
-            [Node(1, null, 1, 6, 0, 0), Node(2, 1, 2, 3, 1, 0), Node(3, 1, 2, 5, 1, 1),],
+            [Node(1, null, 1, 6, 0, 0), Node(2, 1, 2, 3, 1, 0), Node(3, 1, 2, 5, 1, 1)],
             CancellationToken.None);
 
         await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
@@ -184,9 +185,9 @@ public abstract class QuickValidationTests : ProviderTest
     public async Task BoundaryGapReportsInvalidBounds()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await setup.AddRangeAsync([Node(1, null, 1, 5, 0, 0), Node(2, 1, 2, 3, 1, 0),], CancellationToken.None);
+        await setup.AddRangeAsync([Node(1, null, 1, 5, 0, 0), Node(2, 1, 2, 3, 1, 0)], CancellationToken.None);
 
         await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
         await using var context = database.CreateContext();
@@ -215,10 +216,22 @@ public abstract class QuickValidationTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
         await setup.AddRangeAsync(
-            [Node(1, null, 1, 4, 0, 0), Node(2, 1, 2, 3, role == "Depth" ? 2 : 1, role == "Position" ? 2 : 0),],
+            [
+                Node(1, null, 1, 4, 0, 0), Node(
+                    2,
+                    1,
+                    2,
+                    3,
+                    role == "Depth"
+                        ? 2
+                        : 1,
+                    role == "Position"
+                        ? 2
+                        : 0),
+            ],
             CancellationToken.None);
 
         await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);

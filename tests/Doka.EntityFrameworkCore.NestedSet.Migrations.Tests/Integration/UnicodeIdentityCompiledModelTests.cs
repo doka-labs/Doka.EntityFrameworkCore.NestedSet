@@ -28,7 +28,11 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
+            qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = CreateContext(database, engine, model);
@@ -77,25 +81,44 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
+            qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = CreateContext(database, engine, model);
         var overflow = string.Concat(Enumerable.Repeat("\U0001f600", 9));
         var hierarchy = context
             .NestedSet<UnicodeIdentityCompiledNode>()
-            .ForScope(scopeRole ? overflow : "scope");
+            .ForScope(
+                scopeRole
+                    ? overflow
+                    : "scope");
 
         // Act
         var error = await Record.ExceptionAsync(() => hierarchy.InsertRootAsync(
             new UnicodeIdentityCompiledNode { Id = 1 },
-            scopeRole ? "tree" : overflow,
+            scopeRole
+                ? "tree"
+                : overflow,
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            scopeRole
+                ? "Scope"
+                : "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         Assert.Same(model, context.Model);
-        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -114,7 +137,11 @@ public sealed class UnicodeIdentityCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync("PostgreSql", qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(
+            "PostgreSql",
+            qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<UnicodeIdentityAliasCompiledContext>().UseNpgsql(
             source.Database.GetConnectionString()!,
@@ -123,12 +150,22 @@ public sealed class UnicodeIdentityCompiledModelTests
         await using var design = new UnicodeIdentityAliasCompiledContext(options.Options);
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = new UnicodeIdentityAliasCompiledContext(
-            options.UseModel(model).Options);
+            options.UseModel(model)
+                .Options);
 
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var suffix = string.Concat(Enumerable.Repeat("\U0001f600", 7));
-        var scope = "s" + suffix + (overflow && scopeRole ? "x" : string.Empty);
-        var tree = "t" + suffix + (overflow && !scopeRole ? "x" : string.Empty);
+        var scope = "s"
+            + suffix
+            + (overflow && scopeRole
+                ? "x"
+                : string.Empty);
+
+        var tree = "t"
+            + suffix
+            + (overflow && !scopeRole
+                ? "x"
+                : string.Empty);
 
         // Act
         var error = await Record.ExceptionAsync(() => context
@@ -139,20 +176,39 @@ public sealed class UnicodeIdentityCompiledModelTests
         // Assert
         Assert.Same(model, context.Model);
         var entity = context.Model.FindEntityType(typeof(UnicodeIdentityCompiledNode))!;
-        Assert.Equal("bpchar", entity.FindProperty(nameof(UnicodeIdentityCompiledNode.Scope))!
-            .GetRelationalTypeMapping().StoreTypeNameBase);
-        Assert.Equal("bpchar", entity.FindProperty(nameof(UnicodeIdentityCompiledNode.TreeId))!
-            .GetRelationalTypeMapping().StoreTypeNameBase);
+        Assert.Equal(
+            "bpchar",
+            entity.FindProperty(nameof(UnicodeIdentityCompiledNode.Scope))!
+                .GetRelationalTypeMapping()
+                .StoreTypeNameBase);
+
+        Assert.Equal(
+            "bpchar",
+            entity.FindProperty(nameof(UnicodeIdentityCompiledNode.TreeId))!
+                .GetRelationalTypeMapping()
+                .StoreTypeNameBase);
 
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", Assert.IsType<ArgumentException>(error).ParamName);
-            Assert.Empty(await context.Set<UnicodeIdentityCompiledNode>().ToArrayAsync(CancellationToken.None));
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
+
+            Assert.Empty(
+                await context
+                    .Set<UnicodeIdentityCompiledNode>()
+                    .ToArrayAsync(CancellationToken.None));
         }
         else
         {
             Assert.Null(error);
-            var stored = await context.Set<UnicodeIdentityCompiledNode>().SingleAsync(CancellationToken.None);
+            var stored = await context
+                .Set<UnicodeIdentityCompiledNode>()
+                .SingleAsync(CancellationToken.None);
+
             Assert.Equal(scope, stored.Scope);
             Assert.Equal(tree, stored.TreeId);
         }
@@ -177,7 +233,9 @@ public sealed class UnicodeIdentityCompiledModelTests
         {
             options.UseMySql(
                 connection,
-                engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql,
+                engine == "MariaDb"
+                    ? DatabaseTestTargets.MariaDb
+                    : DatabaseTestTargets.MySql,
                 provider => provider.UseNestedSets());
         }
 

@@ -20,9 +20,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var key = context.Model.FindEntityType(typeof(SignalNode))!.FindProperty(nameof(SignalNode.Id))!;
         Guid[] keys = [SignalReportDataset.Id(1), SignalReportDataset.Id(2)];
@@ -37,8 +38,11 @@ public sealed partial class SignalReportConstructionTests
         var sql = query.ToQueryString();
 
         // Assert
-        Assert.Equal(typeof(Enumerable),
-            Assert.Single(probe.Memberships).Method.DeclaringType);
+        Assert.Equal(
+            typeof(Enumerable),
+            Assert.Single(probe.Memberships)
+                .Method.DeclaringType);
+
         Assert.Equal(1, probe.ParameterMarkers);
         Assert.NotEmpty(sql);
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -68,26 +72,32 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(false);
         var probe = new CollectionMembershipProbe();
 
         // Act
         var expression = catalog
-            ? SignalReportBuilder.Catalog(context, request).Expression
-            : SignalReportBuilder.Build(context, request).Expression;
+            ? SignalReportBuilder.Catalog(context, request)
+                .Expression
+            : SignalReportBuilder.Build(context, request)
+                .Expression;
 
         probe.Visit(expression);
 
         // Assert
         Assert.NotEmpty(probe.Memberships);
         Assert.All(probe.Memberships, call => Assert.Equal(typeof(Enumerable), call.Method.DeclaringType));
-        Assert.All(probe.Memberships,
-            call => Assert.All(call.Arguments,
+        Assert.All(
+            probe.Memberships,
+            call => Assert.All(
+                call.Arguments,
                 argument => Assert.False(argument.Type.IsByRefLike)));
+
         Assert.Equal(engine == "Sqlite", probe.ParameterMarkers != 0);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
@@ -116,9 +126,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var candidate = new SignalNode { Id = SignalReportDataset.Id(1) };
         Guid[] keys = selection switch
@@ -134,7 +145,10 @@ public sealed partial class SignalReportConstructionTests
         var probe = new AnchorMembershipProbe();
 
         // Act
-        probe.Visit(SignalReportBuilder.Catalog(context, request).Expression);
+        probe.Visit(
+            SignalReportBuilder.Catalog(context, request)
+                .Expression);
+
         var predicate = probe.AnchorPredicates.Single();
 
         // WHY: EF.Parameter is an SQL parameterization marker, not a CLR operation. Remove only that
@@ -147,7 +161,12 @@ public sealed partial class SignalReportConstructionTests
         // Assert
         Assert.Single(probe.AnchorPredicates);
         Assert.Equal(expected, actual);
-        Assert.Equal(engine == "Sqlite" ? 2 : 0, probe.ParameterMarkers);
+        Assert.Equal(
+            engine == "Sqlite"
+                ? 2
+                : 0,
+            probe.ParameterMarkers);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

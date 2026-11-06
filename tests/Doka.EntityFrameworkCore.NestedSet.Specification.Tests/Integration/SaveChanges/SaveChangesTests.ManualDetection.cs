@@ -30,14 +30,30 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await setup.AddAsync(
+            new OrderingMarker
+            {
+                Id = 1,
+                Value = "original",
+            },
+            CancellationToken.None);
+
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe);
-        var marker = await context.Set<OrderingMarker>().SingleAsync(CancellationToken.None);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var marker = await context
+            .Set<OrderingMarker>()
+            .SingleAsync(CancellationToken.None);
+
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
@@ -54,16 +70,39 @@ public abstract partial class SaveChangesTests
         // Act
         // WHY: The synchronous variants verify the explicitly synchronous public save boundary.
         // ReSharper disable once MethodHasAsyncOverload
-        var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
+        var saved = synchronous
+            ? context.SaveChanges()
+            : await context.SaveChangesAsync(CancellationToken.None);
+
         var stored = nodePayload
-            ? await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-                .Select(value => value.Payload).SingleAsync(CancellationToken.None)
-            : await setup.Set<OrderingMarker>().Select(value => value.Value).SingleAsync(CancellationToken.None);
+            ? await setup
+                .Set<OrderingNode>()
+                .Where(value => value.Id == 1)
+                .Select(value => value.Payload)
+                .SingleAsync(CancellationToken.None)
+            : await setup
+                .Set<OrderingMarker>()
+                .Select(value => value.Value)
+                .SingleAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(automaticDetection ? "ordinary change" : "original", stored);
-        Assert.Equal(automaticDetection ? 1 : 0, saved);
-        var expectedDetections = automaticDetection ? (wrapped && !synchronous ? 2 : 1) : 0;
+        Assert.Equal(
+            automaticDetection
+                ? "ordinary change"
+                : "original",
+            stored);
+
+        Assert.Equal(
+            automaticDetection
+                ? 1
+                : 0,
+            saved);
+
+        var expectedDetections = automaticDetection
+            ? wrapped && !synchronous
+                ? 2
+                : 1
+            : 0;
 
         Assert.Equal(expectedDetections, detections);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
@@ -87,21 +126,40 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await setup.AddAsync(
+            new OrderingMarker
+            {
+                Id = 1,
+                Value = "original",
+            },
+            CancellationToken.None);
+
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe, callback);
-        var marker = await context.Set<OrderingMarker>().SingleAsync(CancellationToken.None);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var marker = await context
+            .Set<OrderingMarker>()
+            .SingleAsync(CancellationToken.None);
+
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
-        var markerValue = context.Entry(marker).Property(value => value.Value);
+        var markerValue = context
+            .Entry(marker)
+            .Property(value => value.Value);
+
         node.Payload = "undetected payload";
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
-        Action markPayload = () =>
+        var markPayload = () =>
         {
             markerValue.CurrentValue = "explicitly marked";
             markerValue.IsModified = true;
@@ -119,12 +177,20 @@ public abstract partial class SaveChangesTests
         // Act
         // WHY: The synchronous variants verify the explicitly synchronous public save boundary.
         // ReSharper disable once MethodHasAsyncOverload
-        var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
-        var storedMarker = await setup.Set<OrderingMarker>().Select(value => value.Value)
+        var saved = synchronous
+            ? context.SaveChanges()
+            : await context.SaveChangesAsync(CancellationToken.None);
+
+        var storedMarker = await setup
+            .Set<OrderingMarker>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
-        var storedPayload = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => value.Payload).SingleAsync(CancellationToken.None);
+        var storedPayload = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => value.Payload)
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(1, saved);
@@ -153,14 +219,27 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await setup.AddAsync(
+            new OrderingMarker
+            {
+                Id = 1,
+                Value = "original",
+            },
+            CancellationToken.None);
+
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe, callback);
-        var marker = await context.Set<OrderingMarker>().SingleAsync(CancellationToken.None);
+        var marker = await context
+            .Set<OrderingMarker>()
+            .SingleAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
@@ -177,8 +256,13 @@ public abstract partial class SaveChangesTests
         // Act
         // WHY: The synchronous variants verify the explicitly synchronous public save boundary.
         // ReSharper disable once MethodHasAsyncOverload
-        var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await setup.Set<OrderingMarker>().Select(value => value.Value)
+        var saved = synchronous
+            ? context.SaveChanges()
+            : await context.SaveChangesAsync(CancellationToken.None);
+
+        var stored = await setup
+            .Set<OrderingMarker>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
         // Assert
@@ -250,21 +334,40 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await setup.AddAsync(
+            new OrderingMarker
+            {
+                Id = 1,
+                Value = "original",
+            },
+            CancellationToken.None);
+
         await setup.SaveChangesAsync(CancellationToken.None);
         var probe = new SaveBoundaryProbe();
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe, callback);
-        var marker = await context.Set<OrderingMarker>().SingleAsync(CancellationToken.None);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var marker = await context
+            .Set<OrderingMarker>()
+            .SingleAsync(CancellationToken.None);
+
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
 
         // WHY: Exercise both the IDatabase persistence boundary and EF's zero-write early exit.
         if (pendingWrite)
         {
-            var markerValue = context.Entry(marker).Property(value => value.Value);
+            var markerValue = context
+                .Entry(marker)
+                .Property(value => value.Value);
+
             markerValue.CurrentValue = "pending payload";
             markerValue.IsModified = true;
         }
@@ -302,10 +405,20 @@ public abstract partial class SaveChangesTests
             }
         });
 
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.Name, value.ParentId, value.Left }).SingleAsync(CancellationToken.None);
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.Name,
+                value.ParentId,
+                value.Left,
+            })
+            .SingleAsync(CancellationToken.None);
 
-        var storedMarker = await setup.Set<OrderingMarker>().Select(value => value.Value)
+        var storedMarker = await setup
+            .Set<OrderingMarker>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
         // Assert
@@ -334,20 +447,40 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        await setup.AddAsync(new OrderingMarker { Id = 1, Value = "original" }, CancellationToken.None);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        await setup.AddAsync(
+            new OrderingMarker
+            {
+                Id = 1,
+                Value = "original",
+            },
+            CancellationToken.None);
+
         await setup.SaveChangesAsync(CancellationToken.None);
         var callback = new SaveBoundaryCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped: true, callback);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
-        var marker = await context.Set<OrderingMarker>().SingleAsync(CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
+        var marker = await context
+            .Set<OrderingMarker>()
+            .SingleAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
-        context.Entry(node).Property(value => value.Name).CurrentValue = "Zulu";
+        context
+            .Entry(node)
+            .Property(value => value.Name)
+            .CurrentValue = "Zulu";
+
         bool? observedPolicy = null;
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
-        Action choosePolicy = () =>
+        var choosePolicy = () =>
         {
             observedPolicy = context.ChangeTracker.AutoDetectChangesEnabled;
             context.ChangeTracker.AutoDetectChangesEnabled = !automaticDetection;
@@ -366,14 +499,26 @@ public abstract partial class SaveChangesTests
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.Name, value.Payload }).SingleAsync(CancellationToken.None);
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.Name,
+                value.Payload,
+            })
+            .SingleAsync(CancellationToken.None);
 
-        var storedMarker = await setup.Set<OrderingMarker>().Select(value => value.Value)
+        var storedMarker = await setup
+            .Set<OrderingMarker>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
         // Assert
-        var expectedPayload = automaticDetection ? "original" : "callback payload";
+        var expectedPayload = automaticDetection
+            ? "original"
+            : "callback payload";
+
         Assert.Equal("Zulu", stored.Name);
         Assert.Equal(expectedPayload, stored.Payload);
         Assert.Equal(expectedPayload, storedMarker);
@@ -389,22 +534,47 @@ public abstract partial class SaveChangesTests
     public async Task ManualDetectionCoordinatesExplicitParentChange()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = CreateManualDetectionContext(setup, wrapped: true);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         node.ParentId = 2;
-        context.Entry(node).Property(value => value.ParentId).IsModified = true;
+        context
+            .Entry(node)
+            .Property(value => value.ParentId)
+            .IsModified = true;
 
         // Act
         await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => new { value.ParentId, value.Depth, value.Left, value.Right })
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => new
+            {
+                value.ParentId,
+                value.Depth,
+                value.Left,
+                value.Right,
+            })
             .SingleAsync(CancellationToken.None);
 
-        var parent = await setup.Set<OrderingNode>().Where(value => value.Id == 2)
-            .Select(value => new { value.Depth, value.Left, value.Right }).SingleAsync(CancellationToken.None);
+        var parent = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 2)
+            .Select(value => new
+            {
+                value.Depth,
+                value.Left,
+                value.Right,
+            })
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(2, stored.ParentId);
@@ -433,12 +603,18 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
         var callback = new ManualSaveCompletionCallback();
         await using var context = CreateManualDetectionContext(setup, wrapped, probe, callback);
-        var node = await context.Set<OrderingNode>().SingleAsync(value => value.Id == 1, CancellationToken.None);
+        var node = await context
+            .Set<OrderingNode>()
+            .SingleAsync(value => value.Id == 1, CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
@@ -455,15 +631,25 @@ public abstract partial class SaveChangesTests
         // Act
         // WHY: The synchronous variants verify the explicitly synchronous public save boundary.
         // ReSharper disable once MethodHasAsyncOverload
-        var saved = synchronous ? context.SaveChanges() : await context.SaveChangesAsync(CancellationToken.None);
-        var stored = await setup.Set<OrderingNode>().Where(value => value.Id == 1)
-            .Select(value => value.Name).SingleAsync(CancellationToken.None);
+        var saved = synchronous
+            ? context.SaveChanges()
+            : await context.SaveChangesAsync(CancellationToken.None);
+
+        var stored = await setup
+            .Set<OrderingNode>()
+            .Where(value => value.Id == 1)
+            .Select(value => value.Name)
+            .SingleAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(0, saved);
         Assert.Equal("Alpha", stored);
         Assert.Equal("completion edit", node.Name);
-        Assert.Equal(EntityState.Unchanged, context.Entry(node).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(node)
+                .State);
+
         Assert.Equal(0, detections);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(0, probe.PayloadCommands);
@@ -481,7 +667,8 @@ public abstract partial class SaveChangesTests
         params IInterceptor[] interceptors
     )
     {
-        var options = SaveBoundaryTestSupport.Options(setup, interceptors).Options;
+        var options = SaveBoundaryTestSupport.Options(setup, interceptors)
+            .Options;
 
         if (wrapped)
         {

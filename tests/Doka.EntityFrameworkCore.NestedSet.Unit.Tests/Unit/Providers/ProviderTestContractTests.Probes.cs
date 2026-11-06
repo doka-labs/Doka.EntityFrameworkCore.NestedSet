@@ -41,7 +41,9 @@ public sealed partial class ProviderTestContractTests
         bodyIl.Emit(OpCodes.Call, baseConstructor);
         bodyIl.Emit(OpCodes.Ret);
 
-        var methodParameters = parameterName is null ? Type.EmptyTypes : [typeof(string)];
+        var methodParameters = parameterName is null
+            ? Type.EmptyTypes
+            : [typeof(string)];
 
         // WHY: Reflection can expose both hidden nonvirtual methods; each probe must declare only its selected shape.
         if (inherited)
@@ -80,7 +82,9 @@ public sealed partial class ProviderTestContractTests
                 .Emit(
                     OpCodes.Call,
                     typeof(RawSources).GetProperty(
-                        emptyRows ? nameof(RawSources.EmptyRows) : nameof(RawSources.PayloadRows))!.GetMethod!);
+                        emptyRows
+                            ? nameof(RawSources.EmptyRows)
+                            : nameof(RawSources.PayloadRows))!.GetMethod!);
 
             rows
                 .GetILGenerator()
@@ -96,7 +100,11 @@ public sealed partial class ProviderTestContractTests
         var constructor = leaf.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, fixtures);
         var il = constructor.GetILGenerator();
         il.Emit(OpCodes.Ldarg_0);
-        il.Emit(fixtures.Length == 0 ? OpCodes.Ldnull : OpCodes.Ldarg_1);
+        il.Emit(
+            fixtures.Length == 0
+                ? OpCodes.Ldnull
+                : OpCodes.Ldarg_1);
+
         il.Emit(
             OpCodes.Call,
             body.GetConstructor(
@@ -144,12 +152,20 @@ public sealed partial class ProviderTestContractTests
     /// <summary>Encodes an ordinary or explicitly excluded fixture-owned fact.</summary>
     private static CustomAttributeBuilder NeutralFact(
         string[]? excluded = null
-    ) => NeutralMarker(excluded is null ? typeof(FactAttribute) : typeof(EngineFactAttribute), excluded);
+    ) => NeutralMarker(
+        excluded is null
+            ? typeof(FactAttribute)
+            : typeof(EngineFactAttribute),
+        excluded);
 
     /// <summary>Encodes an ordinary or explicitly excluded fixture-owned theory.</summary>
     private static CustomAttributeBuilder NeutralTheory(
         string[]? excluded = null
-    ) => NeutralMarker(excluded is null ? typeof(TheoryAttribute) : typeof(EngineTheoryAttribute), excluded);
+    ) => NeutralMarker(
+        excluded is null
+            ? typeof(TheoryAttribute)
+            : typeof(EngineTheoryAttribute),
+        excluded);
 
     /// <summary>Supplies a precise rationale for conditional marker metadata in coverage-control tests.</summary>
     private static CustomAttributeBuilder NeutralMarker(
@@ -180,7 +196,10 @@ public sealed partial class ProviderTestContractTests
         string[]? excluded = null
     )
     {
-        var type = excluded is null ? typeof(InlineDataAttribute) : typeof(EngineInlineDataAttribute);
+        var type = excluded is null
+            ? typeof(InlineDataAttribute)
+            : typeof(EngineInlineDataAttribute);
+
         var constructor = type.GetConstructor([typeof(object[])])!;
 
         if (excluded is null)
@@ -307,6 +326,16 @@ public sealed partial class ProviderTestContractTests
         string project
     ) => $"Doka.EntityFrameworkCore.NestedSet.{project}.Tests";
 
+    /// <summary>Encodes an unsupported fact without registering invalid Unit test metadata.</summary>
+    private static CustomAttributeBuilder UnsupportedFact() => new(
+        typeof(UnsupportedFactAttribute).GetConstructor([typeof(string), typeof(int)])!,
+        [string.Empty, -1]);
+
+    /// <summary>Encodes an unsupported data source alongside a valid neutral scenario row.</summary>
+    private static CustomAttributeBuilder UnsupportedData() => new(
+        typeof(UnsupportedDataAttribute).GetConstructor(Type.EmptyTypes)!,
+        []);
+
     /// <summary>Supplies complete source rows for the raw-ownership and shared-exclusion probes.</summary>
     public static class RawSources
     {
@@ -343,16 +372,6 @@ public sealed partial class ProviderTestContractTests
             new EngineTheoryDataRow([17], ["Sqlite"], ""),
         ];
     }
-
-    /// <summary>Encodes an unsupported fact without registering invalid Unit test metadata.</summary>
-    private static CustomAttributeBuilder UnsupportedFact() => new(
-        typeof(UnsupportedFactAttribute).GetConstructor([typeof(string), typeof(int)])!,
-        [string.Empty, -1]);
-
-    /// <summary>Encodes an unsupported data source alongside a valid neutral scenario row.</summary>
-    private static CustomAttributeBuilder UnsupportedData() => new(
-        typeof(UnsupportedDataAttribute).GetConstructor(Type.EmptyTypes)!,
-        []);
 
     /// <summary>Provides a custom fact marker which the raw fixture-ownership guard must reject.</summary>
     public sealed class UnsupportedFactAttribute : FactAttribute

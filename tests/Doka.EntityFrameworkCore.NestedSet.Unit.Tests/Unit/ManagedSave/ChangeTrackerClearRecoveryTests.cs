@@ -36,7 +36,8 @@ public sealed class ChangeTrackerClearRecoveryTests
         snapshot.Restore();
         var restoredState = entry.State;
         var restoredName = child.Name;
-        var restoredOriginal = entry.Property(value => value.Name).OriginalValue;
+        var restoredOriginal = entry.Property(value => value.Name)
+            .OriginalValue;
 
         var restoredMembership = context
             .ChangeTracker
@@ -71,6 +72,7 @@ public sealed class ChangeTrackerClearRecoveryTests
             item
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             item
                 .HasOne(value => value.Parent)
                 .WithMany()

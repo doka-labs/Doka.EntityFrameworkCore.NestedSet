@@ -7,16 +7,20 @@ public abstract partial class OrderingKeyTests
     public async Task GuidKeyInsertionUsesNativeTieOrder()
     {
         // Arrange
-        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(Engine, GuidKey);
+        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
+            Engine,
+            GuidKey,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var inserted = scenario.Node(6, "Same");
 
         // Act
         await scenario.Tree.InsertChildAsync(inserted, scenario.Reference(1), CancellationToken.None);
 
         // Assert
-        await AssertChildrenAsync(scenario, 1, [2, 3, 4, 6]);
-        await AssertFilteredTreeAsync(scenario, 1, "Same");
-        await AssertIntegrityAsync(scenario);
+        await AssertChildrenAsync(scenario, 1, [2, 3, 4, 6], cancellationToken: TestContext.Current.CancellationToken);
+        await AssertFilteredTreeAsync(scenario, 1, "Same", cancellationToken: TestContext.Current.CancellationToken);
+        await AssertIntegrityAsync(scenario, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Moves a Guid-key subtree and preserves descendants and provider-native sibling order.</summary>
@@ -24,16 +28,19 @@ public abstract partial class OrderingKeyTests
     public async Task GuidKeyMoveRetainsNativeOrderAndDescendants()
     {
         // Arrange
-        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(Engine, GuidKey);
+        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
+            Engine,
+            GuidKey,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await scenario.Tree.MoveToAsync(scenario.Reference(2), scenario.Reference(9), CancellationToken.None);
 
         // Assert
-        await AssertChildrenAsync(scenario, 9, [2, 8]);
-        await AssertChildrenAsync(scenario, 1, [3, 4]);
-        await AssertFilteredTreeAsync(scenario, 9, "Zulu");
-        await AssertIntegrityAsync(scenario);
+        await AssertChildrenAsync(scenario, 9, [2, 8], cancellationToken: TestContext.Current.CancellationToken);
+        await AssertChildrenAsync(scenario, 1, [3, 4], cancellationToken: TestContext.Current.CancellationToken);
+        await AssertFilteredTreeAsync(scenario, 9, "Zulu", cancellationToken: TestContext.Current.CancellationToken);
+        await AssertIntegrityAsync(scenario, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Reorders a Guid-key subtree after a payload rename and preserves the independent scope.</summary>
@@ -41,7 +48,11 @@ public abstract partial class OrderingKeyTests
     public async Task GuidKeyRenameRetainsNativeTieOrderAndScopeIsolation()
     {
         // Arrange
-        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(Engine, GuidKey);
+        await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
+            Engine,
+            GuidKey,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var key = scenario.Reference(2);
         var renamed = await scenario
             .Nodes
@@ -55,9 +66,13 @@ public abstract partial class OrderingKeyTests
 
         // Assert
         Assert.Equal(1, saved);
-        Assert.Equal(EntityState.Unchanged, scenario.Context.Entry(renamed).State);
-        await AssertChildrenAsync(scenario, 1, [2, 3, 4]);
-        await AssertFilteredTreeAsync(scenario, 1, "Same");
-        await AssertIntegrityAsync(scenario);
+        Assert.Equal(
+            EntityState.Unchanged,
+            scenario.Context.Entry(renamed)
+                .State);
+
+        await AssertChildrenAsync(scenario, 1, [2, 3, 4], cancellationToken: TestContext.Current.CancellationToken);
+        await AssertFilteredTreeAsync(scenario, 1, "Same", cancellationToken: TestContext.Current.CancellationToken);
+        await AssertIntegrityAsync(scenario, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

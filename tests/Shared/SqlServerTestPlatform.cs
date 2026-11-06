@@ -17,7 +17,8 @@ internal static class SqlServerTestPlatform
         bool continuousIntegration
     )
     {
-        if (engine != "SqlServer" || architecture == Architecture.X64)
+        if (engine != "SqlServer"
+            || architecture == Architecture.X64)
         {
             return;
         }
@@ -41,7 +42,8 @@ internal static class SqlServerTestPlatform
     )
     {
         // WHY: This is an infrastructure failure, not a dynamic skip that an expected-exception test could catch.
-        if (engine == "SqlServer" && RuntimeInformation.OSArchitecture != Architecture.X64)
+        if (engine == "SqlServer"
+            && RuntimeInformation.OSArchitecture != Architecture.X64)
         {
             throw new InvalidOperationException(
                 "A SQL Server database test reached container startup on an unsupported host. "
@@ -52,5 +54,8 @@ internal static class SqlServerTestPlatform
     /// <summary>Recognizes hosted CI without requiring a repository-specific environment variable.</summary>
     private static bool IsContinuousIntegration() =>
         string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.OrdinalIgnoreCase);
+        || string.Equals(
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
 }

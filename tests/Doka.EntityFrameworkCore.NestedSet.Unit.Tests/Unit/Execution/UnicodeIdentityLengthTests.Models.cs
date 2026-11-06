@@ -14,14 +14,13 @@ public sealed partial class UnicodeIdentityLengthTests
     /// <summary>Finalizes real provider mappings while keeping every connection unopened.</summary>
     private sealed class UnicodeContext : DbContext
     {
-        private readonly OwnedModelTestServices<UnicodeContext> _services;
-
         internal const string Raw = "UnicodeRaw";
         internal const string Converted = "UnicodeConverted";
         internal const string Binary = "UnicodeBinary";
         internal const string Scopeless = "UnicodeScopeless";
         internal const string Custom = "UnicodeCustom";
         internal const string Fixed = "UnicodeFixed";
+        private readonly OwnedModelTestServices<UnicodeContext> _services;
 
         /// <summary>Uses a configured server version so metadata construction never requires autodetection.</summary>
         internal UnicodeContext(
@@ -72,10 +71,12 @@ public sealed partial class UnicodeIdentityLengthTests
                 .IndexerProperty<string>("TreeId")
                 .HasMaxLength(8)
                 .IsRequired();
+
             raw
                 .IndexerProperty<string>("Scope")
                 .HasMaxLength(8)
                 .IsRequired();
+
             ConfigureHierarchy(raw, scoped: true);
 
             var converted = Configure(modelBuilder, Converted);
@@ -83,10 +84,12 @@ public sealed partial class UnicodeIdentityLengthTests
                 .IndexerProperty<ConvertedIdentity>("TreeId")
                 .HasConversion(value => "!" + value.Value, value => new ConvertedIdentity(value.Substring(1)))
                 .HasMaxLength(8);
+
             converted
                 .IndexerProperty<ConvertedIdentity>("Scope")
                 .HasConversion(value => "!" + value.Value, value => new ConvertedIdentity(value.Substring(1)))
                 .HasMaxLength(8);
+
             ConfigureHierarchy(converted, scoped: true);
 
             var binary = Configure(modelBuilder, Binary);
@@ -95,11 +98,13 @@ public sealed partial class UnicodeIdentityLengthTests
                 .HasConversion(value => Encoding.UTF8.GetBytes(value), value => Encoding.UTF8.GetString(value))
                 .HasMaxLength(8)
                 .IsRequired();
+
             binary
                 .IndexerProperty<string>("Scope")
                 .HasConversion(value => Encoding.UTF8.GetBytes(value), value => Encoding.UTF8.GetString(value))
                 .HasMaxLength(8)
                 .IsRequired();
+
             ConfigureHierarchy(binary, scoped: true);
 
             var scopeless = Configure(modelBuilder, Scopeless);
@@ -107,6 +112,7 @@ public sealed partial class UnicodeIdentityLengthTests
                 .IndexerProperty<string>("TreeId")
                 .HasMaxLength(8)
                 .IsRequired();
+
             ConfigureHierarchy(scopeless, scoped: false);
 
             var custom = Configure(modelBuilder, Custom);
@@ -116,12 +122,14 @@ public sealed partial class UnicodeIdentityLengthTests
                 .IsRequired()
                 .Metadata
                 .SetTypeMapping(new StringTypeMapping("varchar(8)", DbType.String, unicode: true, size: 8));
+
             custom
                 .IndexerProperty<string>("Scope")
                 .HasMaxLength(8)
                 .IsRequired()
                 .Metadata
                 .SetTypeMapping(new StringTypeMapping("varchar(8)", DbType.String, unicode: true, size: 8));
+
             ConfigureHierarchy(custom, scoped: true);
 
             var fixedWidth = Configure(modelBuilder, Fixed);
@@ -130,11 +138,13 @@ public sealed partial class UnicodeIdentityLengthTests
                 .HasColumnType("char(8)")
                 .HasMaxLength(8)
                 .IsRequired();
+
             fixedWidth
                 .IndexerProperty<string>("Scope")
                 .HasColumnType("char(8)")
                 .HasMaxLength(8)
                 .IsRequired();
+
             ConfigureHierarchy(fixedWidth, scoped: true);
         }
 
@@ -149,6 +159,7 @@ public sealed partial class UnicodeIdentityLengthTests
             entity
                 .IndexerProperty<int>("Id")
                 .ValueGeneratedNever();
+
             entity.IndexerProperty<int?>("ParentId");
             entity.IndexerProperty<long>("Left");
             entity.IndexerProperty<long>("Right");
@@ -193,22 +204,26 @@ public sealed partial class UnicodeIdentityLengthTests
                         "Server=127.0.0.1;Port=1;Database=unicode;User ID=unused;Password=unused;",
                         MySqlServerVersion.MySql(new Version(8, 4, 0)),
                         provider => provider.UseNestedSets());
+
                     break;
                 case "MariaDb":
                     builder.UseMySql(
                         "Server=127.0.0.1;Port=1;Database=unicode;User ID=unused;Password=unused;",
                         MySqlServerVersion.MariaDb(new Version(11, 8, 0)),
                         provider => provider.UseNestedSets());
+
                     break;
                 case "PostgreSql":
                     builder.UseNpgsql(
                         "Host=127.0.0.1;Port=1;Database=unicode;Username=unused;Password=unused",
                         provider => provider.UseNestedSets());
+
                     break;
                 case "SqlServer":
                     builder.UseSqlServer(
                         "Server=127.0.0.1,1;Database=unicode;User ID=unused;Password=unused;",
                         provider => provider.UseNestedSets());
+
                     break;
                 case "Sqlite":
                     builder.UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());

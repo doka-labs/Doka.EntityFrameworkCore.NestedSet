@@ -117,9 +117,9 @@ internal sealed class NestedSetCollectionBaseline
                 else if (current is IEnumerable values)
                 {
                     foreach (var member in values
-                                 .Cast<object>()
-                                 .Where(Known)
-                                 .ToArray())
+                        .Cast<object>()
+                        .Where(Known)
+                        .ToArray())
                     {
                         navigation.GetCollectionAccessor()!.RemoveStandalone(current, member);
                     }
@@ -129,8 +129,8 @@ internal sealed class NestedSetCollectionBaseline
                     && entry.GetRelationshipSnapshotValue(navigation) is IEnumerable<object> snapshot)
                 {
                     foreach (var member in snapshot
-                                 .Where(Known)
-                                 .ToArray())
+                        .Where(Known)
+                        .ToArray())
                     {
                         NestedSetInsertionContract.Instance.RemoveCollectionSnapshot(entry, navigation, member);
                     }
@@ -236,10 +236,10 @@ internal sealed class NestedSetCollectionBaseline
                         value = entry.GetCurrentValue(property);
                     }
                     else if (entry.CanHaveOriginalValue(property)
-                             && !property
-                                 .GetTableColumnMappings()
-                                 .Any(mapping =>
-                                     mapping.Column.PropertyMappings.Any(other => other.Property != property)))
+                        && !property
+                            .GetTableColumnMappings()
+                            .Any(mapping =>
+                                mapping.Column.PropertyMappings.Any(other => other.Property != property)))
                     {
                         value = entry.GetOriginalValue(property);
                     }
@@ -262,7 +262,9 @@ internal sealed class NestedSetCollectionBaseline
             }
         }
 
-        return pending is null ? null : () => CompletePersisted(pending, rollback);
+        return pending is null
+            ? null
+            : () => CompletePersisted(pending, rollback);
     }
 
     /// <summary>Requires an actual written member without capturing the outer loop's native entry.</summary>
@@ -331,14 +333,6 @@ internal sealed class NestedSetCollectionBaseline
         }
     }
 
-    /// <summary>Retains only one write set's exact FK values until the provider succeeds or throws.</summary>
-    private sealed record PendingRelationship(
-        IUpdateEntry Entry,
-        IForeignKey ForeignKey,
-        object?[] Values,
-        int[] ReadBack
-    );
-
     /// <summary>Captures affected tracked owners before Added fixup can change their collection snapshots.</summary>
     internal static void CaptureBeforeTracking(
         EntityEntry entry,
@@ -367,7 +361,7 @@ internal sealed class NestedSetCollectionBaseline
         {
             if (updates.FindPrincipal(update, key) is
                 {
-                    EntityState: not (EntityState.Detached or EntityState.Added)
+                    EntityState: not (EntityState.Detached or EntityState.Added),
                 } principal)
             {
                 (baseline ??= new NestedSetCollectionBaseline()).Capture(principal, key.PrincipalToDependent!);
@@ -426,6 +420,87 @@ internal sealed class NestedSetCollectionBaseline
         rollback?.RecordPersistedAddition(principal, navigation, entity);
         NestedSetInsertionContract.Instance.AddCollectionSnapshot(principal, navigation, entity);
     }
+
+    /// <summary>Retains only the first pre-operation membership for each affected owner/navigation.</summary>
+    private void Capture(
+        IUpdateEntry owner,
+        INavigation navigation,
+        IReadOnlySet<object>? introducedEntities = null
+    )
+    {
+        if (_originals.ContainsKey((owner, navigation)))
+        {
+            return;
+        }
+
+        var hasSnapshot = owner.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot;
+        var values = hasSnapshot
+            ? owner.GetRelationshipSnapshotValue(navigation) as IEnumerable<object> ?? []
+            : [];
+
+        var current = owner.GetCurrentValue(navigation);
+        var members = current is IEnumerable collection
+            ? collection.Cast<object>()
+            : [];
+
+        if (introducedEntities is not null)
+        {
+            // WHY: A callback can select another already-tracked owner. Its first snapshot may already include
+            // this active batch's newly Added members; they were not part of the pre-operation native baseline.
+            // Keep the captured local inside this branch: hoisting the parameter cost 24 bytes even on early return.
+            var excluded = introducedEntities;
+            values = values.Where(value => !excluded.Contains(value));
+            members = members.Where(value => !excluded.Contains(value));
+        }
+
+        _originals.Add(
+            (owner, navigation),
+            new CollectionState(
+                owner.ToEntityEntry()
+                    .Entity,
+                current,
+                members.ToArray(),
+                values.ToArray(),
+                hasSnapshot));
+    }
+
+    /// <summary>Restores earlier membership even when an unchanged owner was absent from callback writes.</summary>
+    internal void Restore()
+    {
+        var contract = NestedSetInsertionContract.Instance;
+
+        foreach (var ((entry, navigation), original) in _originals)
+        {
+            original.RestoreCurrent(entry, navigation);
+
+            if (!original.HasSnapshot)
+            {
+                // WHY: Notification collections have no relationship-snapshot slot, even after another entity
+                // causes EF to allocate its relationship sidecar. CLR restoration remains independent of it.
+                continue;
+            }
+
+            var current = (entry.GetRelationshipSnapshotValue(navigation) as IEnumerable<object> ?? []).ToArray();
+
+            foreach (var member in current)
+            {
+                contract.RemoveCollectionSnapshot(entry, navigation, member);
+            }
+
+            foreach (var member in original.Snapshot)
+            {
+                contract.AddCollectionSnapshot(entry, navigation, member);
+            }
+        }
+    }
+
+    /// <summary>Retains only one write set's exact FK values until the provider succeeds or throws.</summary>
+    private sealed record PendingRelationship(
+        IUpdateEntry Entry,
+        IForeignKey ForeignKey,
+        object?[] Values,
+        int[] ReadBack
+    );
 
     /// <summary>Groups only one active wave's persisted references by their exact external owner/navigation.</summary>
     /// <param name="introduced">The exact native insertion set already validated by the save guard.</param>
@@ -517,74 +592,6 @@ internal sealed class NestedSetCollectionBaseline
                         break;
                     }
                 }
-            }
-        }
-    }
-
-    /// <summary>Retains only the first pre-operation membership for each affected owner/navigation.</summary>
-    private void Capture(
-        IUpdateEntry owner,
-        INavigation navigation,
-        IReadOnlySet<object>? introducedEntities = null
-    )
-    {
-        if (_originals.ContainsKey((owner, navigation)))
-        {
-            return;
-        }
-
-        var hasSnapshot = owner.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot;
-        var values = hasSnapshot ? owner.GetRelationshipSnapshotValue(navigation) as IEnumerable<object> ?? [] : [];
-        var current = owner.GetCurrentValue(navigation);
-        var members = current is IEnumerable collection ? collection.Cast<object>() : [];
-
-        if (introducedEntities is not null)
-        {
-            // WHY: A callback can select another already-tracked owner. Its first snapshot may already include
-            // this active batch's newly Added members; they were not part of the pre-operation native baseline.
-            // Keep the captured local inside this branch: hoisting the parameter cost 24 bytes even on early return.
-            var excluded = introducedEntities;
-            values = values.Where(value => !excluded.Contains(value));
-            members = members.Where(value => !excluded.Contains(value));
-        }
-
-        _originals.Add(
-            (owner, navigation),
-            new CollectionState(
-                owner.ToEntityEntry()
-                    .Entity,
-                current,
-                members.ToArray(),
-                values.ToArray(),
-                hasSnapshot));
-    }
-
-    /// <summary>Restores earlier membership even when an unchanged owner was absent from callback writes.</summary>
-    internal void Restore()
-    {
-        var contract = NestedSetInsertionContract.Instance;
-
-        foreach (var ((entry, navigation), original) in _originals)
-        {
-            original.RestoreCurrent(entry, navigation);
-
-            if (!original.HasSnapshot)
-            {
-                // WHY: Notification collections have no relationship-snapshot slot, even after another entity
-                // causes EF to allocate its relationship sidecar. CLR restoration remains independent of it.
-                continue;
-            }
-
-            var current = (entry.GetRelationshipSnapshotValue(navigation) as IEnumerable<object> ?? []).ToArray();
-
-            foreach (var member in current)
-            {
-                contract.RemoveCollectionSnapshot(entry, navigation, member);
-            }
-
-            foreach (var member in original.Snapshot)
-            {
-                contract.AddCollectionSnapshot(entry, navigation, member);
             }
         }
     }

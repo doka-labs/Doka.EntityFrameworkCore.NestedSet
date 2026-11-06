@@ -50,16 +50,20 @@ internal sealed class CompositeTextKeyContext : DbContext
             entity.TenantId,
             entity.NodeKey,
         });
+
         node
             .Property(entity => entity.NodeKey)
             .HasMaxLength(40)
             .ValueGeneratedNever();
+
         node
             .Property(entity => entity.ParentNodeKey)
             .HasMaxLength(40);
+
         node
             .Property(entity => entity.Name)
             .HasMaxLength(100);
+
         node
             .HasOne<CompositeTextKeyNode>()
             .WithMany()
@@ -69,6 +73,7 @@ internal sealed class CompositeTextKeyContext : DbContext
                 entity.ParentNodeKey,
             })
             .OnDelete(DeleteBehavior.Restrict);
+
         node.HasNestedSet(nestedSet => nestedSet
             .HasNodeKey(entity => entity.NodeKey)
             .HasScope(entity => entity.TenantId)

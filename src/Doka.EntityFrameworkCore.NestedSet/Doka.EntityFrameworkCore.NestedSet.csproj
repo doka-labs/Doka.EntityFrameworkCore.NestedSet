@@ -5,9 +5,9 @@
     <PackageTags>efcore;entity-framework-core;nested-set;tree;hierarchy</PackageTags>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../Doka.NestedSet/Doka.NestedSet.csproj"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+    <ProjectReference Include="../Doka.NestedSet/Doka.NestedSet.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
     <Compile Update="Providers/NestedSetProviderCapabilities.*.cs">

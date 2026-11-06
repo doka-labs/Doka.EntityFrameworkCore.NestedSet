@@ -3,9 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 /// <summary>Verifies Unicode identity bounds and transport using the fixture's actual MySQL-family engine.</summary>
 public abstract partial class UnicodeIdentityTestBase : ProviderTest
 {
+    private static int s_nextNode = 7000000;
     private readonly ModelCompatibilityDatabase _fixture;
     private readonly ITestOutputHelper _output;
-    private static int s_nextNode = 7000000;
 
     /// <summary>Uses the existing collection owner without creating a second provider container.</summary>
     /// <param name="fixture">The immutable engine-bound compatibility database.</param>
@@ -39,15 +39,18 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
         "text" => RoundTripAsync<UnicodeTextIdentityContext, string>(
             static options => new UnicodeTextIdentityContext(options),
             static value => value,
-            role),
+            role,
+            cancellationToken: TestContext.Current.CancellationToken),
         "converted" => RoundTripAsync<UnicodeConvertedIdentityContext, UnicodeIdentityValue>(
             static options => new UnicodeConvertedIdentityContext(options),
             static value => new UnicodeIdentityValue(value),
-            role),
+            role,
+            cancellationToken: TestContext.Current.CancellationToken),
         "binary" => RoundTripAsync<UnicodeBinaryIdentityContext, string>(
             static options => new UnicodeBinaryIdentityContext(options),
             static value => value,
-            role),
+            role,
+            cancellationToken: TestContext.Current.CancellationToken),
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
 
@@ -79,12 +82,14 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
             static options => new UnicodeConvertedIdentityContext(options),
             static value => new UnicodeIdentityValue(value),
             role,
-            InvalidText(invalid))
+            InvalidText(invalid),
+            cancellationToken: TestContext.Current.CancellationToken)
         : RejectAsync<UnicodeTextIdentityContext, string>(
             static options => new UnicodeTextIdentityContext(options),
             static value => value,
             role,
-            InvalidText(invalid));
+            InvalidText(invalid),
+            cancellationToken: TestContext.Current.CancellationToken);
 
     /// <summary>
     /// A byte-backed converter retains its actual byte bound rather than accepting character overflow.
@@ -99,7 +104,8 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
         static options => new UnicodeBinaryIdentityContext(options),
         static value => value,
         role,
-        "a" + string.Concat(Enumerable.Repeat("\U0001F600", 12)));
+        "a" + string.Concat(Enumerable.Repeat("\U0001F600", 12)),
+        cancellationToken: TestContext.Current.CancellationToken);
 
     /// <summary>The optional Scope is unnecessary for accepting the full native TreeId character bound.</summary>
     [Fact]
@@ -108,7 +114,8 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<UnicodeScopelessIdentityContext>(
             Engine,
-            static options => new UnicodeScopelessIdentityContext(options));
+            static options => new UnicodeScopelessIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var node = new UnicodeIdentityNode<string> { Id = Interlocked.Increment(ref s_nextNode) };
         var treeId = Supplementary('s');
@@ -128,7 +135,12 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
         Assert.Equal(node.Id, stored.Id);
         Assert.Equal(treeId, stored.TreeId);
         Assert.Equal((1L, 2L, 0, 0L), (stored.Left, stored.Right, stored.Depth, stored.Position));
-        var native = await ReadNativeAsync(context, node.Id, false);
+        var native = await ReadNativeAsync(
+            context,
+            node.Id,
+            false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(treeId, native.TreeId);
         Assert.Equal((12, 45), (native.TreeCharacters, native.TreeBytes));
         WriteNative("scopeless", "TreeId", native);
@@ -143,11 +155,16 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<UnicodeScopelessIdentityContext>(
             Engine,
             static options => new UnicodeScopelessIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var node = new UnicodeIdentityNode<string> { Id = Interlocked.Increment(ref s_nextNode) };
         var entity = context.Model.FindEntityType(typeof(UnicodeIdentityNode<string>))!;
-        var before = await RegistryCountAsync(context, entity);
+        var before = await RegistryCountAsync(
+            context,
+            entity,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         probe.Reset();
 
         // Act
@@ -156,9 +173,22 @@ public abstract partial class UnicodeIdentityTestBase : ProviderTest
             .InsertRootAsync(node, Supplementary('s') + "x", CancellationToken.None));
 
         // Assert
-        Assert.Equal("TreeId", Assert.IsType<ArgumentException>(failure).ParamName);
+        Assert.Equal(
+            "TreeId",
+            Assert.IsType<ArgumentException>(failure)
+                .ParamName);
+
         Assert.Equal(0, probe.CommandCount);
-        Assert.Equal(EntityState.Detached, context.Entry(node).State);
-        Assert.Equal(before, await RegistryCountAsync(context, entity));
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(node)
+                .State);
+
+        Assert.Equal(
+            before,
+            await RegistryCountAsync(
+                context,
+                entity,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -13,7 +13,10 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+                context,
+                "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(failure, error);
@@ -27,7 +30,8 @@ public sealed partial class QueryPlanReplayTests
     public async Task StatisticsCatalogReaderFailurePreventsUpdates()
     {
         // Arrange
-        await using var connection = new PlanReplayConnection(() =>
+        await using var connection = new PlanReplayConnection(
+            () =>
             {
                 var reader = Results(Statistics("unread statistic"));
                 reader.Close();
@@ -40,7 +44,10 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+                context,
+                "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -59,7 +66,10 @@ public sealed partial class QueryPlanReplayTests
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+                context,
+                "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -79,22 +89,29 @@ public sealed partial class QueryPlanReplayTests
         var updates = 0;
         await using var connection = new PlanReplayConnection(
             () => Results(Statistics("first", "failing", "unreached")),
-            () => ++updates == 2 ? throw failure : 0);
+            () => ++updates == 2
+                ? throw failure
+                : 0);
 
         await using var context = CreateStatisticsContext(connection);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
-            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer"));
+            QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+                context,
+                "SqlServer",
+                cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
         Assert.Same(failure, error);
         Assert.Equal(2, updates);
         Assert.Equal(3, connection.Commands.Count);
-        Assert.Equal("UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [failing] WITH FULLSCAN",
+        Assert.Equal(
+            "UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [failing] WITH FULLSCAN",
             connection.Commands[2].CommandText);
 
-        Assert.DoesNotContain(connection.Commands,
+        Assert.DoesNotContain(
+            connection.Commands,
             command => command.CommandText.Contains("unreached", StringComparison.Ordinal));
     }
 }

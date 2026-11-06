@@ -9,12 +9,22 @@ internal sealed class AncestorIndexTenantQueryContext(DbContextOptions<AncestorI
     internal Guid Tenant { get; set; }
 
     /// <inheritdoc />
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder
+    )
     {
         var node = modelBuilder.Entity<CompositionNode>();
         node.ToTable("AncestorIndexTenantNodes");
-        node.HasKey(value => new { value.Scope, value.Id });
-        node.Property(value => value.Id).ValueGeneratedNever();
+        node.HasKey(value => new
+        {
+            value.Scope,
+            value.Id,
+        });
+
+        node
+            .Property(value => value.Id)
+            .ValueGeneratedNever();
+
         node.Property(value => value.Visible);
         node.HasQueryFilter(value => value.Scope == Tenant && value.Visible);
         node.HasNestedSet(mapping => mapping

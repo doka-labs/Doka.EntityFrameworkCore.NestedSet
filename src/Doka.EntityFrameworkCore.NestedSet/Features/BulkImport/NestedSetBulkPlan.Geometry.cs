@@ -18,7 +18,11 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
     {
         if (ranks is not null)
         {
-            int Compare(int left, int right) => ranks[Nodes[left].Key].CompareTo(ranks[Nodes[right].Key]);
+            int Compare(
+                int left,
+                int right
+            ) => ranks[Nodes[left].Key]
+                .CompareTo(ranks[Nodes[right].Key]);
 
             Roots.Sort(Compare);
             var comparer = Comparer<int>.Create(Compare);

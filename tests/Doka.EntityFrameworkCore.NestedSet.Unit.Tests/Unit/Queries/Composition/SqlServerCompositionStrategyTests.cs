@@ -34,9 +34,10 @@ public sealed partial class SqlServerCompositionStrategyTests
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -45,14 +46,16 @@ public sealed partial class SqlServerCompositionStrategyTests
         var query = treeBound
             ? hierarchy
                 .InTree(Guid.Empty)
-                .SelectAncestors(node => node.Id >= 3,
+                .SelectAncestors(
+                    node => node.Id >= 3,
                     (source, owner, distance) => new
                     {
                         Source = source.Id,
                         Owner = owner.Id,
                         Distance = distance,
                     })
-            : hierarchy.SelectAncestors(node => node.Id >= 3,
+            : hierarchy.SelectAncestors(
+                node => node.Id >= 3,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -63,12 +66,17 @@ public sealed partial class SqlServerCompositionStrategyTests
         // Act
         var sql = query.ToQueryString();
         _output.WriteLine(sql);
-        var owner = Regex.Match(sql, @"FROM \[\w+\] AS (?<owner>\[\w+\])\s+CROSS APPLY \(").Groups["owner"].Value;
+        var owner = Regex
+            .Match(sql, @"FROM \[\w+\] AS (?<owner>\[\w+\])\s+CROSS APPLY \(")
+            .Groups["owner"].Value;
 
         var apply = ApplyBlock(sql);
 
         // Assert
-        Assert.True(NestedSetProviderCapabilities.Resolve(context).UsesIndependentAncestorOwners);
+        Assert.True(
+            NestedSetProviderCapabilities.Resolve(context)
+                .UsesIndependentAncestorOwners);
+
         Assert.NotEmpty(owner);
         Assert.Matches(new Regex(Regex.Escape(owner) + @"\.\[Right\] > CASE"), sql);
         Assert.Matches(@"ORDER BY \[\w+\]\.\[Left\] DESC\s+OFFSET 0 ROWS", apply);
@@ -106,15 +114,17 @@ public sealed partial class SqlServerCompositionStrategyTests
 
         var options = new DbContextOptionsBuilder<CompositionContext>(native).AddInterceptors(boundary);
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty)
-            .SelectAncestors(node => node.Id >= 3,
+            .SelectAncestors(
+                node => node.Id >= 3,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -142,15 +152,17 @@ public sealed partial class SqlServerCompositionStrategyTests
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionContext>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
-        await using var context = new CompositionContext(new DbContextOptionsBuilder<CompositionContext>(options)
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            new DbContextOptionsBuilder<CompositionContext>(options)
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty)
-            .SelectAncestors(node => node.Id >= 3,
+            .SelectAncestors(
+                node => node.Id >= 3,
                 (source, owner, distance) => new
                 {
                     Source = source.Id,
@@ -176,26 +188,34 @@ public sealed partial class SqlServerCompositionStrategyTests
         var events = new List<EventData>();
         var options = new DbContextOptionsBuilder<IndexedOwnerContext>(
                 ModelCompatibilityDatabase.Options<IndexedOwnerContext>("SqlServer"))
-            .LogTo((eventId, _) => eventId.Id == 70_004,
+            .LogTo(
+                (eventId, _) => eventId.Id == 70_004,
                 events.Add);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new IndexedOwnerContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new IndexedOwnerContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty);
 
         // Act
-        _ = hierarchy.SelectAncestors(node => node.Id == 3,
+        _ = hierarchy.SelectAncestors(
+            node => node.Id == 3,
             (source, owner, distance) => owner.Id);
 
         // Assert
-        Assert.True(NestedSetProviderCapabilities.Resolve(context).UsesIndependentAncestorOwners);
-        Assert.Equal(70_004,
-            Assert.Single(events).EventId.Id);
+        Assert.True(
+            NestedSetProviderCapabilities.Resolve(context)
+                .UsesIndependentAncestorOwners);
+
+        Assert.Equal(
+            70_004,
+            Assert.Single(events)
+                .EventId.Id);
     }
 
     /// <summary>Reads the first CROSS APPLY body, respecting nested query parentheses.</summary>
@@ -241,6 +261,7 @@ public sealed partial class SqlServerCompositionStrategyTests
                 entity.Scope,
                 entity.Id,
             });
+
             node.HasNestedSet(hierarchy => hierarchy
                 .HasNodeKey(entity => entity.Id)
                 .HasScope(entity => entity.Scope)

@@ -7,10 +7,16 @@ public sealed partial class SupervisorEvidenceJoinTests
     /// <summary>
     /// Creates isolated missing, tied, and repeated-person origins using the independent sample fixture.
     /// </summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="data">The independent synthetic supervisor fixture.</param>
+    /// <param name="closed">Whether the fixture closes the selected relation period.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    /// <param name="sharedWinner">Whether both origin paths share the winning user.</param>
     private static async Task PrepareMixedOriginsAsync(
         UserGroupContext context,
         SupervisorScenarioFixture data,
         bool closed,
+        CancellationToken cancellationToken,
         bool sharedWinner = false
     )
     {
@@ -19,20 +25,28 @@ public sealed partial class SupervisorEvidenceJoinTests
             .Where(row => row.TenantId == data.TenantId
                 && row.UserId != data.Users[1]
                 && row.UserId != data.Users[6])
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(cancellationToken);
+
         await context
             .MembershipMetadatas
             .Where(row => row.TenantId == data.TenantId
                 && row.UserGroupId == data.Groups[6])
-            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Value, "lane-orange"),
-                CancellationToken.None);
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(row => row.Value, "lane-orange"),
+                cancellationToken);
+
         await context
             .Users
             .Where(user => user.TenantId == data.TenantId
-                && (user.Id == data.Users[5] || sharedWinner && user.Id == data.Users[6]))
-            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), CancellationToken.None);
-        var otherWinner = sharedWinner ? data.Users[1] : data.Users[2];
-        await context.UserGroupMemberships.AddRangeAsync([
+                && (user.Id == data.Users[5] || (sharedWinner && user.Id == data.Users[6])))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), cancellationToken);
+
+        var otherWinner = sharedWinner
+            ? data.Users[1]
+            : data.Users[2];
+
+        await context.UserGroupMemberships.AddRangeAsync(
+            [
                 new UserGroupMembership
                 {
                     TenantId = data.TenantId,
@@ -54,9 +68,10 @@ public sealed partial class SupervisorEvidenceJoinTests
                     LeadershipPriority = 10,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.MembershipRoles.AddRangeAsync([
+        await context.MembershipRoles.AddRangeAsync(
+            [
                 new MembershipRole
                 {
                     TenantId = data.TenantId,
@@ -72,9 +87,10 @@ public sealed partial class SupervisorEvidenceJoinTests
                     RoleId = data.ManagerRoleId,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.MembershipMetadatas.AddRangeAsync([
+        await context.MembershipMetadatas.AddRangeAsync(
+            [
                 new MembershipMetadata
                 {
                     TenantId = data.TenantId,
@@ -103,10 +119,11 @@ public sealed partial class SupervisorEvidenceJoinTests
                     Value = "lane-orange",
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
         // WHY: A second valid role source and overlapping periods are existence witnesses, never extra occurrences.
-        await context.UserRoles.AddRangeAsync([
+        await context.UserRoles.AddRangeAsync(
+            [
                 new UserRole
                 {
                     TenantId = data.TenantId,
@@ -120,18 +137,19 @@ public sealed partial class SupervisorEvidenceJoinTests
                     RoleId = data.ManagerRoleId,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.GroupRelationPeriods.AddAsync(new GroupRelationPeriod
+        await context.GroupRelationPeriods.AddAsync(
+            new GroupRelationPeriod
             {
                 TenantId = data.TenantId,
                 ParentId = data.Groups[4],
                 ChildId = data.Groups[5],
                 FromDate = new DateOnly(2026, 6, 1),
             },
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         if (closed)
         {
             await context
@@ -139,9 +157,11 @@ public sealed partial class SupervisorEvidenceJoinTests
                 .Where(row => row.TenantId == data.TenantId
                     && row.ParentId == data.Groups[2]
                     && row.ChildId == data.Groups[3])
-                .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ToDate,
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        row => row.ToDate,
                         new DateOnly(2026, 10, 15)),
-                    CancellationToken.None);
+                    cancellationToken);
         }
 
         context.ChangeTracker.Clear();
@@ -153,7 +173,8 @@ public sealed partial class SupervisorEvidenceJoinTests
     )
     {
         var services = new ServiceCollection();
-        foreach (var extension in Options().Extensions)
+        foreach (var extension in Options()
+            .Extensions)
         {
             extension.ApplyServices(services);
         }
@@ -167,9 +188,10 @@ public sealed partial class SupervisorEvidenceJoinTests
     private static UserGroupContext CreateContext(
         IServiceProvider services
     )
-        => new(new DbContextOptionsBuilder<UserGroupContext>(Options())
-            .UseInternalServiceProvider(services)
-            .Options);
+        => new(
+            new DbContextOptionsBuilder<UserGroupContext>(Options())
+                .UseInternalServiceProvider(services)
+                .Options);
 
     /// <summary>Creates the standard sample provider configuration without opening a connection.</summary>
     private static DbContextOptions<UserGroupContext> Options()

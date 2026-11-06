@@ -15,11 +15,12 @@ public sealed partial class SignalReportValidationTests
         var catalog = Catalog(snapshot)
             .Reverse()
             .Concat(Catalog(snapshot))
-            .Append(new SignalCatalogRow
-            {
-                Kind = 99,
-                UnitCode = "ignored",
-            })
+            .Append(
+                new SignalCatalogRow
+                {
+                    Kind = 99,
+                    UnitCode = "ignored",
+                })
             .ToArray();
 
         // Act
@@ -103,12 +104,15 @@ public sealed partial class SignalReportValidationTests
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
         var catalog = Catalog(snapshot)
-            .Append(new SignalCatalogRow
-            {
-                Kind = 1,
-                Id = duplicateId ? SignalReportDataset.PulseChannel : SignalReportDataset.SweepChannel,
-                UnitCode = unit!,
-            })
+            .Append(
+                new SignalCatalogRow
+                {
+                    Kind = 1,
+                    Id = duplicateId
+                        ? SignalReportDataset.PulseChannel
+                        : SignalReportDataset.SweepChannel,
+                    UnitCode = unit!,
+                })
             .ToArray();
 
         // Act
@@ -139,7 +143,9 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(Request());
         var catalog = Catalog(snapshot);
         var definition = shape.StartsWith("definition", StringComparison.Ordinal);
-        catalog[definition ? 2 : 3] = new SignalCatalogRow
+        catalog[definition
+            ? 2
+            : 3] = new SignalCatalogRow
         {
             Kind = definition
                 ? 2

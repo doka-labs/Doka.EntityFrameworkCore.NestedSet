@@ -138,12 +138,6 @@ public sealed class CompiledScope
 /// <summary>A string-key hierarchy with deliberately different parent and primary-key collations.</summary>
 public sealed class CompiledFolder : INestedSetNode<string, Guid>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public string Id { get; set; } = string.Empty;
-
     /// <summary>Gets or sets the scope identifying the stable anchor.</summary>
     public string Scope { get; set; } = string.Empty;
 
@@ -152,6 +146,12 @@ public sealed class CompiledFolder : INestedSetNode<string, Guid>
 
     /// <summary>Gets or sets the sibling sort criterion.</summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public string Id { get; set; } = string.Empty;
 
     /// <inheritdoc />
     public long Left { get; set; }
@@ -169,17 +169,17 @@ public sealed class CompiledFolder : INestedSetNode<string, Guid>
 /// <summary>A numeric-key baseline verifying compiled metadata does not require string-specific paths.</summary>
 public sealed class CompiledNumber : INestedSetNode<int, Guid>
 {
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
     /// <summary>Gets or sets the numeric hierarchy scope.</summary>
     public int Scope { get; set; }
 
     /// <summary>Gets or sets the direct parent key.</summary>
     public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the stable tree identity.</summary>
+    public Guid TreeId { get; set; }
+
+    /// <inheritdoc />
+    public int Id { get; set; }
 
     /// <inheritdoc />
     public long Left { get; set; }

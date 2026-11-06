@@ -12,7 +12,7 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -59,7 +59,12 @@ public abstract partial class RelationalTests
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
 
-        Assert.Equal(subtree ? 1 : 2, nodes.Length);
+        Assert.Equal(
+            subtree
+                ? 1
+                : 2,
+            nodes.Length);
+
         Assert.Equal(root, nodes[0].Id);
         Assert.DoesNotContain(nodes, node => node.Id == branch);
 
@@ -98,7 +103,7 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -143,7 +148,12 @@ public abstract partial class RelationalTests
             .OrderBy(node => node.Left)
             .ToArrayAsync(CancellationToken.None);
 
-        Assert.Equal(subtree ? 1 : 2, nodes.Length);
+        Assert.Equal(
+            subtree
+                ? 1
+                : 2,
+            nodes.Length);
+
         Assert.Equal("Root", nodes[0].Id);
         Assert.DoesNotContain(nodes, node => node.Id == "Parent");
 

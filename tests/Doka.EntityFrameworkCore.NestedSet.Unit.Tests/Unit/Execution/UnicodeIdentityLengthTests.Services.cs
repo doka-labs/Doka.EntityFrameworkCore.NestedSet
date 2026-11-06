@@ -41,8 +41,11 @@ public sealed partial class UnicodeIdentityLengthTests
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Raw));
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Converted));
         Assert.NotNull(second.Model.FindEntityType(UnicodeContext.Binary));
-        Assert.Equal(ConnectionState.Closed,
-            second.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            second.Database.GetDbConnection()
+                .State);
+
         Assert.Empty(second.ChangeTracker.Entries());
     }
 }

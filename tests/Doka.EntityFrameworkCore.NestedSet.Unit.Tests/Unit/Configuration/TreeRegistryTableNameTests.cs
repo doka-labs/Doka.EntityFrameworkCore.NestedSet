@@ -3,6 +3,27 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Verifies explicit tree-registry table names, their diagnostics and the unchanged default.</summary>
 public sealed class TreeRegistryTableNameTests
 {
+    /// <summary>Provides names at each limit, including multibyte names only PostgreSQL measures in bytes.</summary>
+    public static TheoryData<string, string> FittingNames =>
+        new()
+        {
+            { "SqlServer", new string('a', 128) },
+            { "MySql", new string('a', 64) },
+            { "MySql", new string('a', 63) + "\u00e4" },
+            { "Postgres", new string('a', 63) },
+            { "Postgres", new string('a', 61) + "\u00e4" },
+        };
+
+    /// <summary>Provides names one unit beyond each limit, with the expected diagnostic parts.</summary>
+    public static TheoryData<string, string, string, string> ExceedingNames =>
+        new()
+        {
+            { "SqlServer", new string('a', 129), "129 characters", "allows 128" },
+            { "MySql", new string('a', 65), "65 characters", "allows 64" },
+            { "Postgres", new string('a', 64), "64 bytes", "allows 63" },
+            { "Postgres", new string('a', 62) + "\u00e4", "64 bytes", "allows 63" },
+        };
+
     /// <summary>Keeps the exact generated name when no explicit name is configured.</summary>
     [Fact]
     public void DefaultNameIsUnchangedWithoutTheOption()
@@ -186,11 +207,14 @@ public sealed class TreeRegistryTableNameTests
             });
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
-        var first = NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(FirstNode))!).Registry;
+        var first = NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(FirstNode))!)
+            .Registry;
 
-        var second = NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(SecondNode))!).Registry;
+        var second = NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(SecondNode))!)
+            .Registry;
 
         // Assert
         Assert.Equal(first.GetTableName(), second.GetTableName());
@@ -238,14 +262,16 @@ public sealed class TreeRegistryTableNameTests
             });
 
         // Act
-        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>().Model);
+        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>()
+            .Model);
 
         // Assert
         if (collides)
         {
             Assert.Contains(
                 "collides",
-                Assert.IsType<InvalidOperationException>(error).Message);
+                Assert.IsType<InvalidOperationException>(error)
+                    .Message);
         }
         else
         {
@@ -308,8 +334,10 @@ public sealed class TreeRegistryTableNameTests
         var error = Record.Exception(() => _ = context.Model);
 
         // Assert
-        Assert.Contains("collides",
-            Assert.IsType<InvalidOperationException>(error).Message);
+        Assert.Contains(
+            "collides",
+            Assert.IsType<InvalidOperationException>(error)
+                .Message);
     }
 
     /// <summary>Rejects a derived configuration that contradicts its base hierarchy's name.</summary>
@@ -323,6 +351,7 @@ public sealed class TreeRegistryTableNameTests
             modelBuilder
                 .Entity<DerivedNode>()
                 .HasBaseType<BaseNode>();
+
             Configure(modelBuilder.Entity<DerivedNode>(), "DerivedTrees");
         });
 
@@ -388,11 +417,14 @@ public sealed class TreeRegistryTableNameTests
         using var context = CreateFor(provider, modelBuilder => Map<FirstNode>(modelBuilder, "Firsts", name));
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         // Assert
-        Assert.Equal(name,
-            NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(FirstNode))!).Store.Name);
+        Assert.Equal(
+            name,
+            NestedSetTreeRegistryMapping.For(model.FindEntityType(typeof(FirstNode))!)
+                .Store.Name);
     }
 
     /// <summary>Rejects a name one unit beyond the limit and reports the measured length, unit and limit.</summary>
@@ -413,34 +445,14 @@ public sealed class TreeRegistryTableNameTests
         using var context = CreateFor(provider, modelBuilder => Map<FirstNode>(modelBuilder, "Firsts", name));
 
         // Act
-        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>().Model);
+        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>()
+            .Model);
 
         // Assert
         var failure = Assert.IsType<InvalidOperationException>(error);
         Assert.Contains(measured, failure.Message, StringComparison.Ordinal);
         Assert.Contains(limit, failure.Message, StringComparison.Ordinal);
     }
-
-    /// <summary>Provides names at each limit, including multibyte names only PostgreSQL measures in bytes.</summary>
-    public static TheoryData<string, string> FittingNames =>
-        new()
-        {
-            { "SqlServer", new string('a', 128) },
-            { "MySql", new string('a', 64) },
-            { "MySql", new string('a', 63) + "\u00e4" },
-            { "Postgres", new string('a', 63) },
-            { "Postgres", new string('a', 61) + "\u00e4" },
-        };
-
-    /// <summary>Provides names one unit beyond each limit, with the expected diagnostic parts.</summary>
-    public static TheoryData<string, string, string, string> ExceedingNames =>
-        new()
-        {
-            { "SqlServer", new string('a', 129), "129 characters", "allows 128" },
-            { "MySql", new string('a', 65), "65 characters", "allows 64" },
-            { "Postgres", new string('a', 64), "64 bytes", "allows 63" },
-            { "Postgres", new string('a', 62) + "\u00e4", "64 bytes", "allows 63" },
-        };
 
     /// <summary>Rejects SQLite's reserved table prefix before attempting DDL.</summary>
     [Fact]
@@ -453,8 +465,10 @@ public sealed class TreeRegistryTableNameTests
         var error = Record.Exception(() => _ = context.Model);
 
         // Assert
-        Assert.Contains("reserved",
-            Assert.IsType<InvalidOperationException>(error).Message);
+        Assert.Contains(
+            "reserved",
+            Assert.IsType<InvalidOperationException>(error)
+                .Message);
     }
 
     /// <summary>Rejects SQL Server's temporary-table prefix during design-time model finalization.</summary>
@@ -465,11 +479,14 @@ public sealed class TreeRegistryTableNameTests
         using var context = CreateSqlServer(modelBuilder => Map<FirstNode>(modelBuilder, "Firsts", "#Trees"));
 
         // Act
-        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>().Model);
+        var error = Record.Exception(() => _ = context.GetService<IDesignTimeModel>()
+            .Model);
 
         // Assert
-        Assert.Contains("reserved",
-            Assert.IsType<InvalidOperationException>(error).Message);
+        Assert.Contains(
+            "reserved",
+            Assert.IsType<InvalidOperationException>(error)
+                .Message);
     }
 
     /// <summary>Creates a SQLite context with its own service provider, and so its own uncached model.</summary>
@@ -510,7 +527,8 @@ public sealed class TreeRegistryTableNameTests
     /// <summary>Finds the finalized registry of one hierarchy.</summary>
     private static IEntityType Registry<TNode>(
         DbContext context
-    ) => NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TNode))!).Registry;
+    ) => NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(TNode))!)
+        .Registry;
 
     /// <summary>Maps one hierarchy with an optional explicit name and schema.</summary>
     private static void Map<TNode>(

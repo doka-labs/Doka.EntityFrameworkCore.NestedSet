@@ -8,79 +8,142 @@ public sealed class OrderingLockFixture : IAsyncLifetime
     /// <inheritdoc />
     public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var database in _databases.Values)
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     /// <summary>Returns an empty anchored-ordering context without disturbing another fixture's tables.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The real relational engine.</param>
     /// <returns>A context owned by the test.</returns>
     public async Task<OrderingLockContext> ResetAsync(
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         if (!_databases.ContainsKey(engine))
         {
-            _databases.Add(engine, await TestDatabase.CreateAsync(engine));
-            await using var setup = await CreateContextAsync(engine);
-            await setup
-                .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+            var database = await TestDatabase.CreateAsync(engine, cancellationToken: cancellationToken);
+            _databases.Add(engine, database);
+
+            try
+            {
+                await using var setup = await CreateContextAsync(engine, cancellationToken: cancellationToken);
+                await setup
+                    .GetService<IRelationalDatabaseCreator>()
+                    .CreateTablesAsync(cancellationToken);
+            }
+            catch (Exception initializationFailure)
+            {
+                // WHY: Canceled table creation must not leave a partially initialized reusable database.
+                _databases.Remove(engine);
+
+                try
+                {
+                    await database.DisposeAsync();
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(
+                        "Ordering fixture initialization and cleanup both failed.",
+                        initializationFailure,
+                        cleanupFailure);
+                }
+
+                throw;
+            }
         }
 
-        var context = await CreateContextAsync(engine);
-        await UnlinkAsync<int, FirstLockHierarchy>(context);
-        await UnlinkAsync<int, SecondLockHierarchy>(context);
-        await UnlinkAsync<string, FirstLockHierarchy>(context);
-        await UnlinkAsync<byte[], FirstLockHierarchy>(context);
-        await context
-            .Set<OrderingLockNode<int, FirstLockHierarchy>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+        var context = await CreateContextAsync(engine, cancellationToken: cancellationToken);
 
-        await context
-            .Set<OrderingLockNode<int, SecondLockHierarchy>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+        try
+        {
+            await UnlinkAsync<int, FirstLockHierarchy>(context, cancellationToken: cancellationToken);
+            await UnlinkAsync<int, SecondLockHierarchy>(context, cancellationToken: cancellationToken);
+            await UnlinkAsync<string, FirstLockHierarchy>(context, cancellationToken: cancellationToken);
+            await UnlinkAsync<byte[], FirstLockHierarchy>(context, cancellationToken: cancellationToken);
+            await context
+                .Set<OrderingLockNode<int, FirstLockHierarchy>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingLockNode<string, FirstLockHierarchy>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingLockNode<int, SecondLockHierarchy>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingLockNode<byte[], FirstLockHierarchy>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingLockNode<string, FirstLockHierarchy>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingLockAnchor<int>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingLockNode<byte[], FirstLockHierarchy>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingLockAnchor<string>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingLockAnchor<int>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await context
-            .Set<OrderingLockAnchor<byte[]>>()
-            .ExecuteDeleteAsync(CancellationToken.None);
+            await context
+                .Set<OrderingLockAnchor<string>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        await NestedSetTestInfrastructure.ClearRegistriesAsync(context, CancellationToken.None);
+            await context
+                .Set<OrderingLockAnchor<byte[]>>()
+                .ExecuteDeleteAsync(cancellationToken);
 
-        return context;
+            await NestedSetTestInfrastructure.ClearRegistriesAsync(context, cancellationToken);
+
+            return context;
+        }
+        catch (Exception resetFailure)
+        {
+            // WHY: Ownership transfers only after a complete reset; cleanup cannot use the canceled token.
+            try
+            {
+                await context.DisposeAsync();
+            }
+            catch (Exception cleanupFailure)
+            {
+                throw new AggregateException(
+                    "Ordering fixture reset and context cleanup both failed.",
+                    resetFailure,
+                    cleanupFailure);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Removes restrictive self references before provider-portable fixture cleanup.</summary>
     private static Task<int> UnlinkAsync<TScope, THierarchy>(
-        OrderingLockContext context
+        OrderingLockContext context,
+        CancellationToken cancellationToken
     )
         where TScope : notnull => context
         .Set<OrderingLockNode<TScope, THierarchy>>()
         .Where(node => node.ParentId != null)
-        .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.ParentId, (int?)null), CancellationToken.None);
+        .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.ParentId, (int?)null), cancellationToken);
 
     /// <summary>Creates another independently tracked context with a test-owned command observer.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="engine">The fixture's initialized relational engine.</param>
     /// <param name="interceptors">Optional observers attached only to the returned context.</param>
     /// <returns>A context owned by the caller.</returns>
     public async Task<OrderingLockContext> CreateContextAsync(
         string engine,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
-        await using var source = _databases[engine].CreateContext();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await using var source = _databases[engine]
+            .CreateContext();
+
         var connection = source.Database.GetConnectionString()!;
         var options = new DbContextOptionsBuilder<OrderingLockContext>().ConfigureTestWarnings();
 
@@ -108,15 +171,6 @@ public sealed class OrderingLockFixture : IAsyncLifetime
         options.AddInterceptors(interceptors);
 
         return new OrderingLockContext(options.Options);
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        foreach (var database in _databases.Values)
-        {
-            await database.DisposeAsync();
-        }
     }
 }
 
@@ -171,13 +225,16 @@ public sealed class OrderingLockContext : NestedSetDbContext
         node
             .Property(row => row.Id)
             .ValueGeneratedNever();
+
         node
             .Property(row => row.Name)
             .HasMaxLength(64);
+
         ConfigureScope(
             node
                 .Property(row => row.Scope)
                 .IsRequired());
+
         node.HasNestedSet(builder => builder
             .HasTreeId(row => row.TreeId)
             .HasScope(row => row.Scope)
@@ -234,6 +291,12 @@ internal sealed class OrderingLockAnchor<TScope>
 internal sealed class OrderingLockNode<TScope, THierarchy> : IScopedNestedSetNode<int, Guid, TScope>
     where TScope : notnull
 {
+    /// <summary>Gets or sets the optional direct parent.</summary>
+    public int? ParentId { get; set; }
+
+    /// <summary>Gets or sets the domain value determining sibling order.</summary>
+    public string Name { get; set; } = "";
+
     /// <summary>Gets or sets the stable tree identity.</summary>
     public Guid TreeId { get; set; }
 
@@ -242,12 +305,6 @@ internal sealed class OrderingLockNode<TScope, THierarchy> : IScopedNestedSetNod
 
     /// <summary>Gets or sets the persisted scope value, which may be a database-equal alias.</summary>
     public required TScope Scope { get; set; }
-
-    /// <summary>Gets or sets the optional direct parent.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the domain value determining sibling order.</summary>
-    public string Name { get; set; } = "";
 
     /// <inheritdoc />
     public long Left { get; set; }

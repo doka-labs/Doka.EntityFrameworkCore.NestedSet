@@ -7,19 +7,47 @@ internal static partial class NestedSetInsertionTracking
     /// <summary>Owns exact installed identity snapshots for one introduced root or dependent.</summary>
     internal sealed class Identity
     {
-        private readonly EntityEntry _entry;
-        private readonly IUpdateEntry _update;
-        private readonly object _manager;
-        private readonly IKey[] _keys;
-        private readonly object?[][] _values;
         private readonly object?[][] _clrValues;
-        private readonly IForeignKey[] _foreignKeys;
+        private readonly EntityEntry _entry;
         private readonly object?[]?[] _foreignKeyValues;
-        private List<ICollection<IUpdateEntry>>? _buckets;
+        private readonly IForeignKey[] _foreignKeys;
+        private readonly IKey[] _keys;
+        private readonly object _manager;
+        private readonly object?[][] _values;
         private List<(IKey Key, object?[] Values)>? _additionalKeys;
+        private List<ICollection<IUpdateEntry>>? _buckets;
+
+        /// <summary>Captures only the introduced entry and its exact native identity maps.</summary>
+        internal Identity(
+            EntityEntry entry
+        )
+        {
+            _entry = entry;
+            UpdateEntry = EntryIdentity(entry);
+            _manager = StateManager(UpdateEntry);
+            _keys = s_keys.GetValue(
+                entry.Metadata,
+                static metadata => metadata
+                    .GetKeys()
+                    .ToArray());
+
+            _values = new object?[_keys.Length][];
+            _clrValues = new object?[_keys.Length][];
+            _foreignKeys = s_foreignKeys.GetValue(
+                entry.Metadata,
+                static metadata => metadata
+                    .GetForeignKeys()
+                    .ToArray());
+
+            _foreignKeyValues = _foreignKeys.Length == 0
+                ? []
+                : new object?[_foreignKeys.Length][];
+
+            Refresh();
+        }
 
         /// <summary>Gets the exact active native entry for one bounded insertion wave.</summary>
-        internal IUpdateEntry UpdateEntry => _update;
+        internal IUpdateEntry UpdateEntry { get; }
 
         /// <summary>Gets whether this entry can participate in an external principal collection baseline.</summary>
         internal bool HasCollectionRelationships =>
@@ -37,36 +65,9 @@ internal static partial class NestedSetInsertionTracking
             {
                 if (_foreignKeyValues[index] is { } values)
                 {
-                    saved.Add(_update, _entry.Entity, _foreignKeys[index], values);
+                    saved.Add(UpdateEntry, _entry.Entity, _foreignKeys[index], values);
                 }
             }
-        }
-
-        /// <summary>Captures only the introduced entry and its exact native identity maps.</summary>
-        internal Identity(
-            EntityEntry entry
-        )
-        {
-            _entry = entry;
-            _update = EntryIdentity(entry);
-            _manager = StateManager(_update);
-            _keys = s_keys.GetValue(
-                entry.Metadata,
-                static metadata => metadata
-                    .GetKeys()
-                    .ToArray());
-
-            _values = new object?[_keys.Length][];
-            _clrValues = new object?[_keys.Length][];
-            _foreignKeys = s_foreignKeys.GetValue(
-                entry.Metadata,
-                static metadata => metadata
-                    .GetForeignKeys()
-                    .ToArray());
-
-            _foreignKeyValues = _foreignKeys.Length == 0 ? [] : new object?[_foreignKeys.Length][];
-
-            Refresh();
         }
 
         /// <summary>Captures generated identities before acceptance or callbacks can mutate CLR values.</summary>
@@ -100,7 +101,7 @@ internal static partial class NestedSetInsertionTracking
                 for (var propertyIndex = 0; propertyIndex < values.Length; propertyIndex++)
                 {
                     var property = key.Properties[propertyIndex];
-                    var current = _update.GetCurrentValue(property);
+                    var current = UpdateEntry.GetCurrentValue(property);
                     var snapshot = NestedSetStructuralValue.Snapshot(property, current);
                     values[propertyIndex] = snapshot;
                     clrValues[propertyIndex] = property.IsShadowProperty()
@@ -124,7 +125,7 @@ internal static partial class NestedSetInsertionTracking
 
                     if (_values[index] is { } previous)
                     {
-                        if (!ReferenceEquals(operations.Find(map, values), _update))
+                        if (!ReferenceEquals(operations.Find(map, values), UpdateEntry))
                         {
                             // WHY: A later Tracking callback may change an earlier root before the final
                             // capture. That current representation never became an installed identity;
@@ -134,7 +135,7 @@ internal static partial class NestedSetInsertionTracking
 
                         if (!SameKey(key, previous, values))
                         {
-                            operations.Remove(map, previous, _update);
+                            operations.Remove(map, previous, UpdateEntry);
                         }
                     }
 
@@ -143,8 +144,8 @@ internal static partial class NestedSetInsertionTracking
                         // WHY: EF installs live mutable key objects into a hash map. A callback can mutate their
                         // stored hash without replacing the key. Install the comparer snapshot before callbacks;
                         // native operations still use the exact entry and preserve unrelated tracked identities.
-                        operations.RemoveCurrent(map, _update);
-                        operations.Add(map, values, _update);
+                        operations.RemoveCurrent(map, UpdateEntry);
+                        operations.Add(map, values, UpdateEntry);
                     }
                 }
 
@@ -169,7 +170,7 @@ internal static partial class NestedSetInsertionTracking
             {
                 var reader = shape.Readers[index];
 
-                if (!reader.MatchesCurrent(_update, values[index])
+                if (!reader.MatchesCurrent(UpdateEntry, values[index])
                     || !reader.MatchesClr(_entry.Entity, clrValues[index]))
                 {
                     return false;
@@ -198,6 +199,7 @@ internal static partial class NestedSetInsertionTracking
                 try
                 {
                     CaptureAdditionalKey(key, _values[keyIndex], relationship: false);
+
                     // WHY: EF can install an intermediate key through detection, then a callback can edit CLR
                     // again before throwing. Its relationship snapshot identifies that exact installed slot;
                     // the original staged and final CLR values alone cannot find it.
@@ -233,13 +235,13 @@ internal static partial class NestedSetInsertionTracking
                         {
                             var expected = _values[keyIndex][propertyIndex];
 
-                            if (!reader.MatchesCurrent(_update, expected))
+                            if (!reader.MatchesCurrent(UpdateEntry, expected))
                             {
                                 // WHY: A shadow owned FK can alias its principal's mutable key. Native fixup
                                 // must see the installed identity before detachment, without flagging a new
                                 // application key edit or introducing an artificial entity-state transition.
                                 Contract.SetProperty(
-                                    _update,
+                                    UpdateEntry,
                                     property,
                                     NestedSetStructuralValue.Snapshot(property, expected));
                             }
@@ -289,8 +291,8 @@ internal static partial class NestedSetInsertionTracking
             {
                 var reader = shape.Readers[index];
                 var matches = relationship
-                    ? reader.MatchesRelationship(_update, staged[index])
-                    : reader.MatchesCurrent(_update, staged[index]);
+                    ? reader.MatchesRelationship(UpdateEntry, staged[index])
+                    : reader.MatchesCurrent(UpdateEntry, staged[index]);
 
                 if (!matches)
                 {
@@ -323,7 +325,7 @@ internal static partial class NestedSetInsertionTracking
                     Contract
                         .Map(map.GetType())
                         .Find(map, values),
-                    _update))
+                    UpdateEntry))
             {
                 (_additionalKeys ??= []).Add((key, values));
             }
@@ -333,7 +335,9 @@ internal static partial class NestedSetInsertionTracking
         private object? ReadKeyValue(
             IProperty property,
             bool relationship
-        ) => relationship ? _update.GetRelationshipSnapshotValue(property) : _update.GetCurrentValue(property);
+        ) => relationship
+            ? UpdateEntry.GetRelationshipSnapshotValue(property)
+            : UpdateEntry.GetCurrentValue(property);
 
         /// <summary>Checks a structural key against its exact installed pre-callback representation.</summary>
         /// <param name="property">The configured node key whose temporary or generated value belongs to EF.</param>
@@ -369,7 +373,7 @@ internal static partial class NestedSetInsertionTracking
                             ? _clrValues[keyIndex][propertyIndex]
                             : expected;
 
-                        return reader.MatchesCurrent(_update, expected)
+                        return reader.MatchesCurrent(UpdateEntry, expected)
                             && reader.MatchesClr(_entry.Entity, expectedClr);
                     }
                 }
@@ -410,7 +414,7 @@ internal static partial class NestedSetInsertionTracking
                         {
                             Contract
                                 .Map(map.GetType())
-                                .Remove(map, _values[index], _update);
+                                .Remove(map, _values[index], UpdateEntry);
                         }
                     }
                     catch (Exception error)
@@ -428,7 +432,7 @@ internal static partial class NestedSetInsertionTracking
                             // WHY: A composite FK can share the principal's mutable CLR object. EF's ordinary
                             // key-based removal cannot find a changed hash bucket; its captured exact collection
                             // can remove this dependent directly without scanning or clearing unrelated entries.
-                            bucket.Remove(_update);
+                            bucket.Remove(UpdateEntry);
                         }
                         catch (Exception error)
                         {
@@ -449,7 +453,7 @@ internal static partial class NestedSetInsertionTracking
                             {
                                 Contract
                                     .Map(map.GetType())
-                                    .Remove(map, values, _update);
+                                    .Remove(map, values, UpdateEntry);
                             }
                         }
                         catch (Exception error)
@@ -487,7 +491,9 @@ internal static partial class NestedSetInsertionTracking
             }
 
             var primaryKey = _entry.Metadata.FindPrimaryKey();
-            var map = primaryKey is null ? null : Contract.FindMap(_manager, primaryKey);
+            var map = primaryKey is null
+                ? null
+                : Contract.FindMap(_manager, primaryKey);
 
             if (map is null)
             {
@@ -523,16 +529,16 @@ internal static partial class NestedSetInsertionTracking
                     var property = foreignKey.Properties[propertyIndex];
                     var reader = s_readers.GetValue(property, CreateReader);
 
-                    if (!reader.MatchesCurrent(_update, values[propertyIndex]))
+                    if (!reader.MatchesCurrent(UpdateEntry, values[propertyIndex]))
                     {
                         // WHY: EF's native dependent lookup accepts object vectors. Only initial or changed
                         // scalar FK components cross that boundary; unchanged components reuse their boxes.
                         values[propertyIndex] = NestedSetStructuralValue.Snapshot(
                             property,
-                            _update.GetCurrentValue(property));
+                            UpdateEntry.GetCurrentValue(property));
                     }
 
-                    absent |= values[propertyIndex] is null || _update.IsConceptualNull(property);
+                    absent |= values[propertyIndex] is null || UpdateEntry.IsConceptualNull(property);
                 }
 
                 if (absent)
@@ -552,7 +558,7 @@ internal static partial class NestedSetInsertionTracking
                 var entries = Contract.Dependents(dependentMap, values);
 
                 if (entries is ICollection<IUpdateEntry> bucket
-                    && bucket.Contains(_update))
+                    && bucket.Contains(UpdateEntry))
                 {
                     // WHY: Most roots have no dependent bucket; allocate storage only for an actual membership.
                     var buckets = _buckets ??= [];

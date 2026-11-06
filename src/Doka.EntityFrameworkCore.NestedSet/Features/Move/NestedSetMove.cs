@@ -11,8 +11,8 @@ internal sealed class NestedSetMove<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
     private readonly NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope> _placement;
+    private readonly NestedSetStore<TEntity, TKey, TTreeId, TScope> _store;
 
     /// <summary>Connects the algorithm to the exact-tree store protected by its caller.</summary>
     /// <param name="store">The shared tree-bound queries and structural writes.</param>

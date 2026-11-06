@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup Label="Runnable samples">
     <OutputType>Exe</OutputType>
@@ -9,15 +9,15 @@
   </PropertyGroup>
 
   <ItemGroup Label="Provider adapters and design tooling">
-    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj"/>
-    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj"/>
-    <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj" />
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Label="Shared console and database setup">
     <!-- WHY: Like the Doka examples, each executable keeps its domain code independent and links only common setup. -->
-    <Compile Include="$(MSBuildThisFileDirectory)Shared/*.cs" Link="Shared/%(Filename)%(Extension)"/>
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/*.cs" Link="Shared/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

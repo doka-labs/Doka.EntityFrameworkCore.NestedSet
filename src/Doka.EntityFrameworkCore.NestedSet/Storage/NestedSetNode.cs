@@ -41,7 +41,8 @@ internal readonly record struct NestedSetNode<TKey>(
         var optionalParent = NestedSetParent<TKey>.Property(parameter, parent);
 
         var body = Expression.New(
-            typeof(NestedSetNode<TKey>).GetConstructors()[0],
+            typeof(NestedSetNode<TKey>)
+                .GetConstructors()[0],
             NestedSetExpressions.Property(parameter, key.Name, typeof(TKey)),
             NestedSetExpressions.Property(parameter, left, typeof(long)),
             NestedSetExpressions.Property(parameter, right, typeof(long)),
@@ -111,31 +112,6 @@ internal readonly record struct NestedSetParent<TKey>(
         TParent parent
     ) => ParentProjection<TParent>.Create(parent);
 
-    /// <summary>Retains one typed, allocation-free projection for each exact nullable model shape.</summary>
-    private static class ParentProjection<TParent>
-    {
-        /// <summary>Gets the context-free factory over the exact nullable model value.</summary>
-        internal static readonly Func<TParent, NestedSetParent<TKey>> Create = CreateFactory();
-
-        /// <summary>Compiles reference or nullable-value presence without transporting a key through object.</summary>
-        private static Func<TParent, NestedSetParent<TKey>> CreateFactory()
-        {
-            var parent = Expression.Parameter(typeof(TParent), "parent");
-            var present = Presence(parent);
-            var body = Expression.New(
-                typeof(NestedSetParent<TKey>).GetConstructors()[0],
-                present,
-                Expression.Condition(
-                    present,
-                    Expression.Convert(parent, typeof(TKey)),
-                    Expression.Default(typeof(TKey))));
-
-            return Expression
-                .Lambda<Func<TParent, NestedSetParent<TKey>>>(body, parent)
-                .Compile();
-        }
-    }
-
     /// <summary>Tests nullable storage without requiring a custom value key to implement operator !=.</summary>
     internal static Expression Presence(
         Expression access
@@ -156,7 +132,8 @@ internal readonly record struct NestedSetParent<TKey>(
         var parent = Expression.Variable(parentType, "parent");
         var present = Presence(parent);
         var result = Expression.New(
-            typeof(NestedSetParent<TKey>).GetConstructors()[0],
+            typeof(NestedSetParent<TKey>)
+                .GetConstructors()[0],
             present,
             Expression.Condition(present, Expression.Convert(parent, keyType), Expression.Default(keyType)));
 
@@ -170,6 +147,32 @@ internal readonly record struct NestedSetParent<TKey>(
         return Expression
             .Lambda<Func<PropertyValues, IProperty, NestedSetParent<TKey>>>(body, values, property)
             .Compile();
+    }
+
+    /// <summary>Retains one typed, allocation-free projection for each exact nullable model shape.</summary>
+    private static class ParentProjection<TParent>
+    {
+        /// <summary>Gets the context-free factory over the exact nullable model value.</summary>
+        internal static readonly Func<TParent, NestedSetParent<TKey>> Create = CreateFactory();
+
+        /// <summary>Compiles reference or nullable-value presence without transporting a key through object.</summary>
+        private static Func<TParent, NestedSetParent<TKey>> CreateFactory()
+        {
+            var parent = Expression.Parameter(typeof(TParent), "parent");
+            var present = Presence(parent);
+            var body = Expression.New(
+                typeof(NestedSetParent<TKey>)
+                    .GetConstructors()[0],
+                present,
+                Expression.Condition(
+                    present,
+                    Expression.Convert(parent, typeof(TKey)),
+                    Expression.Default(typeof(TKey))));
+
+            return Expression
+                .Lambda<Func<TParent, NestedSetParent<TKey>>>(body, parent)
+                .Compile();
+        }
     }
 }
 

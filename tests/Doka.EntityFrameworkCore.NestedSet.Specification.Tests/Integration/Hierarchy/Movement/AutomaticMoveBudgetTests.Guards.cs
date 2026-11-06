@@ -18,12 +18,18 @@ public abstract partial class AutomaticMoveBudgetTests
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
 
         if (scenario is "source-bounds" or "anchor-bounds")
         {
-            var corruptedKey = scenario == "source-bounds" ? 3 : 2;
+            var corruptedKey = scenario == "source-bounds"
+                ? 3
+                : 2;
+
             await setup
                 .Set<OrderingNode>()
                 .Where(node => node.Id == corruptedKey)
@@ -32,14 +38,22 @@ public abstract partial class AutomaticMoveBudgetTests
                     CancellationToken.None);
         }
 
-        var before = await SnapshotAsync(setup);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
 
-        var source = scenario == "missing-source" ? 999 : 3;
+        var source = scenario == "missing-source"
+            ? 999
+            : 3;
+
         var target = scenario switch
         {
             "missing-anchor" => 999,
@@ -52,7 +66,11 @@ public abstract partial class AutomaticMoveBudgetTests
         var error = await Record.ExceptionAsync(() => tree.MoveToAsync(source, target, CancellationToken.None));
 
         // Assert
-        Assert.Equal(expected, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            expected,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         if (expected == NestedSetErrorCode.NodeNotFound)
         {
             // WHY: An absent public anchor cannot identify a tree to lock; resolution rejects it before mutation.
@@ -68,7 +86,8 @@ public abstract partial class AutomaticMoveBudgetTests
         Assert.DoesNotContain(
             LockedHierarchyReads(probe, "Strict", context),
             sql => sql.Contains("LAG(", StringComparison.OrdinalIgnoreCase));
+
         Assert.DoesNotContain(probe.Commands, IsHierarchyWrite);
-        Assert.Equal(before, await SnapshotAsync(setup));
+        Assert.Equal(before, await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken));
     }
 }

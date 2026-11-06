@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Reads full cached lane lengths and slots without initializing or repairing them.</summary>
-    private static ComplexCompositionNativeState CaptureComplexCompositionNative(ComplexCallbackGraph graph)
+    private static ComplexCompositionNativeState CaptureComplexCompositionNative(
+        ComplexCallbackGraph graph
+    )
     {
         var owners = new List<ComplexCompositionOwnerState>();
         var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
@@ -30,16 +32,33 @@ public abstract partial class SaveChangesTests
             return;
         }
 
-        var leaves = type.GetFlattenedProperties().OrderBy(property => property.Name, StringComparer.Ordinal)
+        var leaves = type
+            .GetFlattenedProperties()
+            .OrderBy(property => property.Name, StringComparer.Ordinal)
             .Select(property => ComplexCompositionNativeAccess.Property(native, property))
-            .Select(property => new ComplexPeerLeafState(property.Metadata.Name, property.CurrentValue,
-                property.OriginalValue, property.IsModified)).ToArray();
+            .Select(property => new ComplexPeerLeafState(
+                property.Metadata.Name,
+                property.CurrentValue,
+                property.OriginalValue,
+                property.IsModified))
+            .ToArray();
 
-        var properties = ComplexCompositionCollections(type).ToArray();
-        var lanes = properties.Select(property => ComplexCompositionNativeAccess.Lane(native, property)).ToArray();
-        owners.Add(new ComplexCompositionOwnerState(path, native, ComplexCompositionNativeAccess.State(native),
-            ComplexCompositionNativeAccess.Ordinal(native, original: false),
-            ComplexCompositionNativeAccess.Ordinal(native, original: true), leaves, lanes));
+        var properties = ComplexCompositionCollections(type)
+            .ToArray();
+
+        var lanes = properties
+            .Select(property => ComplexCompositionNativeAccess.Lane(native, property))
+            .ToArray();
+
+        owners.Add(
+            new ComplexCompositionOwnerState(
+                path,
+                native,
+                ComplexCompositionNativeAccess.State(native),
+                ComplexCompositionNativeAccess.Ordinal(native, original: false),
+                ComplexCompositionNativeAccess.Ordinal(native, original: true),
+                leaves,
+                lanes));
 
         // WHY: Cached slots may exceed CLR counts after staging. Read every slot at its physical ordinal,
         // including nulls, so a trailing hole cannot disappear from the recovery oracle.
@@ -52,7 +71,10 @@ public abstract partial class SaveChangesTests
             CaptureComplexCompositionChildren(lane.Current, "current");
             CaptureComplexCompositionChildren(lane.Original, "original");
 
-            void CaptureComplexCompositionChildren(object?[]? slots, string role)
+            void CaptureComplexCompositionChildren(
+                object?[]? slots,
+                string role
+            )
             {
                 if (slots is null)
                 {
@@ -66,9 +88,19 @@ public abstract partial class SaveChangesTests
                 {
                     if (slots[ordinal] is { } child)
                     {
-                        CaptureComplexCompositionOwner(child, property.ComplexType,
-                            path + "." + property.Name + "." + role + "["
-                            + ordinal.ToString(CultureInfo.InvariantCulture) + "]", owners, seen);
+                        CaptureComplexCompositionOwner(
+                            child,
+                            property.ComplexType,
+                            path
+                            + "."
+                            + property.Name
+                            + "."
+                            + role
+                            + "["
+                            + ordinal.ToString(CultureInfo.InvariantCulture)
+                            + "]",
+                            owners,
+                            seen);
                     }
                 }
             }
@@ -76,7 +108,9 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Includes collections flattened through reference complex properties under one native owner.</summary>
-    private static IEnumerable<IComplexProperty> ComplexCompositionCollections(ITypeBase type)
+    private static IEnumerable<IComplexProperty> ComplexCompositionCollections(
+        ITypeBase type
+    )
     {
         foreach (var property in type.GetComplexProperties())
         {
@@ -126,14 +160,18 @@ public abstract partial class SaveChangesTests
                 Assert.Equal(expected.Lanes[lane].Modified, actual.Lanes[lane].Modified);
                 AssertComplexCompositionSlots(expected.Lanes[lane].Current, actual.Lanes[lane].Current);
                 AssertComplexCompositionSlots(expected.Lanes[lane].Original, actual.Lanes[lane].Original);
-                AssertComplexCompositionSlots(expected.Lanes[lane].OriginalValues,
+                AssertComplexCompositionSlots(
+                    expected.Lanes[lane].OriginalValues,
                     actual.Lanes[lane].OriginalValues);
             }
         }
     }
 
     /// <summary>Distinguishes absent lanes from empty lanes and detects changed lengths or introduced holes.</summary>
-    private static void AssertComplexCompositionSlots(object?[]? before, object?[]? after)
+    private static void AssertComplexCompositionSlots(
+        object?[]? before,
+        object?[]? after
+    )
     {
         Assert.Equal(before?.Length, after?.Length);
 
@@ -158,73 +196,132 @@ public abstract partial class SaveChangesTests
 
     /// <summary>Retains one EF native identity with its scalar and collection snapshots.</summary>
     private sealed record ComplexCompositionOwnerState(
-        string Path, object Native, EntityState State, int? Ordinal, int? OriginalOrdinal,
-        ComplexPeerLeafState[] Leaves, ComplexCompositionLaneState[] Lanes);
+        string Path,
+        object Native,
+        EntityState State,
+        int? Ordinal,
+        int? OriginalOrdinal,
+        ComplexPeerLeafState[] Leaves,
+        ComplexCompositionLaneState[] Lanes
+    );
 
     /// <summary>Copies physical lanes and original collection members, including vacant native slots.</summary>
     private sealed record ComplexCompositionLaneState(
-        string Name, bool Modified, object?[]? Current, object?[]? Original, object?[]? OriginalValues);
+        string Name,
+        bool Modified,
+        object?[]? Current,
+        object?[]? Original,
+        object?[]? OriginalValues
+    );
 
     /// <summary>Observes EF's cached lanes independently of the production journal's access delegates.</summary>
     private static class ComplexCompositionNativeAccess
     {
         private static readonly Type s_nativeBase = typeof(IUpdateEntry).Assembly.GetType(
-            "Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntryBase", throwOnError: true)!;
+            "Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntryBase",
+            throwOnError: true)!;
 
         private static readonly Type s_nativeComplex = typeof(IUpdateEntry).Assembly.GetType(
-            "Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalComplexEntry", throwOnError: true)!;
+            "Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalComplexEntry",
+            throwOnError: true)!;
 
-        private static readonly Type s_infrastructure = typeof(MemberEntry).GetInterfaces().Single(type =>
-            type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IInfrastructure<>)
-            && type.GetGenericArguments()[0].Name == "IInternalEntry");
+        private static readonly Type s_infrastructure = typeof(MemberEntry)
+            .GetInterfaces()
+            .Single(type =>
+                type.IsGenericType
+                && type.GetGenericTypeDefinition() == typeof(IInfrastructure<>)
+                && type
+                    .GetGenericArguments()[0].Name
+                == "IInternalEntry");
 
-        private static readonly FieldInfo s_lanes = s_nativeBase.GetField("_complexCollectionEntries",
+        private static readonly FieldInfo s_lanes = s_nativeBase.GetField(
+            "_complexCollectionEntries",
             BindingFlags.Instance | BindingFlags.NonPublic)!;
 
         private static readonly ConstructorInfo s_property = typeof(PropertyEntry).GetConstructor(
-            [s_infrastructure.GetGenericArguments()[0], typeof(IProperty)])!;
+        [
+            s_infrastructure
+                .GetGenericArguments()[0],
+            typeof(IProperty),
+        ])!;
 
-        private static readonly MethodInfo s_original = s_nativeBase.GetMethods().Single(method =>
-            method.Name == "GetOriginalValue" && !method.IsGenericMethod
-            && method.GetParameters() is [{ ParameterType: var parameter }] && parameter == typeof(IPropertyBase));
+        private static readonly MethodInfo s_original = s_nativeBase
+            .GetMethods()
+            .Single(method =>
+                method.Name == "GetOriginalValue"
+                && !method.IsGenericMethod
+                && method.GetParameters() is [{ ParameterType: var parameter }]
+                && parameter == typeof(IPropertyBase));
 
-        private static readonly MethodInfo s_modified = s_nativeBase.GetMethod("IsModified",
+        private static readonly MethodInfo s_modified = s_nativeBase.GetMethod(
+            "IsModified",
             [typeof(IComplexProperty)])!;
 
         /// <summary>Reads the exact invariant infrastructure interface of EF's member wrapper.</summary>
-        internal static object Instance(MemberEntry member)
+        internal static object Instance(
+            MemberEntry member
+        )
             => s_infrastructure.GetProperty("Instance")!.GetValue(member)!;
 
         /// <summary>Wraps a retained native identity without resolving it through a mutable CLR ordinal.</summary>
-        internal static PropertyEntry Property(object native, IProperty property)
+        internal static PropertyEntry Property(
+            object native,
+            IProperty property
+        )
             => (PropertyEntry)s_property.Invoke([native, property]);
 
         /// <summary>Reads actual native state without invoking public recursive state setters.</summary>
-        internal static EntityState State(object native)
+        internal static EntityState State(
+            object native
+        )
             => (EntityState)s_nativeBase.GetProperty("EntityState")!.GetValue(native)!;
 
         /// <summary>Reads physical element ordinals, distinguishing the entity owner from complex elements.</summary>
-        internal static int? Ordinal(object native, bool original)
+        internal static int? Ordinal(
+            object native,
+            bool original
+        )
             => s_nativeComplex.IsInstanceOfType(native)
-                ? (int)s_nativeComplex.GetProperty(original ? "OriginalOrdinal" : "Ordinal")!.GetValue(native)!
+                ? (int)s_nativeComplex.GetProperty(
+                    original
+                        ? "OriginalOrdinal"
+                        : "Ordinal")!.GetValue(native)!
                 : null;
 
         /// <summary>Copies the cached lists without EF's capacity initializer or filtered enumeration.</summary>
-        internal static ComplexCompositionLaneState Lane(object native, IComplexProperty property)
+        internal static ComplexCompositionLaneState Lane(
+            object native,
+            IComplexProperty property
+        )
         {
             var cache = (Array)s_lanes.GetValue(native)!;
             var lane = cache.GetValue(property.GetIndex())!;
-            var current = (IList?)lane.GetType().GetField("_entries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lane);
+            var current = (IList?)lane
+                .GetType()
+                .GetField(
+                    "_entries",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lane);
 
-            var original = (IList?)lane.GetType().GetField("_originalEntries",
-                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lane);
+            var original = (IList?)lane
+                .GetType()
+                .GetField(
+                    "_originalEntries",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lane);
 
             var values = (IEnumerable?)s_original.Invoke(native, [property]);
 
-            return new ComplexCompositionLaneState(property.Name, (bool)s_modified.Invoke(native, [property])!,
-                current?.Cast<object?>().ToArray(), original?.Cast<object?>().ToArray(),
-                values?.Cast<object?>().ToArray());
+            return new ComplexCompositionLaneState(
+                property.Name,
+                (bool)s_modified.Invoke(native, [property])!,
+                current
+                    ?.Cast<object?>()
+                    .ToArray(),
+                original
+                    ?.Cast<object?>()
+                    .ToArray(),
+                values
+                    ?.Cast<object?>()
+                    .ToArray());
         }
     }
 }

@@ -1,6 +1,5 @@
 using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
@@ -29,12 +28,13 @@ public sealed partial class SignalReportConstructionTests
         var compilations = new List<string>();
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary)
-            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting], LogLevel.Debug);
+            .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);
 
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var (first, second) = ParameterRequests(nearest);
 
@@ -43,6 +43,7 @@ public sealed partial class SignalReportConstructionTests
         _ = SignalReportBuilder
             .Build(context, first)
             .ToQueryString();
+
         compilations.Clear();
 
         // Act

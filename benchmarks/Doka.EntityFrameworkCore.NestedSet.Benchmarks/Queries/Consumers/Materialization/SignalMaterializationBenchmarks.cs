@@ -8,18 +8,21 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 [ThreadingDiagnoser]
 public class SignalMaterializationBenchmarks
 {
-    private SignalMaterializationData? _data;
     private SignalMaterializationRows<SignalCatalogRow>? _catalog;
-    private SignalMaterializationRows<SignalReportTotal>? _totals;
-    private SignalReportCell[]? _result;
     private long _completed;
+    private SignalMaterializationData? _data;
+    private SignalReportCell[]? _result;
+    private SignalMaterializationRows<SignalReportTotal>? _totals;
 
     /// <summary>Gets or sets the complete selected anchor/SignalLab/source grain.</summary>
     [Params(24, 6144)]
     public int Cells { get; set; }
 
     /// <summary>Gets or sets whether zero, two, or all selected groups have persisted values.</summary>
-    [Params(SignalMaterializationDensity.Empty, SignalMaterializationDensity.Sparse, SignalMaterializationDensity.Dense)]
+    [Params(
+        SignalMaterializationDensity.Empty,
+        SignalMaterializationDensity.Sparse,
+        SignalMaterializationDensity.Dense)]
     public SignalMaterializationDensity Density { get; set; }
 
     /// <summary>Gets or sets whether each catalog and totals reader suspends on its first read.</summary>
@@ -32,7 +35,12 @@ public class SignalMaterializationBenchmarks
 
     /// <summary>Gets the latest complete result array, without retaining earlier invocation arrays.</summary>
     /// <remarks>The sample projection is internal; object exposes its actual array reference without copying.</remarks>
-    public object Result => _result ?? throw new InvalidOperationException("Materialize the prepared SignalLab grid first.");
+    public object Result =>
+        _result ?? throw new InvalidOperationException("Materialize the prepared SignalLab grid first.");
+
+    /// <summary>Rejects execution and verification before successful global preparation.</summary>
+    private SignalMaterializationData Data =>
+        _data ?? throw new InvalidOperationException("Prepare the materialization fixture first.");
 
     /// <summary>Prepares stable inputs and verifies a complete untimed operation before adaptive measurement.</summary>
     /// <returns>Completion after the independent full-cell and reader-counter setup controls pass.</returns>
@@ -117,7 +125,10 @@ public class SignalMaterializationBenchmarks
         int count
     )
     {
-        var expectedSuspensions = SuspendFirstRead ? _completed : 0;
+        var expectedSuspensions = SuspendFirstRead
+            ? _completed
+            : 0;
+
         BenchmarkFixture.Require(
             rows is not null
             && rows.Enumerations == _completed
@@ -127,8 +138,4 @@ public class SignalMaterializationBenchmarks
             && rows.Suspensions == expectedSuspensions,
             "Materialization reader acquisition, row, EOF, disposal, or suspension counts differ.");
     }
-
-    /// <summary>Rejects execution and verification before successful global preparation.</summary>
-    private SignalMaterializationData Data =>
-        _data ?? throw new InvalidOperationException("Prepare the materialization fixture first.");
 }

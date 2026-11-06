@@ -18,11 +18,16 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
     }
 
     /// <summary>Creates an isolated database with explicitly enabled runtime and design-time adapters.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="engine">The selected database engine.</param>
+    /// <param name="qualifySchema">Whether mappings use an explicit provider schema.</param>
     private Task<MigrationDatabase> CreateDatabaseAsync(
         string engine,
-        bool qualifySchema
+        bool qualifySchema,
+        CancellationToken cancellationToken
     ) => _fixture.CreateDatabaseAsync(
         engine,
+        cancellationToken: cancellationToken,
         options => SafeMigrationTestServices.ConfigureOptions(options, engine),
         SafeMigrationTestServices.ConfigureDesignServices,
         qualifySchema);
@@ -53,25 +58,36 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
         MigrationIndex[] indexes
     )
     {
-        Assert.Equal(engine == "PostgreSql" ? 8 : 7, indexes.Length);
-        Assert.Single(indexes, index => index.IsUnique && index.Columns.SequenceEqual(["tree_scope", "entry_id"]));
-        Assert.All(indexes, index => Assert.Equal(
-            engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
-            index.IsOrdinary));
-        string[] expected =
-            [
-                "entry_payload",
-                "tree_scope,entry_id",
-                "tree_scope,parent_entry",
-                "tree_scope,tree_id,left_bound",
-                "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
-                "tree_scope,tree_id,parent_entry,sibling_position",
-                "tree_scope,tree_id,right_bound",
-            ];
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? 8
+                : 7,
+            indexes.Length);
 
-        Assert.Equal(engine == "PostgreSql"
-            ? expected.Append("tree_scope,entry_id,parent_entry").Order(StringComparer.Ordinal)
-            : expected,
+        Assert.Single(indexes, index => index.IsUnique && index.Columns.SequenceEqual(["tree_scope", "entry_id"]));
+        Assert.All(
+            indexes,
+            index => Assert.Equal(
+                engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
+                index.IsOrdinary));
+
+        string[] expected =
+        [
+            "entry_payload",
+            "tree_scope,entry_id",
+            "tree_scope,parent_entry",
+            "tree_scope,tree_id,left_bound",
+            "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
+            "tree_scope,tree_id,parent_entry,sibling_position",
+            "tree_scope,tree_id,right_bound",
+        ];
+
+        Assert.Equal(
+            engine == "PostgreSql"
+                ? expected
+                    .Append("tree_scope,entry_id,parent_entry")
+                    .Order(StringComparer.Ordinal)
+                : expected,
             indexes
                 .Select(index => string.Join(",", index.Columns))
                 .Order(StringComparer.Ordinal));
@@ -95,7 +111,7 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
                 false,
                 false,
                 true,
-                false
+                false,
             ],
             order.Descending);
     }
@@ -166,23 +182,34 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal((engine == "PostgreSql"
-            ? expectedColumns.Append("tree_scope,entry_id,parent_entry")
-            : expectedColumns).Order(StringComparer.Ordinal), actualColumns);
-        Assert.All(operations, operation =>
-        {
-            var definition = ((EnsureIndexIntent)operation.Intent).Definition;
-            var columns = definition.Keys.Select(key => key.Column).ToArray();
-            var expectedFilter = engine == "PostgreSql"
-                ? columns.SequenceEqual(["tree_scope", "parent_entry"])
-                    ? "parent_entry IS NOT NULL"
-                    : columns.SequenceEqual(["tree_scope", "entry_id", "parent_entry"])
-                        ? "parent_entry IS NULL"
-                        : columns.Contains("tree_id", StringComparer.Ordinal) ? "tree_id IS NOT NULL" : null
-                : null;
+        Assert.Equal(
+            (engine == "PostgreSql"
+                ? expectedColumns.Append("tree_scope,entry_id,parent_entry")
+                : expectedColumns).Order(StringComparer.Ordinal),
+            actualColumns);
 
-            Assert.Equal(expectedFilter, definition.Filter);
-        });
+        Assert.All(
+            operations,
+            operation =>
+            {
+                var definition = ((EnsureIndexIntent)operation.Intent).Definition;
+                var columns = definition
+                    .Keys
+                    .Select(key => key.Column)
+                    .ToArray();
+
+                var expectedFilter = engine == "PostgreSql"
+                    ? columns.SequenceEqual(["tree_scope", "parent_entry"])
+                        ? "parent_entry IS NOT NULL"
+                        : columns.SequenceEqual(["tree_scope", "entry_id", "parent_entry"])
+                            ? "parent_entry IS NULL"
+                            : columns.Contains("tree_id", StringComparer.Ordinal)
+                                ? "tree_id IS NOT NULL"
+                                : null
+                    : null;
+
+                Assert.Equal(expectedFilter, definition.Filter);
+            });
     }
 
     /// <summary>Asserts checks, the scoped self-reference, and Int64 coordinate storage in the real catalog.</summary>
@@ -201,16 +228,19 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
             check => check.Name.Contains("LeftMin", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("left_bound>=1", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("RightAfterLeft", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("right_bound>left_bound", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("DepthMin", StringComparison.Ordinal)
                 && NormalizeSql(check.Expression)
                     .Contains("entry_depth>=0", StringComparison.Ordinal));
+
         Assert.Contains(
             checks,
             check => check.Name.Contains("PositionMin", StringComparison.Ordinal)
@@ -226,7 +256,10 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
                 .Replace('_', ' ')
                 .ToUpperInvariant() is "NO ACTION" or "RESTRICT");
 
-        var expectedInteger = engine == "Sqlite" ? "integer" : "bigint";
+        var expectedInteger = engine == "Sqlite"
+            ? "integer"
+            : "bigint";
+
         Assert.Equal(expectedInteger, columnTypes["left_bound"], ignoreCase: true);
         Assert.Equal(expectedInteger, columnTypes["right_bound"], ignoreCase: true);
         Assert.Equal(expectedInteger, columnTypes["sibling_position"], ignoreCase: true);
@@ -246,8 +279,15 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
         MigrationIndex[] indexes
     ) => indexes
         .Select(index =>
-            index.Name + ":" + index.IsUnique + ":" + index.IsOrdinary + ":" + string.Join(",", index.Columns)
-            + ":" + string.Join(",", index.Descending))
+            index.Name
+            + ":"
+            + index.IsUnique
+            + ":"
+            + index.IsOrdinary
+            + ":"
+            + string.Join(",", index.Columns)
+            + ":"
+            + string.Join(",", index.Descending))
         .Order(StringComparer.Ordinal)
         .ToArray();
 }

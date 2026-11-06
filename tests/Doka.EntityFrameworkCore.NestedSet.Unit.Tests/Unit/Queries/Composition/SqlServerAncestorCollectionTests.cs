@@ -46,14 +46,16 @@ public sealed class SqlServerAncestorCollectionTests
             .InTree(Guid.Empty);
 
         var pairs = includeSelf
-            ? tree.SelectAncestorsOrSelf(node => node.Id >= 2,
+            ? tree.SelectAncestorsOrSelf(
+                node => node.Id >= 2,
                 (source, owner, distance) => new NavigationPair
                 {
                     Source = source,
                     Owner = owner,
                     Distance = distance,
                 })
-            : tree.SelectAncestors(node => node.Id >= 2,
+            : tree.SelectAncestors(
+                node => node.Id >= 2,
                 (source, owner, distance) => new NavigationPair
                 {
                     Source = source,
@@ -86,14 +88,16 @@ public sealed class SqlServerAncestorCollectionTests
         bool indexed
     )
         => indexed
-            ? new AncestorIndexQueryContext(new DbContextOptionsBuilder<AncestorIndexQueryContext>(
-                    (DbContextOptions<AncestorIndexQueryContext>)options)
-                .UseInternalServiceProvider(services)
-                .Options)
-            : new CompositionNavigationContext(new DbContextOptionsBuilder<CompositionNavigationContext>(
-                    (DbContextOptions<CompositionNavigationContext>)options)
-                .UseInternalServiceProvider(services)
-                .Options);
+            ? new AncestorIndexQueryContext(
+                new DbContextOptionsBuilder<AncestorIndexQueryContext>(
+                        (DbContextOptions<AncestorIndexQueryContext>)options)
+                    .UseInternalServiceProvider(services)
+                    .Options)
+            : new CompositionNavigationContext(
+                new DbContextOptionsBuilder<CompositionNavigationContext>(
+                        (DbContextOptions<CompositionNavigationContext>)options)
+                    .UseInternalServiceProvider(services)
+                    .Options);
 
     /// <summary>Projects both actual aliases without materializing mapped principals or their dependents.</summary>
     private static IQueryable<NavigationDto> CollectionDtos(

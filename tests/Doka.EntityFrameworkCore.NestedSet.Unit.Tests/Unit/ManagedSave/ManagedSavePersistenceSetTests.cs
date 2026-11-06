@@ -20,15 +20,26 @@ public sealed class ManagedSavePersistenceSetTests
         var persisted = Record.Exception(scope.RequirePersisted);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(entries).Code);
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(entities).Code);
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(persisted).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(entries)
+                .Code);
+
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(entities)
+                .Code);
+
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(persisted)
+                .Code);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>The successful boundary publishes exactly the native identity and object already validated.</summary>
@@ -54,8 +65,10 @@ public sealed class ManagedSavePersistenceSetTests
         Assert.Same(entities, scope.PersistedEntities);
         Assert.Equal(EntityState.Added, entry.State);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A nested save starts unauthorized and restores the exact outer sets on disposal.</summary>
@@ -85,8 +98,11 @@ public sealed class ManagedSavePersistenceSetTests
         var restoredEntities = outer.PersistedEntities;
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(beforeInnerBoundary).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(beforeInnerBoundary)
+                .Code);
+
         Assert.NotSame(outerEntries, innerEntries);
         Assert.NotSame(outerEntities, innerEntities);
         Assert.Same(outerEntries, restoredEntries);
@@ -94,8 +110,10 @@ public sealed class ManagedSavePersistenceSetTests
         Assert.Empty(restoredEntries);
         Assert.Empty(restoredEntities);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Disposal keeps the authorization sets unavailable even after a successful native boundary.</summary>
@@ -116,8 +134,10 @@ public sealed class ManagedSavePersistenceSetTests
         Assert.IsType<ObjectDisposedException>(entries);
         Assert.IsType<ObjectDisposedException>(entities);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A missing planned write never publishes a partial native insertion set.</summary>
@@ -136,16 +156,27 @@ public sealed class ManagedSavePersistenceSetTests
         var entities = Record.Exception(() => scope.PersistedEntities);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(validation).Code);
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(entries).Code);
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(entities).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(validation)
+                .Code);
+
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(entries)
+                .Code);
+
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(entities)
+                .Code);
+
         Assert.Equal(EntityState.Added, entry.State);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Creates the existing hierarchy fixture with its real persistence guard and manual detection.</summary>

@@ -117,6 +117,7 @@ public sealed class BulkOriginalStructureTests
             node
                 .Property(value => value.NodeId)
                 .ValueGeneratedNever();
+
             node.HasNestedSet(value => value
                 .HasNodeKey(entity => entity.NodeId)
                 .HasBounds(entity => entity.Start, entity => entity.End)
@@ -129,12 +130,15 @@ public sealed class BulkOriginalStructureTests
             node
                 .Property(value => value.Start)
                 .HasSentinel(-1L);
+
             node
                 .Property(value => value.End)
                 .HasSentinel(-1L);
+
             node
                 .Property(value => value.Depth)
                 .HasSentinel(-1);
+
             node
                 .Property(value => value.Position)
                 .HasSentinel(-1L);

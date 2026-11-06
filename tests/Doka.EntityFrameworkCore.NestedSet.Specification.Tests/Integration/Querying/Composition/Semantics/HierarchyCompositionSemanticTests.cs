@@ -19,11 +19,19 @@ public abstract partial class HierarchyCompositionSemanticTests : ProviderTest
     private Task<CompositionContext> CreateContextAsync(
         Guid scope,
         CompositionCommandProbe probe,
+        CancellationToken cancellationToken,
         int? hidden = null,
         EnterpriseProbe? sql = null,
         int? chainNodes = null
     ) => CompositionTestData.CreateContextAsync(
-        _fixture, Engine, scope, probe, hidden: hidden, planProbe: sql, chainNodes: chainNodes);
+        _fixture,
+        Engine,
+        scope,
+        probe,
+        hidden: hidden,
+        planProbe: sql,
+        chainNodes: chainNodes,
+        cancellationToken: cancellationToken);
 
     /// <summary>Evaluates a path independently of the nested-set bounds used by the production query.</summary>
     private static IEnumerable<int> Ancestors(
@@ -49,5 +57,7 @@ public abstract partial class HierarchyCompositionSemanticTests : ProviderTest
         IReadOnlyDictionary<int, int?> parents,
         int upper,
         int lower
-    ) => Ancestors(parents, lower, includeSelf: true).TakeWhile(node => node != upper).Count();
+    ) => Ancestors(parents, lower, includeSelf: true)
+        .TakeWhile(node => node != upper)
+        .Count();
 }

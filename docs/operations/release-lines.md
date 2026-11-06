@@ -3,7 +3,7 @@
 NestedSet uses one release contract for independently maintained framework
 lines. [D-021](../decisions/D-021-release-lines-and-monotonic-publication.md)
 records the decision. This capability keeps the actual source on .NET/EF Core
-10 and package version `10.2.0`; it does not activate a branch or adopt .NET 11.
+10 and package version `10.3.0`; it does not activate a branch or adopt .NET 11.
 
 ## Current configuration
 
@@ -159,6 +159,16 @@ checks exact child ref, SHA, workflow and correlation, plus every actual
 successful `Qualification / ...` producer job derived from the CI caller and the
 shared quality workflow, including all test and sample cells. A green
 dispatcher or final wrapper with missing/skipped producers is insufficient.
+
+If the exact dispatched child initially returns an authenticated HTTP 404, the
+coordinator opens one five-minute recovery window from that first observation.
+It polls at 15-second intervals, counting subsequent request time and shortening
+the final pause to the remaining window. The earlier original execution deadline
+still wins. Successful reads do not reset the recovery window, but visible child
+execution may continue beyond it under the original deadline. Other HTTP,
+transport or malformed-response failures abort immediately. A recovered child
+must still pass every identity, success and producer check; no replacement run
+is dispatched.
 
 The retained Dependabot template preserves all four existing ecosystems:
 .NET SDK, Docker, NuGet and GitHub Actions. Rendered version-update targets

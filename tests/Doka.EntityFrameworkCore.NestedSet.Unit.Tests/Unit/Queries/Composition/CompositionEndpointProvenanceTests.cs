@@ -58,13 +58,15 @@ public sealed class CompositionEndpointProvenanceTests
         var source = shape switch
         {
             "nodes" => projected,
-            "pairs" => tree.SelectSubtrees(node => node.Id == 1,
+            "pairs" => tree.SelectSubtrees(
+                node => node.Id == 1,
                 (upper, lower, distance) => new CompositionGuardRow
                 {
                     Upper = upper,
                     Lower = lower,
                 }),
-            "join" => nodes.Join(payloads,
+            "join" => nodes.Join(
+                payloads,
                 node => node.Id,
                 payload => payload.Id,
                 (node, payload) => new CompositionGuardRow
@@ -75,9 +77,10 @@ public sealed class CompositionEndpointProvenanceTests
                 }),
             "concat" => projected.Concat(projected),
             "union" => projected.Union(projected),
-            "safe-modifiers" => Project(nodes
-                .AsTracking()
-                .TagWith("provenance")),
+            "safe-modifiers" => Project(
+                nodes
+                    .AsTracking()
+                    .TagWith("provenance")),
             "raw" => Project(raw),
             "same-values" => Project(raw.Where(node => node.Scope == 1 && node.TreeId == treeId)),
             "another-facade" => Project(other),
@@ -85,7 +88,8 @@ public sealed class CompositionEndpointProvenanceTests
             "mixed-union" => projected.Union(Project(other)),
             "mixed-intersect" => projected.Intersect(Project(other)),
             "mixed-except" => projected.Except(Project(other)),
-            "captured-inner" => payloads.SelectMany(payload => nodes,
+            "captured-inner" => payloads.SelectMany(
+                payload => nodes,
                 (payload, node) => new CompositionGuardRow
                 {
                     Upper = node,
@@ -93,7 +97,8 @@ public sealed class CompositionEndpointProvenanceTests
                     Payload = payload,
                 }),
             "ignore-filters" => Project(nodes.IgnoreQueryFilters()),
-            "payload-ignore-filters" => nodes.Join(payloads.IgnoreQueryFilters(),
+            "payload-ignore-filters" => nodes.Join(
+                payloads.IgnoreQueryFilters(),
                 node => node.Id,
                 payload => payload.Id,
                 (node, payload) => new CompositionGuardRow
@@ -103,10 +108,12 @@ public sealed class CompositionEndpointProvenanceTests
                     Payload = payload,
                 }),
             "unknown-modifier" => Project(nodes.IgnoreAutoIncludes()),
-            "default-if-empty" => Project(nodes
-                .DefaultIfEmpty()
-                .Select(node => node!)),
-            "optional-left" => payloads.LeftJoin(nodes,
+            "default-if-empty" => Project(
+                nodes
+                    .DefaultIfEmpty()
+                    .Select(node => node!)),
+            "optional-left" => payloads.LeftJoin(
+                nodes,
                 payload => payload.Id,
                 node => node.Id,
                 (payload, node) => new CompositionGuardRow
@@ -115,7 +122,8 @@ public sealed class CompositionEndpointProvenanceTests
                     Lower = node!,
                     Payload = payload,
                 }),
-            "optional-right" => nodes.RightJoin(payloads,
+            "optional-right" => nodes.RightJoin(
+                payloads,
                 node => node.Id,
                 payload => payload.Id,
                 (node, payload) => new CompositionGuardRow
@@ -130,7 +138,8 @@ public sealed class CompositionEndpointProvenanceTests
         var entityType = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
 
         // Act
-        var actual = NestedSetQueryEndpoint.Require(source,
+        var actual = NestedSetQueryEndpoint.Require(
+            source,
             row => row.Lower,
             entityType,
             BoundSource(nodes),
@@ -173,7 +182,8 @@ public sealed class CompositionEndpointProvenanceTests
         var uncertainQuery = Filter(tree, uncertain, operation);
 
         // Assert
-        Assert.Equal(removedRoots,
+        Assert.Equal(
+            removedRoots,
             EntityRootCounter.Count(uncertainQuery.Expression) - EntityRootCounter.Count(provenQuery.Expression));
 
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -232,7 +242,14 @@ public sealed class CompositionEndpointProvenanceTests
         var foreignScope = Guid.NewGuid();
         var treeId = Guid.NewGuid();
         var foreignTreeId = Guid.NewGuid();
-        await SeedAsync(context, scope, foreignScope, treeId, foreignTreeId);
+        await SeedAsync(
+            context,
+            scope,
+            foreignScope,
+            treeId,
+            foreignTreeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<CompositionNode>()
             .ForScope(scope)
@@ -263,7 +280,8 @@ public sealed class CompositionEndpointProvenanceTests
                 .Nodes,
             "mixed-concat" => tree.Nodes.Concat(otherScope),
             "ignore-filters" => raw.IgnoreQueryFilters(),
-            "payload-ignore-filters" => tree.Nodes.Join(raw.IgnoreQueryFilters(),
+            "payload-ignore-filters" => tree.Nodes.Join(
+                raw.IgnoreQueryFilters(),
                 node => new
                 {
                     node.Scope,
@@ -330,14 +348,17 @@ public sealed class CompositionEndpointProvenanceTests
         where TNode : class
         => operation switch
         {
-            "path" => tree.WherePathEdges(source,
+            "path" => tree.WherePathEdges(
+                source,
                 node => node,
                 node => node,
                 (row, parent, child) => true),
-            "any" => tree.WhereAnyAncestorOrSelf(source,
+            "any" => tree.WhereAnyAncestorOrSelf(
+                source,
                 node => node,
                 (row, owner) => true),
-            "nearest" => tree.WhereNearestAncestorOrSelf(source,
+            "nearest" => tree.WhereNearestAncestorOrSelf(
+                source,
                 node => node,
                 (row, owner) => true,
                 (row, owner) => true),
@@ -345,12 +366,19 @@ public sealed class CompositionEndpointProvenanceTests
         };
 
     /// <summary>Seeds matching keys in a foreign scope and a foreign tree alongside one hidden local node.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="scope">The primary scope populated by the fixture.</param>
+    /// <param name="foreignScope">A separate scope used to reject foreign provenance.</param>
+    /// <param name="treeId">The primary tree identity.</param>
+    /// <param name="foreignTreeId">A separate tree identity used to reject foreign provenance.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedAsync(
         CompositionContext context,
         Guid scope,
         Guid foreignScope,
         Guid treeId,
-        Guid foreignTreeId
+        Guid foreignTreeId,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Use the node ordinal to seed matching identities and bounds in both compared trees.
@@ -363,17 +391,20 @@ public sealed class CompositionEndpointProvenanceTests
                 Scope = scope,
                 Id = id,
                 TreeId = treeId,
-                ParentId = id == 1 ? null : id - 1,
+                ParentId = id == 1
+                    ? null
+                    : id - 1,
                 Left = id,
                 Right = 7 - id,
                 Depth = id - 1,
                 Visible = id != 2,
             };
 
-            await context.AddAsync(node, CancellationToken.None);
+            await context.AddAsync(node, cancellationToken);
         }
 
-        await context.AddRangeAsync([
+        await context.AddRangeAsync(
+            [
                 new CompositionNode
                 {
                     Scope = foreignScope,
@@ -391,9 +422,9 @@ public sealed class CompositionEndpointProvenanceTests
                     Right = 2,
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

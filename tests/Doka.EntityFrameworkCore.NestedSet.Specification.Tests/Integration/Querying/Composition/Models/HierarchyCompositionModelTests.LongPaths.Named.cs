@@ -22,8 +22,12 @@ public abstract partial class HierarchyCompositionModelTests
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         var materialized = 0;
-        await using var context = await _fixture.CreateContextAsync<CompositionBagContext>(Engine,
-            static options => new CompositionBagContext(options), probe, TestMaterializationObserver.Instance);
+        await using var context = await _fixture.CreateContextAsync<CompositionBagContext>(
+            Engine,
+            static options => new CompositionBagContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe,
+            TestMaterializationObserver.Instance);
 
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
 
@@ -36,16 +40,20 @@ public abstract partial class HierarchyCompositionModelTests
                 // WHY: The other named hierarchy has identical keys and bounds but a complete path;
                 // only the explicitly selected mapping may supply the missing Parent witness.
                 var interrupted = missingParent && name == CompositionBagContext.First && depth == 3;
-                await nodes.AddAsync(new Dictionary<string, object?>
-                {
-                    [NestedSetPropertyRoles.NodeKey] = first + depth,
-                    [NestedSetPropertyRoles.TreeId] = tree,
-                    [NestedSetPropertyRoles.Parent] = depth == 0 || interrupted ? null : first + depth - 1,
-                    [NestedSetPropertyRoles.Left] = (long)depth + 1,
-                    [NestedSetPropertyRoles.Right] = 12L - depth,
-                    [NestedSetPropertyRoles.Depth] = depth,
-                    [NestedSetPropertyRoles.Position] = 0L,
-                }, CancellationToken.None);
+                await nodes.AddAsync(
+                    new Dictionary<string, object?>
+                    {
+                        [NestedSetPropertyRoles.NodeKey] = first + depth,
+                        [NestedSetPropertyRoles.TreeId] = tree,
+                        [NestedSetPropertyRoles.Parent] = depth == 0 || interrupted
+                            ? null
+                            : first + depth - 1,
+                        [NestedSetPropertyRoles.Left] = (long)depth + 1,
+                        [NestedSetPropertyRoles.Right] = 12L - depth,
+                        [NestedSetPropertyRoles.Depth] = depth,
+                        [NestedSetPropertyRoles.Position] = 0L,
+                    },
+                    CancellationToken.None);
             }
         }
 
@@ -53,12 +61,20 @@ public abstract partial class HierarchyCompositionModelTests
         context.ChangeTracker.Clear();
         probe.Reset();
         materialized = 0;
-        var hierarchy = context.NestedSet<Dictionary<string, object?>>(CompositionBagContext.First).InTree(tree);
-        int[] expected = missingParent ? [] : filter == "correlated" ? [1] : [0, 1];
+        var hierarchy = context
+            .NestedSet<Dictionary<string, object?>>(CompositionBagContext.First)
+            .InTree(tree);
+
+        int[] expected = missingParent
+            ? []
+            : filter == "correlated"
+                ? [1]
+                : [0, 1];
 
         // Act
         var actual = await QueryLongDepths(hierarchy, filter)
-            .OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(expected, actual);

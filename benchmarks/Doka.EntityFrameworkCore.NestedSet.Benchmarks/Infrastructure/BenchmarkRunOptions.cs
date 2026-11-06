@@ -67,7 +67,9 @@ public sealed record BenchmarkRunOptions
         {
             var argument = arguments[index];
             var equals = argument.IndexOf('=', StringComparison.Ordinal);
-            var name = equals < 0 ? argument : argument[..equals];
+            var name = equals < 0
+                ? argument
+                : argument[..equals];
 
             if (name == "--diagnostics")
             {
@@ -86,7 +88,10 @@ public sealed record BenchmarkRunOptions
                 continue;
             }
 
-            var value = equals >= 0 ? argument[(equals + 1)..] : ReadValue(arguments, ref index, name);
+            var value = equals >= 0
+                ? argument[(equals + 1)..]
+                : ReadValue(arguments, ref index, name);
+
             options = name switch
             {
                 "--engine" => options with { Engine = ParseEnum<BenchmarkEngine>(value, name) },
@@ -147,7 +152,8 @@ public sealed record BenchmarkRunOptions
     )
     {
         if (index + 1 >= arguments.Length
-            || arguments[index + 1].StartsWith("--", StringComparison.Ordinal))
+            || arguments[index + 1]
+                .StartsWith("--", StringComparison.Ordinal))
         {
             throw new ArgumentException($"{name} requires a value.");
         }

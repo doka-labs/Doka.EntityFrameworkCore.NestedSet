@@ -28,25 +28,29 @@ public sealed partial class SampleReadSnapshotTests
 
         services.AddScoped<IExecutionStrategyFactory, SnapshotRetryingStrategyFactory>();
         await using var provider = services.BuildServiceProvider();
-        await using var context = new SampleLifecycleContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         // WHY: The caller holds the in-memory database open independently of each owned read transaction.
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
-        context.Sentinels.Add(new SampleLifecycleSentinel
-        {
-            Id = 1,
-            Value = "persisted",
-        });
+        context.Sentinels.Add(
+            new SampleLifecycleSentinel
+            {
+                Id = 1,
+                Value = "persisted",
+            });
+
         await context.SaveChangesAsync(CancellationToken.None);
         observer.Reset();
         var attempts = new List<SqliteTransaction>();
         var reads = 0;
 
         // Act
-        var result = await SampleReadSnapshot.RunAsync(context,
+        var result = await SampleReadSnapshot.RunAsync(
+            context,
             async token =>
             {
                 attempts.Add((SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction());
@@ -75,7 +79,8 @@ public sealed partial class SampleReadSnapshotTests
             },
             CancellationToken.None);
 
-        var connectionState = context.Database.GetDbConnection().State;
+        var connectionState = context.Database.GetDbConnection()
+            .State;
 
         await context.Database.CloseConnectionAsync();
 
@@ -90,8 +95,10 @@ public sealed partial class SampleReadSnapshotTests
         Assert.Equal(1, observer.Committed);
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Equal(ConnectionState.Open, connectionState);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Installs one narrowly defined transient retry through EF's public strategy registration.</summary>

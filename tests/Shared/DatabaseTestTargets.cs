@@ -1,4 +1,5 @@
 // WHY: This linked source compiles in projects with different global imports, so the type alias stays local.
+
 using MySqlServerVersion = Doka.EntityFrameworkCore.MySql.MySqlServerVersion;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Testing;
@@ -61,13 +62,15 @@ internal static class DatabaseTestTargets
         {
             var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0
-                || parts[0].StartsWith('#'))
+                || parts[0]
+                    .StartsWith('#'))
             {
                 continue;
             }
 
             // WHY: Both consumers share a deliberately small FROM-only contract, not a general Dockerfile parser.
-            if (parts is not ["FROM", _, "AS", _] || !HasPinnedTag(parts[1]))
+            if (parts is not ["FROM", _, "AS", _]
+                || !HasPinnedTag(parts[1]))
             {
                 throw new InvalidOperationException("Test images must use FROM <tag>@sha256:<digest> AS <engine>.");
             }
@@ -100,14 +103,17 @@ internal static class DatabaseTestTargets
     {
         const string digestMarker = "@sha256:";
         var digestStart = image.IndexOf(digestMarker, StringComparison.Ordinal);
-        if (digestStart < 0 || image.Length - digestStart != digestMarker.Length + 64)
+        if (digestStart < 0
+            || image.Length - digestStart != digestMarker.Length + 64)
         {
             return false;
         }
 
         var reference = image.AsSpan(0, digestStart);
         var tagStart = reference.LastIndexOf(':');
-        if (tagStart <= reference.LastIndexOf('/') || tagStart == reference.Length - 1 || reference.Contains('@'))
+        if (tagStart <= reference.LastIndexOf('/')
+            || tagStart == reference.Length - 1
+            || reference.Contains('@'))
         {
             return false;
         }
@@ -131,8 +137,12 @@ internal static class DatabaseTestTargets
     )
     {
         var digestStart = image.IndexOf('@', StringComparison.Ordinal);
+
         // WHY: A registry port contains an earlier colon; the final colon before the digest identifies the version tag.
-        var tagStart = image.AsSpan(0, digestStart).LastIndexOf(':') + 1;
+        var tagStart = image
+                .AsSpan(0, digestStart)
+                .LastIndexOf(':')
+            + 1;
 
         return Version.Parse(image.AsSpan(tagStart, digestStart - tagStart));
     }

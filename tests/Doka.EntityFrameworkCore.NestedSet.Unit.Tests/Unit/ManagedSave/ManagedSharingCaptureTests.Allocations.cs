@@ -36,7 +36,9 @@ public sealed class ManagedSharingCaptureAllocationTests
         var one = Prepare(oneContext, 1, sharing);
         var medium = Prepare(mediumContext, 128, sharing);
         var large = Prepare(largeContext, 2_048, sharing);
-        var expectedCount = sharing ? 4 : 1;
+        var expectedCount = sharing
+            ? 4
+            : 1;
 
         // Act
         var oneObservation = Observe(oneContext, one);
@@ -46,9 +48,11 @@ public sealed class ManagedSharingCaptureAllocationTests
         // Assert
         // WHY: The selected write and its exact row closure are identical at every tracker size. Allow only
         // fixed runtime headroom; materializing unrelated entries would add a per-tracker allocation slope.
-        _output.WriteLine($"Sharing={sharing}; passes={Repetitions}; rows=1/128/2048; "
+        _output.WriteLine(
+            $"Sharing={sharing}; passes={Repetitions}; rows=1/128/2048; "
             + $"allocated={oneObservation.Allocated}/{mediumObservation.Allocated}/"
             + $"{largeObservation.Allocated} B.");
+
         Assert.InRange(oneObservation.Allocated, 0, Repetitions * 4_096L);
         Assert.InRange(mediumObservation.Allocated, 0, oneObservation.Allocated + 4_096L);
         Assert.InRange(largeObservation.Allocated, 0, oneObservation.Allocated + 4_096L);
@@ -58,21 +62,35 @@ public sealed class ManagedSharingCaptureAllocationTests
         Assert.Equal(EntityState.Modified, one.EntityState);
         Assert.Equal(EntityState.Modified, medium.EntityState);
         Assert.Equal(EntityState.Modified, large.EntityState);
-        Assert.True(one.IsModified(
-            one.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
-        Assert.True(medium.IsModified(
-            medium.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
-        Assert.True(large.IsModified(
-            large.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
+        Assert.True(
+            one.IsModified(
+                one.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
+
+        Assert.True(
+            medium.IsModified(
+                medium.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
+
+        Assert.True(
+            large.IsModified(
+                large.EntityType.FindProperty(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))!));
+
         Assert.False(oneContext.ChangeTracker.AutoDetectChangesEnabled);
         Assert.False(mediumContext.ChangeTracker.AutoDetectChangesEnabled);
         Assert.False(largeContext.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            oneContext.Database.GetDbConnection().State);
-        Assert.Equal(ConnectionState.Closed,
-            mediumContext.Database.GetDbConnection().State);
-        Assert.Equal(ConnectionState.Closed,
-            largeContext.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            oneContext.Database.GetDbConnection()
+                .State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            mediumContext.Database.GetDbConnection()
+                .State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            largeContext.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Tracks independent rows of one mapping so table metadata cannot identify a whole tracker.</summary>
@@ -90,13 +108,15 @@ public sealed class ManagedSharingCaptureAllocationTests
         context.AttachRange(roots);
         var selected = sharing
             ? (object)roots[0]
-            : roots[0].Related[0];
+            : roots[0]
+                .Related[0];
 
         var seed = ManagedSharingCaptureTests.Entry(context, selected);
         seed
             .ToEntityEntry()
             .Property(nameof(ManagedSharingCaptureTests.SharingRoot.Payload))
             .IsModified = true;
+
         var callbacks = new List<IUpdateEntry>(4) { seed };
 
         // WHY: Close table metadata and native key/dependent lookups before charging repeated capture work.

@@ -31,11 +31,11 @@ internal static class GroupSupervisorScenario
                 foreach (var start in new[] { SearchStart.IncludeSelf, SearchStart.ParentsOnly })
                 {
                     foreach (var roles in new SupervisorRoles[]
-                             {
-                                 new MembershipRoleFilter(fixture.ManagerRoleId),
-                                 new GlobalUserRole(fixture.ManagerRoleId),
-                                 new EitherRole(fixture.ManagerRoleId),
-                             })
+                        {
+                            new MembershipRoleFilter(fixture.ManagerRoleId),
+                            new GlobalUserRole(fixture.ManagerRoleId),
+                            new EitherRole(fixture.ManagerRoleId),
+                        })
                     {
                         var result = await SupervisorQueries.ResolveAsync(
                             context,
@@ -85,13 +85,14 @@ internal static class GroupSupervisorScenario
                     fixture,
                     details,
                     cancellationToken);
+
                 break;
             case "group-level-supervisors":
                 await SeedOwnerDemonstrationAsync(context, fixture, cancellationToken);
                 foreach (var groups in new SupervisorGroups[]
-                         {
-                             new NthEligibleGroup([1], 1), new NthTypeGroupThenValidate(1, 1)
-                         })
+                    {
+                        new NthEligibleGroup([1], 1), new NthTypeGroupThenValidate(1, 1),
+                    })
                 {
                     var result = await SupervisorQueries.ResolveAsync(
                         context,
@@ -110,11 +111,11 @@ internal static class GroupSupervisorScenario
                 }
 
                 foreach (var owners in new[]
-                         {
-                             (MetadataOwner.SourceUser, MetadataOwner.CandidateMembership),
-                             (MetadataOwner.SourceMembership, MetadataOwner.CandidateGroup),
-                             (MetadataOwner.SourceGroup, MetadataOwner.CandidateUser),
-                         })
+                    {
+                        (MetadataOwner.SourceUser, MetadataOwner.CandidateMembership),
+                        (MetadataOwner.SourceMembership, MetadataOwner.CandidateGroup),
+                        (MetadataOwner.SourceGroup, MetadataOwner.CandidateUser),
+                    })
                 {
                     var matched = await SupervisorQueries.ResolveAsync(
                         context,
@@ -124,7 +125,8 @@ internal static class GroupSupervisorScenario
                             Groups = new NthTypeGroupThenValidate(1, 1),
                             Matches =
                             [
-                                request.Matches[0], new(owners.Item1, "ChannelClass", owners.Item2, "ChannelClass"),
+                                request.Matches[0],
+                                new MetadataMatch(owners.Item1, "ChannelClass", owners.Item2, "ChannelClass"),
                             ],
                         },
                         SupervisorSelection.RequireUnique,
@@ -149,7 +151,7 @@ internal static class GroupSupervisorScenario
                         (source, ancestor, distance) => new
                         {
                             ancestor.Name,
-                            Distance = distance
+                            Distance = distance,
                         })
                     .Where(row => row.Distance == 2)
                     .ToArrayAsync(cancellationToken);
@@ -499,14 +501,16 @@ internal static class GroupSupervisorScenario
 
             await SampleConsole.WriteLineAsync(
                 $"  Origin {originLabel}"
-                + (details ? $" (group {origin.StartGroupId})" : string.Empty)
+                + (details
+                    ? $" (group {origin.StartGroupId})"
+                    : string.Empty)
                 + $": {origin.Status}",
                 cancellationToken);
 
             foreach (var row in origin
-                         .Evidence
-                         .OrderBy(row => row.Distance)
-                         .ThenBy(row => row.CandidateUserId))
+                .Evidence
+                .OrderBy(row => row.Distance)
+                .ThenBy(row => row.CandidateUserId))
             {
                 await SampleConsole.WriteLineAsync(
                     $"    {SupervisorScenarioData.PersonLabel(data, row.CandidateUserId)}"

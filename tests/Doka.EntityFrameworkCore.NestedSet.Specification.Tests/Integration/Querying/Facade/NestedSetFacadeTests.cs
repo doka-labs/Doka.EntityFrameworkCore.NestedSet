@@ -40,40 +40,147 @@ public abstract partial class NestedSetFacadeTests : ProviderTest
 
     /// <summary>Creates two scoped trees with overlapping bounds and one same-id tree in another Scope.</summary>
     private static async Task SeedScopedAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
         await context.AddRangeAsync(
-        [
-            Node(1, 7, s_firstTree, null, 1, 8, 0, 0, "managed"),
-            Node(2, 7, s_firstTree, 1, 2, 5, 1, 0, "managed"),
-            Node(3, 7, s_firstTree, 2, 3, 4, 2, 0, "target"),
-            Node(4, 7, s_firstTree, 1, 6, 7, 1, 1, "other"),
-            Node(10, 7, s_secondTree, null, 1, 4, 0, 0, "other tree"),
-            Node(11, 7, s_secondTree, 10, 2, 3, 1, 0, "other tree"),
-            Node(20, 8, s_firstTree, null, 1, 2, 0, 0, "other scope"),
-        ], CancellationToken.None);
+            [
+                Node(
+                    1,
+                    7,
+                    s_firstTree,
+                    null,
+                    1,
+                    8,
+                    0,
+                    0,
+                    "managed"),
+                Node(
+                    2,
+                    7,
+                    s_firstTree,
+                    1,
+                    2,
+                    5,
+                    1,
+                    0,
+                    "managed"),
+                Node(
+                    3,
+                    7,
+                    s_firstTree,
+                    2,
+                    3,
+                    4,
+                    2,
+                    0,
+                    "target"),
+                Node(
+                    4,
+                    7,
+                    s_firstTree,
+                    1,
+                    6,
+                    7,
+                    1,
+                    1,
+                    "other"),
+                Node(
+                    10,
+                    7,
+                    s_secondTree,
+                    null,
+                    1,
+                    4,
+                    0,
+                    0,
+                    "other tree"),
+                Node(
+                    11,
+                    7,
+                    s_secondTree,
+                    10,
+                    2,
+                    3,
+                    1,
+                    0,
+                    "other tree"),
+                Node(
+                    20,
+                    8,
+                    s_firstTree,
+                    null,
+                    1,
+                    2,
+                    0,
+                    0,
+                    "other scope"),
+            ],
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>Creates two scopeless trees, including one node hidden by an application query filter.</summary>
     private static async Task SeedScopelessAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
         await context.AddRangeAsync(
-        [
-            Unscoped(100, s_firstTree, null, 1, 8, 0, 0, true),
-            Unscoped(101, s_firstTree, 100, 2, 3, 1, 0, false),
-            Unscoped(102, s_firstTree, 100, 4, 7, 1, 1, true),
-            Unscoped(103, s_firstTree, 102, 5, 6, 2, 0, true),
-            Unscoped(110, s_secondTree, null, 1, 2, 0, 0, true),
-        ], CancellationToken.None);
+            [
+                Unscoped(
+                    100,
+                    s_firstTree,
+                    null,
+                    1,
+                    8,
+                    0,
+                    0,
+                    true),
+                Unscoped(
+                    101,
+                    s_firstTree,
+                    100,
+                    2,
+                    3,
+                    1,
+                    0,
+                    false),
+                Unscoped(
+                    102,
+                    s_firstTree,
+                    100,
+                    4,
+                    7,
+                    1,
+                    1,
+                    true),
+                Unscoped(
+                    103,
+                    s_firstTree,
+                    102,
+                    5,
+                    6,
+                    2,
+                    0,
+                    true),
+                Unscoped(
+                    110,
+                    s_secondTree,
+                    null,
+                    1,
+                    2,
+                    0,
+                    0,
+                    true),
+            ],
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>Creates one scoped node fixture.</summary>

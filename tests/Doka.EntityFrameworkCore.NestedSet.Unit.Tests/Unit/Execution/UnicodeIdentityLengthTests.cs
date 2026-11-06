@@ -20,28 +20,44 @@ public sealed partial class UnicodeIdentityLengthTests
         // Arrange
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Raw)!;
-        var input = overflow ? value + "x" : value;
+        var input = overflow
+            ? value + "x"
+            : value;
+
         NestedSetTreeLockRequest<string, string>? request = null;
 
         // Act
         var error = Record.Exception(() => request = new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
             var argument = Assert.IsType<ArgumentException>(error);
-            Assert.Equal(scopeRole ? "Scope" : "TreeId", argument.ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                argument.ParamName);
+
             Assert.StartsWith($"{argument.ParamName} exceeds the mapped maximum length of 8.", argument.Message);
         }
         else
         {
             Assert.Null(error);
             Assert.NotNull(request);
-            Assert.Same(input, scopeRole ? request.Scope : request.TreeId);
+            Assert.Same(
+                input,
+                scopeRole
+                    ? request.Scope
+                    : request.TreeId);
         }
 
         AssertNoDatabaseAccess(context);
@@ -106,13 +122,22 @@ public sealed partial class UnicodeIdentityLengthTests
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? value : "scope",
-            scopeRole ? "tree" : value,
+            scopeRole
+                ? value
+                : "scope",
+            scopeRole
+                ? "tree"
+                : value,
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            scopeRole
+                ? "Scope"
+                : "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -126,16 +151,16 @@ public sealed partial class UnicodeIdentityLengthTests
             foreach (var scope in new[] { false, true })
             {
                 foreach (var shape in new[]
-                         {
-                             "high",
-                             "low",
-                             "high-ascii",
-                             "high-high",
-                             "low-high",
-                             "ascii-high",
-                             "valid-high",
-                             "valid-low",
-                         })
+                    {
+                        "high",
+                        "low",
+                        "high-ascii",
+                        "high-high",
+                        "low-high",
+                        "ascii-high",
+                        "valid-high",
+                        "valid-low",
+                    })
                 {
                     data.Add(engine, scope, shape);
                 }
@@ -171,21 +196,32 @@ public sealed partial class UnicodeIdentityLengthTests
         // Arrange
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Converted)!;
-        var input = new ConvertedIdentity("\U0001f600\U0001f601\U0001f602\U0001f603\U0001f604\U0001f605\U0001f606"
-            + (overflow ? "x" : string.Empty));
+        var input = new ConvertedIdentity(
+            "\U0001f600\U0001f601\U0001f602\U0001f603\U0001f604\U0001f605\U0001f606"
+            + (overflow
+                ? "x"
+                : string.Empty));
 
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<ConvertedIdentity, ConvertedIdentity>(
             entityType,
-            scopeRole ? input : new ConvertedIdentity("scope"),
-            scopeRole ? new ConvertedIdentity("tree") : input,
+            scopeRole
+                ? input
+                : new ConvertedIdentity("scope"),
+            scopeRole
+                ? new ConvertedIdentity("tree")
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
         }
         else
         {
@@ -210,20 +246,31 @@ public sealed partial class UnicodeIdentityLengthTests
         // Arrange
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Binary)!;
-        var input = "\U0001f600\U0001f601" + (overflow ? "x" : string.Empty);
+        var input = "\U0001f600\U0001f601"
+            + (overflow
+                ? "x"
+                : string.Empty);
 
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
         }
         else
         {
@@ -239,13 +286,13 @@ public sealed partial class UnicodeIdentityLengthTests
         var data = new TheoryData<string, bool, bool>();
 
         foreach (var engine in new[]
-                 {
-                     "MySql",
-                     "MariaDb",
-                     "PostgreSql",
-                     "SqlServer",
-                     "Sqlite",
-                 })
+            {
+                "MySql",
+                "MariaDb",
+                "PostgreSql",
+                "SqlServer",
+                "Sqlite",
+            })
         {
             foreach (var scope in new[] { false, true })
             {
@@ -280,13 +327,22 @@ public sealed partial class UnicodeIdentityLengthTests
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<ConvertedIdentity, ConvertedIdentity>(
             entityType,
-            scopeRole ? input : new ConvertedIdentity("scope"),
-            scopeRole ? new ConvertedIdentity("tree") : input,
+            scopeRole
+                ? input
+                : new ConvertedIdentity("scope"),
+            scopeRole
+                ? new ConvertedIdentity("tree")
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
-        Assert.Equal(scopeRole ? "Scope" : "TreeId",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            scopeRole
+                ? "Scope"
+                : "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -312,20 +368,31 @@ public sealed partial class UnicodeIdentityLengthTests
         // Arrange
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Raw)!;
-        var input = "\U0001f600\U0001f601\U0001f602\U0001f603" + (overflow ? "\U0001f604" : string.Empty);
+        var input = "\U0001f600\U0001f601\U0001f602\U0001f603"
+            + (overflow
+                ? "\U0001f604"
+                : string.Empty);
 
         // Act
         var error = Record.Exception(() => new NestedSetTreeLockRequest<string, string>(
             entityType,
-            scopeRole ? input : "scope",
-            scopeRole ? "tree" : input,
+            scopeRole
+                ? input
+                : "scope",
+            scopeRole
+                ? "tree"
+                : input,
             NestedSetTreeLockMode.Existing));
 
         // Assert
         if (overflow)
         {
-            Assert.Equal(scopeRole ? "Scope" : "TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                scopeRole
+                    ? "Scope"
+                    : "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
         }
         else
         {
@@ -354,7 +421,9 @@ public sealed partial class UnicodeIdentityLengthTests
         using var context = new UnicodeContext(engine);
         var entityType = context.Model.FindEntityType(UnicodeContext.Scopeless)!;
         var input = "\U0001f600\U0001f601\U0001f602\U0001f603\U0001f604\U0001f605\U0001f606\U0001f607"
-            + (overflow ? "x" : string.Empty);
+            + (overflow
+                ? "x"
+                : string.Empty);
 
         NestedSetTreeLockRequest<string, NestedSetNoScope>? request = null;
 
@@ -368,8 +437,11 @@ public sealed partial class UnicodeIdentityLengthTests
         // Assert
         if (overflow)
         {
-            Assert.Equal("TreeId",
-                Assert.IsType<ArgumentException>(error).ParamName);
+            Assert.Equal(
+                "TreeId",
+                Assert.IsType<ArgumentException>(error)
+                    .ParamName);
+
             Assert.Null(request);
         }
         else
@@ -406,8 +478,11 @@ public sealed partial class UnicodeIdentityLengthTests
             NestedSetTreeLockMode.New));
 
         // Assert
-        Assert.Equal("TreeId",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            "TreeId",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         AssertNoDatabaseAccess(context);
     }
 
@@ -416,8 +491,11 @@ public sealed partial class UnicodeIdentityLengthTests
         DbContext context
     )
     {
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
     }

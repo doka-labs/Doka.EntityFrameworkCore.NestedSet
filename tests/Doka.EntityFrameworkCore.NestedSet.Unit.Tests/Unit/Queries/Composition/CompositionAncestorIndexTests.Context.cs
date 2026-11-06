@@ -41,9 +41,11 @@ public sealed partial class CompositionAncestorIndexTests
                 entity.Scope,
                 entity.Id,
             });
+
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node.Property(entity => entity.Visible);
             node.HasQueryFilter(entity => entity.Visible);
             node.HasNestedSet(mapping => mapping
@@ -67,6 +69,7 @@ public sealed partial class CompositionAncestorIndexTests
                     value.Scope,
                     Id = value.NodeId,
                 });
+
             modelBuilder
                 .Entity<DerivedSelectionFact>()
                 .HasBaseType<SelectionFact>();
@@ -75,14 +78,18 @@ public sealed partial class CompositionAncestorIndexTests
             modelBuilder
                 .Entity<HierarchyFilteredFact>()
                 .HasKey(value => value.Id);
+
             modelBuilder
                 .Entity<HierarchyFilteredFact>()
                 .HasQueryFilter("Visible", value => value.Visible);
+
             modelBuilder
                 .Entity<HierarchyFilteredFact>()
-                .HasQueryFilter("Hierarchy",
+                .HasQueryFilter(
+                    "Hierarchy",
                     value => Set<CompositionNode>()
                         .Any(node => node.Id == value.NodeId));
+
             modelBuilder
                 .Entity<DerivedHierarchyFilteredFact>()
                 .HasBaseType<HierarchyFilteredFact>();

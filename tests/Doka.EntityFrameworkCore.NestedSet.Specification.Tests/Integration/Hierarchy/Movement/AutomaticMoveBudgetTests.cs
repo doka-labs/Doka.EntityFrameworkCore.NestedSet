@@ -25,10 +25,19 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine, mode);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, mode, probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode,
+            probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -46,7 +55,11 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
         Assert.DoesNotContain(reads, sql => sql.Contains("COUNT(", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(reads, sql => sql.Contains("MAX(", StringComparison.OrdinalIgnoreCase));
         Assert.Single(reads, sql => sql.Contains("LAG(", StringComparison.OrdinalIgnoreCase));
-        await AssertMoveAsync(context, upperGroup, automatic: true);
+        await AssertMoveAsync(
+            context,
+            upperGroup,
+            automatic: true,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>
@@ -60,10 +73,19 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine, "Flexible");
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Flexible");
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Flexible", probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Flexible",
+            probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -81,7 +103,11 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
         // WHY: Before/After reuse the sibling's position; unlike LastChild, neither requires a sibling count.
         Assert.DoesNotContain(reads, sql => sql.Contains("COUNT(", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(reads, sql => sql.Contains("LAG(", StringComparison.OrdinalIgnoreCase));
-        await AssertMoveAsync(context, upperGroup, automatic: false);
+        await AssertMoveAsync(
+            context,
+            upperGroup,
+            automatic: false,
+            cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>
@@ -95,11 +121,19 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     )
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
-        var before = await SnapshotAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
+        var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -110,10 +144,14 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
             : tree.MoveAfterAsync(3, 6, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.ManualPlacementNotAllowed, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.ManualPlacementNotAllowed,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Empty(FacadeIdentityReads(probe, "Strict", context));
         Assert.Empty(LockedHierarchyReads(probe, "Strict", context));
         Assert.DoesNotContain(probe.Commands, IsHierarchyWrite);
-        Assert.Equal(before, await SnapshotAsync(setup));
+        Assert.Equal(before, await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken));
     }
 }

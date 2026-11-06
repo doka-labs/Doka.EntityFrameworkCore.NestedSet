@@ -7,7 +7,8 @@ public abstract partial class OrderingQueryShapeTests
 
     /// <summary>Seeds two overlapping coordinate spaces without exercising automatic ordering during setup.</summary>
     private static async Task SeedAsync(
-        OrderingKeyContext setup
+        OrderingKeyContext setup,
+        CancellationToken cancellationToken
     )
     {
         var extensions = setup
@@ -30,8 +31,8 @@ public abstract partial class OrderingQueryShapeTests
                 .Prepend(CreateRoot(scope)))
             .ToArray();
 
-        await seed.AddRangeAsync(rows, CancellationToken.None);
-        await seed.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await seed.AddRangeAsync(rows, cancellationToken);
+        await seed.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>
@@ -79,7 +80,7 @@ public abstract partial class OrderingQueryShapeTests
             .Concat(
                 Enumerable
                     .Range(0, tail)
-                    .Select(triple => (triple * 3) + 1));
+                    .Select(triple => triple * 3 + 1));
 
         var tracked = positions
             .Select(position => CreateNode(scope, position, true))
@@ -104,17 +105,19 @@ public abstract partial class OrderingQueryShapeTests
     )
     {
         var key = $"S{scope}-N{position:D3}";
-        var member = (char)('a' + (position % 3));
+        var member = (char)('a' + position % 3);
 
         return new OrderingKeyNode<string, string?>(
-            alias ? key.ToLowerInvariant() : key,
+            alias
+                ? key.ToLowerInvariant()
+                : key,
             $"N{position / 3:D3}-{member}")
         {
             Scope = scope,
             TreeId = s_shapeTreeId,
             ParentId = $"S{scope}-ROOT",
-            Left = (position * 2) + 2,
-            Right = (position * 2) + 3,
+            Left = position * 2 + 2,
+            Right = position * 2 + 3,
             Depth = 1,
             Position = position,
         };
@@ -148,7 +151,9 @@ public abstract partial class OrderingQueryShapeTests
             .TakeLast(commands.Length)
             .ToArray();
 
-        var lastWriteSql = lastWrite >= 0 ? probe.Commands[lastWrite].Sql : string.Empty;
+        var lastWriteSql = lastWrite >= 0
+            ? probe.Commands[lastWrite].Sql
+            : string.Empty;
 
         return new ShapeObservation(
             lastWrite,
@@ -167,8 +172,8 @@ public abstract partial class OrderingQueryShapeTests
     )
     {
         if (!sql
-                .TrimStart()
-                .StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase))
+            .TrimStart()
+            .StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -213,6 +218,7 @@ public abstract partial class OrderingQueryShapeTests
                 .Readers[1]
                 .Ordinals
                 .OrderBy(value => value));
+
         Assert.Equal(
             Enumerable.Range(0, Math.Min(intervals, tail)),
             observation
@@ -235,12 +241,25 @@ public abstract partial class OrderingQueryShapeTests
         for (var index = 0; index < tracked.Length; index++)
         {
             var first = index < 64;
-            var triple = first ? index : index - 64;
-            var initial = (triple * 3) + (first ? 0 : 1);
-            var expected = (long)(triple < intervals ? initial + (first ? 1 : -1) : initial);
+            var triple = first
+                ? index
+                : index - 64;
+
+            var initial = triple * 3
+                + (first
+                    ? 0
+                    : 1);
+
+            var expected = (long)(triple < intervals
+                ? initial
+                + (first
+                    ? 1
+                    : -1)
+                : initial);
+
             var node = tracked[index];
             Assert.Equal(
-                ((expected * 2) + 2, (expected * 2) + 3, 1, expected),
+                (expected * 2 + 2, expected * 2 + 3, 1, expected),
                 (node.Left, node.Right, node.Depth, node.Position));
 
             Assert.Equal($"S{node.Scope}-ROOT", node.ParentId);
@@ -251,7 +270,11 @@ public abstract partial class OrderingQueryShapeTests
 
             Assert.Equal($"N{triple:D3}-{(first ? 'a' : 'b')}", name.OriginalValue);
             Assert.Equal(first && triple < intervals, name.IsModified);
-            Assert.Equal(first && triple < intervals ? $"N{triple:D3}-bz" : name.OriginalValue, name.CurrentValue);
+            Assert.Equal(
+                first && triple < intervals
+                    ? $"N{triple:D3}-bz"
+                    : name.OriginalValue,
+                name.CurrentValue);
         }
     }
 
@@ -260,13 +283,14 @@ public abstract partial class OrderingQueryShapeTests
     /// </summary>
     private static Task<OrderingKeyNode<string, string?>[]> ReadScopeAsync(
         OrderingKeyContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     ) => context
         .Set<OrderingKeyNode<string, string?>>()
         .AsNoTracking()
         .Where(node => node.Scope == scope && node.ParentId != null)
         .OrderBy(node => node.Id)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Checks every persisted sibling, including stable islands that were never tracked.</summary>
     private static void AssertPersisted(
@@ -279,11 +303,14 @@ public abstract partial class OrderingQueryShapeTests
         {
             var member = index % 3;
             var expected = (long)(index / 3 < intervals && member != 2
-                ? index + (member == 0 ? 1 : -1)
+                ? index
+                + (member == 0
+                    ? 1
+                    : -1)
                 : index);
 
             Assert.Equal(
-                ((expected * 2) + 2, (expected * 2) + 3, 1, expected),
+                (expected * 2 + 2, expected * 2 + 3, 1, expected),
                 (rows[index].Left, rows[index].Right, rows[index].Depth, rows[index].Position));
 
             Assert.Equal($"S{rows[index].Scope}-ROOT", rows[index].ParentId);
@@ -294,13 +321,14 @@ public abstract partial class OrderingQueryShapeTests
     /// <summary>Checks that a disjoint child permutation preserves its untracked enclosing root.</summary>
     private static async Task AssertRootAsync(
         OrderingKeyContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var root = await context
             .Set<OrderingKeyNode<string, string?>>()
             .AsNoTracking()
-            .SingleAsync(node => node.Scope == scope && node.ParentId == null, CancellationToken.None);
+            .SingleAsync(node => node.Scope == scope && node.ParentId == null, cancellationToken);
 
         Assert.Equal($"S{scope}-ROOT", root.Id);
         Assert.Equal(s_shapeTreeId, root.TreeId);

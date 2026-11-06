@@ -13,18 +13,19 @@ public sealed partial class SignalReportValidationTests
     )
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            AnchorIds = Enumerable
-                .Range(1, 64)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            ChannelIds = Enumerable
-                .Range(101, 32)
-                .Select(SignalReportDataset.Id)
-                .ToArray(),
-            Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                AnchorIds = Enumerable
+                    .Range(1, 64)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                ChannelIds = Enumerable
+                    .Range(101, 32)
+                    .Select(SignalReportDataset.Id)
+                    .ToArray(),
+                Sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst],
+            });
 
         var grain = snapshot
             .AnchorIds
@@ -34,22 +35,32 @@ public sealed partial class SignalReportValidationTests
 
         var rows = grain
             .Where((_, index) => !sparse || index == 0 || index == grain.Length - 1)
-            .Select(key => Total(key.Anchor, key.Channel, key.Source, key == grain[0] ? 0 : 13))
+            .Select(key => Total(
+                key.Anchor,
+                key.Channel,
+                key.Source,
+                key == grain[0]
+                    ? 0
+                    : 13))
             .Reverse()
             .ToArray();
 
         var expected = grain
-            .Select((key, index) => new SignalReportCell(key.Anchor,
+            .Select((key, index) => new SignalReportCell(
+                key.Anchor,
                 key.Channel,
                 key.Source,
                 !sparse || index == 0 || index == grain.Length - 1,
-                index == 0 || (sparse && index != grain.Length - 1) ? 0 : 13))
+                index == 0 || (sparse && index != grain.Length - 1)
+                    ? 0
+                    : 13))
             .ToArray();
 
         var probe = new ReaderProbe();
 
         // Act
-        var actual = await SignalReportValidation.CreateGridAsync(snapshot,
+        var actual = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -88,7 +99,8 @@ public sealed partial class SignalReportValidationTests
 
         SignalReportTotal[] rows = [Total(anchor, signal, source, 7)];
         var expected = Enumerable
-            .Repeat(new SignalReportCell(anchor, signal, source, true, 7),
+            .Repeat(
+                new SignalReportCell(anchor, signal, source, true, 7),
                 repetitions * repetitions * repetitions)
             .ToArray();
 
@@ -96,7 +108,8 @@ public sealed partial class SignalReportValidationTests
 
         // Act
         var synchronous = SignalReportValidation.CreateGrid(snapshot, rows);
-        var asynchronous = await SignalReportValidation.CreateGridAsync(snapshot,
+        var asynchronous = await SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None);
 
@@ -117,14 +130,21 @@ public sealed partial class SignalReportValidationTests
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
-        var signal = foreignSource ? snapshot.ChannelIds[0] : SignalReportDataset.Id(99);
-        var source = foreignSource ? (CapturePort)99 : CapturePort.Pulse;
+        var signal = foreignSource
+            ? snapshot.ChannelIds[0]
+            : SignalReportDataset.Id(99);
+
+        var source = foreignSource
+            ? (CapturePort)99
+            : CapturePort.Pulse;
+
         var total = Total(snapshot.AnchorIds[0], signal, source, 7);
         SignalReportTotal[] rows = [total, total];
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
@@ -147,13 +167,20 @@ public sealed partial class SignalReportValidationTests
         var snapshot = SignalReportValidation.Snapshot(Request());
         var selected = Total(snapshot.AnchorIds[0], snapshot.ChannelIds[0], CapturePort.Pulse, 7);
         var foreign = Total(SignalReportDataset.Id(99), snapshot.ChannelIds[0], CapturePort.Pulse, 11);
-        var first = firstForeign ? foreign : selected;
-        var last = firstForeign ? selected : foreign;
+        var first = firstForeign
+            ? foreign
+            : selected;
+
+        var last = firstForeign
+            ? selected
+            : foreign;
+
         SignalReportTotal[] rows = [selected, foreign, first, last];
         var probe = new ReaderProbe();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(rows, probe, CancellationToken.None),
             CancellationToken.None));
 
@@ -190,12 +217,17 @@ public sealed partial class SignalReportValidationTests
         var failure = new InvalidOperationException("late sparse aggregate failure");
         var probe = new ReaderProbe
         {
-            ReadFailure = boundary == "read" ? failure : null,
-            DisposeFailure = boundary == "dispose" ? failure : null,
+            ReadFailure = boundary == "read"
+                ? failure
+                : null,
+            DisposeFailure = boundary == "dispose"
+                ? failure
+                : null,
         };
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(snapshot,
+        var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
+            snapshot,
             ReadRows(Array.Empty<SignalReportTotal>(), probe, CancellationToken.None),
             CancellationToken.None));
 

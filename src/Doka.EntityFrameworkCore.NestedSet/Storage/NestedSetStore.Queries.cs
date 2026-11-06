@@ -39,7 +39,7 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
 
         if (Map.Scope is { } scope)
         {
-            nodes = nodes.Where(Equal(scope, _scope));
+            nodes = nodes.Where(Equal(scope, Scope));
         }
 
         return nodes.Where(TreeIdentity());
@@ -54,7 +54,7 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
         // WHY: A typed captured value gives EF a stable parameter type for binary or converted identities,
         // and avoids erasing a known value type solely to reconstruct its type in the expression.
         return Expression.Lambda<Func<TEntity, bool>>(
-            NestedSetTypedValue<TTreeId>.Equal(property, Capture(_treeId)),
+            NestedSetTypedValue<TTreeId>.Equal(property, Capture(TreeId)),
             parameter);
     }
 
@@ -102,7 +102,9 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
             return Expression.Lambda<Func<TEntity, bool>>(Expression.Not(present), parameter);
         }
 
-        Expression value = access.Type == typeof(TKey) ? access : Expression.Convert(access, typeof(TKey));
+        Expression value = access.Type == typeof(TKey)
+            ? access
+            : Expression.Convert(access, typeof(TKey));
 
         if (Map.KeyCollation is { } collation)
         {

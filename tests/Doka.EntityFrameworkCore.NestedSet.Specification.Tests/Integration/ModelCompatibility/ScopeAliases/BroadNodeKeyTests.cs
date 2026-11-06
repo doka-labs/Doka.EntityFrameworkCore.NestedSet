@@ -45,7 +45,8 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
-            static options => new BroadNodeKeyContext(options));
+            static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<BroadNodeKeyNode>();
         var treeId = Guid.NewGuid();
@@ -64,7 +65,11 @@ public abstract class BroadNodeKeyTests : ProviderTest
             CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidStructure, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidStructure,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Null(input.ParentId);
         Assert.Equal(
             1,
@@ -80,7 +85,8 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
-            static options => new BroadNodeKeyContext(options));
+            static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var root = new BroadNodeKeyNode { Id = new BroadNodeKey("P") };
         var child = new BroadNodeKeyNode { Id = new BroadNodeKey("Q") };
@@ -103,7 +109,11 @@ public abstract class BroadNodeKeyTests : ProviderTest
                 CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Null(child.ParentId);
         Assert.Equal(
             0,
@@ -121,6 +131,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
             static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode { Id = new BroadNodeKey("C") };
@@ -158,6 +169,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<BroadNodeKeyContext>(
             Engine,
             static options => new BroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode { Id = new BroadNodeKey("D") };
@@ -200,6 +212,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<OrderedBroadNodeKeyContext>(
             Engine,
             static options => new OrderedBroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode
@@ -225,7 +238,9 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Assert
         Assert.Equal(
             "The imported refresh contains an unexpected node.",
-            Assert.IsType<DbUpdateConcurrencyException>(error).Message);
+            Assert.IsType<DbUpdateConcurrencyException>(error)
+                .Message);
+
         Assert.Single(probe.Commands);
         Assert.Equal("E", input.Id.Value);
         Assert.Equal(
@@ -244,6 +259,7 @@ public abstract class BroadNodeKeyTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync<OrderedBroadNodeKeyContext>(
             Engine,
             static options => new OrderedBroadNodeKeyContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var input = new BroadNodeKeyNode
@@ -274,7 +290,9 @@ public abstract class BroadNodeKeyTests : ProviderTest
         // Assert
         Assert.Equal(
             "An imported input changed its identity during refresh.",
-            Assert.IsType<DbUpdateConcurrencyException>(error).Message);
+            Assert.IsType<DbUpdateConcurrencyException>(error)
+                .Message);
+
         Assert.Single(probe.Commands);
         Assert.Equal("F", input.Id.Value);
         Assert.Equal(

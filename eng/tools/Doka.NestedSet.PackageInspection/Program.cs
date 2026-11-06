@@ -35,9 +35,9 @@ internal static class Program
             return 0;
         }
         catch (Exception exception) when (exception is IOException
-                                              or InvalidDataException
-                                              or BadImageFormatException
-                                              or ArgumentException)
+            or InvalidDataException
+            or BadImageFormatException
+            or ArgumentException)
         {
             await Console.Error.WriteLineAsync(exception.Message.AsMemory(), CancellationToken.None);
 
@@ -79,7 +79,10 @@ internal static class Program
         using var peReader = new PEReader(assemblyStream);
         var reader = peReader.GetMetadataReader();
 
-        if (reader.GetString(reader.GetAssemblyDefinition().Name) != packageId)
+        if (reader.GetString(
+                reader.GetAssemblyDefinition()
+                    .Name)
+            != packageId)
         {
             throw new InvalidDataException("Assembly identity does not match its package.");
         }
@@ -122,7 +125,8 @@ internal static class Program
 
         using (provider)
         {
-            var header = provider.GetMetadataReader().DebugMetadataHeader;
+            var header = provider.GetMetadataReader()
+                .DebugMetadataHeader;
 
             if (header is null
                 || new BlobContentId(header.Id).Guid != codeView.Guid
@@ -141,9 +145,9 @@ internal static class Program
             hash.AppendData(pdb.AsSpan(header.IdStartOffset + header.Id.Length));
 
             if (!hash
-                    .GetHashAndReset()
-                    .AsSpan()
-                    .SequenceEqual(checksum.Checksum.AsSpan()))
+                .GetHashAndReset()
+                .AsSpan()
+                .SequenceEqual(checksum.Checksum.AsSpan()))
             {
                 throw new InvalidDataException("Portable PDB checksum does not match the candidate assembly.");
             }
@@ -292,6 +296,7 @@ internal static class Program
 
         await using var source = await entries[0]
             .OpenAsync(cancellationToken);
+
         using var buffer = new MemoryStream();
         await source.CopyToAsync(buffer, cancellationToken);
 

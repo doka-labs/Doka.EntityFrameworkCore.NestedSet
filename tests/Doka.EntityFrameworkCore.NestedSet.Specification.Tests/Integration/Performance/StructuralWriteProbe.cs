@@ -5,9 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// </summary>
 internal sealed class StructuralWriteProbe : DbCommandInterceptor
 {
-    private readonly string _table;
     private readonly string _left;
     private readonly string _right;
+    private readonly string _table;
 
     /// <summary>Observes the selected mapped table and its exact boundary assignment names.</summary>
     internal StructuralWriteProbe(

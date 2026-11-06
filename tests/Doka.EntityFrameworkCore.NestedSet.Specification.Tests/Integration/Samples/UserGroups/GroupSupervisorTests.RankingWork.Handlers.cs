@@ -12,9 +12,13 @@ public abstract partial class GroupSupervisorTests
     ];
 
     /// <summary>Reads common session-scoped engine counters from the caller's already pinned connection.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context with an explicitly opened connection for the measured operation.</param>
     /// <returns>Complete nonnegative read counters; malformed or missing observations fail closed.</returns>
-    private static async Task<Dictionary<string, long>> ReadRankingHandlersAsync(App.UserGroupContext context)
+    private static async Task<Dictionary<string, long>> ReadRankingHandlersAsync(
+        App.UserGroupContext context,
+        CancellationToken cancellationToken
+    )
     {
         var connection = context.Database.GetDbConnection();
         if (connection.State != ConnectionState.Open)
@@ -23,14 +27,16 @@ public abstract partial class GroupSupervisorTests
         }
 
         await using var command = connection.CreateCommand();
+
         // WHY: Only these read-request counters are session-scoped on both engines. MariaDB's GLOBAL-only
         // Handler_read_retry and its deleted-row counter cannot calibrate this cross-engine observation.
         command.CommandText = "SHOW SESSION STATUS WHERE Variable_name IN ("
             + "'Handler_read_first','Handler_read_key','Handler_read_last','Handler_read_next',"
             + "'Handler_read_prev','Handler_read_rnd','Handler_read_rnd_next')";
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var values = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             var name = reader.GetString(0);
             if (!long.TryParse(reader.GetString(1), NumberStyles.None, CultureInfo.InvariantCulture, out var count)
@@ -60,7 +66,8 @@ public abstract partial class GroupSupervisorTests
         var delta = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         foreach (var counter in before)
         {
-            if (!after.TryGetValue(counter.Key, out var value) || value < counter.Value)
+            if (!after.TryGetValue(counter.Key, out var value)
+                || value < counter.Value)
             {
                 throw new InvalidOperationException("The ranking session read counters changed identity or reset.");
             }
@@ -77,14 +84,19 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Retains SHOW's own request overhead separately from a fully drained physical fixture lookup.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context whose connection remains open through the actual measured command.</param>
     /// <param name="source">The existing fixture source key used by the physical calibration read.</param>
     /// <returns>Raw status-only and lookup deltas, plus the number of completely drained lookup rows.</returns>
     private static async Task<(Dictionary<string, long> Empty, Dictionary<string, long> Lookup, int Rows)>
-        CalibrateRankingHandlersAsync(App.UserGroupContext context, int source)
+        CalibrateRankingHandlersAsync(
+            App.UserGroupContext context,
+            int source,
+            CancellationToken cancellationToken
+        )
     {
-        var before = await ReadRankingHandlersAsync(context);
-        var empty = await ReadRankingHandlersAsync(context);
+        var before = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
+        var empty = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
         var entity = context.Model.FindEntityType(typeof(App.User))
             ?? throw new InvalidOperationException("The rank calibration user mapping is missing.");
 
@@ -99,32 +111,43 @@ public abstract partial class GroupSupervisorTests
             ?? throw new InvalidOperationException("The rank calibration key column is missing.");
 
         var sql = context.GetService<ISqlGenerationHelper>();
-        await using var command = context.Database.GetDbConnection().CreateCommand();
+        await using var command = context
+            .Database
+            .GetDbConnection()
+            .CreateCommand();
+
         command.CommandText = $"SELECT {sql.DelimitIdentifier(column)} "
             + $"FROM {sql.DelimitIdentifier(table, entity.GetSchema())} "
             + $"WHERE {sql.DelimitIdentifier(column)} = @source";
+
         var key = command.CreateParameter();
         key.ParameterName = "source";
         key.DbType = DbType.Int32;
         key.Value = source;
         command.Parameters.Add(key);
         var rows = 0;
-        await using (var reader = await command.ExecuteReaderAsync(CancellationToken.None))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync(CancellationToken.None))
+            while (await reader.ReadAsync(cancellationToken))
             {
                 rows++;
             }
         }
 
-        var after = await ReadRankingHandlersAsync(context);
+        var after = await ReadRankingHandlersAsync(context, cancellationToken: cancellationToken);
 
         return (RankingHandlerDelta(before, empty), RankingHandlerDelta(empty, after), rows);
     }
 
     /// <summary>Labels raw requests without equating them with rows, disk I/O, or equal engine totals.</summary>
-    private static string FormatRankingHandlers(IReadOnlyDictionary<string, long>? values)
-        => values is null ? "not applicable" : string.Join("; ", values
-            .OrderBy(row => row.Key, StringComparer.Ordinal)
-            .Select(row => FormattableString.Invariant($"{row.Key}={row.Value}")));
+    private static string FormatRankingHandlers(
+        IReadOnlyDictionary<string, long>? values
+    )
+        => values is null
+            ? "not applicable"
+            : string.Join(
+                "; ",
+                values
+                    .OrderBy(row => row.Key, StringComparer.Ordinal)
+                    .Select(row => FormattableString.Invariant($"{row.Key}={row.Value}")));
 }

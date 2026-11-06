@@ -1,3 +1,6 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+using Doka.EntityFrameworkCore.NestedSet.Mapping;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
 
 /// <summary>
@@ -22,20 +25,27 @@ public sealed class ScopeValidationTests : ProviderTest,
     public async Task OversizedStringScopeIsRejectedBeforeSql()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var key = new string('a', 64);
         var probe = new OrderingLockProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, probe);
-        var mapping = Mapping.NestedSetMapping<OrderingLockNode<string, FirstLockHierarchy>, int, string>.For(
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
+        var mapping = NestedSetMapping<OrderingLockNode<string, FirstLockHierarchy>, int, string>.For(
             context,
             context.Model.FindEntityType(typeof(OrderingLockNode<string, FirstLockHierarchy>))!);
 
         // Act
-        var error = Assert.Throws<ArgumentException>(() => new Execution.NestedSetTreeLockRequest<Guid, string>(
+        var error = Assert.Throws<ArgumentException>(() => new NestedSetTreeLockRequest<Guid, string>(
             mapping.EntityType,
             key + "x",
             Guid.Parse("195d92b7-70a3-47e8-81fb-fb7945277005"),
-            Execution.NestedSetTreeLockMode.Existing));
+            NestedSetTreeLockMode.Existing));
 
         // Assert
         Assert.Equal("Scope", error.ParamName);

@@ -7,7 +7,10 @@ public abstract partial class BulkIntervalRefreshTests
     public async Task RefreshedGeneratedTokenAllowsOrdinaryPayloadSave()
     {
         // Arrange
-        await using var context = await _generated.ResetAsync(Engine);
+        await using var context = await _generated.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<BulkIntervalNode>()
             .ForScope(1);
@@ -25,7 +28,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .ToArray());
 
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkIntervalNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkIntervalNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         var leaf = nodes[^1];
@@ -44,6 +47,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .Where(node => node.Id == leaf.Id)
                 .Select(node => node.Payload)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             leaf.Version,
             await tree
@@ -52,6 +56,7 @@ public abstract partial class BulkIntervalRefreshTests
                 .Where(node => node.Id == leaf.Id)
                 .Select(node => node.Version)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(leaf.Version + 1000, leaf.Details.Revision);
     }
 }

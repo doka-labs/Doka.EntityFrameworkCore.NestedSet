@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Mapping;
 internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TValue>
     where TValue : notnull
 {
-    private readonly ValueConverter? _converter;
     private readonly ValueComparer _comparer;
+    private readonly ValueConverter? _converter;
     private readonly ValueComparer<TValue>? _typedComparer;
 
     /// <summary>Uses the finalized conversion instead of potentially broader model equality.</summary>
@@ -15,7 +15,9 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
         IProperty? property
     )
     {
-        _converter = property?.GetTypeMapping().Converter;
+        _converter = property?.GetTypeMapping()
+            .Converter;
+
         var providerType = _converter?.ProviderClrType ?? property?.ClrType ?? typeof(TValue);
 
         // WHY: SQL may distinguish converted values whose model type implements broader equality.
@@ -45,6 +47,7 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
     ) => // WHY: ReferenceEquals requires object arguments. Checking it first boxes native value types in
         // Tier0, multiplying allocations for every tracked candidate and requested tree comparison.
         _typedComparer?.Equals(first, second)
+
         // WHY: Matches already handles reference and null values. Calling it once avoids redundant input
         // boxing for converted value types before the required to be erased provider-converter boundary.
         ?? Matches(first, second);
@@ -59,7 +62,9 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
             return typed.GetHashCode(value);
         }
 
-        var providerValue = _converter is null ? value : _converter.ConvertToProvider(value);
+        var providerValue = _converter is null
+            ? value
+            : _converter.ConvertToProvider(value);
 
         if (_comparer is ValueComparer<byte[]>
             && providerValue is byte[] bytes)
@@ -99,8 +104,13 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
             return false;
         }
 
-        var firstValue = _converter is null ? first : _converter.ConvertToProvider(first);
-        var secondValue = _converter is null ? second : _converter.ConvertToProvider(second);
+        var firstValue = _converter is null
+            ? first
+            : _converter.ConvertToProvider(first);
+
+        var secondValue = _converter is null
+            ? second
+            : _converter.ConvertToProvider(second);
 
         if (_comparer is ValueComparer<byte[]>
             && firstValue is byte[] firstBytes
@@ -108,7 +118,9 @@ internal sealed class NestedSetProviderComparer<TValue> : IEqualityComparer<TVal
         {
             // WHY: The finalized binary provider mapping requires complete structural equality, not boxed
             // per-byte comparisons. Object providers and unexpected values retain the framework fallback below.
-            return firstBytes.AsSpan().SequenceEqual(secondBytes);
+            return firstBytes
+                .AsSpan()
+                .SequenceEqual(secondBytes);
         }
 
         return _comparer.Equals(firstValue, secondValue);

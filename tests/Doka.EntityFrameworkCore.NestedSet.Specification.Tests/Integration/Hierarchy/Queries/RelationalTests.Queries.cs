@@ -14,13 +14,13 @@ public abstract partial class RelationalTests
     public async Task ChildrenOfReturnsSiblingOrder()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -38,13 +38,13 @@ public abstract partial class RelationalTests
     public async Task DescendantsOfReturnsSubtreeOrder()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -62,13 +62,13 @@ public abstract partial class RelationalTests
     public async Task AncestorsOfReturnsRootFirst()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -86,13 +86,13 @@ public abstract partial class RelationalTests
     public async Task ParentOfReturnsImmediateParent()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -110,13 +110,13 @@ public abstract partial class RelationalTests
     public async Task TreeBoundQueryReturnsItsOnlyRoot()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -136,13 +136,13 @@ public abstract partial class RelationalTests
     public async Task ChildrenOfOfMissingNodeIsEmpty()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -159,13 +159,13 @@ public abstract partial class RelationalTests
     public async Task ParentOfOfMissingNodeIsEmpty()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -182,13 +182,13 @@ public abstract partial class RelationalTests
     public async Task AncestorsOfOfMissingNodeIsEmpty()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var actual = await tree
@@ -205,13 +205,13 @@ public abstract partial class RelationalTests
     public async Task DescendantsOfCannotUseAnchorFromAnotherScope()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         var isolated = context
             .NestedSet<TreeNode>()

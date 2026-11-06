@@ -2,6 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Observes expression construction allocations without creating or reading a database.</summary>
 /// <remarks>Selection bounds are logical expression inputs, not a claim about a persisted node population.</remarks>
+
 // WHY: BenchmarkDotNet generates a derived execution type in its isolated child process.
 public class CompositionConstructionBenchmarks : IAsyncDisposable
 {
@@ -14,6 +15,22 @@ public class CompositionConstructionBenchmarks : IAsyncDisposable
     /// <summary>Gets or sets the logical selective payload range encoded as scalar parameters.</summary>
     [Params(1, 100)]
     public int PayloadRows { get; set; }
+
+    /// <summary>Rejects invocation outside the ordinary BenchmarkDotNet initialization lifecycle.</summary>
+    private ManualBenchmarkContext Context =>
+        _context ?? throw new InvalidOperationException("Initialize the construction benchmark before invoking it.");
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_context is not null)
+        {
+            await _context.DisposeAsync();
+            _context = null;
+        }
+
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>Finalizes mapped metadata outside measurement without acquiring any database resource.</summary>
     [GlobalSetup]
@@ -43,20 +60,4 @@ public class CompositionConstructionBenchmarks : IAsyncDisposable
     /// <summary>Releases the unopened context after the isolated measurement process completes.</summary>
     [GlobalCleanup]
     public async Task CleanupAsync() => await DisposeAsync();
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_context is not null)
-        {
-            await _context.DisposeAsync();
-            _context = null;
-        }
-
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>Rejects invocation outside the ordinary BenchmarkDotNet initialization lifecycle.</summary>
-    private ManualBenchmarkContext Context =>
-        _context ?? throw new InvalidOperationException("Initialize the construction benchmark before invoking it.");
 }

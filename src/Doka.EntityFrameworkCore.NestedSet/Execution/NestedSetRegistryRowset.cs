@@ -15,7 +15,12 @@ internal static class NestedSetRegistryRowset
     internal static int ParameterCount(
         int requestCount,
         bool scoped
-    ) => requestCount >= ScalarRowLimit ? 1 : requestCount * (scoped ? 2 : 1);
+    ) => requestCount >= ScalarRowLimit
+        ? 1
+        : requestCount
+        * (scoped
+            ? 2
+            : 1);
 
     /// <summary>Appends mapped identity tuples without selecting an adapter's source or reservation syntax.</summary>
     /// <param name="rows">The native renderer's tuple buffer.</param>
@@ -51,7 +56,12 @@ internal static class NestedSetRegistryRowset
             }
 
             AppendParameter(rows, parameters, command, mapping.TreeId, request.TreeIdValue, "treeId" + index);
-            rows.Append(", ").Append(index).Append(", ").Append((int)request.Mode).Append(')');
+            rows
+                .Append(", ")
+                .Append(index)
+                .Append(", ")
+                .Append((int)request.Mode)
+                .Append(')');
         }
     }
 
@@ -109,8 +119,12 @@ internal static class NestedSetRegistryRowset
         bool hexBinary
     )
     {
-        var converter = property.GetRelationalTypeMapping().Converter;
-        var providerValue = converter is null ? value : converter.ConvertToProvider(value);
+        var converter = property.GetRelationalTypeMapping()
+            .Converter;
+
+        var providerValue = converter is null
+            ? value
+            : converter.ConvertToProvider(value);
 
         if (providerValue is null)
         {

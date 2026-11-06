@@ -93,7 +93,8 @@ public sealed partial class ExpressionInliningTests
         var allocated = QueryConstructionAllocation.MeasurePaired(baseline, current);
 
         // Assert
-        output.WriteLine($"Arity={arity}; explicit-array={allocated.Baseline} B/op; "
+        output.WriteLine(
+            $"Arity={arity}; explicit-array={allocated.Baseline} B/op; "
             + $"fixed={allocated.Expanded} B/op; saved={allocated.Baseline - allocated.Expanded} B/op.");
 
         Assert.InRange(allocated.Expanded, 0, allocated.Baseline - 24);

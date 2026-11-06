@@ -29,7 +29,12 @@ public sealed partial class EngineTestDiscoveryTests
         var cases = await new TheoryDiscoverer().Discover(options, method, attribute);
 
         // Assert
-        Assert.Equal(preEnumerate ? 2 : 1, cases.Count);
+        Assert.Equal(
+            preEnumerate
+                ? 2
+                : 1,
+            cases.Count);
+
         Assert.All(cases, testCase => Assert.Null(testCase.SkipReason));
         Assert.Equal(engine, EngineTestSelection.ResolveEngine(method.TestClass.Class));
         Assert.Equal(typeof(DiscoveryProbe), method.Method.DeclaringType);
@@ -114,7 +119,12 @@ public sealed partial class EngineTestDiscoveryTests
         var cases = await new EngineFactDiscoverer().Discover(options, method, attribute);
 
         // Assert
-        Assert.Equal(expected ? 1 : 0, cases.Count);
+        Assert.Equal(
+            expected
+                ? 1
+                : 0,
+            cases.Count);
+
         Assert.All(cases, testCase => Assert.Null(testCase.SkipReason));
     }
 }

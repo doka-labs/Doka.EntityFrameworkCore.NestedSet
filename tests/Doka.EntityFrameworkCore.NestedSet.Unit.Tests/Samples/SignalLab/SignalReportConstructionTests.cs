@@ -3,6 +3,7 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Measures only the warmed actual sample builder, including every owned expression component.</summary>
+
 // WHY: Unrelated collections can perturb current-thread allocation measurements during forced GC
 // and large graph tests. Reuse the existing measurement collection without changing any budget.
 [Collection("Allocation measurements")]
@@ -35,11 +36,13 @@ public sealed partial class SignalReportConstructionTests(
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(nearest);
+
         // WHY: Doka's nearest-owner shape includes coordinate-group expressions. Fixed per-shape ceilings
         // guard the measured savings with headroom instead of letting Any regress to that larger allowance.
         var maximumBytes = (engine, nearest) switch
@@ -61,8 +64,10 @@ public sealed partial class SignalReportConstructionTests(
         var allocated = QueryConstructionAllocation.Measure(() => SignalReportBuilder.Build(context, request));
 
         // Assert
-        output.WriteLine($"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
+        output.WriteLine(
+            $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
             + $"criteria=4; bytes/build={allocated}; maximum={maximumBytes}.");
+
         Assert.InRange(allocated, 0, maximumBytes);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
@@ -93,9 +98,10 @@ public sealed partial class SignalReportConstructionTests(
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var baseline = Request(nearest);
         var groups = baseline.Groups.ToArray();
@@ -128,9 +134,11 @@ public sealed partial class SignalReportConstructionTests(
         var delta = allocations.Expanded - allocations.Baseline;
 
         // Assert
-        output.WriteLine($"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
+        output.WriteLine(
+            $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
             + $"baseline={allocations.Baseline} B/build; "
             + $"expanded={allocations.Expanded} B/build; additional criterion={delta} B/build.");
+
         Assert.InRange(allocations.Baseline, 0, 256 * 1024);
         Assert.InRange(allocations.Expanded, 0, 256 * 1024);
         Assert.Equal(0, boundary.ConnectionStarts);
@@ -156,9 +164,10 @@ public sealed partial class SignalReportConstructionTests(
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions("SqlServer", boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(nearest);
 
@@ -199,9 +208,10 @@ public sealed partial class SignalReportConstructionTests(
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(false);
 
@@ -227,10 +237,12 @@ public sealed partial class SignalReportConstructionTests(
         string engine,
         CompositionIoBoundary boundary
     )
-        => new DbContextOptionsBuilder<SignalLabContext>(ModelCompatibilityDatabase.Options<SignalLabContext>(engine,
-                engine == "Sqlite"
-                    ? "Data Source=:memory:"
-                    : "Server=localhost;Database=signal_builder;User ID=unused"))
+        => new DbContextOptionsBuilder<SignalLabContext>(
+                ModelCompatibilityDatabase.Options<SignalLabContext>(
+                    engine,
+                    engine == "Sqlite"
+                        ? "Data Source=:memory:"
+                        : "Server=localhost;Database=signal_builder;User ID=unused"))
             .AddInterceptors(boundary, boundary.Commands);
 
     /// <summary>Creates an owned service graph with all configured provider and NestedSet services.</summary>
@@ -254,7 +266,8 @@ public sealed partial class SignalReportConstructionTests(
         bool nearest
     )
     {
-        var data = new SignalReportDataset(Guid.NewGuid(),
+        var data = new SignalReportDataset(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             [
                 SignalReportDataset.Id(1), SignalReportDataset.Id(2), SignalReportDataset.Id(3),
@@ -262,6 +275,10 @@ public sealed partial class SignalReportConstructionTests(
             ],
             false);
 
-        return SignalReportValidation.Snapshot(data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any));
+        return SignalReportValidation.Snapshot(
+            data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any));
     }
 }

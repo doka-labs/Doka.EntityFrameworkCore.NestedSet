@@ -6,11 +6,17 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 internal static class UserGroupChainBenchmarkData
 {
     /// <summary>Seeds the actual sample model; every requested successful hop has a persisted manager level.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="nodes">The exact prepared node population.</param>
+    /// <param name="shape">The deterministic hierarchy shape.</param>
+    /// <param name="profile">The complete chain scenario to prepare.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     internal static async Task<ChainBenchmarkFixture> CreateAsync(
         UserGroupContext context,
         int nodes,
         BenchmarkShape shape,
-        BenchmarkChainProfile profile
+        BenchmarkChainProfile profile,
+        CancellationToken cancellationToken
     )
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(nodes, 10);
@@ -24,7 +30,7 @@ internal static class UserGroupChainBenchmarkData
                 Id = role,
                 Name = "Measured manager",
             },
-            CancellationToken.None);
+            cancellationToken);
 
         await context.GroupTypes.AddRangeAsync(
             [
@@ -41,7 +47,7 @@ internal static class UserGroupChainBenchmarkData
                     Name = "Measured payload",
                 },
             ],
-            CancellationToken.None);
+            cancellationToken);
 
         await context.UserMetadataDefinitions.AddAsync(
             new UserMetadataDefinition
@@ -49,7 +55,7 @@ internal static class UserGroupChainBenchmarkData
                 TenantId = tenant,
                 FieldCode = "Route",
             },
-            CancellationToken.None);
+            cancellationToken);
 
         foreach (var type in new[] { 1, 2 })
         {
@@ -60,17 +66,19 @@ internal static class UserGroupChainBenchmarkData
                     GroupTypeId = type,
                     FieldCode = "Route",
                 },
-                CancellationToken.None);
+                cancellationToken);
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
         var groups = Enumerable
             .Range(0, nodes)
             .Select(index => new UserGroup
             {
                 Name = FormattableString.Invariant($"Measured group {index:D9}"),
-                TypeId = index < 9 ? 1 : 2,
+                TypeId = index < 9
+                    ? 1
+                    : 2,
             })
             .ToArray();
 
@@ -86,7 +94,7 @@ internal static class UserGroupChainBenchmarkData
                     {
                         BenchmarkShape.Wide => 9,
                         BenchmarkShape.Deep => index - 1,
-                        BenchmarkShape.Balanced => 9 + ((index - 10) / 2),
+                        BenchmarkShape.Balanced => 9 + (index - 10) / 2,
                         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
                     };
 
@@ -108,10 +116,10 @@ internal static class UserGroupChainBenchmarkData
             .NestedSet<UserGroup>()
             .ForScope(tenant);
 
-        await hierarchy.InsertRootAsync(groups[0], Guid.NewGuid(), CancellationToken.None);
-        await hierarchy.InsertSubtreeAsync(branches[1], groups[0].Id, CancellationToken.None);
-        await hierarchy.InsertSubtreeAsync(branches[9], groups[0].Id, CancellationToken.None);
-        var users = new User[1 + (8 * fanout)];
+        await hierarchy.InsertRootAsync(groups[0], Guid.NewGuid(), cancellationToken);
+        await hierarchy.InsertSubtreeAsync(branches[1], groups[0].Id, cancellationToken);
+        await hierarchy.InsertSubtreeAsync(branches[9], groups[0].Id, cancellationToken);
+        var users = new User[1 + 8 * fanout];
 
         // WHY: Store inserted users in the stable slots used by the membership and routing fixture.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -122,7 +130,7 @@ internal static class UserGroupChainBenchmarkData
             await context
                 .NestedSet<User>()
                 .ForScope(tenant)
-                .InsertRootAsync(users[index], Guid.NewGuid(), CancellationToken.None);
+                .InsertRootAsync(users[index], Guid.NewGuid(), cancellationToken);
         }
 
         await AddMembershipAsync(
@@ -132,7 +140,8 @@ internal static class UserGroupChainBenchmarkData
             groups[8],
             role,
             false,
-            "route-a");
+            "route-a",
+            cancellationToken);
 
         // WHY: Use the same user ordinal when assigning routing-switch fixture metadata.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -145,18 +154,23 @@ internal static class UserGroupChainBenchmarkData
                     TenantId = tenant,
                     UserId = users[index].Id,
                     FieldCode = "Route",
-                    Value = profile == BenchmarkChainProfile.RoutingSwitch && index > 0 ? "route-b" : "route-a",
+                    Value = profile == BenchmarkChainProfile.RoutingSwitch && index > 0
+                        ? "route-b"
+                        : "route-a",
                 },
-                CancellationToken.None);
+                cancellationToken);
         }
 
         for (var level = 0; level < 8; level++)
         {
             for (var person = 0; person < fanout; person++)
             {
-                var user = users[1 + (level * fanout) + person];
+                var user = users[1 + level * fanout + person];
                 var enabled = !(level == 6 && profile is BenchmarkChainProfile.Missing or BenchmarkChainProfile.Cycle);
-                var route = profile == BenchmarkChainProfile.RoutingSwitch && person == 1 ? "route-b" : "route-a";
+                var route = profile == BenchmarkChainProfile.RoutingSwitch && person == 1
+                    ? "route-b"
+                    : "route-a";
+
                 await AddMembershipAsync(
                     context,
                     tenant,
@@ -164,7 +178,8 @@ internal static class UserGroupChainBenchmarkData
                     groups[level],
                     role,
                     enabled,
-                    route);
+                    route,
+                    cancellationToken);
             }
         }
 
@@ -177,7 +192,8 @@ internal static class UserGroupChainBenchmarkData
                 groups[6],
                 role,
                 true,
-                "route-a");
+                "route-a",
+                cancellationToken);
         }
 
         if (profile == BenchmarkChainProfile.ReExpansion)
@@ -185,11 +201,12 @@ internal static class UserGroupChainBenchmarkData
             await AddMembershipAsync(
                 context,
                 tenant,
-                users[1 + (7 * fanout)].Id,
+                users[1 + 7 * fanout].Id,
                 groups[9],
                 role,
                 false,
-                "route-a");
+                "route-a",
+                cancellationToken);
         }
 
         foreach (var group in groups.Skip(1))
@@ -202,13 +219,13 @@ internal static class UserGroupChainBenchmarkData
                     ChildId = group.Id,
                     FromDate = new DateOnly(2026, 1, 1),
                 },
-                CancellationToken.None);
+                cancellationToken);
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
         BenchmarkFixture.Require(
-            await context.Groups.LongCountAsync(CancellationToken.None) == nodes,
+            await context.Groups.LongCountAsync(cancellationToken) == nodes,
             "The chain group's actual persisted population differs from Nodes.");
 
         var selection = profile is BenchmarkChainProfile.Ambiguous or BenchmarkChainProfile.RoutingSwitch
@@ -231,7 +248,9 @@ internal static class UserGroupChainBenchmarkData
                 .Repeat(step, hops)
                 .ToArray(),
             RoutingOrigin = RoutingOrigin.InitialSubject,
-            MaxFrontierStates = profile == BenchmarkChainProfile.FrontierLimit ? 1 : 1_024,
+            MaxFrontierStates = profile == BenchmarkChainProfile.FrontierLimit
+                ? 1
+                : 1_024,
             MaxVisitedStates = 100_000,
             MaxResultRows = 1_000_000,
         };
@@ -270,6 +289,14 @@ internal static class UserGroupChainBenchmarkData
     };
 
     /// <summary>Adds exact membership, local role, and typed routing values without inventing global grants.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="tenant">The isolated tenant identity.</param>
+    /// <param name="user">The user receiving this exact membership.</param>
+    /// <param name="group">The membership group and its declared type.</param>
+    /// <param name="role">The membership-local manager role identity.</param>
+    /// <param name="manager">Whether this membership receives the manager role.</param>
+    /// <param name="route">The exact routing metadata value.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     private static async Task AddMembershipAsync(
         UserGroupContext context,
         Guid tenant,
@@ -277,7 +304,8 @@ internal static class UserGroupChainBenchmarkData
         UserGroup group,
         Guid role,
         bool manager,
-        string route
+        string route,
+        CancellationToken cancellationToken
     )
     {
         await context.UserGroupMemberships.AddAsync(
@@ -288,7 +316,7 @@ internal static class UserGroupChainBenchmarkData
                 UserGroupId = group.Id,
                 LeadershipPriority = 10,
             },
-            CancellationToken.None);
+            cancellationToken);
 
         await context.MembershipMetadatas.AddAsync(
             new MembershipMetadata
@@ -300,7 +328,7 @@ internal static class UserGroupChainBenchmarkData
                 FieldCode = "Route",
                 Value = route,
             },
-            CancellationToken.None);
+            cancellationToken);
 
         if (manager)
         {
@@ -312,7 +340,7 @@ internal static class UserGroupChainBenchmarkData
                     UserGroupId = group.Id,
                     RoleId = role,
                 },
-                CancellationToken.None);
+                cancellationToken);
         }
     }
 }

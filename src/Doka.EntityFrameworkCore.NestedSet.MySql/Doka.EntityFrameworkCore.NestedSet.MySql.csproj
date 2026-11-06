@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup Label="Common hierarchy and native provider">
-    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
-    <PackageReference Include="Doka.EntityFrameworkCore.MySql"/>
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj" />
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">

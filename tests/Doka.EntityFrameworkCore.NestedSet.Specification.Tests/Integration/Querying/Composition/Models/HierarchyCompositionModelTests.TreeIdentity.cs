@@ -22,7 +22,10 @@ public abstract partial class HierarchyCompositionModelTests
     {
         // Arrange
         var first = NextIdentity();
-        var token = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        var token = Guid
+            .NewGuid()
+            .ToString("N", CultureInfo.InvariantCulture);
+
         var treeId = new BroadTreeId(token + "a");
         var otherTree = new BroadTreeId(token + "A");
         var probe = new CompositionCommandProbe();
@@ -30,6 +33,7 @@ public abstract partial class HierarchyCompositionModelTests
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
             Engine,
             static options => new BroadTreeIdContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             TestMaterializationObserver.Instance);
 
@@ -37,22 +41,30 @@ public abstract partial class HierarchyCompositionModelTests
 
         foreach (var (identity, offset) in new[] { (treeId, 0), (otherTree, 3) })
         {
-            await context.AddRangeAsync(Enumerable.Range(0, 3).Select(depth => new BroadTreeIdNode
-            {
-                Id = first + offset + depth,
-                ParentId = depth == 0 ? null : first + offset + depth - 1,
-                TreeId = identity,
-                Left = depth + 1,
-                Right = 6 - depth,
-                Depth = depth,
-                Name = $"Node {depth}",
-            }), CancellationToken.None);
+            await context.AddRangeAsync(
+                Enumerable
+                    .Range(0, 3)
+                    .Select(depth => new BroadTreeIdNode
+                    {
+                        Id = first + offset + depth,
+                        ParentId = depth == 0
+                            ? null
+                            : first + offset + depth - 1,
+                        TreeId = identity,
+                        Left = depth + 1,
+                        Right = 6 - depth,
+                        Depth = depth,
+                        Name = $"Node {depth}",
+                    }),
+                CancellationToken.None);
         }
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<BroadTreeIdNode>().InTree(treeId);
+        var hierarchy = context
+            .NestedSet<BroadTreeIdNode>()
+            .InTree(treeId);
 
         // Act
         var actual = await QueryDepths(hierarchy, operation)

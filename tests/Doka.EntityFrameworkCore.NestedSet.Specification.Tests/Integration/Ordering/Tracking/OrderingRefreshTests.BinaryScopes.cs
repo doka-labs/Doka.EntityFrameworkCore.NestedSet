@@ -7,7 +7,10 @@ public abstract partial class OrderingRefreshTests
     public async Task EqualBinaryScopesShareOneMembershipBatch()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions
@@ -50,8 +53,8 @@ public abstract partial class OrderingRefreshTests
                 TreeId = treeId,
                 ParentId = 0,
                 Name = $"node-{position:D3}",
-                Left = (position * 2) + 2,
-                Right = (position * 2) + 3,
+                Left = position * 2 + 2,
+                Right = position * 2 + 3,
                 Depth = 1,
                 Position = position,
             })

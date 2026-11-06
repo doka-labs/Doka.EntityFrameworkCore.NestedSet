@@ -38,7 +38,8 @@ public sealed class BulkPlanPropertyTests
         plan.PrepareGeometry(destination, null, CancellationToken.None);
         var states = plan
             .Nodes
-            .Select(node => context.Entry(node.Entity).State)
+            .Select(node => context.Entry(node.Entity)
+                .State)
             .ToArray();
 
         // Assert
@@ -64,7 +65,9 @@ public sealed class BulkPlanPropertyTests
         var store = CreateStore(context);
         var ranks = Enumerable
             .Range(1, forest.Parents.Length)
-            .OrderBy(key => rankInputs.Length == 0 ? 0 : rankInputs[(key - 1) % rankInputs.Length])
+            .OrderBy(key => rankInputs.Length == 0
+                ? 0
+                : rankInputs[(key - 1) % rankInputs.Length])
             .ThenBy(key => key)
             .Select((key, rank) => (key, rank))
             .ToDictionary(item => item.key, item => item.rank);
@@ -105,9 +108,12 @@ public sealed class BulkPlanPropertyTests
         // Assert
         Assert.Equal(
             NestedSetErrorCode.InvalidImport,
-            Assert.IsType<NestedSetException>(exception).Code);
+            Assert.IsType<NestedSetException>(exception)
+                .Code);
+
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.All(forest.Entities,
+        Assert.All(
+            forest.Entities,
             node => Assert.Equal((0L, 0L, 0, 0L), (node.Start, node.End, node.Depth, node.Position)));
     }
 
@@ -134,8 +140,11 @@ public sealed class BulkPlanPropertyTests
         var exception = Record.Exception(() => CreatePlan(store, roots, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidImport,
-            Assert.IsType<NestedSetException>(exception).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidImport,
+            Assert.IsType<NestedSetException>(exception)
+                .Code);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -182,7 +191,12 @@ public sealed class BulkPlanPropertyTests
         for (var index = 0; index < count; index++)
         {
             entities[index] = new TreeNode { NodeId = index + 1 };
-            parents[index] = (int)((uint)(input.Length == 0 ? 0 : input[index]) % (uint)(index + 1)) - 1;
+            parents[index] = (int)((uint)(input.Length == 0
+                        ? 0
+                        : input[index])
+                    % (uint)(index + 1))
+                - 1;
+
             children[index] = [];
         }
 
@@ -191,7 +205,9 @@ public sealed class BulkPlanPropertyTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = count - 1; index >= 0; index--)
         {
-            children[index].Reverse();
+            children[index]
+                .Reverse();
+
             branches[index] = new NestedSetBranch<TreeNode>(entities[index], children[index]);
             if (parents[index] < 0)
             {
@@ -199,7 +215,8 @@ public sealed class BulkPlanPropertyTests
             }
             else
             {
-                children[parents[index]].Add(branches[index]);
+                children[parents[index]]
+                    .Add(branches[index]);
             }
         }
 
@@ -249,17 +266,27 @@ public sealed class BulkPlanPropertyTests
 
             Assert.Equal(destination.Depth + ancestors.Count, node.Geometry.Depth);
             Assert.Equal(
-                parents[index] < 0 ? -1 : parents[index] + 1,
-                node.Parent < 0 ? -1 : plan.Nodes[node.Parent].Entity.NodeId);
+                parents[index] < 0
+                    ? -1
+                    : parents[index] + 1,
+                node.Parent < 0
+                    ? -1
+                    : plan.Nodes[node.Parent].Entity.NodeId);
 
             var siblings = Enumerable
                 .Range(0, parents.Length)
                 .Where(candidate => parents[candidate] == parents[index])
-                .OrderBy(candidate => ranks is null ? candidate : ranks[candidate + 1])
+                .OrderBy(candidate => ranks is null
+                    ? candidate
+                    : ranks[candidate + 1])
                 .ToArray();
 
             var siblingIndex = Array.IndexOf(siblings, index);
-            var expectedPosition = siblingIndex + (parents[index] < 0 ? destination.Position : 0);
+            var expectedPosition = siblingIndex
+                + (parents[index] < 0
+                    ? destination.Position
+                    : 0);
+
             Assert.Equal(expectedPosition, node.Geometry.Position);
 
             if (siblingIndex > 0)

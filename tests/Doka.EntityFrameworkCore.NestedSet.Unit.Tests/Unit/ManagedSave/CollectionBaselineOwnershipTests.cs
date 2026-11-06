@@ -57,8 +57,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Null(journal);
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An introduced ordinary principal does not create a retained external collection receipt.</summary>
@@ -103,8 +105,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.False(key.IsOwnership);
         Assert.Null(journal);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>An existing external owner retains CLR order and native baseline after input cleanup.</summary>
@@ -167,8 +171,11 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.NotNull(journal);
         Assert.NotNull(ownerBefore);
         Assert.Equal(EntityState.Unchanged, ownerStateBefore);
-        Assert.Same(owner,
-            ownerBefore.ToEntityEntry().Entity);
+        Assert.Same(
+            owner,
+            ownerBefore.ToEntityEntry()
+                .Entity);
+
         Assert.Same(collection, owner.Dependents);
         Assert.Collection(owner.Dependents, value => Assert.Same(first, value), value => Assert.Same(second, value));
 
@@ -182,8 +189,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal(EntityState.Detached, entry.State);
         Assert.Equal(EntityState.Unchanged, ownerBefore.EntityState);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A late-selected owner excludes active inputs from its first captured rollback baseline.</summary>
@@ -251,9 +260,12 @@ public sealed partial class CollectionBaselineOwnershipTests
         entry.State = EntityState.Added;
         var initialPrincipal = updates.FindPrincipal(update, key);
         var identity = NestedSetInsertionTracking.Capture(entry);
+
         // WHY: A callback can change an Added input's ordinary FK after its original owner was captured.
         // Public EF assignment performs real inverse fixup before the selected owner's first journal capture.
-        entry.Property(value => value.ExternalOwnerId).CurrentValue = selectedOwner.Id;
+        entry.Property(value => value.ExternalOwnerId)
+            .CurrentValue = selectedOwner.Id;
+
         identity.Refresh();
         context.ChangeTracker.AcceptAllChanges();
         var selectedPrincipal = updates.FindPrincipal(update, key);
@@ -295,8 +307,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal(EntityState.Unchanged, initialUpdate.EntityState);
         Assert.Equal(EntityState.Unchanged, selectedUpdate.EntityState);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Known detached inputs preserve notification collections without native collection snapshots.</summary>
@@ -343,7 +357,9 @@ public sealed partial class CollectionBaselineOwnershipTests
             (input, key, principal) => ReferenceEquals(input, update)
                 && ReferenceEquals(key, foreignKey)
                 && ReferenceEquals(principal, owner),
-            input => ReferenceEquals(input, dependent) ? entry.Metadata : null,
+            input => ReferenceEquals(input, dependent)
+                ? entry.Metadata
+                : null,
             [foreignKey],
             entry.Metadata);
 
@@ -359,6 +375,7 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal(
             ChangeTrackingStrategy.ChangingAndChangedNotifications,
             ownerEntry.Metadata.GetChangeTrackingStrategy());
+
         Assert.Equal(nameof(NotificationOwner.Dependents), navigation.Name);
         Assert.Equal(EntityState.Unchanged, trackedStateBefore);
         Assert.Equal(EntityState.Detached, detachedStateBefore);
@@ -373,12 +390,20 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Empty(updates.GetDependents(ownerUpdate, foreignKey));
         Assert.DoesNotContain(updates.Entries, tracked => ReferenceEquals(tracked, update));
         Assert.Equal(EntityState.Modified, ownerEntry.State);
-        Assert.True(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(ownerEntry.Property(value => value.Id).IsModified);
+        Assert.True(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            ownerEntry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Equal("Pending application payload", owner.Payload);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Rollback preserves nullable collections and resumes only EF's own notification handlers.</summary>
@@ -419,7 +444,9 @@ public sealed partial class CollectionBaselineOwnershipTests
         var entry = context.Entry(dependent);
         entry.State = EntityState.Detached;
         dependent.Owner = null;
-        dependent.OwnerId = initiallyNull ? owner.Id : null;
+        dependent.OwnerId = initiallyNull
+            ? owner.Id
+            : null;
 
         if (initiallyNull)
         {
@@ -445,7 +472,9 @@ public sealed partial class CollectionBaselineOwnershipTests
             (input, foreignKey, principal) => ReferenceEquals(input, update)
                 && ReferenceEquals(foreignKey, key)
                 && ReferenceEquals(principal, owner),
-            input => ReferenceEquals(input, dependent) ? entry.Metadata : null,
+            input => ReferenceEquals(input, dependent)
+                ? entry.Metadata
+                : null,
             [key],
             entry.Metadata);
 
@@ -476,13 +505,16 @@ public sealed partial class CollectionBaselineOwnershipTests
         var restored = owner.Dependents;
         var restoredMembers = restored?.ToArray();
         var restoredState = ownerEntry.State;
-        var restoredPayloadModified = ownerEntry.Property(value => value.Payload).IsModified;
+        var restoredPayloadModified = ownerEntry.Property(value => value.Payload)
+            .IsModified;
 
         var restoredPayload = owner.Payload;
         var finalOriginalNativeHandlers = original.NativeHandlerCount;
         var finalReplacementNativeHandlers = replacement.NativeHandlerCount;
         var applicationPropertiesBeforeProbe = applicationProperties;
-        ownerEntry.Property(value => value.Payload).IsModified = false;
+        ownerEntry.Property(value => value.Payload)
+            .IsModified = false;
+
         owner.Payload = "Notification after rollback";
 
         // Assert
@@ -512,14 +544,22 @@ public sealed partial class CollectionBaselineOwnershipTests
         Assert.Equal("Pending application payload", restoredPayload);
         Assert.Equal(applicationPropertiesBeforeProbe + 1, applicationProperties);
         Assert.Equal(EntityState.Modified, ownerEntry.State);
-        Assert.True(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(ownerEntry.Property(value => value.Id).IsModified);
+        Assert.True(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            ownerEntry.Property(value => value.Id)
+                .IsModified);
+
         Assert.Equal(EntityState.Detached, entry.State);
         Assert.DoesNotContain(updates.Entries, tracked => ReferenceEquals(tracked, update));
         Assert.Empty(updates.GetDependents(ownerUpdate, key));
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Uses real ownership and ordinary relationships without opening a database connection.</summary>
@@ -550,6 +590,7 @@ public sealed partial class CollectionBaselineOwnershipTests
             dependent
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             dependent
                 .HasOne(value => value.ExternalOwner)
                 .WithMany(value => value.Dependents)
@@ -560,6 +601,7 @@ public sealed partial class CollectionBaselineOwnershipTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             root.OwnsMany(
                 value => value.Payloads,
                 payload =>
@@ -614,6 +656,7 @@ public sealed partial class CollectionBaselineOwnershipTests
             dependent
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             dependent
                 .HasOne(value => value.Owner)
                 .WithMany(value => value.Dependents)
@@ -686,9 +729,9 @@ public sealed partial class CollectionBaselineOwnershipTests
     /// <summary>Exposes notification collections without EF collection relationship snapshots.</summary>
     private sealed class NotificationOwner : INotifyPropertyChanging, INotifyPropertyChanged
     {
+        private NotificationDependents? _dependents = new();
         private int _id;
         private string _payload = string.Empty;
-        private NotificationDependents? _dependents = new();
 
         /// <summary>Gets or sets the fixed owner key.</summary>
         public int Id
@@ -712,10 +755,10 @@ public sealed partial class CollectionBaselineOwnershipTests
         }
 
         /// <inheritdoc />
-        public event PropertyChangingEventHandler? PropertyChanging;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <inheritdoc />
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public event PropertyChangingEventHandler? PropertyChanging;
 
         /// <summary>Raises EF's actual notification pair around one scalar change.</summary>
         private void Set<TValue>(

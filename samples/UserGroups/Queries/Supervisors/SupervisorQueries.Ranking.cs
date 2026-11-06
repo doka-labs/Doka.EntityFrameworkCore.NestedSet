@@ -57,7 +57,7 @@ internal static partial class SupervisorQueries
                 row.SourceUserId,
                 row.StartGroupId,
                 row.StartTreeId,
-                row.CandidateUserId
+                row.CandidateUserId,
             })
             .Select(group => new
             {

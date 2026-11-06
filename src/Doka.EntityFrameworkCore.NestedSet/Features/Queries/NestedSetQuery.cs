@@ -5,18 +5,19 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 internal sealed partial class NestedSetQuery<TEntity>
     where TEntity : class
 {
-    private readonly IQueryable<TEntity> _nodes;
-    private readonly IQueryable<TEntity> _unboundNodes;
-
     /// <summary>Owns cumulative identity constraints, or null before the first scope/tree binding.</summary>
     private readonly Expression<Func<TEntity, bool>>? _binding;
+
+    private readonly NestedSetProviderCapabilities _capabilities;
+
     private readonly DbContext _context;
-    private readonly IEntityType _entityType;
     private readonly NestedSetModelDescriptor _descriptor;
+    private readonly IEntityType _entityType;
+    private readonly string? _keyCollation;
+    private readonly IQueryable<TEntity> _nodes;
     private readonly bool _scopeBound;
     private readonly bool _treeBound;
-    private readonly NestedSetProviderCapabilities _capabilities;
-    private readonly string? _keyCollation;
+    private readonly IQueryable<TEntity> _unboundNodes;
 
     /// <summary>Creates an unbound public query root and validates the hierarchy configuration immediately.</summary>
     /// <param name="context">The caller-owned context.</param>
@@ -204,13 +205,11 @@ internal sealed partial class NestedSetQuery<TEntity>
             _nodes,
             parent => EF.Property<object>(parent, key),
             ParentKey(),
-            (
-                parent,
-                child
-            ) => new
+            (parent,
+                child) => new
             {
                 Parent = parent,
-                Child = child
+                Child = child,
             });
 
         // WHY: ParentId selects one sibling group through its configured index, independent of subtree size.
@@ -353,7 +352,9 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var parameter = _binding?.Parameters[0] ?? Expression.Parameter(typeof(TEntity), "node");
         var comparison = NestedSetKeyFilter<TEntity>.Equal(parameter, property, value);
-        var condition = _binding is null ? comparison : Expression.AndAlso(_binding.Body, comparison);
+        var condition = _binding is null
+            ? comparison
+            : Expression.AndAlso(_binding.Body, comparison);
 
         // WHY: EF revisits every root occurrence during warm parameter extraction. One cumulative
         // owned Where removes repeated method calls while preserving exact-root provenance and the

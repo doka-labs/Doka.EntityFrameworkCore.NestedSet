@@ -41,7 +41,8 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptInheritedCollationContext>(
             Engine,
-            static options => new TptInheritedCollationContext(options));
+            static options => new TptInheritedCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
             .NewGuid()
@@ -99,9 +100,11 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             (firstScope, treeId, 1L, 2L, 0, 0L),
             (persistedFirst.Scope, persistedFirst.TreeId, persistedFirst.Left, persistedFirst.Right,
                 persistedFirst.Depth, persistedFirst.Position));
+
         Assert.Equal(
             (second.Id, secondScope, treeId, null, 1L, 2L, 0, 0L, second.Name, second.Payload),
             Snapshot(persistedSecond));
+
         Assert.True((await firstTree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
         Assert.True((await secondTree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
 
@@ -132,10 +135,12 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         Assert.Null(
             designBase.FindAnnotation(RelationalAnnotationNames.Collation)
                 ?.Value);
+
         Assert.Equal(
             "utf8mb4_bin",
             designLeaf.FindAnnotation(RelationalAnnotationNames.Collation)
                 ?.Value);
+
         Assert.All(
             new[]
             {
@@ -145,7 +150,9 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             },
             name => Assert.Null(designBase.FindProperty(name)!.GetCollation()));
 
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
         var designRegistry = designModel.FindEntityType(registry.Name)!;
         Assert.Equal("utf8mb4_bin", designRegistry.FindProperty(NestedSetTreeRegistryMetadata.Scope)!.GetCollation());
         var scopes = await context
@@ -168,7 +175,8 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptInheritedCollationContext>(
             Engine,
-            static options => new TptInheritedCollationContext(options));
+            static options => new TptInheritedCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
             .NewGuid()
@@ -197,7 +205,11 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
 
         await hierarchy.InsertChildAsync(child, root.Id, CancellationToken.None);
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId);
+        var before = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var parent = await context
@@ -210,7 +222,14 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         Assert.Equal(before[0], Snapshot(parent));
         Assert.Equal(root.Id, parent.Id);
         Assert.Equal((1L, 4L, 0, 0L), (parent.Left, parent.Right, parent.Depth, parent.Position));
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId));
+        Assert.Equal(
+            before,
+            await TreeSnapshotsAsync(
+                context,
+                scope,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var leafType = context.Model.FindEntityType(typeof(TptInheritedCollationLeaf))!;
         Assert.Equal(
             "utf8mb4_bin",
@@ -218,14 +237,17 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
                 context,
                 leafType.FindProperty(nameof(TptInheritedCollationNode.Scope))!,
                 leafType));
+
         Assert.Equal(
             "utf8mb4_bin",
             NestedSetMapping<TptInheritedCollationLeaf, string, string>.For(context, leafType)
                 .KeyCollation);
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -237,7 +259,8 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptInheritedCollationContext>(
             Engine,
-            static options => new TptInheritedCollationContext(options));
+            static options => new TptInheritedCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
             .NewGuid()
@@ -258,7 +281,12 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
 
         await hierarchy.InsertRootAsync(root, treeId, CancellationToken.None);
         context.ChangeTracker.Clear();
-        var before = await TreeSnapshotsAsync(context, scope, treeId);
+        var before = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var child = new TptInheritedCollationLeaf
         {
             Id = "REJECTED-" + suffix,
@@ -279,16 +307,26 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             NestedSetErrorCode.NodeNotFound,
             Assert.IsType<NestedSetException>(failure)
                 .Code);
+
         Assert.Equal(inputBefore, Snapshot(child));
         Assert.Equal(
             EntityState.Detached,
             context.Entry(child)
                 .State);
-        Assert.Equal(before, await TreeSnapshotsAsync(context, scope, treeId));
+
+        Assert.Equal(
+            before,
+            await TreeSnapshotsAsync(
+                context,
+                scope,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -300,7 +338,8 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptInheritedCollationContext>(
             Engine,
-            static options => new TptInheritedCollationContext(options));
+            static options => new TptInheritedCollationContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var suffix = Guid
             .NewGuid()
@@ -349,7 +388,12 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
         await context.SaveChangesAsync(CancellationToken.None);
 
         // Assert
-        var snapshots = await TreeSnapshotsAsync(context, scope, treeId);
+        var snapshots = await TreeSnapshotsAsync(
+            context,
+            scope,
+            treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(
             new[]
             {
@@ -359,15 +403,18 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
                     "Reparented leaf payload"),
             },
             snapshots);
+
         Assert.Equal(snapshots[2], Snapshot(changed));
         Assert.Equal(
             EntityState.Unchanged,
             context.Entry(changed)
                 .State);
+
         Assert.Same(
             changed,
             Assert.Single(context.ChangeTracker.Entries())
                 .Entity);
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
@@ -375,11 +422,16 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
     }
 
     /// <summary>Reads complete ancestor and leaf state in hierarchy order without changing the tracker.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
     private static async Task<(string Id, string Scope, Guid TreeId, string? Parent, long Left, long Right, int Depth,
         long Position, string Name, string Payload)[]> TreeSnapshotsAsync(
         TptInheritedCollationContext context,
         string scope,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
@@ -387,7 +439,7 @@ public abstract class TptInheritedCollationTestBase : ProviderTest
             .ForScope(scope)
             .InTree(treeId)
             .Nodes
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(node => Snapshot((TptInheritedCollationLeaf)node))

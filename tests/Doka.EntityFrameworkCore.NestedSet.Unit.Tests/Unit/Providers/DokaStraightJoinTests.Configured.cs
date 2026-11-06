@@ -19,7 +19,8 @@ public sealed partial class DokaStraightJoinTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionGuardContext>(
-                ModelCompatibilityDatabase.Options<CompositionGuardContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionGuardContext>(
+                    engine,
                     "Server=127.0.0.1;Database=straight_join_contract;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary, boundary.Commands)
             .Options;
@@ -54,7 +55,8 @@ public sealed partial class DokaStraightJoinTests
             .Where(node => node.Id < 12);
 
         // Act
-        var available = adapter.TryOrderedJoin(outer,
+        var available = adapter.TryOrderedJoin(
+            outer,
             inner,
             node => node.Id,
             node => node.Id,
@@ -94,7 +96,8 @@ public sealed partial class DokaStraightJoinTests
         var adapter = NestedSetProviderCapabilities.Resolve(context);
 
         // Act
-        var available = adapter.TryOrderedJoin(source,
+        var available = adapter.TryOrderedJoin(
+            source,
             source,
             node => node.Id,
             node => node.Id,
@@ -123,7 +126,8 @@ public sealed partial class DokaStraightJoinTests
         var boundary = new CompositionIoBoundary();
         using var context = CompositionGuardContext.Create(boundary, boundary.Commands);
         var nodes = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        adapter.TryOrderedJoin(nodes,
+        adapter.TryOrderedJoin(
+            nodes,
             nodes,
             node => node.Id,
             node => node.Id,
@@ -162,11 +166,21 @@ public sealed partial class DokaStraightJoinTests
 
         // Act
         var error = Record.Exception(() => adapter.TryOrderedJoin(
-            argument == "outer" ? null! : source,
-            argument == "inner" ? null! : source,
-            argument == "outerKey" ? null! : key,
-            argument == "innerKey" ? null! : key,
-            argument == "projection" ? null! : projection,
+            argument == "outer"
+                ? null!
+                : source,
+            argument == "inner"
+                ? null!
+                : source,
+            argument == "outerKey"
+                ? null!
+                : key,
+            argument == "innerKey"
+                ? null!
+                : key,
+            argument == "projection"
+                ? null!
+                : projection,
             out _));
 
         // Assert

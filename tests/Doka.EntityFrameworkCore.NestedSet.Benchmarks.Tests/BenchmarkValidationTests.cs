@@ -16,11 +16,19 @@ public sealed class BenchmarkValidationTests
 
         var validation = new ValidationParameters(discovery.BenchmarksCases, discovery.Config);
         var unoptimized = typeof(CompositionConstructionBenchmarks).Assembly
-            .GetCustomAttribute<DebuggableAttribute>()?.IsJITOptimizerDisabled == true;
+                .GetCustomAttribute<DebuggableAttribute>()
+                ?.IsJITOptimizerDisabled
+            == true;
 
         // Act
-        var validators = discovery.Config.GetValidators().OfType<JitOptimizationsValidator>().ToArray();
-        var errors = validators.SelectMany(validator => validator.Validate(validation))
+        var validators = discovery
+            .Config
+            .GetValidators()
+            .OfType<JitOptimizationsValidator>()
+            .ToArray();
+
+        var errors = validators
+            .SelectMany(validator => validator.Validate(validation))
             .Where(error => error.IsCritical)
             .ToArray();
 
@@ -36,8 +44,13 @@ public sealed class BenchmarkValidationTests
     public void StructuralValidationRetainsMutationIsolationErrors()
     {
         // Arrange
-        var configuration = ManualConfig.Create(BenchmarkConfiguration.Create(new BenchmarkRunOptions()))
-            .AddJob(Job.Default.WithInvocationCount(2).WithUnrollFactor(2));
+        var configuration = ManualConfig
+            .Create(BenchmarkConfiguration.Create(new BenchmarkRunOptions()))
+            .AddJob(
+                Job
+                    .Default
+                    .WithInvocationCount(2)
+                    .WithUnrollFactor(2));
 
         using var discovery = BenchmarkConverter.TypeToBenchmarks(typeof(InsertBenchmarks), configuration);
 
@@ -46,7 +59,10 @@ public sealed class BenchmarkValidationTests
 
         // Assert
         Assert.NotEmpty(errors);
-        Assert.Contains(errors, error => error.Message.Contains(
-            "invocation count and unroll factor 1", StringComparison.Ordinal));
+        Assert.Contains(
+            errors,
+            error => error.Message.Contains(
+                "invocation count and unroll factor 1",
+                StringComparison.Ordinal));
     }
 }

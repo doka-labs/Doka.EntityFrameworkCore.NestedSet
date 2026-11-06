@@ -10,30 +10,45 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TypedMetadataForeignKeysRejectInvalidWrites(bool wrongOwnerType)
+    public async Task TypedMetadataForeignKeysRejectInvalidWrites(
+        bool wrongOwnerType
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        var before = await context.TagValues.CountAsync(value => value.TenantId == data.TenantId,
+        var before = await context.TagValues.CountAsync(
+            value => value.TenantId == data.TenantId,
             CancellationToken.None);
 
-        context.TagValues.Add(new TagValue
-        {
-            TenantId = data.TenantId,
-            NodeId = SignalReportDataset.Id(4),
-            TypeId = wrongOwnerType ? SignalReportDataset.ArrayKind : SignalReportDataset.SensorKind,
-            FieldCode = wrongOwnerType ? "Band" : "Unknown",
-            Value = "Narrow",
-        });
+        context.TagValues.Add(
+            new TagValue
+            {
+                TenantId = data.TenantId,
+                NodeId = SignalReportDataset.Id(4),
+                TypeId = wrongOwnerType
+                    ? SignalReportDataset.ArrayKind
+                    : SignalReportDataset.SensorKind,
+                FieldCode = wrongOwnerType
+                    ? "Band"
+                    : "Unknown",
+                Value = "Narrow",
+            });
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
 
         // Assert
-        var after = await context.TagValues.AsNoTracking().CountAsync(value => value.TenantId == data.TenantId,
-            CancellationToken.None);
+        var after = await context
+            .TagValues
+            .AsNoTracking()
+            .CountAsync(
+                value => value.TenantId == data.TenantId,
+                CancellationToken.None);
 
         Assert.IsAssignableFrom<DbUpdateException>(error);
         Assert.Equal(before, after);
@@ -47,22 +62,31 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
-        context.LinkAvailability.Add(new LinkWindow
-        {
-            TenantId = data.TenantId,
-            ParentId = SignalReportDataset.Id(3),
-            ChildId = SignalReportDataset.Id(4),
-            FromDate = SignalReportDataset.FirstDay.AddDays(2), ToDate = SignalReportDataset.FirstDay.AddDays(1),
-        });
+        context.LinkAvailability.Add(
+            new LinkWindow
+            {
+                TenantId = data.TenantId,
+                ParentId = SignalReportDataset.Id(3),
+                ChildId = SignalReportDataset.Id(4),
+                FromDate = SignalReportDataset.FirstDay.AddDays(2),
+                ToDate = SignalReportDataset.FirstDay.AddDays(1),
+            });
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
 
         // Assert
-        var count = await context.LinkAvailability.AsNoTracking().CountAsync(period => period.TenantId == data.TenantId,
-            CancellationToken.None);
+        var count = await context
+            .LinkAvailability
+            .AsNoTracking()
+            .CountAsync(
+                period => period.TenantId == data.TenantId,
+                CancellationToken.None);
 
         Assert.IsAssignableFrom<DbUpdateException>(error);
         Assert.Equal(8, count);
@@ -75,11 +99,17 @@ public abstract partial class SignalReportTests
     [InlineData("choice", 1)]
     [InlineData("operator", 0)]
     [InlineData("contradiction", 0)]
-    public async Task InvalidRequestDoesNotExecuteAnAggregate(string shape, int expectedCatalogReaders)
+    public async Task InvalidRequestDoesNotExecuteAnAggregate(
+        string shape,
+        int expectedCatalogReaders
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data);
         var criterion = new TagCriterion(SignalReportDataset.SensorKind, "RackCode", "R7");
@@ -98,7 +128,8 @@ public abstract partial class SignalReportTests
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(context,
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
             request,
             CancellationToken.None));
 
@@ -116,19 +147,28 @@ public abstract partial class SignalReportTests
     [InlineData("foreign-tree")]
     [InlineData("hidden")]
     [InlineData("missing-metric")]
-    public async Task CatalogRejectsAnInvalidSelectionBeforeAnyAggregate(string shape)
+    public async Task CatalogRejectsAnInvalidSelectionBeforeAnyAggregate(
+        string shape
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data);
 
         if (shape == "hidden")
         {
-            await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
-                .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.IsVisible,
-                    false),
+            await context
+                .Nodes
+                .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        node => node.IsVisible,
+                        false),
                     CancellationToken.None);
         }
 
@@ -142,7 +182,8 @@ public abstract partial class SignalReportTests
         probe.Reset();
 
         // Act
-        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(context,
+        var error = await Record.ExceptionAsync(() => SignalReportBuilder.ReadAsync(
+            context,
             request,
             CancellationToken.None));
 
@@ -157,19 +198,27 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData("Receiver", true)]
     [InlineData("receiver", false)]
-    public async Task FixedMetadataComparisonMatchesOrdinalRequestPolicy(string selected, bool expected)
+    public async Task FixedMetadataComparisonMatchesOrdinalRequestPolicy(
+        string selected,
+        bool expected
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        context.TagChoices.Add(new TagChoice
-        {
-            TenantId = data.TenantId,
-            TypeId = SignalReportDataset.ModuleKind,
-            FieldCode = "ModuleClass",
-            Value = "receiver",
-        });
+        context.TagChoices.Add(
+            new TagChoice
+            {
+                TenantId = data.TenantId,
+                TypeId = SignalReportDataset.ModuleKind,
+                FieldCode = "ModuleClass",
+                Value = "receiver",
+            });
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var request = SingleAnchor(data) with
@@ -185,7 +234,12 @@ public abstract partial class SignalReportTests
         // Assert
         var cell = Assert.Single(cells);
         Assert.Equal(expected, cell.HasData);
-        Assert.Equal(expected ? 70 : 0, cell.Value);
+        Assert.Equal(
+            expected
+                ? 70
+                : 0,
+            cell.Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -196,11 +250,18 @@ public abstract partial class SignalReportTests
         // Arrange
         const string selected = "x' OR 1=1 --";
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        await context.TagValues.Where(value => value.TenantId == data.TenantId
-            && value.NodeId == SignalReportDataset.Id(4) && value.FieldCode == "RackCode")
+        await context
+            .TagValues
+            .Where(value => value.TenantId == data.TenantId
+                && value.NodeId == SignalReportDataset.Id(4)
+                && value.FieldCode == "RackCode")
             .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, selected), CancellationToken.None);
+
         var request = SingleAnchor(data) with
         {
             Criteria = [new TagCriterion(SignalReportDataset.SensorKind, "RackCode", selected)],
@@ -212,7 +273,11 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.Equal(30, Assert.Single(cells).Value);
+        Assert.Equal(
+            30,
+            Assert.Single(cells)
+                .Value);
+
         Assert.Contains(selected, probe.ParameterValues);
         Assert.DoesNotContain(selected, probe.Readers[1], StringComparison.Ordinal);
         AssertReportBoundary(context, probe);
@@ -224,13 +289,18 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
         var request = SingleAnchor(data);
         request = request with
         {
-            AnchorIds = [request.AnchorIds[0], request.AnchorIds[0]], ChannelIds = [request.ChannelIds[0], request.ChannelIds[0]],
-            Sources = [CapturePort.Pulse, CapturePort.Pulse], Criteria = [.. request.Criteria, .. request.Criteria],
+            AnchorIds = [request.AnchorIds[0], request.AnchorIds[0]],
+            ChannelIds = [request.ChannelIds[0], request.ChannelIds[0]],
+            Sources = [CapturePort.Pulse, CapturePort.Pulse],
+            Criteria = [.. request.Criteria, .. request.Criteria],
         };
 
         probe.Reset();
@@ -239,7 +309,11 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.Equal(70, Assert.Single(cells).Value);
+        Assert.Equal(
+            70,
+            Assert.Single(cells)
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -249,13 +323,22 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
-        await context.LinkAvailability.Where(period => period.TenantId == data.TenantId
-            && period.ParentId == SignalReportDataset.Id(4) && period.ChildId == SignalReportDataset.Id(5))
-            .ExecuteUpdateAsync(setters => setters.SetProperty(period => period.ToDate,
-                SignalReportDataset.FirstDay.AddDays(-1)),
+        await context
+            .LinkAvailability
+            .Where(period => period.TenantId == data.TenantId
+                && period.ParentId == SignalReportDataset.Id(4)
+                && period.ChildId == SignalReportDataset.Id(5))
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    period => period.ToDate,
+                    SignalReportDataset.FirstDay.AddDays(-1)),
                 CancellationToken.None);
+
         var request = data.Request(TagOwnerMode.Nearest, "Relay", false) with
         {
             AnchorIds = [SignalReportDataset.Id(1), SignalReportDataset.Id(6)],
@@ -269,30 +352,52 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.False(cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(1)).HasData);
-        Assert.Equal(10, cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(6)).Value);
+        Assert.False(
+            cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(1))
+                .HasData);
+
+        Assert.Equal(
+            10,
+            cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(6))
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
+
     /// <summary>
     /// Any metadata cannot reopen a hidden anchor path; Nearest additionally requires its own complete owner path.
     /// </summary>
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
-    public async Task VisibilityGapsRemainDistinctForAnyAndNearest(bool nearest, bool selfHasData)
+    public async Task VisibilityGapsRemainDistinctForAnyAndNearest(
+        bool nearest,
+        bool selfHasData
+    )
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
-        await context.Nodes.Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
+        await context
+            .Nodes
+            .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(4))
             .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.IsVisible, false), CancellationToken.None);
-        var request = data.Request(nearest ? TagOwnerMode.Nearest : TagOwnerMode.Any, "Receiver", false) with
-        {
-            AnchorIds = [SignalReportDataset.Id(1), SignalReportDataset.Id(6)],
-            ChannelIds = [SignalReportDataset.PulseChannel],
-            Sources = [CapturePort.Pulse],
-        };
+
+        var request = data.Request(
+                nearest
+                    ? TagOwnerMode.Nearest
+                    : TagOwnerMode.Any,
+                "Receiver",
+                false) with
+            {
+                AnchorIds = [SignalReportDataset.Id(1), SignalReportDataset.Id(6)],
+                ChannelIds = [SignalReportDataset.PulseChannel],
+                Sources = [CapturePort.Pulse],
+            };
 
         probe.Reset();
 
@@ -300,10 +405,18 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.False(cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(1)).HasData);
+        Assert.False(
+            cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(1))
+                .HasData);
+
         var self = cells.Single(cell => cell.AnchorId == SignalReportDataset.Id(6));
         Assert.Equal(selfHasData, self.HasData);
-        Assert.Equal(selfHasData ? 10 : 0, self.Value);
+        Assert.Equal(
+            selfHasData
+                ? 10
+                : 0,
+            self.Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -315,7 +428,10 @@ public abstract partial class SignalReportTests
     {
         // Arrange
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
         var request = data.Request(TagOwnerMode.Nearest, "Receiver", false) with
         {
@@ -336,5 +452,4 @@ public abstract partial class SignalReportTests
         Assert.Equal(0, cell.Value);
         AssertReportBoundary(context, probe);
     }
-
 }

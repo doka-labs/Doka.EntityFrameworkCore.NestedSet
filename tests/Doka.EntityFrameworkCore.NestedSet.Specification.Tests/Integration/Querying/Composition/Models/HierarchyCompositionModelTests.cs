@@ -4,8 +4,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 [Collection("Model compatibility")]
 public abstract partial class HierarchyCompositionModelTests : ProviderTest
 {
-    private readonly ModelCompatibilityDatabase _fixture;
     private static int s_identity = 200_000;
+    private readonly ModelCompatibilityDatabase _fixture;
 
     /// <summary>Uses the existing collection-owned model database for the current engine.</summary>
     protected HierarchyCompositionModelTests(
@@ -30,9 +30,14 @@ public abstract partial class HierarchyCompositionModelTests : ProviderTest
         where TEntity : class
         where TTreeId : notnull
     {
-        var pairs = hierarchy.SelectSubtrees(
+        var pairs = hierarchy
+            .SelectSubtrees(
                 node => EF.Property<int>(node, depthProperty) == 0,
-                (anchor, node, distance) => new { Anchor = anchor, Node = node })
+                (anchor, node, distance) => new
+                {
+                    Anchor = anchor,
+                    Node = node,
+                })
             .Where(row => EF.Property<int>(row.Node, depthProperty) == 2);
 
         // WHY: One operation per theory case isolates translation failures and keeps a single Act/Assert boundary.
@@ -47,37 +52,43 @@ public abstract partial class HierarchyCompositionModelTests : ProviderTest
             HierarchyCompositionOperation.Subtrees => hierarchy.SelectSubtrees(
                 node => EF.Property<int>(node, depthProperty) == 0,
                 (anchor, node, distance) => EF.Property<int>(node, depthProperty)),
-            HierarchyCompositionOperation.AllowedPath => hierarchy.WherePathEdges(
+            HierarchyCompositionOperation.AllowedPath => hierarchy
+                .WherePathEdges(
                     pairs,
                     row => row.Anchor,
                     row => row.Node,
                     (row, parent, child) => EF.Property<int>(child, depthProperty)
                         == EF.Property<int>(parent, depthProperty) + 1)
                 .Select(row => EF.Property<int>(row.Node, depthProperty)),
-            HierarchyCompositionOperation.AnyAncestor => hierarchy.WhereAnyAncestorOrSelf(
+            HierarchyCompositionOperation.AnyAncestor => hierarchy
+                .WhereAnyAncestorOrSelf(
                     pairs,
                     row => row.Node,
                     (row, owner) => EF.Property<int>(owner, depthProperty) == 0)
                 .Select(row => EF.Property<int>(row.Node, depthProperty)),
-            HierarchyCompositionOperation.NearestAncestor => hierarchy.WhereNearestAncestorOrSelf(
+            HierarchyCompositionOperation.NearestAncestor => hierarchy
+                .WhereNearestAncestorOrSelf(
                     pairs,
                     row => row.Node,
                     (row, owner) => EF.Property<int>(owner, depthProperty) < 2,
                     (row, owner) => EF.Property<int>(owner, depthProperty) == 1)
                 .Select(row => EF.Property<int>(row.Node, depthProperty)),
-            HierarchyCompositionOperation.MissingNearestOwner => hierarchy.WhereNearestAncestorOrSelf(
+            HierarchyCompositionOperation.MissingNearestOwner => hierarchy
+                .WhereNearestAncestorOrSelf(
                     pairs,
                     row => row.Node,
                     (row, owner) => EF.Property<int>(owner, depthProperty) == 99,
                     (row, owner) => EF.Property<int>(owner, depthProperty) == 0)
                 .Select(row => EF.Property<int>(row.Node, depthProperty)),
-            HierarchyCompositionOperation.NearestOwnerRejectsValue => hierarchy.WhereNearestAncestorOrSelf(
+            HierarchyCompositionOperation.NearestOwnerRejectsValue => hierarchy
+                .WhereNearestAncestorOrSelf(
                     pairs,
                     row => row.Node,
                     (row, owner) => EF.Property<int>(owner, depthProperty) < 2,
                     (row, owner) => EF.Property<int>(owner, depthProperty) == 0)
                 .Select(row => EF.Property<int>(row.Node, depthProperty)),
-            HierarchyCompositionOperation.BlockedPath => hierarchy.WherePathEdges(
+            HierarchyCompositionOperation.BlockedPath => hierarchy
+                .WherePathEdges(
                     pairs,
                     row => row.Anchor,
                     row => row.Node,
@@ -100,9 +111,11 @@ public abstract partial class HierarchyCompositionModelTests : ProviderTest
         {
             HierarchyCompositionOperation.Ancestors => [0, 1],
             HierarchyCompositionOperation.AncestorsOrSelf or HierarchyCompositionOperation.Subtrees => [0, 1, 2],
-            HierarchyCompositionOperation.AllowedPath or HierarchyCompositionOperation.AnyAncestor
+            HierarchyCompositionOperation.AllowedPath
+                or HierarchyCompositionOperation.AnyAncestor
                 or HierarchyCompositionOperation.NearestAncestor => [2],
-            HierarchyCompositionOperation.MissingNearestOwner or HierarchyCompositionOperation.NearestOwnerRejectsValue
+            HierarchyCompositionOperation.MissingNearestOwner
+                or HierarchyCompositionOperation.NearestOwnerRejectsValue
                 or HierarchyCompositionOperation.BlockedPath => [],
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };

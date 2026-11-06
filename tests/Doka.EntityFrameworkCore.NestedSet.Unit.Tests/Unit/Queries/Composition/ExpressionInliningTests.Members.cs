@@ -23,9 +23,15 @@ public sealed partial class ExpressionInliningTests
             Last = 29,
         };
 
-        Expression<Func<ProjectionMembers, int>> selector = last ? row => row.Last : row => row.First;
+        Expression<Func<ProjectionMembers, int>> selector = last
+            ? row => row.Last
+            : row => row.First;
+
         var initializer = Assert.IsType<MemberInitExpression>(projection.Body);
-        var assignment = Assert.IsType<MemberAssignment>(initializer.Bindings[last ? 2 : 0]);
+        var assignment = Assert.IsType<MemberAssignment>(
+            initializer.Bindings[last
+                ? 2
+                : 0]);
 
         // Act
         var actual = NestedSetQueryExpressions.Inline(selector, initializer);

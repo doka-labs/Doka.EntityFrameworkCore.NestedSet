@@ -52,16 +52,20 @@ public sealed partial class PersistedRelationshipProofTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.OwnerId)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Name)
                 .HasMaxLength(64);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasParent(value => value.ParentId)
                 .OrderBy(value => value.Name));
+
             node
                 .HasOne(value => value.Owner)
                 .WithMany(value => value.Nodes)
@@ -79,7 +83,8 @@ public sealed partial class PersistedRelationshipProofTests
             {
                 // WHY: EF accepts this complete procedure mapping even though a modified OwnerId has no
                 // current-value input. The Modified flag alone therefore cannot prove that FK was written.
-                node.UpdateUsingStoredProcedure("UpdateProofNode",
+                node.UpdateUsingStoredProcedure(
+                    "UpdateProofNode",
                     procedure =>
                     {
                         procedure.HasOriginalValueParameter(value => value.Id);
@@ -153,14 +158,23 @@ public sealed partial class PersistedRelationshipProofTests
     /// <summary>Separates hierarchy ordering from one ordinary, single-member owner FK.</summary>
     private sealed class ProofNode : INestedSetNode<int, Guid>
     {
+        /// <summary>Gets or sets the optional hierarchy parent identity.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets the configured ordering candidate used by the unmarked-FK control.</summary>
+        public string Name { get; set; } = "Before";
+
+        /// <summary>Gets or sets an ordinary FK whose temporary value is not its own generated column.</summary>
+        public int? OwnerId { get; set; }
+
+        /// <summary>Gets or sets the ordinary principal reference independently of hierarchy structure.</summary>
+        public ProofOwner? Owner { get; set; }
+
         /// <inheritdoc />
         public int Id { get; set; }
 
         /// <inheritdoc />
         public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the optional hierarchy parent identity.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -173,14 +187,5 @@ public sealed partial class PersistedRelationshipProofTests
 
         /// <inheritdoc />
         public long Position { get; set; }
-
-        /// <summary>Gets or sets the configured ordering candidate used by the unmarked-FK control.</summary>
-        public string Name { get; set; } = "Before";
-
-        /// <summary>Gets or sets an ordinary FK whose temporary value is not its own generated column.</summary>
-        public int? OwnerId { get; set; }
-
-        /// <summary>Gets or sets the ordinary principal reference independently of hierarchy structure.</summary>
-        public ProofOwner? Owner { get; set; }
     }
 }

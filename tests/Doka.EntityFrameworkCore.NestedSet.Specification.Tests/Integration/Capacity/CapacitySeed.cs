@@ -6,9 +6,11 @@ internal static class CapacitySeed
     private const int NativeBatchSize = 100_000;
 
     /// <summary>Registers the tree through the public API before inserting bounded native adjacency batches.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task SeedAsync(
         TreeContext context,
         int count,
+        CancellationToken cancellationToken,
         bool deep = false,
         bool corrupt = false
     )
@@ -16,7 +18,8 @@ internal static class CapacitySeed
         await context
             .NestedSet<TreeNode>()
             .ForScope(1)
-            .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None);
+            .InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, cancellationToken);
+
         context.ChangeTracker.Clear();
 
         await context
@@ -25,9 +28,17 @@ internal static class CapacitySeed
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(node => node.Start, 1L)
-                    .SetProperty(node => node.End, corrupt ? 2L : (long)count * 2)
-                    .SetProperty(node => node.Depth, corrupt ? 9 : 0),
-                CancellationToken.None);
+                    .SetProperty(
+                        node => node.End,
+                        corrupt
+                            ? 2L
+                            : (long)count * 2)
+                    .SetProperty(
+                        node => node.Depth,
+                        corrupt
+                            ? 9
+                            : 0),
+                cancellationToken);
 
         var entity = context.Model.FindEntityType(typeof(TreeNode))!;
         var store = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
@@ -35,23 +46,52 @@ internal static class CapacitySeed
         var table = helper.DelimitIdentifier(store.Name, store.Schema);
         var names = new[]
         {
-            nameof(TreeNode.NodeId), nameof(TreeNode.TreeId), nameof(TreeNode.Tree), nameof(TreeNode.Parent),
-            nameof(TreeNode.Start), nameof(TreeNode.End), nameof(TreeNode.Depth), nameof(TreeNode.Position),
+            nameof(TreeNode.NodeId),
+            nameof(TreeNode.TreeId),
+            nameof(TreeNode.Tree),
+            nameof(TreeNode.Parent),
+            nameof(TreeNode.Start),
+            nameof(TreeNode.End),
+            nameof(TreeNode.Depth),
+            nameof(TreeNode.Position),
         };
 
-        var columns = string.Join(", ", names.Select(name =>
-            helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
+        var columns = string.Join(
+            ", ",
+            names.Select(name =>
+                helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
 
         var offset = helper.GenerateParameterName("offset");
         var limit = helper.GenerateParameterName("limit");
         var total = helper.GenerateParameterName("total");
         var tree = helper.GenerateParameterName("tree");
         var scope = helper.GenerateParameterName("scope");
-        var parent = deep ? "(numbers.id - 1)" : "1";
-        var left = corrupt ? "1" : deep ? "numbers.id" : "((2 * numbers.id) - 2)";
-        var right = corrupt ? "2" : deep ? $"((2 * {total}) - numbers.id + 1)" : "((2 * numbers.id) - 1)";
-        var depth = corrupt ? "9" : deep ? "(numbers.id - 1)" : "1";
-        var position = deep ? "0" : "(numbers.id - 2)";
+        var parent = deep
+            ? "(numbers.id - 1)"
+            : "1";
+
+        var left = corrupt
+            ? "1"
+            : deep
+                ? "numbers.id"
+                : "((2 * numbers.id) - 2)";
+
+        var right = corrupt
+            ? "2"
+            : deep
+                ? $"((2 * {total}) - numbers.id + 1)"
+                : "((2 * numbers.id) - 1)";
+
+        var depth = corrupt
+            ? "9"
+            : deep
+                ? "(numbers.id - 1)"
+                : "1";
+
+        var position = deep
+            ? "0"
+            : "(numbers.id - 2)";
+
         var sql = $"INSERT INTO {table} ({columns}) "
             + $"SELECT numbers.id, {tree}, {scope}, {parent}, {left}, {right}, {depth}, {position} "
             + $"FROM ({FixtureRowNumbers.SelectSql(offset)}) numbers "
@@ -65,7 +105,11 @@ internal static class CapacitySeed
 
         for (var first = 2; first <= count; first += NativeBatchSize)
         {
-            await using var command = context.Database.GetDbConnection().CreateCommand();
+            await using var command = context
+                .Database
+                .GetDbConnection()
+                .CreateCommand();
+
             var parameters = new object[]
             {
                 Parameter(nameof(TreeNode.NodeId), "offset", first),
@@ -76,7 +120,7 @@ internal static class CapacitySeed
             };
 
             // WHY: The mapped relational type supplies Guid conversion, including Doka's binary MySQL storage.
-            await context.Database.ExecuteSqlRawAsync(sql, parameters, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
 
             DbParameter Parameter(
                 string property,
@@ -89,9 +133,11 @@ internal static class CapacitySeed
     }
 
     /// <summary>Counts missing, unexpected, and structurally mismatched rows in bounded key ranges.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static async Task<long> MismatchesAsync(
         TreeContext context,
         int count,
+        CancellationToken cancellationToken,
         bool deep = false,
         bool corrupt = false
     )
@@ -101,7 +147,8 @@ internal static class CapacitySeed
             .AsNoTracking();
 
         var mismatches = await nodes.LongCountAsync(
-            node => node.NodeId < 1 || node.NodeId > count, CancellationToken.None);
+            node => node.NodeId < 1 || node.NodeId > count,
+            cancellationToken);
 
         // WHY: One coordinate aggregate over ten million rows can exceed the ordinary command timeout before
         // returning any result. Primary-key ranges bound that wait without retaining entities or raising timeouts.
@@ -112,33 +159,63 @@ internal static class CapacitySeed
             var range = nodes.Where(node => node.NodeId >= firstKey && node.NodeId <= lastKey);
 
             // WHY: Correct coordinates on surviving rows do not prove that every expected key still exists.
-            mismatches += lastKey - firstKey + 1L - await range.LongCountAsync(CancellationToken.None);
+            mismatches += lastKey - firstKey + 1L - await range.LongCountAsync(cancellationToken);
 
             // WHY: Explicit root/child branches preserve null-parent checks without repeated SQL CASE compensation.
             mismatches += await range.LongCountAsync(
                 node => node.Tree != 1
                     || node.TreeId != Guid.Empty
                     || (node.NodeId == 1 && node.Parent != null)
-                    || (node.NodeId != 1 && (node.Parent == null || node.Parent != (deep ? node.NodeId - 1 : 1)))
-                    || node.Start != (corrupt ? 1L : deep ? node.NodeId
-                        : node.NodeId == 1 ? 1L : (2L * node.NodeId) - 2)
-                    || node.End != (corrupt ? 2L : deep ? (2L * count) - node.NodeId + 1
-                        : node.NodeId == 1 ? 2L * count : (2L * node.NodeId) - 1)
-                    || node.Depth != (corrupt ? 9 : deep ? node.NodeId - 1 : node.NodeId == 1 ? 0 : 1)
-                    || node.Position != (deep || node.NodeId == 1 ? 0L : node.NodeId - 2L),
-                CancellationToken.None);
+                    || (node.NodeId != 1
+                        && (node.Parent == null
+                            || node.Parent
+                            != (deep
+                                ? node.NodeId - 1
+                                : 1)))
+                    || node.Start
+                    != (corrupt
+                        ? 1L
+                        : deep
+                            ? node.NodeId
+                            : node.NodeId == 1
+                                ? 1L
+                                : 2L * node.NodeId - 2)
+                    || node.End
+                    != (corrupt
+                        ? 2L
+                        : deep
+                            ? 2L * count - node.NodeId + 1
+                            : node.NodeId == 1
+                                ? 2L * count
+                                : 2L * node.NodeId - 1)
+                    || node.Depth
+                    != (corrupt
+                        ? 9
+                        : deep
+                            ? node.NodeId - 1
+                            : node.NodeId == 1
+                                ? 0
+                                : 1)
+                    || node.Position
+                    != (deep || node.NodeId == 1
+                        ? 0L
+                        : node.NodeId - 2L),
+                cancellationToken);
         }
 
         return mismatches;
     }
 
     /// <summary>Reads the complete mutable registry state independently of any operation context.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task<CapacityRegistryState> RegistryAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
 
         return context
             .Set<NestedSetTreeRegistry>(registry.Name)
@@ -147,18 +224,23 @@ internal static class CapacitySeed
             .Select(row => new CapacityRegistryState(
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
     }
 
     /// <summary>Counts all registry rows to prove that a failed new-tree reservation was rolled back.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task<int> RegistryCountAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
+            .Registry;
 
-        return context.Set<NestedSetTreeRegistry>(registry.Name).CountAsync(CancellationToken.None);
+        return context
+            .Set<NestedSetTreeRegistry>(registry.Name)
+            .CountAsync(cancellationToken);
     }
 }
 

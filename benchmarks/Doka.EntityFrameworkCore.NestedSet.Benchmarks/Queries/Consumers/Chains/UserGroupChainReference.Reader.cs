@@ -20,8 +20,8 @@ internal static partial class UserGroupChainReference
         var evidence = new Dictionary<int, List<SupervisorCandidate>>();
 
         await foreach (var row in Rows(context, tenantId, request, selection)
-                           .AsAsyncEnumerable()
-                           .WithCancellation(cancellationToken))
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken))
         {
             if (!budget.Read())
             {
@@ -60,6 +60,7 @@ internal static partial class UserGroupChainReference
                             Distance = row.Distance,
                             LeadershipPriority = row.LeadershipPriority,
                         });
+
                     break;
             }
         }
@@ -76,7 +77,8 @@ internal static partial class UserGroupChainReference
             if (selection.Kind != SupervisorSelectionKind.All
                 && summary.Count > 1)
             {
-                origins.Add(new(SupervisorResolutionStatus.Ambiguous, summary.StartGroupId, [], null));
+                origins.Add(
+                    new SupervisorResolution(SupervisorResolutionStatus.Ambiguous, summary.StartGroupId, [], null));
 
                 continue;
             }
@@ -92,7 +94,9 @@ internal static partial class UserGroupChainReference
         }
 
         return new SupervisorResolutionBatch(
-            origins.Count == 0 ? SupervisorBatchStatus.NoVisibleMemberships : SupervisorBatchStatus.Completed,
+            origins.Count == 0
+                ? SupervisorBatchStatus.NoVisibleMemberships
+                : SupervisorBatchStatus.Completed,
             origins);
     }
 
@@ -296,8 +300,12 @@ internal static partial class UserGroupChainReference
         .Matches
         .SelectMany(match => new[]
         {
-            match.SourceOwner == source ? match.SourceFieldCode : null,
-            match.CandidateOwner == candidate ? match.CandidateFieldCode : null,
+            match.SourceOwner == source
+                ? match.SourceFieldCode
+                : null,
+            match.CandidateOwner == candidate
+                ? match.CandidateFieldCode
+                : null,
         })
         .OfType<string>()
         .Distinct(StringComparer.Ordinal)

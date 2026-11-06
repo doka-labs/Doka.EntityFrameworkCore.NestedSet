@@ -12,8 +12,14 @@ public abstract partial class InheritanceTests
     )
     {
         // Arrange
-        await using var context = await CreateInheritanceContextAsync(tpt);
-        var rootId = tpt ? 4_001 : 5_001;
+        await using var context = await CreateInheritanceContextAsync(
+            tpt,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootId = tpt
+            ? 4_001
+            : 5_001;
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
@@ -24,7 +30,8 @@ public abstract partial class InheritanceTests
             .Where(node => node.TreeId == treeId)
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Id == rootId + 2).ParentId = rootId + 1;
+        tracked.Single(node => node.Id == rootId + 2)
+            .ParentId = rootId + 1;
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -33,7 +40,7 @@ public abstract partial class InheritanceTests
             CancellationToken.None);
 
         // Assert
-        var persisted = await PersistedAsync(context, treeId);
+        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(new[] { rootId, rootId + 1, rootId + 2 }, persisted.Select(node => node.Id));
         Assert.Equal(rootId + 1, persisted[2].ParentId);
         Assert.Equal(2, persisted[2].Depth);
@@ -55,8 +62,14 @@ public abstract partial class InheritanceTests
     )
     {
         // Arrange
-        await using var context = await CreateInheritanceContextAsync(tpt);
-        var rootId = tpt ? 6_001 : 7_001;
+        await using var context = await CreateInheritanceContextAsync(
+            tpt,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootId = tpt
+            ? 6_001
+            : 7_001;
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var sourceTree = Guid.NewGuid();
         var targetTree = Guid.NewGuid();
@@ -71,8 +84,11 @@ public abstract partial class InheritanceTests
             .Where(node => node.TreeId == sourceTree || node.TreeId == targetTree)
             .ToArrayAsync(CancellationToken.None);
 
-        tracked.Single(node => node.Id == rootId + 1).ParentId = rootId + 4;
-        tracked.Single(node => node.Id == rootId + 5).ParentId = rootId + 2;
+        tracked.Single(node => node.Id == rootId + 1)
+            .ParentId = rootId + 4;
+
+        tracked.Single(node => node.Id == rootId + 5)
+            .ParentId = rootId + 2;
 
         // Act
         await context.SaveNestedSetChangesAsync(
@@ -81,8 +97,16 @@ public abstract partial class InheritanceTests
             CancellationToken.None);
 
         // Assert
-        var source = await PersistedAsync(context, sourceTree);
-        var target = await PersistedAsync(context, targetTree);
+        var source = await PersistedAsync(
+            context,
+            sourceTree,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var target = await PersistedAsync(
+            context,
+            targetTree,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(new[] { rootId, rootId + 3 }, source.Select(node => node.Id));
         Assert.Equal(new[] { rootId + 4, rootId + 1, rootId + 2, rootId + 5 }, target.Select(node => node.Id));
         Assert.Equal(Enumerable.Range(0, 4), target.Select(node => node.Depth));
@@ -93,10 +117,12 @@ public abstract partial class InheritanceTests
             source
                 .Concat(target)
                 .ToArray());
+
         Assert.True(
             (await hierarchy
                 .InTree(sourceTree)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
         Assert.True(
             (await hierarchy
                 .InTree(targetTree)
@@ -117,8 +143,18 @@ public abstract partial class InheritanceTests
     )
     {
         // Arrange
-        await using var context = await CreateInheritanceContextAsync(tpt, ordered: true);
-        var rootId = (tpt ? 8_001 : 9_001) + (acceptAllChangesOnSuccess ? 100 : 0);
+        await using var context = await CreateInheritanceContextAsync(
+            tpt,
+            ordered: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootId = (tpt
+                ? 8_001
+                : 9_001)
+            + (acceptAllChangesOnSuccess
+                ? 100
+                : 0);
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
@@ -143,7 +179,7 @@ public abstract partial class InheritanceTests
             CancellationToken.None);
 
         // Assert
-        var persisted = await PersistedAsync(context, treeId);
+        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(
             new[]
             {
@@ -156,21 +192,38 @@ public abstract partial class InheritanceTests
             persisted.Select(node => node.Id));
 
         AssertTracked(context, tracked, persisted);
-        var state = acceptAllChangesOnSuccess ? EntityState.Unchanged : EntityState.Modified;
-        Assert.Equal(state, context.Entry(folder).State);
-        Assert.Equal(state, context.Entry(metric).State);
+        var state = acceptAllChangesOnSuccess
+            ? EntityState.Unchanged
+            : EntityState.Modified;
+
         Assert.Equal(
-            acceptAllChangesOnSuccess ? "Zulu" : "Bravo",
+            state,
+            context.Entry(folder)
+                .State);
+
+        Assert.Equal(
+            state,
+            context.Entry(metric)
+                .State);
+
+        Assert.Equal(
+            acceptAllChangesOnSuccess
+                ? "Zulu"
+                : "Bravo",
             context
                 .Entry(folder)
                 .Property(node => node.Name)
                 .OriginalValue);
+
         Assert.Equal(
-            acceptAllChangesOnSuccess ? "Alpha" : "Charlie",
+            acceptAllChangesOnSuccess
+                ? "Alpha"
+                : "Charlie",
             context
                 .Entry(metric)
                 .Property(node => node.Name)
                 .OriginalValue);
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
@@ -191,8 +244,17 @@ public abstract partial class InheritanceTests
     )
     {
         // Arrange
-        await using var context = await CreateInheritanceContextAsync(tpt);
-        var rootId = (tpt ? 10_001 : 11_001) + (missing ? 100 : 0);
+        await using var context = await CreateInheritanceContextAsync(
+            tpt,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootId = (tpt
+                ? 10_001
+                : 11_001)
+            + (missing
+                ? 100
+                : 0);
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
@@ -203,9 +265,12 @@ public abstract partial class InheritanceTests
             .Where(node => node.TreeId == treeId)
             .ToArrayAsync(CancellationToken.None);
 
-        var before = await PersistedAsync(context, treeId);
+        var before = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         var changed = tracked.Single(node => node.Id == rootId + 1);
-        var requestedParent = missing ? rootId + 99 : rootId + 2;
+        var requestedParent = missing
+            ? rootId + 99
+            : rootId + 2;
+
         changed.ParentId = requestedParent;
         changed.Name = "Pending";
 
@@ -217,32 +282,41 @@ public abstract partial class InheritanceTests
 
         // Assert
         Assert.Equal(
-            missing ? NestedSetErrorCode.NodeNotFound : NestedSetErrorCode.CycleDetected,
+            missing
+                ? NestedSetErrorCode.NodeNotFound
+                : NestedSetErrorCode.CycleDetected,
             Assert.IsType<NestedSetException>(error)
                 .Code);
 
-        var persisted = await PersistedAsync(context, treeId);
+        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(before.Select(Snapshot), persisted.Select(Snapshot));
         Assert.Equal(requestedParent, changed.ParentId);
         Assert.Equal("Pending", changed.Name);
-        Assert.Equal(EntityState.Modified, context.Entry(changed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(changed)
+                .State);
+
         Assert.Equal(
             rootId,
             context
                 .Entry(changed)
                 .Property(node => node.ParentId)
                 .OriginalValue);
+
         Assert.True(
             context
                 .Entry(changed)
                 .Property(node => node.ParentId)
                 .IsModified);
+
         Assert.Equal(
             "Branch",
             context
                 .Entry(changed)
                 .Property(node => node.Name)
                 .OriginalValue);
+
         Assert.True(
             context
                 .Entry(changed)
@@ -260,8 +334,14 @@ public abstract partial class InheritanceTests
     )
     {
         // Arrange
-        await using var context = await CreateInheritanceContextAsync(tpt);
-        var rootId = tpt ? 12_001 : 13_001;
+        await using var context = await CreateInheritanceContextAsync(
+            tpt,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var rootId = tpt
+            ? 12_001
+            : 13_001;
+
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
@@ -272,7 +352,7 @@ public abstract partial class InheritanceTests
             .Where(node => node.TreeId == treeId)
             .ToArrayAsync(CancellationToken.None);
 
-        var before = await PersistedAsync(context, treeId);
+        var before = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         var changed = tracked.Single(node => node.Id == rootId + 2);
         changed.ParentId = rootId + 1;
         changed.Name = "Pending";
@@ -290,33 +370,41 @@ public abstract partial class InheritanceTests
 
         // Assert
         Assert.IsType<InjectedCommandException>(error);
-        var persisted = await PersistedAsync(context, treeId);
+        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(before.Select(Snapshot), persisted.Select(Snapshot));
         Assert.Equal(rootId + 1, changed.ParentId);
         Assert.Equal("Pending", changed.Name);
-        Assert.Equal(EntityState.Modified, context.Entry(changed).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(changed)
+                .State);
+
         Assert.Equal(
             rootId,
             context
                 .Entry(changed)
                 .Property(node => node.ParentId)
                 .OriginalValue);
+
         Assert.True(
             context
                 .Entry(changed)
                 .Property(node => node.ParentId)
                 .IsModified);
+
         Assert.Equal(
             "Metric",
             context
                 .Entry(changed)
                 .Property(node => node.Name)
                 .OriginalValue);
+
         Assert.True(
             context
                 .Entry(changed)
                 .Property(node => node.Name)
                 .IsModified);
+
         Assert.Equal(
             before.Select(node => (node.Id, node.Left, node.Right, node.Depth, node.Position)),
             tracked
@@ -325,21 +413,31 @@ public abstract partial class InheritanceTests
     }
 
     /// <summary>Creates a provider context with a distinct table set for each inheritance contract.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task<DbContext> CreateInheritanceContextAsync(
         bool tpt,
+        CancellationToken cancellationToken,
         bool ordered = false
     ) => (tpt, ordered) switch
     {
         (false, false) =>
-            await _fixture.CreateContextAsync<TphContext>(Engine, static options => new TphContext(options)),
+            await _fixture.CreateContextAsync<TphContext>(
+                Engine,
+                static options => new TphContext(options),
+                cancellationToken: cancellationToken),
         (true, false) =>
-            await _fixture.CreateContextAsync<TptContext>(Engine, static options => new TptContext(options)),
+            await _fixture.CreateContextAsync<TptContext>(
+                Engine,
+                static options => new TptContext(options),
+                cancellationToken: cancellationToken),
         (false, true) => await _fixture.CreateContextAsync<OrderedTphContext>(
             Engine,
-            static options => new OrderedTphContext(options)),
+            static options => new OrderedTphContext(options),
+            cancellationToken: cancellationToken),
         (true, true) => await _fixture.CreateContextAsync<OrderedTptContext>(
             Engine,
-            static options => new OrderedTptContext(options)),
+            static options => new OrderedTptContext(options),
+            cancellationToken: cancellationToken),
     };
 
     /// <summary>Creates one concrete node with payload declared on the shared hierarchy base.</summary>
@@ -365,15 +463,17 @@ public abstract partial class InheritanceTests
     }
 
     /// <summary>Reads authoritative coordinates without reusing tracked hierarchy instances.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<InheritanceNode[]> PersistedAsync(
         DbContext context,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     ) => context
         .Set<InheritanceNode>()
         .AsNoTracking()
         .Where(node => node.TreeId == treeId)
         .OrderBy(node => node.Left)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>Compares the structural and payload state relevant to coordinated-save rollback.</summary>
     private static (int, Guid, int?, long, long, int, long, string) Snapshot(
@@ -400,27 +500,53 @@ public abstract partial class InheritanceTests
             var entry = context.Entry(node);
             Assert.Equal(
                 node.TreeId,
-                entry.Property(value => value.TreeId).OriginalValue);
+                entry.Property(value => value.TreeId)
+                    .OriginalValue);
+
             Assert.Equal(
                 node.ParentId,
-                entry.Property(value => value.ParentId).OriginalValue);
+                entry.Property(value => value.ParentId)
+                    .OriginalValue);
+
             Assert.Equal(
                 node.Left,
-                entry.Property(value => value.Left).OriginalValue);
+                entry.Property(value => value.Left)
+                    .OriginalValue);
+
             Assert.Equal(
                 node.Right,
-                entry.Property(value => value.Right).OriginalValue);
+                entry.Property(value => value.Right)
+                    .OriginalValue);
+
             Assert.Equal(
                 node.Depth,
-                entry.Property(value => value.Depth).OriginalValue);
+                entry.Property(value => value.Depth)
+                    .OriginalValue);
+
             Assert.Equal(
                 node.Position,
-                entry.Property(value => value.Position).OriginalValue);
-            Assert.False(entry.Property(value => value.ParentId).IsModified);
-            Assert.False(entry.Property(value => value.Left).IsModified);
-            Assert.False(entry.Property(value => value.Right).IsModified);
-            Assert.False(entry.Property(value => value.Depth).IsModified);
-            Assert.False(entry.Property(value => value.Position).IsModified);
+                entry.Property(value => value.Position)
+                    .OriginalValue);
+
+            Assert.False(
+                entry.Property(value => value.ParentId)
+                    .IsModified);
+
+            Assert.False(
+                entry.Property(value => value.Left)
+                    .IsModified);
+
+            Assert.False(
+                entry.Property(value => value.Right)
+                    .IsModified);
+
+            Assert.False(
+                entry.Property(value => value.Depth)
+                    .IsModified);
+
+            Assert.False(
+                entry.Property(value => value.Position)
+                    .IsModified);
         }
     }
 }

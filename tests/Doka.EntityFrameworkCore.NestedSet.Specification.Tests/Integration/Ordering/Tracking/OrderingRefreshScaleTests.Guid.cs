@@ -9,11 +9,25 @@ public abstract partial class OrderingRefreshScaleTests
     public async Task GuidCollectionParameterPreservesNativeIdentityBeyondScalarLimit()
     {
         // Arrange
-        var database = await _relationalFixture.ResetAsync(Engine);
+        var database = await _relationalFixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var seed = database.CreateContext();
         var keys = Enumerable
             .Range(1, 2200)
-            .Select(id => new Guid(id, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+            .Select(id => new Guid(
+                id,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10))
             .ToArray();
 
         var treeId = Guid.NewGuid();
@@ -23,11 +37,21 @@ public abstract partial class OrderingRefreshScaleTests
                 Id = key,
                 Tree = 1,
                 TreeId = treeId,
-                ParentId = index == 0 ? null : keys[0],
-                Left = index == 0 ? 1 : index * 2,
-                Right = index == 0 ? keys.Length * 2 : (index * 2) + 1,
-                Depth = index == 0 ? 0 : 1,
-                Position = index == 0 ? 0 : index - 1,
+                ParentId = index == 0
+                    ? null
+                    : keys[0],
+                Left = index == 0
+                    ? 1
+                    : index * 2,
+                Right = index == 0
+                    ? keys.Length * 2
+                    : index * 2 + 1,
+                Depth = index == 0
+                    ? 0
+                    : 1,
+                Position = index == 0
+                    ? 0
+                    : index - 1,
             }),
             CancellationToken.None);
 
@@ -50,10 +74,15 @@ public abstract partial class OrderingRefreshScaleTests
             $"Engine={Engine}; Guid keys={keys.Length}; returned={actual.Length}; "
             + $"parameters={probe.Commands.Single().Parameters}; compilations={probe.Compilations}");
 
-        _output.WriteLine(probe.Commands.Single().Sql);
+        _output.WriteLine(
+            probe.Commands.Single()
+                .Sql);
 
         Assert.Equal(keys.Order(), actual.Order());
-        Assert.Equal(1, probe.Commands.Single().Parameters);
+        Assert.Equal(
+            1,
+            probe.Commands.Single()
+                .Parameters);
     }
 
     /// <summary>Preserves complete Guid refresh through each provider's qualified key-matching path.</summary>
@@ -61,7 +90,10 @@ public abstract partial class OrderingRefreshScaleTests
     public async Task GuidOrderingRefreshKeepsExactKeysAcrossBatches()
     {
         // Arrange
-        await using var setup = await _keyFixture.ResetAsync(Engine);
+        await using var setup = await _keyFixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions
@@ -80,7 +112,19 @@ public abstract partial class OrderingRefreshScaleTests
 
         await using var seed = new DbContext(seedOptions);
         var treeId = Guid.NewGuid();
-        var rootId = new Guid(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        var rootId = new Guid(
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10);
+
         var root = new OrderingKeyNode<Guid, Guid?>(rootId, "Root")
         {
             Scope = 1,
@@ -92,14 +136,25 @@ public abstract partial class OrderingRefreshScaleTests
         var input = Enumerable
             .Range(1, 65)
             .Select(id => new OrderingKeyNode<Guid, Guid?>(
-                new Guid(id, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+                new Guid(
+                    id,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10),
                 $"node-{id:D8}")
             {
                 Scope = 1,
                 TreeId = treeId,
                 ParentId = rootId,
                 Left = id * 2,
-                Right = (id * 2) + 1,
+                Right = id * 2 + 1,
                 Depth = 1,
                 Position = id - 1,
             })
@@ -149,7 +204,7 @@ public abstract partial class OrderingRefreshScaleTests
             node =>
             {
                 var index = Array.IndexOf(tracked, node);
-                Assert.Equal((index * 2, (index * 2) + 1, index - 1), (node.Left, node.Right, node.Position));
+                Assert.Equal((index * 2, index * 2 + 1, index - 1), (node.Left, node.Right, node.Position));
             });
 
         Assert.InRange(refresh.Length, 1, 3);

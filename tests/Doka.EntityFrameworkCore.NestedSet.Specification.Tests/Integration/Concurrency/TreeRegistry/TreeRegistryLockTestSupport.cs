@@ -31,10 +31,12 @@ internal static class TreeRegistryLockTestSupport
     ) => new(context.Model.FindEntityType(typeof(TreeNode))!, scope, treeId, mode);
 
     /// <summary>Reads the persisted revision for an exact typed tree identity.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     internal static Task<long> ReadRevisionAsync(
         TreeContext context,
         int scope,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -47,7 +49,7 @@ internal static class TreeRegistryLockTestSupport
             .Where(row => EF.Property<int>(row, NestedSetTreeRegistryMetadata.Scope) == scope
                 && EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId) == treeId)
             .Select(row => EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision))
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
     }
 
     /// <summary>Acquires the requested trees after both competing workers are ready.</summary>

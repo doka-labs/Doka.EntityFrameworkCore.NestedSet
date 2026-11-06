@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Doka.EntityFrameworkCore.NestedSet.Diagnostics;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
@@ -40,7 +41,7 @@ public sealed class HistogramAdviceTests
         listener.Start();
 
         // WHY: Publication must be observed whether another test already initialized the shared instrumentation.
-        await Diagnostics.NestedSetTelemetry.ExecuteAsync(
+        await NestedSetTelemetry.ExecuteAsync(
             context,
             "validate",
             _ => Task.CompletedTask,

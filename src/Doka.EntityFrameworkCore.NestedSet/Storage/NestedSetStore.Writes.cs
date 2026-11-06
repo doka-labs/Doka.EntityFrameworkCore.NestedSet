@@ -15,6 +15,7 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
         s_setParent = typeof(NestedSetStore<TEntity, TKey, TTreeId, TScope>).GetMethod(
                 nameof(SetParentTypedAsync),
                 BindingFlags.NonPublic | BindingFlags.Static)!
+
             // WHY: EF can require a nullable CLR key; its parent reuses that nullable type instead of nesting it.
             .MakeGenericMethod(
                 typeof(TKey).IsValueType && Nullable.GetUnderlyingType(typeof(TKey)) is null
@@ -68,7 +69,7 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
             property.Parameters);
 
         return NestedSetTelemetry.TrackRows(
-            query.ExecuteUpdateAsync(setters => setters.SetProperty(property, value),cancellationToken));
+            query.ExecuteUpdateAsync(setters => setters.SetProperty(property, value), cancellationToken));
     }
 
     /// <summary>Assigns one 64-bit coordinate to the same value across a scoped query.</summary>
@@ -117,30 +118,6 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
             cancellationToken);
     }
 
-    /// <summary>Converts typed optional keys to the actual nullable CLR type once per closed setter type.</summary>
-    private static class ParentValue<TParent>
-    {
-        internal static readonly Func<NestedSetParent<TKey>, TParent> Convert = Create();
-
-        /// <summary>Compiles an unboxed nullable-value or nullable-reference adaptation for the EF setter.</summary>
-        private static Func<NestedSetParent<TKey>, TParent> Create()
-        {
-            var parent = Expression.Parameter(typeof(NestedSetParent<TKey>), "parent");
-            var present = Expression.Property(parent, nameof(NestedSetParent<TKey>.HasValue));
-            var value = Expression.Property(parent, nameof(NestedSetParent<TKey>.Value));
-            var nullable = Expression.Condition(
-                present,
-                Expression.Convert(value, typeof(TParent)),
-                Expression.Default(typeof(TParent)));
-
-            // WHY: TKey? is not Nullable<TKey> for this generic class. The cached delegate constructs the actual
-            // mapped nullable type without boxing each parent key or using reflection for each update.
-            return Expression
-                .Lambda<Func<NestedSetParent<TKey>, TParent>>(nullable, parent)
-                .Compile();
-        }
-    }
-
     /// <summary>Opens or closes an interval by shifting each qualifying boundary independently.</summary>
     /// <param name="position">The inclusive boundary at which the shift starts.</param>
     /// <param name="delta">The signed interval width to insert or remove.</param>
@@ -176,5 +153,29 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
                             .SetProperty(Property<long>(Map.Right), node => EF.Property<long>(node, Map.Right) + delta),
                         cancellationToken))
             .ConfigureAwait(false);
+    }
+
+    /// <summary>Converts typed optional keys to the actual nullable CLR type once per closed setter type.</summary>
+    private static class ParentValue<TParent>
+    {
+        internal static readonly Func<NestedSetParent<TKey>, TParent> Convert = Create();
+
+        /// <summary>Compiles an unboxed nullable-value or nullable-reference adaptation for the EF setter.</summary>
+        private static Func<NestedSetParent<TKey>, TParent> Create()
+        {
+            var parent = Expression.Parameter(typeof(NestedSetParent<TKey>), "parent");
+            var present = Expression.Property(parent, nameof(NestedSetParent<TKey>.HasValue));
+            var value = Expression.Property(parent, nameof(NestedSetParent<TKey>.Value));
+            var nullable = Expression.Condition(
+                present,
+                Expression.Convert(value, typeof(TParent)),
+                Expression.Default(typeof(TParent)));
+
+            // WHY: TKey? is not Nullable<TKey> for this generic class. The cached delegate constructs the actual
+            // mapped nullable type without boxing each parent key or using reflection for each update.
+            return Expression
+                .Lambda<Func<NestedSetParent<TKey>, TParent>>(nullable, parent)
+                .Compile();
+        }
     }
 }

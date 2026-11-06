@@ -206,7 +206,8 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
         CancellationToken cancellationToken
     )
     {
-        var order = NestedSetMapping<TEntity, TKey, TScope>.For(_context, _entityType).Order;
+        var order = NestedSetMapping<TEntity, TKey, TScope>.For(_context, _entityType)
+            .Order;
 
         // WHY: Write each resolved destination back to the corresponding prepared-tree slot.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -247,7 +248,7 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                 var remaining = NestedSetBatch.MaximumRows;
 
                 while (remaining > 0
-                       && treeIndex < prepared.Length)
+                    && treeIndex < prepared.Length)
                 {
                     var tree = prepared[treeIndex];
                     var count = Math.Min(remaining, tree.Plan.Nodes.Count - treeOffset);
@@ -278,16 +279,16 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                 IReadOnlySet<object> introducedEntities;
 
                 using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
-                           _context,
-                           active.SelectMany(tree => tree.Plan.ManagedEntities),
-                           () => RequireSavedWave(active, knownTracked, expected),
-                           () =>
-                           {
-                               foreach (var tree in active)
-                               {
-                                   tree.Plan.RefreshInsertionIdentities();
-                               }
-                           }))
+                    _context,
+                    active.SelectMany(tree => tree.Plan.ManagedEntities),
+                    () => RequireSavedWave(active, knownTracked, expected),
+                    () =>
+                    {
+                        foreach (var tree in active)
+                        {
+                            tree.Plan.RefreshInsertionIdentities();
+                        }
+                    }))
                 {
                     try
                     {
@@ -308,7 +309,9 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
                 NestedSetTelemetry.RecordRowsAffected(NestedSetBatch.MaximumRows - remaining);
                 NestedSetTelemetry.RecordBatch();
                 callbackWrites.RecordSavedRelationships(
-                    active.SelectMany(tree => tree.Plan.ActiveIdentities), introducedEntries, introducedEntities);
+                    active.SelectMany(tree => tree.Plan.ActiveIdentities),
+                    introducedEntries,
+                    introducedEntities);
 
                 foreach (var tree in active)
                 {

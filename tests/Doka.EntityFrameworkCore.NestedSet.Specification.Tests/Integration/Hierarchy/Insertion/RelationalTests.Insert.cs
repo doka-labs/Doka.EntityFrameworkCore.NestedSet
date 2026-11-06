@@ -8,13 +8,13 @@ public abstract partial class RelationalTests
     public async Task InsertRootStartsAnIndependentTreeAtDepthZero()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.InsertRootAsync(Node(7), Guid.NewGuid(), CancellationToken.None);
@@ -27,17 +27,18 @@ public abstract partial class RelationalTests
                 .Where(node => node.Tree == 1)
                 .Where(node => node.Parent == null)
                 .OrderBy(node => node.NodeId),
+            cancellationToken: TestContext.Current.CancellationToken,
             1,
             7);
 
-        await AssertDepthsAsync(context, 1, (7, 0));
+        await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 0));
         var inserted = await tree
             .TreeContaining(7)
             .SingleAsync(CancellationToken.None);
 
         Assert.Equal((1L, 2L, 0L), (inserted.Start, inserted.End, inserted.Position));
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>A child is inserted at the requested end of its sibling group.</summary>
@@ -51,13 +52,13 @@ public abstract partial class RelationalTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await (first
@@ -66,13 +67,27 @@ public abstract partial class RelationalTests
 
         // Assert
         var expected = first
-            ? new[] { 7, 3, 4, 2, 5 }
-            : new[] { 3, 4, 2, 5, 7 };
+            ? new[]
+            {
+                7,
+                3,
+                4,
+                2,
+                5,
+            }
+            : new[]
+            {
+                3,
+                4,
+                2,
+                5,
+                7,
+            };
 
-        await AssertOrderAsync(tree.ChildrenOf(1), expected);
-        await AssertDepthsAsync(context, 1, (7, 1));
+        await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, expected);
+        await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Sibling insertion preserves the parent and shifts following positions.</summary>
@@ -81,23 +96,31 @@ public abstract partial class RelationalTests
     public async Task InsertBeforeUsesSiblingPosition()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.InsertBeforeAsync(Node(7), 2, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1), 3, 4, 7, 2, 5);
-        await AssertDepthsAsync(context, 1, (7, 1));
-        await AssertOrderAsync(tree.ParentOf(7), 1);
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
+            cancellationToken: TestContext.Current.CancellationToken,
+            3,
+            4,
+            7,
+            2,
+            5);
+
+        await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
+        await AssertOrderAsync(tree.ParentOf(7), cancellationToken: TestContext.Current.CancellationToken, 1);
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Sibling insertion preserves the parent and shifts following positions.</summary>
@@ -106,23 +129,31 @@ public abstract partial class RelationalTests
     public async Task InsertAfterUsesSiblingPosition()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        await SeedPlacementTreeAsync(context, 1);
+        await SeedPlacementTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await tree.InsertAfterAsync(Node(7), 2, CancellationToken.None);
 
         // Assert
-        await AssertOrderAsync(tree.ChildrenOf(1), 3, 4, 2, 7, 5);
-        await AssertDepthsAsync(context, 1, (7, 1));
-        await AssertOrderAsync(tree.ParentOf(7), 1);
+        await AssertOrderAsync(
+            tree.ChildrenOf(1),
+            cancellationToken: TestContext.Current.CancellationToken,
+            3,
+            4,
+            2,
+            7,
+            5);
+
+        await AssertDepthsAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken, (7, 1));
+        await AssertOrderAsync(tree.ParentOf(7), cancellationToken: TestContext.Current.CancellationToken, 1);
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertValidAsync(context, 1);
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Concurrent first writers create independent valid trees without preexisting registry rows.</summary>
@@ -131,7 +162,7 @@ public abstract partial class RelationalTests
     public async Task ConcurrentFirstInsertsCreateIndependentTrees()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -143,8 +174,17 @@ public abstract partial class RelationalTests
             .ForScope(1);
 
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var firstInsert = InsertAfterGateAsync(tree, 1, gate.Task);
-        var secondInsert = InsertAfterGateAsync(secondTree, 2, gate.Task);
+        var firstInsert = InsertAfterGateAsync(
+            tree,
+            1,
+            gate.Task,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var secondInsert = InsertAfterGateAsync(
+            secondTree,
+            2,
+            gate.Task,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         gate.SetResult();
@@ -158,6 +198,7 @@ public abstract partial class RelationalTests
                 .AsNoTracking()
                 .Where(node => node.Tree == 1)
                 .CountAsync(CancellationToken.None));
-        await AssertValidAsync(context, 1);
+
+        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 }

@@ -18,18 +18,22 @@ public sealed class CapacityPayloadSeedingTests
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync("Sqlite");
+        await using var database = await TestDatabase.CreateAsync(
+            "Sqlite",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using (var setup = database.CreateContext())
         {
-            await CapacitySeed.SeedAsync(setup, nodes);
+            await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
             setup
                 .Set<UnrelatedRow>()
-                .Add(new UnrelatedRow
-                {
-                    Id = -1,
-                    Value = "previous fixture",
-                });
+                .Add(
+                    new UnrelatedRow
+                    {
+                        Id = -1,
+                        Value = "previous fixture",
+                    });
+
             await setup.SaveChangesAsync(CancellationToken.None);
         }
 
@@ -37,7 +41,12 @@ public sealed class CapacityPayloadSeedingTests
         await using var context = database.CreateContext(commands);
 
         // Act
-        await CompositionCapacityProfiles.SeedPayloadAsync(context, nodes, facts);
+        await CompositionCapacityProfiles.SeedPayloadAsync(
+            context,
+            nodes,
+            facts,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var totals = await context
             .Set<UnrelatedRow>()
             .GroupBy(row => 1)
@@ -51,8 +60,10 @@ public sealed class CapacityPayloadSeedingTests
             .SingleOrDefaultAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(expectedBatches,
+        Assert.Equal(
+            expectedBatches,
             commands.Commands.Count(command => command.StartsWith("INSERT INTO", StringComparison.Ordinal)));
+
         Assert.Empty(context.ChangeTracker.Entries());
 
         if (facts == 0)

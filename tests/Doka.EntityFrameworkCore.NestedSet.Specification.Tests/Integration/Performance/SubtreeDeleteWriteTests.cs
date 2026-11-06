@@ -20,11 +20,13 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
     public async Task ConventionOwnedRestrictiveForeignKeyRemainsSafe()
     {
         // Arrange
-        var expectedUnlinks = Engine is "PostgreSql" or "SqlServer" ? 0 : 39;
+        var expectedUnlinks = Engine is "PostgreSql" or "SqlServer"
+            ? 0
+            : 39;
 
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await SeedAsync(setup);
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new StructuralWriteProbe("ConstrainedNode", "Left", "Right");
         await using var context = CreateContext(setup, probe);
         var service = context
@@ -44,11 +46,13 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 .NodeUpdates
                 .Where(write => SqlAssignments.Assigns(write.Sql, "ParentId"))
                 .Sum(write => write.Rows));
+
         Assert.Empty(
             await service
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
@@ -56,7 +60,9 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 .CountAsync(CancellationToken.None));
 
         var entityType = context.Model.FindEntityType(typeof(ConstrainedNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
         var lifecycle = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
             .AsNoTracking()
@@ -75,20 +81,22 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
     public async Task FailureAfterPhysicalDeleteRestoresConventionOwnedForeignKeys()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
-        await SeedAsync(setup);
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new DeleteFailureProbe();
         await using var context = CreateContext(setup, probe);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         var service = context
             .NestedSet<ConstrainedNode>()
             .ForScope(1);
 
-        var before = await SnapshotAsync(context);
+        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var failure = await Record.ExceptionAsync(() => service.DeleteSubtreeAsync(1, CancellationToken.None));
@@ -96,7 +104,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
         // Assert
         Assert.IsType<InjectedDeleteException>(failure);
         Assert.Equal(40, probe.DeletedRows);
-        Assert.Equal(before, await SnapshotAsync(context));
+        Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Same(transaction, context.Database.CurrentTransaction);
     }
 
@@ -123,7 +131,8 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
 
     /// <summary>Creates a chain deeper than common cascade limits and an overlapping isolated scope.</summary>
     private static async Task SeedAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         for (var key = 1; key <= 40; key++)
@@ -133,12 +142,14 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 {
                     Id = key,
                     Tree = 1,
-                    ParentId = key == 1 ? null : key - 1,
+                    ParentId = key == 1
+                        ? null
+                        : key - 1,
                     Left = key,
                     Right = 81 - key,
                     Depth = key - 1,
                 },
-                CancellationToken.None);
+                cancellationToken);
         }
 
         await context.AddAsync(
@@ -149,14 +160,15 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
                 Left = 1,
                 Right = 2,
             },
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>Reads the complete physical rows for exact rollback comparison.</summary>
     private static Task<string[]> SnapshotAsync(
-        ConventionDeleteContext context
+        ConventionDeleteContext context,
+        CancellationToken cancellationToken
     ) => context
         .Set<ConstrainedNode>()
         .AsNoTracking()
@@ -175,7 +187,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
             + node.Position
             + ":"
             + node.Tree)
-        .ToArrayAsync(CancellationToken.None);
+        .ToArrayAsync(cancellationToken);
 
     /// <summary>
     /// Uses the fixture's constrained physical table and derives its parent foreign key by convention.
@@ -202,6 +214,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever();
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(entity => entity.TreeId)
                 .HasScope(entity => entity.Tree)

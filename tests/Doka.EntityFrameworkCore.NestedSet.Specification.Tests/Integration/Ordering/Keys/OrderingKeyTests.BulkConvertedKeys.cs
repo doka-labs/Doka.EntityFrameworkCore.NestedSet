@@ -29,13 +29,20 @@ public abstract partial class OrderingKeyTests
     )
     {
         // Arrange
-        await using var arranged = await _fixture.ResetAsync(Engine);
-        var treeId = await ArrangeConvertedKeysAsync(arranged);
+        await using var arranged = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var treeId = await ArrangeConvertedKeysAsync(
+            arranged,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var otherBefore = await ConvertedSnapshotAsync(
             arranged
                 .Set<OrderingKeyNode<int, int?>>()
                 .AsNoTracking()
-                .Where(node => node.TreeId != treeId));
+                .Where(node => node.TreeId != treeId),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var probe = new EnterpriseProbe();
         var providerOptions = ModelCompatibilityDatabase.Options<OrderingKeyContext>(
@@ -43,7 +50,8 @@ public abstract partial class OrderingKeyTests
             arranged.Database.GetConnectionString()!,
             mode);
 
-        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe).Options;
+        var options = new DbContextOptionsBuilder<OrderingKeyContext>(providerOptions).AddInterceptors(probe)
+            .Options;
 
         await using var context = new OrderingKeyContext(options);
         var root = new OrderingKeyNode<int, int?>(6, "Alpha");
@@ -65,13 +73,17 @@ public abstract partial class OrderingKeyTests
         await tree.InsertSubtreeAsync(branch, 1, CancellationToken.None);
 
         // Assert
-        var persisted = await ConvertedSnapshotAsync(tree.InTree(treeId).Nodes);
+        var persisted = await ConvertedSnapshotAsync(
+            tree.InTree(treeId)
+                .Nodes,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(
             s_convertedPreorder,
             persisted
                 .OrderBy(node => node.Left)
                 .Select(node => node.Id));
+
         Assert.Equal((2L, 7L, 1, 0L), (root.Left, root.Right, root.Depth, root.Position));
         Assert.Equal((3L, 4L, 2, 0L), (earlier.Left, earlier.Right, earlier.Depth, earlier.Position));
         Assert.Equal((5L, 6L, 2, 1L), (later.Left, later.Right, later.Depth, later.Position));
@@ -80,7 +92,10 @@ public abstract partial class OrderingKeyTests
             node =>
             {
                 Assert.Equal(ConvertedSnapshot(node), Assert.Single(persisted, row => row.Id == node.Id));
-                Assert.Equal(EntityState.Detached, context.Entry(node).State);
+                Assert.Equal(
+                    EntityState.Detached,
+                    context.Entry(node)
+                        .State);
             });
 
         Assert.Equal(
@@ -89,7 +104,8 @@ public abstract partial class OrderingKeyTests
                 context
                     .Set<OrderingKeyNode<int, int?>>()
                     .AsNoTracking()
-                    .Where(node => node.TreeId != treeId)));
+                    .Where(node => node.TreeId != treeId),
+                cancellationToken: TestContext.Current.CancellationToken));
 
         var report = await tree
             .InTree(treeId)
@@ -108,12 +124,16 @@ public abstract partial class OrderingKeyTests
     )
     {
         // Arrange
-        await using var arranged = await _fixture.ResetAsync(Engine);
-        await ArrangeConvertedKeysAsync(arranged);
+        await using var arranged = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await ArrangeConvertedKeysAsync(arranged, cancellationToken: TestContext.Current.CancellationToken);
         var before = await ConvertedSnapshotAsync(
             arranged
                 .Set<OrderingKeyNode<int, int?>>()
-                .AsNoTracking());
+                .AsNoTracking(),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var table = arranged.Model.FindEntityType(typeof(OrderingKeyNode<int, int?>))!.GetTableName()!;
         var refresh = new BulkIntervalRefreshProbe(table);
@@ -181,7 +201,9 @@ public abstract partial class OrderingKeyTests
             await ConvertedSnapshotAsync(
                 context
                     .Set<OrderingKeyNode<int, int?>>()
-                    .AsNoTracking()));
+                    .AsNoTracking(),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Equal(original, imported.Select(ConvertedSnapshot));
         Assert.Empty(context.ChangeTracker.Entries());
         AssertConvertedRefreshBindings(commands, imported);
@@ -190,10 +212,12 @@ public abstract partial class OrderingKeyTests
     /// <summary>
     /// Creates overlapping bounds in another tree and another scope using the actual converted model.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The fixture-owned empty ordering context.</param>
     /// <returns>The tree that the import will modify.</returns>
     private static async Task<Guid> ArrangeConvertedKeysAsync(
-        OrderingKeyContext context
+        OrderingKeyContext context,
+        CancellationToken cancellationToken
     )
     {
         var treeId = Guid.NewGuid();
@@ -201,14 +225,14 @@ public abstract partial class OrderingKeyTests
             .NestedSet<OrderingKeyNode<int, int?>>()
             .ForScope(1);
 
-        await tree.InsertRootAsync(new OrderingKeyNode<int, int?>(1, "Root"), treeId, CancellationToken.None);
-        await tree.InsertChildAsync(new OrderingKeyNode<int, int?>(2, "Middle"), 1, CancellationToken.None);
+        await tree.InsertRootAsync(new OrderingKeyNode<int, int?>(1, "Root"), treeId, cancellationToken);
+        await tree.InsertChildAsync(new OrderingKeyNode<int, int?>(2, "Middle"), 1, cancellationToken);
         await tree.InsertRootAsync(
             new OrderingKeyNode<int, int?>(9, "Other tree"),
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
 
-        await tree.InsertChildAsync(new OrderingKeyNode<int, int?>(8, "Other child"), 9, CancellationToken.None);
+        await tree.InsertChildAsync(new OrderingKeyNode<int, int?>(8, "Other child"), 9, cancellationToken);
         var other = context
             .NestedSet<OrderingKeyNode<int, int?>>()
             .ForScope(2);
@@ -216,9 +240,9 @@ public abstract partial class OrderingKeyTests
         await other.InsertRootAsync(
             new OrderingKeyNode<int, int?>(11, "Other scope"),
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
 
-        await other.InsertChildAsync(new OrderingKeyNode<int, int?>(12, "Other child"), 11, CancellationToken.None);
+        await other.InsertChildAsync(new OrderingKeyNode<int, int?>(12, "Other child"), 11, cancellationToken);
 
         return treeId;
     }
@@ -235,10 +259,8 @@ public abstract partial class OrderingKeyTests
     {
         var refreshIndexes = probe
             .Commands
-            .Select((
-                command,
-                index
-            ) => (command, index))
+            .Select((command,
+                index) => (command, index))
             .Where(item => item.command.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
             .Select(item => item.index)
             .ToArray();
@@ -260,15 +282,17 @@ public abstract partial class OrderingKeyTests
     }
 
     /// <summary>Reads every payload and structural field for exact tree-isolation and rollback comparisons.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="query">The independent persisted rows.</param>
     /// <returns>The complete state ordered by stable identity.</returns>
     private static async Task<ConvertedKeySnapshot[]> ConvertedSnapshotAsync(
-        IQueryable<OrderingKeyNode<int, int?>> query
+        IQueryable<OrderingKeyNode<int, int?>> query,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await query
             .OrderBy(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(ConvertedSnapshot)

@@ -7,7 +7,7 @@ public sealed partial class SignalReportValidationTests
         IReadOnlyList<T> rows,
         ReaderProbe probe,
         CancellationToken cancellationToken
-    ) => new ProbeReader<T>(rows, probe, cancellationToken);
+    ) => new(rows, probe, cancellationToken);
 
     /// <summary>Supplies one row at a time and keeps reader failure distinct from asynchronous disposal.</summary>
     private sealed class ProbeReader<T>(
@@ -17,6 +17,17 @@ public sealed partial class SignalReportValidationTests
     ) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
     {
         private int _index;
+
+        /// <summary>Checks the caller's cancellation before exposing the sole reader.</summary>
+        public IAsyncEnumerator<T> GetAsyncEnumerator(
+            CancellationToken token
+        )
+        {
+            token.ThrowIfCancellationRequested();
+            probe.EnumerationToken = token;
+
+            return this;
+        }
 
         /// <summary>Gets the last supplied projection.</summary>
         public T Current => rows[_index - 1];
@@ -39,11 +50,24 @@ public sealed partial class SignalReportValidationTests
                 return ValueTask.FromResult(true);
             }
 
-            return CompleteAsync();
+            return CompleteAsync(cancellationToken);
+        }
+
+        /// <summary>Records asynchronous disposal independently from successful EOF.</summary>
+        public ValueTask DisposeAsync()
+        {
+            probe.Disposed = true;
+
+            return probe.DisposeFailure is { } error
+                ? ValueTask.FromException(error)
+                : ValueTask.CompletedTask;
         }
 
         /// <summary>Preserves asynchronous EOF cancellation and failure before successful completion.</summary>
-        private async ValueTask<bool> CompleteAsync()
+        /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+        private async ValueTask<bool> CompleteAsync(
+            CancellationToken cancellationToken
+        )
         {
             if (probe.CancelAfterRows is not null)
             {
@@ -51,6 +75,7 @@ public sealed partial class SignalReportValidationTests
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
             if (probe.ReadFailure is not null)
             {
                 throw probe.ReadFailure;
@@ -59,25 +84,6 @@ public sealed partial class SignalReportValidationTests
             probe.EndReached = true;
 
             return false;
-        }
-
-        /// <summary>Checks the caller's cancellation before exposing the sole reader.</summary>
-        public IAsyncEnumerator<T> GetAsyncEnumerator(
-            CancellationToken token
-        )
-        {
-            token.ThrowIfCancellationRequested();
-            probe.EnumerationToken = token;
-
-            return this;
-        }
-
-        /// <summary>Records asynchronous disposal independently from successful EOF.</summary>
-        public ValueTask DisposeAsync()
-        {
-            probe.Disposed = true;
-
-            return probe.DisposeFailure is { } error ? ValueTask.FromException(error) : ValueTask.CompletedTask;
         }
     }
 

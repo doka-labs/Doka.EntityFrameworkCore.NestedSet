@@ -10,7 +10,8 @@ public sealed class ProviderFixtureIsolationTests
     public async Task ProviderFixtureChainsRemainIsolatedDuringConcurrentDisposal()
     {
         // Arrange
-        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner)).TestClass;
+        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
+            .TestClass;
 
         var secondClass = CreateTestMethod("PostgreSql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
             .TestClass;
@@ -50,10 +51,14 @@ public sealed class ProviderFixtureIsolationTests
                 try
                 {
                     TestContext.SetForTestClass(firstClass, TestEngineStatus.Running, cancellationToken, firstMappings);
-                    var before = await TestDatabaseServers.GetCurrentAsync();
+                    var before = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     firstReady.TrySetResult();
                     await secondReady.Task.WaitAsync(cancellationToken);
-                    var interleaved = await TestDatabaseServers.GetCurrentAsync();
+                    var interleaved = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     await firstAssembly.DisposeAsync();
 
                     return (Before: before, Interleaved: interleaved);
@@ -61,7 +66,7 @@ public sealed class ProviderFixtureIsolationTests
                 finally
                 {
                     // WHY: Release the peer if lookup or cleanup fails so an isolation regression cannot hang
-        // the suite.
+                    // the suite.
                     firstReady.TrySetResult();
                     firstDisposed.TrySetResult();
                 }
@@ -79,12 +84,17 @@ public sealed class ProviderFixtureIsolationTests
                         cancellationToken,
                         secondMappings);
 
-                    var before = await TestDatabaseServers.GetCurrentAsync();
+                    var before = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     secondReady.TrySetResult();
                     await firstReady.Task.WaitAsync(cancellationToken);
-                    var interleaved = await TestDatabaseServers.GetCurrentAsync();
+                    var interleaved = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
+
                     await firstDisposed.Task.WaitAsync(cancellationToken);
-                    var afterDisposal = await TestDatabaseServers.GetCurrentAsync();
+                    var afterDisposal = await TestDatabaseServers.GetCurrentAsync(
+                        cancellationToken: TestContext.Current.CancellationToken);
 
                     return (Before: before, Interleaved: interleaved, AfterDisposal: afterDisposal);
                 }
@@ -212,7 +222,8 @@ public sealed class ProviderFixtureIsolationTests
 
         // Assert
         Assert.Contains("Allocation", budgetMetadata.Traits["Category"]);
-        Assert.False(validationMetadata.Traits.TryGetValue("Category", out var categories)
+        Assert.False(
+            validationMetadata.Traits.TryGetValue("Category", out var categories)
             && categories.Contains("Allocation", StringComparer.Ordinal));
     }
 
@@ -279,6 +290,7 @@ public sealed class ProviderFixtureIsolationTests
     }
 
     /// <summary>Supplies ordinary inherited metadata for separate executable assembly contexts.</summary>
+
     // WHY: Abstract metadata subjects are not Unit suites; emitted provider leaves expose their real owner identity.
     public abstract class FixtureContextProbe
     {

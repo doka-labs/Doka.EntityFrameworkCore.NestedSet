@@ -6,11 +6,17 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 public abstract partial class DensePathWorkTestBase
 {
     /// <summary>Separates construction, execution, command bytes and actual native work.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="database">The isolated database used by the scenario.</param>
+    /// <param name="scenario">The selected deterministic workload scenario.</param>
+    /// <param name="expected">The independently derived expected results.</param>
+    /// <param name="budget">The unchanged native work budget.</param>
     private async Task<Observation> ObserveAsync(
         TestDatabase database,
         DensePathWorkScenario scenario,
         CompositionCapacityTotal[] expected,
-        CompositionPlanWorkBudget budget
+        CompositionPlanWorkBudget budget,
+        CancellationToken cancellationToken
     )
     {
         var probe = new EnterpriseProbe(captureParameterBindings: true);
@@ -31,13 +37,15 @@ public abstract partial class DensePathWorkTestBase
 
         try
         {
-            actual = await query.ToArrayAsync(CancellationToken.None);
+            actual = await query.ToArrayAsync(cancellationToken);
         }
         catch (Exception error)
         {
+            // WHY: Failure evidence must finish even when the failed read canceled its caller token.
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 Engine + "-dense-path-work-failed-" + profile,
-                [error.ToString(), probe.Commands.FirstOrDefault() ?? query.ToQueryString()]);
+                [error.ToString(), probe.Commands.FirstOrDefault() ?? query.ToQueryString()],
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -51,7 +59,13 @@ public abstract partial class DensePathWorkTestBase
 
         var parameters = probe.ParameterBindings[0].Length;
         var commandBytes = Encoding.UTF8.GetByteCount(probe.Commands[0]);
-        var plan = await Specifications.QueryPlanTestSupport.ExplainAsync(context, probe, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            probe,
+            0,
+            Engine,
+            cancellationToken: cancellationToken);
+
         var planBytes = Encoding.UTF8.GetByteCount(plan);
 
         // WHY: Keep the unchanged raw native plan even if its actual-counter reader rejects malformed evidence.
@@ -63,9 +77,12 @@ public abstract partial class DensePathWorkTestBase
                 + $"commandBytes={commandBytes}; planBytes={planBytes}; resultRows={actual.Length}",
                 probe.Commands[0],
                 plan,
-            ]);
+            ],
+            cancellationToken: cancellationToken);
 
-        var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
+        var work = Engine == "MySql"
+            ? DensePathNativeWork.MySql(plan)
+            : DensePathNativeWork.MariaDb(plan);
 
         return new Observation(
             profile,
@@ -118,7 +135,7 @@ public abstract partial class DensePathWorkTestBase
 
         if (observation.Work.RootRows is { } rows)
         {
-            Assert.Equal((double)observation.Actual.Length, rows);
+            Assert.Equal(observation.Actual.Length, rows);
         }
 
         Assert.InRange(observation.Work.OperatorTuples, 0, observation.Budget.OperatorTuples);

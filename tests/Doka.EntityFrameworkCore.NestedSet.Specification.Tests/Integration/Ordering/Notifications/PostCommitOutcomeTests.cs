@@ -19,7 +19,10 @@ public abstract class PostCommitOutcomeTests : ProviderTest
     public async Task PostCommitSaveFailureDoesNotUndoPersistedOrder()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = setup
             .NestedSet<OrderingNode>()
             .ForScope(1);
@@ -53,7 +56,12 @@ public abstract class PostCommitOutcomeTests : ProviderTest
             CancellationToken.None);
 
         var probe = new PostCommitFailureProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", probe);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            probe);
+
         var renamed = await context
             .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
@@ -68,7 +76,8 @@ public abstract class PostCommitOutcomeTests : ProviderTest
         if (error is AggregateException aggregate)
         {
             Assert.Contains(
-                aggregate.Flatten().InnerExceptions,
+                aggregate.Flatten()
+                    .InnerExceptions,
                 cause => ReferenceEquals(cause, probe.Failure));
         }
         else
@@ -78,7 +87,10 @@ public abstract class PostCommitOutcomeTests : ProviderTest
 
         Assert.Equal(1, probe.CommitNotifications);
         Assert.Null(context.Database.CurrentTransaction);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var nodes = await verification
             .Set<OrderingNode>()
             .AsNoTracking()

@@ -14,40 +14,73 @@ public abstract partial class HierarchyCompositionCapacityTests
     {
         // Arrange
         const int nodes = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes);
+        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
 
         if (repair)
         {
-            await CompositionCapacityProfiles.BalanceAsync(setup, nodes);
+            await CompositionCapacityProfiles.BalanceAsync(
+                setup,
+                nodes,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext(probe);
         (int NodeId, int? Parent, long Start, long End, int Depth, long Position)[] expected = repair
-            ? [(1, null, 1L, 2L, 9, 0L), (100_000, 1, 1L, 2L, 9, 99_998L),
-                (100_001, 1, 1L, 2L, 9, 99_999L)]
-            : [(1, null, 1L, 200_002L, 0, 0L), (100_000, 99_002, 199_997L, 199_998L, 2, 997L),
-                (100_001, 99_002, 199_999L, 200_000L, 2, 998L)];
+            ?
+            [
+                (1, null, 1L, 2L, 9, 0L), (100_000, 1, 1L, 2L, 9, 99_998L),
+                (100_001, 1, 1L, 2L, 9, 99_999L),
+            ]
+            :
+            [
+                (1, null, 1L, 200_002L, 0, 0L), (100_000, 99_002, 199_997L, 199_998L, 2, 997L),
+                (100_001, 99_002, 199_999L, 200_000L, 2, 998L),
+            ];
 
         // Act
         var changed = repair
-            ? await CompositionCapacityProfiles.CorruptWideForRepairAsync(context, nodes)
-            : await CompositionCapacityProfiles.BalanceAsync(context, nodes);
+            ? await CompositionCapacityProfiles.CorruptWideForRepairAsync(
+                context,
+                nodes,
+                cancellationToken: TestContext.Current.CancellationToken)
+            : await CompositionCapacityProfiles.BalanceAsync(
+                context,
+                nodes,
+                cancellationToken: TestContext.Current.CancellationToken);
 
-        var rows = await context.Set<TreeNode>()
+        var rows = await context
+            .Set<TreeNode>()
             .Where(node => node.NodeId == 1 || node.NodeId >= 100_000)
             .OrderBy(node => node.NodeId)
-            .Select(node => new { node.NodeId, node.Parent, node.Start, node.End, node.Depth, node.Position })
+            .Select(node => new
+            {
+                node.NodeId,
+                node.Parent,
+                node.Start,
+                node.End,
+                node.Depth,
+                node.Position,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(repair ? nodes : nodes - 1, changed);
+        Assert.Equal(
+            repair
+                ? nodes
+                : nodes - 1,
+            changed);
+
         Assert.Equal(2, probe.NodeUpdates);
         Assert.Equal(2, probe.CompletedNodeUpdates);
         Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(expected,
+        Assert.Equal(
+            expected,
             rows.Select(node => (node.NodeId, node.Parent, node.Start, node.End, node.Depth, node.Position)));
     }
 }

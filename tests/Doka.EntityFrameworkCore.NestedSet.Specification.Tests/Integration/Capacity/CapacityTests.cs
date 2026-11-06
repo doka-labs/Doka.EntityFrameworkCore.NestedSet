@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Qualifies persisted capacity, public bulk atomicity, and bounded repair memory on each engine.</summary>
+
 // WHY: Fresh case-owned databases isolate statistics and avoid deleting preceding capacity datasets during setup.
 public abstract partial class CapacityTests : ProviderTest
 {
@@ -32,11 +33,23 @@ public abstract partial class CapacityTests : ProviderTest
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, 129, deep, corrupt: true);
-        var registry = await CapacitySeed.RegistryAsync(setup);
+        await CapacitySeed.SeedAsync(
+            setup,
+            129,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep,
+            corrupt: true);
+
+        var registry = await CapacitySeed.RegistryAsync(
+            setup,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         var tree = context
@@ -64,8 +77,13 @@ public abstract partial class CapacityTests : ProviderTest
         Assert.Equal(3, probe.RepairCommands);
         Assert.Equal(3, probe.CompletedRepairs);
         Assert.Equal(129, probe.RepairedRows);
-        await AssertCanonicalAsync(database, 129, deep);
-        Assert.Equal(registry with { Revision = registry.Revision + 1 }, await CapacitySeed.RegistryAsync(setup));
+        await AssertCanonicalAsync(database, 129, cancellationToken: TestContext.Current.CancellationToken, deep);
+        Assert.Equal(
+            registry with { Revision = registry.Revision + 1 },
+            await CapacitySeed.RegistryAsync(
+                setup,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -77,9 +95,12 @@ public abstract partial class CapacityTests : ProviderTest
     {
         // Arrange
         const int count = 10 * Million;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count);
+        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = CreateCapacityContext(database);
         var tree = context
             .NestedSet<TreeNode>()
@@ -91,30 +112,45 @@ public abstract partial class CapacityTests : ProviderTest
 
         // Act
         await foreach (var key in tree
-                           .Nodes
-                           .AsNoTracking()
-                           .Select(node => node.NodeId)
-                           .AsAsyncEnumerable()
-                           .WithCancellation(CancellationToken.None))
+            .Nodes
+            .AsNoTracking()
+            .Select(node => node.NodeId)
+            .AsAsyncEnumerable()
+            .WithCancellation(CancellationToken.None))
         {
             readCount++;
             keySum += key;
         }
 
         var report = await tree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
-        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, count);
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count);
+        var composition = await CompositionCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
         CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         _output.WriteLine($"Engine={Engine}; persisted/read/full-validation nodes={count}; read count={readCount}");
         Assert.Equal(count, readCount);
-        Assert.Equal(((long)count * (count + 1)) / 2, keySum);
+        Assert.Equal((long)count * (count + 1) / 2, keySum);
         Assert.True(report.IsValid);
         Assert.Equal(count, report.NodeCount);
         Assert.Empty(report.Issues);
-        Assert.Equal(0, await CapacitySeed.MismatchesAsync(context, count));
+        Assert.Equal(
+            0,
+            await CapacitySeed.MismatchesAsync(
+                context,
+                count,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -126,8 +162,11 @@ public abstract partial class CapacityTests : ProviderTest
     {
         // Arrange
         const int count = Million + 1;
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         context.SavedChanges += (_, _) => probe.Saved();
@@ -151,8 +190,17 @@ public abstract partial class CapacityTests : ProviderTest
             WriteMeasurement("public forest import", count, probe);
         }
 
-        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, count);
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count);
+        var composition = await CompositionCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
@@ -166,9 +214,10 @@ public abstract partial class CapacityTests : ProviderTest
         Assert.Equal(
             (1L, 2L * count, 0, 0L, (int?)null),
             (root.Start, root.End, root.Depth, root.Position, root.Parent));
+
         Assert.Equal(0, CountInputMismatches(branch, restored: false));
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(database, count);
+        await AssertCanonicalAsync(database, count, cancellationToken: TestContext.Current.CancellationToken);
     }
 
     /// <summary>Fully validates and rebuilds a real depth-100000 chain without recursive traversal.</summary>
@@ -179,10 +228,18 @@ public abstract partial class CapacityTests : ProviderTest
     {
         // Arrange
         const int count = 100_001;
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, deep: true);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = setup
             .NestedSet<TreeNode>()
             .ForScope(1)
@@ -218,8 +275,17 @@ public abstract partial class CapacityTests : ProviderTest
             WriteMeasurement("deep public rebuild", count, probe);
         }
 
-        var composition = await CompositionCapacityProfiles.MeasureDeepAsync(database, Engine);
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, count, deep: true);
+        var composition = await CompositionCapacityProfiles.MeasureDeepAsync(
+            database,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: true);
 
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
@@ -231,7 +297,12 @@ public abstract partial class CapacityTests : ProviderTest
         Assert.Equal(count, probe.RepairedRows);
         Assert.InRange(probe.MaximumRepairParameters, 1, 322);
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(database, count, deep: true);
+        await AssertCanonicalAsync(
+            database,
+            count,
+            deep: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         Assert.Equal(
             100_000,
             await setup
@@ -246,12 +317,22 @@ public abstract partial class CapacityTests : ProviderTest
     public async Task MillionNodeRebuildWithinAdditionalHeapBudget()
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, Million);
-        await CompositionCapacityProfiles.BalanceAsync(setup, Million);
-        var registry = await CapacitySeed.RegistryAsync(setup);
+        await CapacitySeed.SeedAsync(setup, Million, cancellationToken: TestContext.Current.CancellationToken);
+        await CompositionCapacityProfiles.BalanceAsync(
+            setup,
+            Million,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var registry = await CapacitySeed.RegistryAsync(
+            setup,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         var tree = context
@@ -262,12 +343,30 @@ public abstract partial class CapacityTests : ProviderTest
         // Act
         // WHY: Reuse this existing million-row population for balanced read qualification before the repair
         // observer starts. Restore the original wide adjacency while corrupting bounds for the existing repair.
-        var composition = await CompositionCapacityProfiles.MeasureAsync(database, Engine, Million, balanced: true);
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(database, Engine, Million, balanced: true);
-        var balancedValidation = await setup.NestedSet<TreeNode>().ForScope(1).InTree(Guid.Empty)
+        var composition = await CompositionCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            Million,
+            balanced: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            Million,
+            cancellationToken: TestContext.Current.CancellationToken,
+            balanced: true);
+
+        var balancedValidation = await setup
+            .NestedSet<TreeNode>()
+            .ForScope(1)
+            .InTree(Guid.Empty)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
-        await CompositionCapacityProfiles.CorruptWideForRepairAsync(setup, Million);
+        await CompositionCapacityProfiles.CorruptWideForRepairAsync(
+            setup,
+            Million,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         probe.Start();
 
@@ -293,8 +392,12 @@ public abstract partial class CapacityTests : ProviderTest
         Assert.InRange(probe.MaximumRepairParameters, 1, 322);
         Assert.InRange(probe.MaximumRepairSqlLength, 1, 20_000);
         Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(database, Million);
-        Assert.Equal(registry with { Revision = registry.Revision + 1 }, await CapacitySeed.RegistryAsync(setup));
+        await AssertCanonicalAsync(database, Million, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(
+            registry with { Revision = registry.Revision + 1 },
+            await CapacitySeed.RegistryAsync(
+                setup,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>A final-refresh fault restores all million imported inputs and rolls back every payload wave.</summary>
@@ -313,12 +416,18 @@ public abstract partial class CapacityTests : ProviderTest
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
         await using var probe = new CapacityProbe();
         probe.FailBulkRefresh = true;
-        probe.Cancellation = cancel ? cancellation : null;
+        probe.Cancellation = cancel
+            ? cancellation
+            : null;
+
         await using var context = CreateCapacityContext(database, probe);
         context.SavedChanges += (_, _) => probe.Saved();
         var branch = CreateWide(count);
@@ -342,7 +451,13 @@ public abstract partial class CapacityTests : ProviderTest
             await verification
                 .Set<TreeNode>()
                 .LongCountAsync(CancellationToken.None));
-        Assert.Equal(0, await CapacitySeed.RegistryCountAsync(verification));
+
+        Assert.Equal(
+            0,
+            await CapacitySeed.RegistryCountAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         _output.WriteLine(
             $"Engine={Engine}; nodes={count}; canceled={cancel}; "
             + $"payload waves before final refresh failure={probe.CompletedSaves}; inputs and reservation restored");
@@ -364,15 +479,29 @@ public abstract partial class CapacityTests : ProviderTest
     )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
-        await WarmAsync(database);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, corrupt: true);
-        var registry = await CapacitySeed.RegistryAsync(setup);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            corrupt: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var registry = await CapacitySeed.RegistryAsync(
+            setup,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         await using var probe = new CapacityProbe();
         probe.FailRepairCommand = (count + 63) / 64;
-        probe.Cancellation = cancel ? cancellation : null;
+        probe.Cancellation = cancel
+            ? cancellation
+            : null;
+
         await using var context = CreateCapacityContext(database, probe);
         var tree = context
             .NestedSet<TreeNode>()
@@ -386,7 +515,7 @@ public abstract partial class CapacityTests : ProviderTest
         AssertFailure(error, cancel);
         Assert.True(probe.ReachedFailure);
         Assert.Equal((count + 63) / 64, probe.RepairCommands);
-        Assert.Equal(((count + 63) / 64) - 1, probe.CompletedRepairs);
+        Assert.Equal((count + 63) / 64 - 1, probe.CompletedRepairs);
         Assert.Equal((long)probe.CompletedRepairs * 64, probe.RepairedRows);
         Assert.InRange(probe.MaximumRepairParameters, 1, 322);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -396,8 +525,21 @@ public abstract partial class CapacityTests : ProviderTest
             await verification
                 .Set<TreeNode>()
                 .LongCountAsync(CancellationToken.None));
-        Assert.Equal(0, await CapacitySeed.MismatchesAsync(verification, count, corrupt: true));
-        Assert.Equal(registry, await CapacitySeed.RegistryAsync(verification));
+
+        Assert.Equal(
+            0,
+            await CapacitySeed.MismatchesAsync(
+                verification,
+                count,
+                corrupt: true,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registry,
+            await CapacitySeed.RegistryAsync(
+                verification,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         _output.WriteLine(
             $"Engine={Engine}; nodes={count}; canceled={cancel}; "
             + $"completed repair batches before last failure={probe.CompletedRepairs}; rows and revision restored");
@@ -412,7 +554,9 @@ public abstract partial class CapacityTests : ProviderTest
         CapacityProbe? probe = null
     )
     {
-        var context = probe is null ? database.CreateContext() : database.CreateContext(probe);
+        var context = probe is null
+            ? database.CreateContext()
+            : database.CreateContext(probe);
 
         if (context.Database.GetDbConnection() is SqlConnection connection)
         {
@@ -430,8 +574,10 @@ public abstract partial class CapacityTests : ProviderTest
     }
 
     /// <summary>Warms the same public import, inspection, and repair paths before measuring capacity work.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task WarmAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = CreateCapacityContext(database);
@@ -440,20 +586,20 @@ public abstract partial class CapacityTests : ProviderTest
             .ForScope(1)
             .InsertForestAsync(
                 [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, CreateWide(65))],
-                CancellationToken.None);
+                cancellationToken);
 
         await context
             .Set<TreeNode>()
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Start, 1L), CancellationToken.None);
+            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Start, 1L), cancellationToken);
 
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty);
 
-        await tree.RebuildAsync(CancellationToken.None);
-        await tree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
-        await database.ResetAsync();
+        await tree.RebuildAsync(cancellationToken);
+        await tree.ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
+        await database.ResetAsync(cancellationToken: cancellationToken);
     }
 
     /// <summary>Builds all caller-owned topology and application payload before the measured baseline.</summary>
@@ -493,7 +639,10 @@ public abstract partial class CapacityTests : ProviderTest
     )
     {
         var count = branch.Children.Count + 1;
-        var mismatches = Matches(branch.Entity, 1) ? 0 : 1;
+        var mismatches = Matches(branch.Entity, 1)
+            ? 0
+            : 1;
+
         for (var index = 0; index < branch.Children.Count; index++)
         {
             if (!Matches(branch.Children[index].Entity, index + 2))
@@ -509,19 +658,52 @@ public abstract partial class CapacityTests : ProviderTest
             int key
         ) => node.NodeId == key
             && node.Payload == "caller-owned capacity payload"
-            && node.TreeId == (restored ? s_inputTreeId : Guid.Empty)
-            && node.Tree == (restored ? 7 : 1)
-            && node.Start == (restored ? 17 : key == 1 ? 1L : (2L * key) - 2)
-            && node.End == (restored ? 18 : key == 1 ? 2L * count : (2L * key) - 1)
-            && node.Depth == (restored ? 9 : key == 1 ? 0 : 1)
-            && node.Position == (restored ? 11 : key == 1 ? 0L : key - 2L)
-            && node.Parent == (restored ? 999 : key == 1 ? null : 1);
+            && node.TreeId
+            == (restored
+                ? s_inputTreeId
+                : Guid.Empty)
+            && node.Tree
+            == (restored
+                ? 7
+                : 1)
+            && node.Start
+            == (restored
+                ? 17
+                : key == 1
+                    ? 1L
+                    : 2L * key - 2)
+            && node.End
+            == (restored
+                ? 18
+                : key == 1
+                    ? 2L * count
+                    : 2L * key - 1)
+            && node.Depth
+            == (restored
+                ? 9
+                : key == 1
+                    ? 0
+                    : 1)
+            && node.Position
+            == (restored
+                ? 11
+                : key == 1
+                    ? 0L
+                    : key - 2L)
+            && node.Parent
+            == (restored
+                ? 999
+                : key == 1
+                    ? null
+                    : 1);
     }
 
     /// <summary>Checks the exact persisted result through a fresh context and public Full validation.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertCanonicalAsync(
         TestDatabase database,
         int count,
+        CancellationToken cancellationToken,
         bool deep = false
     )
     {
@@ -530,14 +712,21 @@ public abstract partial class CapacityTests : ProviderTest
             count,
             await verification
                 .Set<TreeNode>()
-                .LongCountAsync(CancellationToken.None));
-        Assert.Equal(0, await CapacitySeed.MismatchesAsync(verification, count, deep));
+                .LongCountAsync(cancellationToken));
+
+        Assert.Equal(
+            0,
+            await CapacitySeed.MismatchesAsync(
+                verification,
+                count,
+                cancellationToken: cancellationToken,
+                deep));
 
         var report = await verification
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(report.IsValid);
         Assert.Equal(count, report.NodeCount);

@@ -6,14 +6,19 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 internal static class SignalBenchmarkData
 {
     /// <summary>Seeds the selected physical node count, retaining the sample's isolation and control nodes.</summary>
+    /// <param name="context">The context used for the benchmark data and verification reads.</param>
+    /// <param name="nodes">The exact prepared node population.</param>
+    /// <param name="shape">The deterministic hierarchy shape.</param>
+    /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
     internal static async Task<SignalReportDataset> CreateAsync(
         SignalLabContext context,
         int nodes,
-        BenchmarkShape shape
+        BenchmarkShape shape,
+        CancellationToken cancellationToken
     )
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(nodes, 30);
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None);
+        var data = await SignalReportDataset.CreateAsync(context, 5, false, cancellationToken);
         var count = nodes - SignalReportDataset.SeedNodeCount;
         var entities = new SignalNode[count];
         var branches = new NestedSetBranch<SignalNode>[count];
@@ -59,7 +64,7 @@ internal static class SignalBenchmarkData
         await context
             .NestedSet<SignalNode>()
             .ForScope(data.TenantId)
-            .InsertSubtreeAsync(branches[0], SignalReportDataset.Id(3), CancellationToken.None);
+            .InsertSubtreeAsync(branches[0], SignalReportDataset.Id(3), cancellationToken);
 
         var channels = new[] { SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel };
 
@@ -74,7 +79,9 @@ internal static class SignalBenchmarkData
                 {
                     TenantId = data.TenantId,
                     ChildId = entity.Id,
-                    ParentId = parents[index] is { } parent ? entities[parent].Id : SignalReportDataset.Id(3),
+                    ParentId = parents[index] is { } parent
+                        ? entities[parent].Id
+                        : SignalReportDataset.Id(3),
                     FromDate = SignalReportDataset.FirstDay,
                 });
 
@@ -138,18 +145,18 @@ internal static class SignalBenchmarkData
             {
                 // WHY: Payload setup must not retain every measurement and metadata entry in the tracker
                 // merely because the observational benchmark selected a larger structural population.
-                await context.SaveChangesAsync(CancellationToken.None);
+                await context.SaveChangesAsync(cancellationToken);
                 context.ChangeTracker.Clear();
             }
         }
 
-        await context.SaveChangesAsync(CancellationToken.None);
+        await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();
         BenchmarkFixture.Require(
             await context
                 .Nodes
                 .IgnoreQueryFilters()
-                .LongCountAsync(CancellationToken.None)
+                .LongCountAsync(cancellationToken)
             == nodes,
             "SignalLab benchmark population differs from its Nodes parameter.");
 

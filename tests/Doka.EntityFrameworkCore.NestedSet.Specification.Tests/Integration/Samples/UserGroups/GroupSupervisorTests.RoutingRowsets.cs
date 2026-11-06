@@ -17,25 +17,140 @@ public abstract partial class GroupSupervisorTests
     [InlineData("within-pair", true)]
     [InlineData("between-pairs", false)]
     [InlineData("between-pairs", true)]
-    public async Task MixedOwnerRowsetsKeepEveryConditionOnTheSameCandidate(string shape, bool reverse)
+    public async Task MixedOwnerRowsetsKeepEveryConditionOnTheSameCandidate(
+        string shape,
+        bool reverse
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A");
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 1, data.Users[0], data.Groups[5], 4, "ChannelClass", "member-A");
-        await AddMetadataAsync(context, data, 2, data.Users[0], data.Groups[5], 4, "RoutingZone", "group-A");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "RoutingZone",
-            shape == "within-pair" ? "zone-B" : "zone-A");
-        await AddMetadataAsync(context, data, 3, data.Users[1], data.Groups[4], 3, "ManagerRoute",
-            shape == "between-pairs" ? "member-B" : "member-A");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 3, data.Users[2], data.Groups[4], 3, "ManagerRoute", "member-A");
-        await AddMetadataAsync(context, data, 5, data.Users[1], data.Groups[4], 3, "ManagerRoute", "group-A");
+        await AddMetadataAsync(
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "RoutingZone",
+            "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            1,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            2,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "RoutingZone",
+            "group-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ChannelClass",
+            "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "RoutingZone",
+            shape == "within-pair"
+                ? "zone-B"
+                : "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            3,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ManagerRoute",
+            shape == "between-pairs"
+                ? "member-B"
+                : "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[2],
+            data.Groups[4],
+            3,
+            "ChannelClass",
+            "channel-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[2],
+            data.Groups[4],
+            3,
+            "RoutingZone",
+            "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            3,
+            data.Users[2],
+            data.Groups[4],
+            3,
+            "ManagerRoute",
+            "member-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            5,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ManagerRoute",
+            "group-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         App.MetadataMatch[] matches =
@@ -49,21 +164,40 @@ public abstract partial class GroupSupervisorTests
         var request = data.Request(group: data.Groups[5]) with
         {
             Groups = new App.NthTypeGroupThenValidate(3, 1),
-            Matches = reverse ? matches.Reverse().ToArray() : matches,
+            Matches = reverse
+                ? matches
+                    .Reverse()
+                    .ToArray()
+                : matches,
         };
 
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
-        Assert.Equal(shape == "match" ? App.SupervisorResolutionStatus.Found : App.SupervisorResolutionStatus.NotFound,
+        Assert.Equal(
+            shape == "match"
+                ? App.SupervisorResolutionStatus.Found
+                : App.SupervisorResolutionStatus.NotFound,
             origin.Status);
-        Assert.Equal(shape == "match" ? new[] { data.Users[1] } : [],
-            origin.Evidence.Select(evidence => evidence.CandidateUserId).ToArray());
+
+        Assert.Equal(
+            shape == "match"
+                ? new[] { data.Users[1] }
+                : [],
+            origin
+                .Evidence
+                .Select(evidence => evidence.CandidateUserId)
+                .ToArray());
+
         Assert.Single(probe.Commands);
         Assert.True(probe.HasStringParameterElement("ChannelClass"));
         Assert.True(probe.HasStringParameterElement("ManagerRoute"));
@@ -83,16 +217,25 @@ public abstract partial class GroupSupervisorTests
     [InlineData("case")]
     [InlineData("padding")]
     [InlineData("space")]
-    public async Task FinalRoutingPairRemainsRequiredInsideTheOwnerRowset(string shape)
+    public async Task FinalRoutingPairRemainsRequiredInsideTheOwnerRowset(
+        string shape
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 1, s_profileFields.Length);
+        await SeedOriginProfileAsync(
+            context,
+            data,
+            1,
+            s_profileFields.Length,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var finalField = s_profileFields[^1];
         var target = context.MembershipMetadatas.Where(value => value.TenantId == data.TenantId
-            && value.UserId == data.Users[1] && value.FieldCode == finalField);
+            && value.UserId == data.Users[1]
+            && value.FieldCode == finalField);
 
         if (shape == "missing")
         {
@@ -110,37 +253,61 @@ public abstract partial class GroupSupervisorTests
                 _ => "lane-blue",
             };
 
-            await target.ExecuteUpdateAsync(setters => setters.SetProperty(metadata => metadata.Value, value),
+            await target.ExecuteUpdateAsync(
+                setters => setters.SetProperty(metadata => metadata.Value, value),
                 CancellationToken.None);
         }
 
         if (shape == "space")
         {
-            await context.UserMetadatas.Where(value => value.TenantId == data.TenantId
-                    && value.UserId == data.Users[0] && value.FieldCode == finalField)
+            await context
+                .UserMetadatas
+                .Where(value => value.TenantId == data.TenantId
+                    && value.UserId == data.Users[0]
+                    && value.FieldCode == finalField)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, " "), CancellationToken.None);
         }
 
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.NthTypeGroupThenValidate(4, 1),
-            Matches = s_profileFields.Select(field => new App.MetadataMatch(
-                App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = s_profileFields
+                .Select(field => new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    field,
+                    App.MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
         };
 
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
         var matches = shape is "match" or "space";
-        Assert.Equal(matches ? App.SupervisorResolutionStatus.Found : App.SupervisorResolutionStatus.NotFound,
+        Assert.Equal(
+            matches
+                ? App.SupervisorResolutionStatus.Found
+                : App.SupervisorResolutionStatus.NotFound,
             origin.Status);
-        Assert.Equal(matches ? new[] { data.Users[1] } : [],
-            origin.Evidence.Select(evidence => evidence.CandidateUserId).ToArray());
+
+        Assert.Equal(
+            matches
+                ? new[] { data.Users[1] }
+                : [],
+            origin
+                .Evidence
+                .Select(evidence => evidence.CandidateUserId)
+                .ToArray());
+
         Assert.Single(probe.Commands);
         Assert.True(probe.HasStringParameterElement(finalField));
         Assert.Equal(0, probe.Entities);

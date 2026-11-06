@@ -22,7 +22,14 @@ public sealed class AncestorIndexBoundaryTests
         get
         {
             var cases = new TheoryData<string, long, long, bool>();
-            foreach (var engine in new[] { "Sqlite", "MySql", "MariaDb", "PostgreSql", "SqlServer" })
+            foreach (var engine in new[]
+                {
+                    "Sqlite",
+                    "MySql",
+                    "MariaDb",
+                    "PostgreSql",
+                    "SqlServer",
+                })
             {
                 cases.Add(engine, long.MaxValue, long.MaxValue, false);
                 cases.Add(engine, long.MaxValue, long.MinValue, false);
@@ -50,15 +57,28 @@ public sealed class AncestorIndexBoundaryTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var chain = database.Scaffold(true, "AncestorSignedInitial", splitStructure: true);
-        await database.MigrateAsync(chain, splitStructure: true);
+        await database.MigrateAsync(
+            chain,
+            splitStructure: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext(assembly: chain.Assembly, splitStructure: true);
 
         // WHY: A raw legacy/imported interval can be empty or malformed until repaired. Adding an optional
         // read access path must not introduce arithmetic failure before validation can inspect that row.
         // Act
-        await InsertSplitRowAsync(context, database.PhysicalDatabase.Schema, left, right);
+        await InsertSplitRowAsync(
+            context,
+            database.PhysicalDatabase.Schema,
+            left,
+            right,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var actual = await context
@@ -67,7 +87,7 @@ public sealed class AncestorIndexBoundaryTests
             {
                 x.Left,
                 x.Right,
-                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty)
+                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty),
             })
             .SingleAsync(CancellationToken.None);
 
@@ -91,18 +111,35 @@ public sealed class AncestorIndexBoundaryTests
     )
     {
         // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(_fixture, engine);
+        await using var database = await AncestorIndexDatabase.CreateAsync(
+            _fixture,
+            engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var initial = database.Scaffold(false, "AOrdinarySignedInitial", splitStructure: true);
-        await database.MigrateAsync(initial, false, splitStructure: true);
+        await database.MigrateAsync(
+            initial,
+            cancellationToken: TestContext.Current.CancellationToken,
+            false,
+            splitStructure: true);
+
         await using (var ordinary = database.CreateContext(false, initial.Assembly, splitStructure: true))
         {
-            await InsertSplitRowAsync(ordinary, database.PhysicalDatabase.Schema, left, right);
+            await InsertSplitRowAsync(
+                ordinary,
+                database.PhysicalDatabase.Schema,
+                left,
+                right,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var upgrade = database.Scaffold(true, "BAncestorSignedUpgrade", initial, splitStructure: true);
 
         // Act
-        await database.MigrateAsync(upgrade, splitStructure: true);
+        await database.MigrateAsync(
+            upgrade,
+            splitStructure: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         await using var context = database.CreateContext(assembly: upgrade.Assembly, splitStructure: true);
@@ -112,7 +149,7 @@ public sealed class AncestorIndexBoundaryTests
             {
                 x.Left,
                 x.Right,
-                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty)
+                Flag = EF.Property<bool>(x, AncestorIndexContext.FlagProperty),
             })
             .SingleAsync(CancellationToken.None);
 
@@ -122,11 +159,17 @@ public sealed class AncestorIndexBoundaryTests
     }
 
     /// <summary>Seeds one legacy row atomically across the real primary and secondary mapped tables.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="schema">The provider schema containing the physical objects.</param>
+    /// <param name="left">The left hierarchy bound.</param>
+    /// <param name="right">The right hierarchy bound.</param>
     private static async Task InsertSplitRowAsync(
         AncestorIndexContext context,
         string? schema,
         long left,
-        long right
+        long right,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
@@ -141,7 +184,7 @@ public sealed class AncestorIndexBoundaryTests
         var rightColumn = sql.DelimitIdentifier("right_bound");
         var depth = sql.DelimitIdentifier("entry_depth");
         var position = sql.DelimitIdentifier("sibling_position");
-        await using var transaction = await context.Database.BeginTransactionAsync(CancellationToken.None);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         // WHY: The schema permits repairable malformed split intervals. Native parameterized inserts
         // represent an existing/imported database without bypassing production validation through internals.
@@ -150,24 +193,32 @@ public sealed class AncestorIndexBoundaryTests
             context,
             transaction.GetDbTransaction(),
             $"INSERT INTO {primary} ({key}, {payload}, {category}) VALUES (@value0, @value1, @value2)",
-            [61, string.Empty, 0]);
+            [61, string.Empty, 0],
+            cancellationToken: cancellationToken);
 
         await ExecuteInsertAsync(
             context,
             transaction.GetDbTransaction(),
             $"INSERT INTO {structure} ({key}, {scope}, {tree}, {leftColumn}, {rightColumn}, {depth}, {position}) "
             + "VALUES (@value0, @value1, @value2, @value3, @value4, @value5, @value6)",
-            [61, 7, 11, left, right, 0, 0]);
+            [61, 7, 11, left, right, 0, 0],
+            cancellationToken: cancellationToken);
 
-        await transaction.CommitAsync(CancellationToken.None);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>Executes native DML with provider-created typed parameters and the caller's transaction.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="transaction">The caller-owned transaction.</param>
+    /// <param name="sql">The provider-specific SQL command text.</param>
+    /// <param name="values">The synthetic column values to insert.</param>
     private static async Task ExecuteInsertAsync(
         AncestorIndexContext context,
         DbTransaction transaction,
         string sql,
-        object[] values
+        object[] values,
+        CancellationToken cancellationToken
     )
     {
         await using var command = context
@@ -185,6 +236,6 @@ public sealed class AncestorIndexBoundaryTests
             command.Parameters.Add(parameter);
         }
 
-        await command.ExecuteNonQueryAsync(CancellationToken.None);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

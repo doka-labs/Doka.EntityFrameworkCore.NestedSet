@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Budgets unchanged insertion identity paths separately from occupied-heap capacity evidence.</summary>
+
 // WHY: Strict warmed allocation budgets use the executable assembly's established measurement isolation.
 [Collection("Allocation measurements")]
 public sealed partial class InsertionRefreshAllocationTests
@@ -66,6 +67,30 @@ public sealed partial class InsertionRefreshAllocationTests
         GC.KeepAlive(identity);
     }
 
+    /// <summary>A changed field-backed key must not match the identity captured before the CLR write.</summary>
+    [Fact]
+    public void ChangedFieldIdentityDoesNotMatchCapturedSnapshot()
+    {
+        // Arrange
+        using var context = new AllocationContext();
+        var node = new FieldNode(1);
+        var entry = context.Add(node);
+        var property = entry.Metadata.FindProperty(nameof(FieldNode.Id))!;
+        var identity = NestedSetInsertionTracking.Capture(entry);
+        var setter = NestedSetDetachedValueSetter.Get(property)!;
+
+        // Act
+        setter.SetClrValueUsingContainingEntity(node, 2);
+        var matches = identity.Matches(property);
+
+        // Assert
+        Assert.Equal("_id", property.FieldInfo?.Name);
+        Assert.Equal(PropertyAccessMode.Field, property.GetPropertyAccessMode());
+        Assert.Null(property.PropertyInfo!.SetMethod);
+        Assert.Equal(2, node.Id);
+        Assert.False(matches);
+    }
+
     /// <summary>Required FK severance remains conceptual null rather than comparing its CLR value as a link.</summary>
     [Fact]
     public void RequiredForeignKeyConceptualNullDoesNotBecomeItsClrValue()
@@ -83,7 +108,9 @@ public sealed partial class InsertionRefreshAllocationTests
 
         var identity = NestedSetInsertionTracking.Capture(entry);
         var parent = entry.Metadata.FindProperty(nameof(ForeignNode.ParentId))!;
-        entry.Property(parent).CurrentValue = null;
+        entry.Property(parent)
+            .CurrentValue = null;
+
         var update = NestedSetInsertionTracking.EntryIdentity(entry);
 
         // Act
@@ -114,8 +141,11 @@ public sealed partial class InsertionRefreshAllocationTests
 
         // Assert
         Assert.True(identity.Matches(property));
-        Assert.Equal(37,
-            entry.Property(property).CurrentValue);
+        Assert.Equal(
+            37,
+            entry.Property(property)
+                .CurrentValue);
+
         Assert.Equal(0, entry.Entity.Id);
     }
 
@@ -166,6 +196,7 @@ public sealed partial class InsertionRefreshAllocationTests
             property
                 .GetGetter()
                 .GetClrValueUsingContainingEntity(input));
+
         Assert.Equal(37, input["Id"]);
         Assert.InRange(allocated, 0, 50_048);
     }
@@ -179,7 +210,9 @@ public sealed partial class InsertionRefreshAllocationTests
         if (shape == "shadow")
         {
             var entry = context.Entry(new ShadowNode());
-            entry.Property("Id").CurrentValue = 1;
+            entry.Property("Id")
+                .CurrentValue = 1;
+
             entry.State = EntityState.Added;
 
             return entry;
@@ -210,6 +243,19 @@ public sealed partial class InsertionRefreshAllocationTests
         return context.Add(entity);
     }
 
+    /// <summary>Requires the null protection supplied by EF's object comparer wrapper.</summary>
+    private static bool NonNullTextEquals(
+        string? left,
+        string? right
+    )
+    {
+        // WHY: Extracting a typed comparer body must not bypass EF's operand null guards.
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return string.Equals(left, right, StringComparison.Ordinal);
+    }
+
     /// <summary>Finalizes the production EF identity shapes without database I/O.</summary>
     private sealed class AllocationContext : DbContext
     {
@@ -226,17 +272,21 @@ public sealed partial class InsertionRefreshAllocationTests
             model
                 .Entity<IntNode>()
                 .HasKey(node => node.Id);
+
             model
                 .Entity<IntNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             model
                 .Entity<GuidNode>()
                 .HasKey(node => node.Id);
+
             model
                 .Entity<GuidNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             model
                 .Entity<CompoundNode>()
                 .HasKey(node => new
@@ -244,24 +294,30 @@ public sealed partial class InsertionRefreshAllocationTests
                     node.Scope,
                     node.Id,
                 });
+
             model
                 .Entity<CompoundNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             model
                 .Entity<GeneratedNode>()
                 .HasKey(node => node.Id);
+
             model
                 .Entity<GeneratedNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedOnAdd();
+
             model
                 .Entity<ShadowNode>()
                 .Property<int>("Id")
                 .ValueGeneratedNever();
+
             model
                 .Entity<ShadowNode>()
                 .HasKey("Id");
+
             model
                 .Entity<StringNode>()
                 .HasKey(node => node.Id);
@@ -280,12 +336,14 @@ public sealed partial class InsertionRefreshAllocationTests
             model
                 .Entity<FieldNode>()
                 .HasKey(node => node.Id);
+
             model
                 .Entity<FieldNode>()
                 .Property(node => node.Id)
                 .HasField("_id")
                 .UsePropertyAccessMode(PropertyAccessMode.Field)
                 .ValueGeneratedNever();
+
             model.SharedTypeEntity<Dictionary<string, object>>(
                 "IndexerNode",
                 bag =>
@@ -294,16 +352,19 @@ public sealed partial class InsertionRefreshAllocationTests
                         .IndexerProperty<int>("Id")
                         .HasSentinel(37)
                         .ValueGeneratedNever();
+
                     bag.HasKey("Id");
                 });
 
             model
                 .Entity<ForeignNode>()
                 .HasKey(node => node.Id);
+
             model
                 .Entity<ForeignNode>()
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             model
                 .Entity<ForeignNode>()
                 .HasOne<ForeignNode>()
@@ -355,6 +416,8 @@ public sealed partial class InsertionRefreshAllocationTests
         private readonly int _id = id;
 
         /// <summary>Gets the identity read through its configured backing field.</summary>
+        // WHY: EF explicitly binds _id; an auto-property would invalidate the field-access fixture.
+        // ReSharper disable once ConvertToAutoProperty
         public int Id => _id;
     }
 
@@ -365,18 +428,5 @@ public sealed partial class InsertionRefreshAllocationTests
 
         /// <summary>Gets or sets the required FK whose tracker value can be conceptually null.</summary>
         public int ParentId { get; set; }
-    }
-
-    /// <summary>Requires the null protection supplied by EF's object comparer wrapper.</summary>
-    private static bool NonNullTextEquals(
-        string? left,
-        string? right
-    )
-    {
-        // WHY: Extracting a typed comparer body must not bypass EF's operand null guards.
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-
-        return string.Equals(left, right, StringComparison.Ordinal);
     }
 }

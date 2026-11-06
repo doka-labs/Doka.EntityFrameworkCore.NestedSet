@@ -10,17 +10,33 @@ public abstract partial class SignalReportTests
     [InlineData("Pulse")]
     [InlineData("Sweep")]
     [InlineData("Burst")]
-    public async Task DistinctEqualEventsRetainTheirPhysicalMultiplicity(string portName)
+    public async Task DistinctEqualEventsRetainTheirPhysicalMultiplicity(
+        string portName
+    )
     {
         // Arrange
         var port = Enum.Parse<CapturePort>(portName);
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
-        var first = AddObservation(context, data, port, SignalReportDataset.PulseChannel,
-            MeasurementGranularity.Daily, 7);
-        var second = AddObservation(context, data, port, SignalReportDataset.PulseChannel,
-            MeasurementGranularity.Daily, 7);
+        var first = AddObservation(
+            context,
+            data,
+            port,
+            SignalReportDataset.PulseChannel,
+            MeasurementGranularity.Daily,
+            7);
+
+        var second = AddObservation(
+            context,
+            data,
+            port,
+            SignalReportDataset.PulseChannel,
+            MeasurementGranularity.Daily,
+            7);
 
         await context.SaveChangesAsync(CancellationToken.None);
         var firstIdentity = EventSequence(first);
@@ -36,7 +52,11 @@ public abstract partial class SignalReportTests
         Assert.True(firstIdentity > 0);
         Assert.True(secondIdentity > 0);
         Assert.NotEqual(firstIdentity, secondIdentity);
-        Assert.Equal(10 * ((int)port + 1) + 14, Assert.Single(cells).Value);
+        Assert.Equal(
+            10 * ((int)port + 1) + 14,
+            Assert.Single(cells)
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
 
@@ -46,12 +66,17 @@ public abstract partial class SignalReportTests
     [InlineData("Pulse")]
     [InlineData("Sweep")]
     [InlineData("Burst")]
-    public async Task HeterogeneousInputsCannotBypassChannelOrResolutionFilters(string portName)
+    public async Task HeterogeneousInputsCannotBypassChannelOrResolutionFilters(
+        string portName
+    )
     {
         // Arrange
         var port = Enum.Parse<CapturePort>(portName);
         var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(probe);
+        await using var context = await CreateContextAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
         AddObservation(context, data, port, SignalReportDataset.SweepChannel, MeasurementGranularity.Daily, 700);
         AddObservation(context, data, port, SignalReportDataset.PulseChannel, MeasurementGranularity.Monthly, 900);
@@ -64,12 +89,19 @@ public abstract partial class SignalReportTests
         var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
 
         // Assert
-        Assert.Equal(10 * ((int)port + 1), Assert.Single(cells).Value);
+        Assert.Equal(
+            10 * ((int)port + 1),
+            Assert.Single(cells)
+                .Value);
+
         AssertReportBoundary(context, probe);
     }
 
     /// <summary>Targets one sensor, channel, acquisition format and day without changing tree membership.</summary>
-    private static SignalReportRequest ObservationRequest(SignalReportDataset data, CapturePort port)
+    private static SignalReportRequest ObservationRequest(
+        SignalReportDataset data,
+        CapturePort port
+    )
         => data.Request() with
         {
             AnchorIds = [SignalReportDataset.Id(4)],
@@ -80,7 +112,9 @@ public abstract partial class SignalReportTests
         };
 
     /// <summary>Reads the native generated identity from each actual physical format without a common DTO.</summary>
-    private static long EventSequence(object observation) => observation switch
+    private static long EventSequence(
+        object observation
+    ) => observation switch
     {
         PulseRecord pulse => pulse.Sequence,
         SweepRecord sweep => sweep.Sequence,

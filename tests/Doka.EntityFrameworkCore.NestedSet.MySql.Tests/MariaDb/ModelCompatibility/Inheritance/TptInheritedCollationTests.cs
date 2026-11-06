@@ -1,8 +1,10 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MariaDb;
 
 /// <summary>Runs the Doka family's inherited TPT collation regressions on MariaDB.</summary>
 [Collection("Model compatibility")]
-public sealed class TptInheritedCollationTests : MySql.TptInheritedCollationTestBase
+public sealed class TptInheritedCollationTests : TptInheritedCollationTestBase
 {
     /// <summary>Uses the model database owned by this engine's test collection.</summary>
     /// <param name="fixture">The exact MariaDb resource owner.</param>

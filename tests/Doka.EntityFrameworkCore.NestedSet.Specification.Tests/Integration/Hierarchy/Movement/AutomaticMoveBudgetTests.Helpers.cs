@@ -5,13 +5,16 @@ public abstract partial class AutomaticMoveBudgetTests
     /// <summary>
     ///     Seeds two parent groups and a nonleaf source without requiring a depth-increase overflow query.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<OrderingNode>()
             .ForScope(1);
+
         // WHY: A surviving root keeps both tested destinations in one TreeId while exposing two sibling depths.
         await tree.InsertRootAsync(
             new OrderingNode
@@ -20,7 +23,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Container",
             },
             Guid.Empty,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -29,7 +32,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Alpha",
             },
             0,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -38,7 +41,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Zulu",
             },
             0,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -47,7 +50,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Middle",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -56,7 +59,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Nested",
             },
             3,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -65,7 +68,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Alpha",
             },
             2,
-            CancellationToken.None);
+            cancellationToken);
 
         await tree.InsertChildAsync(
             new OrderingNode
@@ -74,7 +77,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 Name = "Zulu",
             },
             2,
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <summary>Counts structural reads after acquiring the exact-tree registry lock.</summary>
@@ -117,8 +120,10 @@ public abstract partial class AutomaticMoveBudgetTests
         && sql.Contains("OrderingNodes", StringComparison.Ordinal);
 
     /// <summary>Compares every node's persisted scope, ancestry, boundaries, depth, and position.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<string[]> SnapshotAsync(
-        OrderingContext context
+        OrderingContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
@@ -136,7 +141,7 @@ public abstract partial class AutomaticMoveBudgetTests
                 node.Depth,
                 node.Position,
             })
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         // WHY: Format identities after materialization so binary Guid storage never becomes a SQL text cast.
         return nodes
@@ -146,10 +151,12 @@ public abstract partial class AutomaticMoveBudgetTests
     }
 
     /// <summary>Verifies canonical parent links and whole-subtree geometry after either placement policy.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertMoveAsync(
         OrderingContext context,
         bool upperGroup,
-        bool automatic
+        bool automatic,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -157,12 +164,17 @@ public abstract partial class AutomaticMoveBudgetTests
             .ForScope(1);
 
         var siblings = await tree
-            .ChildrenOf(upperGroup ? 0 : 2)
+            .ChildrenOf(
+                upperGroup
+                    ? 0
+                    : 2)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         int[] expected = upperGroup
-            ? automatic ? [1, 3, 2] : [1, 2, 3]
+            ? automatic
+                ? [1, 3, 2]
+                : [1, 2, 3]
             : automatic
                 ? [5, 3, 6]
                 : [5, 6, 3];
@@ -170,18 +182,38 @@ public abstract partial class AutomaticMoveBudgetTests
         Assert.Equal(expected, siblings);
         var subtree = await tree
             .SubtreeOf(3)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.Equal([3, 4], subtree.Select(node => node.Id));
-        Assert.Equal(upperGroup ? 0 : 2, subtree[0].ParentId);
+        Assert.Equal(
+            upperGroup
+                ? 0
+                : 2,
+            subtree[0].ParentId);
+
         Assert.Equal(3, subtree[1].ParentId);
-        Assert.Equal(upperGroup ? 1 : 2, subtree[0].Depth);
-        Assert.Equal(upperGroup ? 2 : 3, subtree[1].Depth);
-        Assert.Equal(automatic ? 1 : 2, subtree[0].Position);
+        Assert.Equal(
+            upperGroup
+                ? 1
+                : 2,
+            subtree[0].Depth);
+
+        Assert.Equal(
+            upperGroup
+                ? 2
+                : 3,
+            subtree[1].Depth);
+
+        Assert.Equal(
+            automatic
+                ? 1
+                : 2,
+            subtree[0].Position);
+
         Assert.Equal(0, subtree[1].Position);
         Assert.True(
             (await tree
                 .InTree(Guid.Empty)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
     }
 }

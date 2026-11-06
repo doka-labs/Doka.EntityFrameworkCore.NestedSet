@@ -49,7 +49,8 @@ internal sealed class CompositionGuardContext : DbContext
         bool scoped
     )
     {
-        modelBuilder.SharedTypeEntity<CompositionGuardNode>(mapping,
+        modelBuilder.SharedTypeEntity<CompositionGuardNode>(
+            mapping,
             entity =>
             {
                 entity.ToTable(mapping);
@@ -57,6 +58,7 @@ internal sealed class CompositionGuardContext : DbContext
                 entity
                     .Property(node => node.Id)
                     .ValueGeneratedNever();
+
                 entity.HasNestedSet(hierarchy =>
                 {
                     hierarchy

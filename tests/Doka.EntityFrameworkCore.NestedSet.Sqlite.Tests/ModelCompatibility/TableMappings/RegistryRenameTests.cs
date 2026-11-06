@@ -214,23 +214,26 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
     )
     {
         foreach (var (treeId, lifecycle) in new[]
-                 {
-                     (activeTree, NestedSetTreeRegistryMetadata.Active),
-                     (retiredTree, NestedSetTreeRegistryMetadata.Tombstoned),
-                 })
+            {
+                (activeTree, NestedSetTreeRegistryMetadata.Active),
+                (retiredTree, NestedSetTreeRegistryMetadata.Tombstoned),
+            })
         {
             var row = new NestedSetTreeRegistry();
             context
                 .Set<NestedSetTreeRegistry>(registryName)
                 .Add(row);
+
             context
                 .Entry(row)
                 .Property<Guid>(NestedSetTreeRegistryMetadata.TreeId)
                 .CurrentValue = treeId;
+
             context
                 .Entry(row)
                 .Property<long>(NestedSetTreeRegistryMetadata.Revision)
                 .CurrentValue = 1;
+
             context
                 .Entry(row)
                 .Property<byte>(NestedSetTreeRegistryMetadata.Lifecycle)
@@ -252,6 +255,7 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
                 .Entity<TNode>()
                 .ToTable("Documents")
                 .HasKey(node => node.Id);
+
             modelBuilder
                 .Entity<TNode>()
                 .HasNestedSet(builder => builder

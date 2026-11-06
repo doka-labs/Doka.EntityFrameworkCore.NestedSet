@@ -5,8 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 public sealed partial class NestedSet<TEntity>
     where TEntity : class
 {
-    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _mutations;
+    private readonly NestedSetQuery<TEntity> _query;
 
     /// <summary>Creates the public facade after immediate finalized-model validation.</summary>
     /// <param name="context">The caller-owned context.</param>
@@ -119,7 +119,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertRootAsync<TTreeId>(
         TEntity entity,
         TTreeId treeId,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TTreeId : notnull => _mutations.InsertRootAsync(entity, treeId, cancellationToken);
 
@@ -132,7 +132,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertChildAsync<TKey>(
         TEntity entity,
         TKey parentNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertChildAsync(
         entity,
@@ -150,7 +150,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertSubtreeAsync<TKey>(
         NestedSetBranch<TEntity> subtree,
         TKey parentNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertSubtreeAsync(subtree, parentNodeKey, cancellationToken);
 
@@ -161,7 +161,7 @@ public sealed partial class NestedSet<TEntity>
     /// <returns>A task that completes when every tree is visible or none of them is written.</returns>
     public Task InsertForestAsync<TTreeId>(
         IReadOnlyList<NestedSetTreeImport<TEntity, TTreeId>> trees,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TTreeId : notnull => _mutations.InsertForestAsync(trees, cancellationToken);
 
@@ -175,7 +175,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertAsFirstChildAsync<TKey>(
         TEntity entity,
         TKey parentNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertChildAsync(
         entity,
@@ -194,7 +194,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertAsLastChildAsync<TKey>(
         TEntity entity,
         TKey parentNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertChildAsync(
         entity,
@@ -213,7 +213,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertBeforeAsync<TKey>(
         TEntity entity,
         TKey siblingNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertChildAsync(
         entity,
@@ -232,7 +232,7 @@ public sealed partial class NestedSet<TEntity>
     public Task InsertAfterAsync<TKey>(
         TEntity entity,
         TKey siblingNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.InsertChildAsync(
         entity,
@@ -250,7 +250,7 @@ public sealed partial class NestedSet<TEntity>
     public Task MoveToAsync<TKey>(
         TKey nodeKey,
         TKey parentNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.MoveAsync(
         nodeKey,
@@ -269,7 +269,7 @@ public sealed partial class NestedSet<TEntity>
     public Task MoveBeforeAsync<TKey>(
         TKey nodeKey,
         TKey siblingNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.MoveAsync(
         nodeKey,
@@ -288,7 +288,7 @@ public sealed partial class NestedSet<TEntity>
     public Task MoveAfterAsync<TKey>(
         TKey nodeKey,
         TKey siblingNodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.MoveAsync(
         nodeKey,
@@ -307,7 +307,7 @@ public sealed partial class NestedSet<TEntity>
     public Task DetachAsTreeAsync<TKey, TTreeId>(
         TKey nodeKey,
         TTreeId newTreeId,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull
         where TTreeId : notnull => _mutations.DetachAsTreeAsync(nodeKey, newTreeId, cancellationToken);
@@ -319,7 +319,7 @@ public sealed partial class NestedSet<TEntity>
     /// <returns>A task that completes after the node is deleted and its children are promoted.</returns>
     public Task DeleteAsync<TKey>(
         TKey nodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.DeleteAsync(nodeKey, subtree: false, cancellationToken);
 
@@ -330,7 +330,7 @@ public sealed partial class NestedSet<TEntity>
     /// <returns>A task that completes after the subtree deletion and any registry retirement.</returns>
     public Task DeleteSubtreeAsync<TKey>(
         TKey nodeKey,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TKey : notnull => _mutations.DeleteAsync(nodeKey, subtree: true, cancellationToken);
 
@@ -341,7 +341,7 @@ public sealed partial class NestedSet<TEntity>
     /// <returns>A task that completes after the tree is deleted and its identity is retired.</returns>
     public Task DeleteTreeAsync<TTreeId>(
         TTreeId treeId,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TTreeId : notnull => _mutations.DeleteTreeAsync(treeId, cancellationToken);
 
@@ -359,7 +359,7 @@ public sealed partial class NestedSet<TEntity>
     /// </remarks>
     public Task PurgeTreeIdAsync<TTreeId>(
         TTreeId treeId,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
         where TTreeId : notnull => _mutations.PurgeTreeIdAsync(treeId, cancellationToken);
 }

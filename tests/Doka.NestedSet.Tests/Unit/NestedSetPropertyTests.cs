@@ -41,7 +41,7 @@ public sealed class NestedSetPropertyTests
         var ordered = left > 0 && right > left;
 
         // WHY: With positive ordered coordinates, subtraction cannot overflow; odd distance means paired width.
-        var paired = ordered && ((right - left) % 2) == 1;
+        var paired = ordered && (right - left) % 2 == 1;
 
         // Act
         var exception = Record.Exception(() => new NestedSetBounds(left, right));
@@ -108,7 +108,9 @@ public sealed class NestedSetPropertyTests
         INestedSetNode<int, int> ancestor = new PropertyNode(1, treeId, 0, left, left + 3);
         INestedSetNode<int, int> descendant = new PropertyNode(
             2,
-            sameTree ? treeId : treeId ^ 1,
+            sameTree
+                ? treeId
+                : treeId ^ 1,
             0,
             left + 1,
             left + 2);
@@ -140,8 +142,12 @@ public sealed class NestedSetPropertyTests
         IScopedNestedSetNode<int, int, int> ancestor = new PropertyNode(1, treeId, scope, 1, 4);
         IScopedNestedSetNode<int, int, int> descendant = new PropertyNode(
             2,
-            sameTree ? treeId : treeId ^ 1,
-            sameScope ? scope : scope ^ 1,
+            sameTree
+                ? treeId
+                : treeId ^ 1,
+            sameScope
+                ? scope
+                : scope ^ 1,
             2,
             3);
 
@@ -162,11 +168,11 @@ public sealed class NestedSetPropertyTests
     )
     {
         // WHY: Unsigned remainders include negative inputs without Math.Abs(long.MinValue) or discarded cases.
-        var left = 1 + (long)((ulong)coordinate % (ulong)(long.MaxValue - 1));
+        var left = 1 + (long)((ulong)coordinate % (long.MaxValue - 1));
         var maximumCount = (long.MaxValue - left + 1) / 2;
         var count = 1 + (long)((ulong)nodeCount % (ulong)maximumCount);
 
-        return (left, left + ((count * 2) - 1), count);
+        return (left, left + (count * 2 - 1), count);
     }
 
     /// <summary>Provides generated complete identities without coupling core properties to EF Core.</summary>

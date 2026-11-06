@@ -24,20 +24,23 @@ internal sealed partial class NestedSetQuery<TEntity>
         if (!normalized
             && NestedSetDeferredQuery.ContainsMarker(source.Expression))
         {
-            return Composed(NestedSetDeferredQuery.CreateAny(
-                _nodes,
-                _unboundNodes,
-                source,
-                node,
-                predicate,
-                _entityType.Name,
-                _treeBound));
+            return Composed(
+                NestedSetDeferredQuery.CreateAny(
+                    _nodes,
+                    _unboundNodes,
+                    source,
+                    node,
+                    predicate,
+                    _entityType.Name,
+                    _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");
         var selected = NestedSetQueryExpressions.Inline(node, row);
         var membership = Expression.Parameter(typeof(TEntity), "node");
-        var lower = identity.IsVisible ? selected : membership;
+        var lower = identity.IsVisible
+            ? selected
+            : membership;
 
         var owner = Expression.Parameter(typeof(TEntity), "owner");
         var ownerPredicate = Expression.AndAlso(
@@ -99,9 +102,13 @@ internal sealed partial class NestedSetQuery<TEntity>
         // inactive subplans distorted broad join estimates. On valid ancestor chains, descending Left
         // is equivalent; the other adapters use that existing coordinate order without a separate depth sort.
         var ordered = _capabilities.NearestQueryStrategy == NestedSetNearestQueryStrategy.ProjectedDepth
-            ? Expression.Call(s_orderByDepth, candidates,
+            ? Expression.Call(
+                s_orderByDepth,
+                candidates,
                 Expression.Quote(Expression.Lambda<Func<TEntity, int>>(Depth(owner), owner)))
-            : Expression.Call(s_orderByLeft, candidates,
+            : Expression.Call(
+                s_orderByLeft,
+                candidates,
                 Expression.Quote(Expression.Lambda<Func<TEntity, long>>(Bound(owner, _descriptor.Left), owner)));
 
         return SelectNearestOwnerDecision(ordered, owner, lower, row, predicate);
@@ -161,21 +168,25 @@ internal sealed partial class NestedSetQuery<TEntity>
         if (!normalized
             && NestedSetDeferredQuery.ContainsMarker(source.Expression))
         {
-            return Composed(NestedSetDeferredQuery.CreateNearest(
-                _nodes,
-                _unboundNodes,
-                source,
-                node,
-                candidate,
-                predicate,
-                _entityType.Name,
-                _treeBound));
+            return Composed(
+                NestedSetDeferredQuery.CreateNearest(
+                    _nodes,
+                    _unboundNodes,
+                    source,
+                    node,
+                    candidate,
+                    predicate,
+                    _entityType.Name,
+                    _treeBound));
         }
 
         var row = Expression.Parameter(typeof(TRow), "row");
         var selected = NestedSetQueryExpressions.Inline(node, row);
         var membership = Expression.Parameter(typeof(TEntity), "node");
-        var lower = identity.IsVisible ? selected : membership;
+        var lower = identity.IsVisible
+            ? selected
+            : membership;
+
         var strictAccepted = ProjectedStrictNearestDecision(lower, row, candidate, predicate);
 
         // WHY: Self is already the nearest visible candidate and its path has no edges. Resolve it

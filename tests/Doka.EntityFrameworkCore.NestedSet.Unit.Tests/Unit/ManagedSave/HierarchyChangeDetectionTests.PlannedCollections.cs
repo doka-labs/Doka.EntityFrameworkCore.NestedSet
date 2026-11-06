@@ -20,7 +20,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var original = CreateNode(1);
+        var original = CreateNode();
         var target = CreateNode(3);
         var child = CreateNode(2);
 
@@ -44,12 +44,17 @@ public sealed partial class HierarchyChangeDetectionTests
         var targetUpdate = UpdateEntry(context, target);
         var parentNavigation = entry.Metadata.FindNavigation(nameof(ProbeNode.Parent))!;
         var inverse = parentNavigation.Inverse!;
+
         // WHY: Public EF assignment performs genuine fixup and installs the new parent's relationship snapshot.
         parent.CurrentValue = target.Id;
         var installedPrincipal = update.GetRelationshipSnapshotValue(parentNavigation);
         var plan = CapturePlan([entry]);
+
         // WHY: The raw reset preserves that installed snapshot while matching the save's suppressed physical FK.
-        child.ParentId = sourceRoot ? null : original.Id;
+        child.ParentId = sourceRoot
+            ? null
+            : original.Id;
+
         parent.IsModified = false;
         CaptureSuppressedCollectionPlan(plan, update);
 
@@ -69,7 +74,12 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.Same(target, installedPrincipal);
         Assert.Same(target, parentBefore);
-        Assert.Equal(sourceRoot ? null : (int?)original.Id, physicalBefore);
+        Assert.Equal(
+            sourceRoot
+                ? null
+                : original.Id,
+            physicalBefore);
+
         Assert.Contains(child, installedMembers);
         Assert.Equal(removeInverse, changed);
         Assert.Equal(!removeInverse, target.Children!.Contains(child));
@@ -77,8 +87,10 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(physicalBefore, child.ParentId);
         Assert.False(parent.IsModified);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Uses the existing private plan boundary without adding a production test seam.</summary>
@@ -90,7 +102,8 @@ public sealed partial class HierarchyChangeDetectionTests
         var candidate = ((IDictionary)plan)[update]!;
         var capture = candidate
             .GetType()
-            .GetMethod("CaptureSuppressedParent",
+            .GetMethod(
+                "CaptureSuppressedParent",
                 BindingFlags.Instance | BindingFlags.NonPublic)!;
 
         capture.Invoke(candidate, BindingFlags.DoNotWrapExceptions, null, [update], null);

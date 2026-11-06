@@ -102,6 +102,7 @@ internal sealed class NativeGuardProbe : DbCommandInterceptor
     {
         await callback(cancellationToken)
             .ConfigureAwait(false);
+
         cancellationToken.ThrowIfCancellationRequested();
 
         return result;

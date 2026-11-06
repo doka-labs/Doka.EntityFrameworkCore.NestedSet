@@ -12,10 +12,14 @@ internal sealed class ConsumerContext(DbContextOptions options) : NestedSetDbCon
 {
     /// <summary>Checks public registration, mapping, and SQL translation without opening a server connection.</summary>
     /// <param name="options">Options configured through the selected native provider callback.</param>
+    /// <param name="cancellationToken">The caller's token for verification and console output.</param>
     internal static async Task VerifyQueryAsync(
-        DbContextOptions options
+        DbContextOptions options,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var context = new ConsumerContext(options);
         var sql = context.NestedSet<Node>().InTree(Guid.Empty).Nodes.ToQueryString();
 
@@ -26,7 +30,7 @@ internal sealed class ConsumerContext(DbContextOptions options) : NestedSetDbCon
 
         await Console.Out.WriteLineAsync(
             "Candidate adapter public contracts verified.".AsMemory(),
-            CancellationToken.None);
+            cancellationToken);
     }
 
     /// <inheritdoc />

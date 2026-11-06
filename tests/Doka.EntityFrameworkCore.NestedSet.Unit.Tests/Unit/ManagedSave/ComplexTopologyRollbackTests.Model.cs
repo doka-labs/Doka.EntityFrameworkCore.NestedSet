@@ -6,7 +6,10 @@ public sealed partial class ComplexTopologyRollbackTests
     internal class TopologyContext : DbContext
     {
         /// <summary>Leaves scalar and graph detection under the test's explicit control.</summary>
-        internal TopologyContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal TopologyContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <summary>Gets whether the payload is a required peer of a principal sharing its row.</summary>
         protected virtual bool Sharing => false;
@@ -26,16 +29,20 @@ public sealed partial class ComplexTopologyRollbackTests
             payload
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             payload
                 .ComplexProperty(value => value.Optional)
                 .IsRequired(false);
-            payload.ComplexCollection(value => value.Rows,
+
+            payload.ComplexCollection(
+                value => value.Rows,
                 rows =>
                 {
                     rows.ToJson("Rows");
                     rows
                         .ComplexProperty(value => value.Details)
                         .IsRequired(false);
+
                     rows.ComplexCollection(value => value.Leaves);
                 });
 
@@ -52,11 +59,13 @@ public sealed partial class ComplexTopologyRollbackTests
                 owner
                     .Property(value => value.Id)
                     .ValueGeneratedNever();
+
                 owner
                     .HasOne(value => value.Payload)
                     .WithOne(value => value.Owner)
                     .HasForeignKey<TopologyPayload>(value => value.Id)
                     .OnDelete(DeleteBehavior.Cascade);
+
                 owner
                     .Navigation(value => value.Payload)
                     .IsRequired();

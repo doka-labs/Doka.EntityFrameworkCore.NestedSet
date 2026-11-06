@@ -19,11 +19,12 @@ public abstract partial class OrderingKeyTests : ProviderTest
     private async Task<KeyScenario<TKey, TParent>> CreateScenarioAsync<TKey, TParent>(
         string engine,
         Func<int, TKey> key,
+        CancellationToken cancellationToken,
         Func<TKey, TKey>? alias = null
     )
         where TKey : notnull
     {
-        var context = await _fixture.ResetAsync(engine);
+        var context = await _fixture.ResetAsync(engine, cancellationToken: cancellationToken);
 
         try
         {
@@ -31,24 +32,24 @@ public abstract partial class OrderingKeyTests : ProviderTest
             var tree = scenario.Tree;
 
             // WHY: Each root matches the other tree's filter, so a scope-wide query cannot pass as one exact tree.
-            await tree.InsertRootAsync(scenario.Node(1, "Zulu"), Guid.NewGuid(), CancellationToken.None);
-            await tree.InsertRootAsync(scenario.Node(9, "Same"), Guid.NewGuid(), CancellationToken.None);
-            await tree.InsertChildAsync(scenario.Node(4, "Same"), scenario.Reference(1), CancellationToken.None);
-            await tree.InsertChildAsync(scenario.Node(3, "Same"), scenario.Reference(1), CancellationToken.None);
-            await tree.InsertChildAsync(scenario.Node(2, "Zulu"), scenario.Reference(1), CancellationToken.None);
-            await tree.InsertChildAsync(scenario.Node(5, "Leaf"), scenario.Reference(2), CancellationToken.None);
-            await tree.InsertChildAsync(scenario.Node(8, "Zulu"), scenario.Reference(9), CancellationToken.None);
+            await tree.InsertRootAsync(scenario.Node(1, "Zulu"), Guid.NewGuid(), cancellationToken);
+            await tree.InsertRootAsync(scenario.Node(9, "Same"), Guid.NewGuid(), cancellationToken);
+            await tree.InsertChildAsync(scenario.Node(4, "Same"), scenario.Reference(1), cancellationToken);
+            await tree.InsertChildAsync(scenario.Node(3, "Same"), scenario.Reference(1), cancellationToken);
+            await tree.InsertChildAsync(scenario.Node(2, "Zulu"), scenario.Reference(1), cancellationToken);
+            await tree.InsertChildAsync(scenario.Node(5, "Leaf"), scenario.Reference(2), cancellationToken);
+            await tree.InsertChildAsync(scenario.Node(8, "Zulu"), scenario.Reference(9), cancellationToken);
             await scenario.Other.InsertRootAsync(
                 scenario.Node(11, "Other root"),
                 Guid.NewGuid(),
-                CancellationToken.None);
+                cancellationToken);
 
             await scenario.Other.InsertChildAsync(
                 scenario.Node(12, "Same"),
                 scenario.Reference(11),
-                CancellationToken.None);
+                cancellationToken);
 
-            scenario.OtherBefore = await SnapshotAsync(scenario.OtherNodes);
+            scenario.OtherBefore = await SnapshotAsync(scenario.OtherNodes, cancellationToken: cancellationToken);
 
             return scenario;
         }
@@ -65,20 +66,21 @@ public abstract partial class OrderingKeyTests : ProviderTest
     private static async Task AssertChildrenAsync<TKey, TParent>(
         KeyScenario<TKey, TParent> scenario,
         int parent,
-        IReadOnlyList<int> members
+        IReadOnlyList<int> members,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
         var children = scenario.Tree.ChildrenOf(scenario.Reference(parent));
         var actual = await children
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var native = await children
             .OrderBy(node => node.Name)
             .ThenBy(node => node.Id)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         // WHY: Membership is checked separately so two empty results cannot conceal a broken aliased parent lookup.
         Assert.Equal(
@@ -96,7 +98,8 @@ public abstract partial class OrderingKeyTests : ProviderTest
     private static async Task AssertFilteredTreeAsync<TKey, TParent>(
         KeyScenario<TKey, TParent> scenario,
         int parent,
-        string name
+        string name,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -107,14 +110,14 @@ public abstract partial class OrderingKeyTests : ProviderTest
             .OrderBy(node => node.Name)
             .ThenBy(node => node.Id)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         var filtered = await scenario
             .Tree
             .TreeContaining(scenario.Reference(5))
             .Where(node => node.Name == name)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         Assert.NotEmpty(native);
         Assert.Equal(native.Select(value => Identity(value)), filtered.Select(value => Identity(value)));
@@ -122,11 +125,12 @@ public abstract partial class OrderingKeyTests : ProviderTest
 
     /// <summary>Checks structural invariants and independent-scope integrity after the tested operation.</summary>
     private static async Task AssertIntegrityAsync<TKey, TParent>(
-        KeyScenario<TKey, TParent> scenario
+        KeyScenario<TKey, TParent> scenario,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
-        var forest = await scenario.Nodes.ToArrayAsync(CancellationToken.None);
+        var forest = await scenario.Nodes.ToArrayAsync(cancellationToken);
 
         Assert.NotEmpty(forest);
 
@@ -156,14 +160,22 @@ public abstract partial class OrderingKeyTests : ProviderTest
                     .Where(parent => parent.Left < node.Left && parent.Right > node.Right)
                     .ToArray();
 
-                var expectedParent = ancestors.Length == 0 ? null : Identity(ancestors[^1].Id);
-                var parent = node.ParentId is { } value ? Identity(value) : null;
+                var expectedParent = ancestors.Length == 0
+                    ? null
+                    : Identity(ancestors[^1].Id);
+
+                var parent = node.ParentId is { } value
+                    ? Identity(value)
+                    : null;
+
                 Assert.Equal(expectedParent, parent);
                 Assert.Equal(ancestors.Length, node.Depth);
                 Assert.Equal(0, (node.Right - node.Left + 1) % 2);
             }
 
-            foreach (var siblings in nodes.GroupBy(node => node.ParentId is { } parent ? Identity(parent) : null))
+            foreach (var siblings in nodes.GroupBy(node => node.ParentId is { } parent
+                ? Identity(parent)
+                : null))
             {
                 Assert.Equal(
                     Enumerable
@@ -175,7 +187,7 @@ public abstract partial class OrderingKeyTests : ProviderTest
             var report = await scenario
                 .Tree
                 .InTree(group.Key.TreeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
             Assert.True(report.IsValid);
         }
@@ -184,33 +196,40 @@ public abstract partial class OrderingKeyTests : ProviderTest
             .OtherNodes
             .Select(node => node.TreeId)
             .Distinct()
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(cancellationToken);
 
         var otherReport = await scenario
             .Other
             .InTree(otherTreeId)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
         Assert.True(otherReport.IsValid);
-        Assert.Equal(scenario.OtherBefore, await SnapshotAsync(scenario.OtherNodes));
+        Assert.Equal(
+            scenario.OtherBefore,
+            await SnapshotAsync(
+                scenario.OtherNodes,
+                cancellationToken: cancellationToken));
     }
 
     /// <summary>Captures every persisted value with content-based keys for an unchanged-scope comparison.</summary>
     private static async Task<KeySnapshot[]> SnapshotAsync<TKey, TParent>(
-        IQueryable<OrderingKeyNode<TKey, TParent>> query
+        IQueryable<OrderingKeyNode<TKey, TParent>> query,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
         var rows = await query
             .OrderBy(node => node.Left)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .Select(node => new KeySnapshot(
                 Identity(node.Id),
                 node.Scope,
                 node.TreeId,
-                node.ParentId is { } parent ? Identity(parent) : null,
+                node.ParentId is { } parent
+                    ? Identity(parent)
+                    : null,
                 node.Name,
                 node.Left,
                 node.Right,
@@ -279,6 +298,7 @@ public abstract partial class OrderingKeyTests : ProviderTest
             Tree = context
                 .NestedSet<OrderingKeyNode<TKey, TParent>>()
                 .ForScope(1);
+
             Other = context
                 .NestedSet<OrderingKeyNode<TKey, TParent>>()
                 .ForScope(2);
@@ -313,6 +333,9 @@ public abstract partial class OrderingKeyTests : ProviderTest
         /// <summary>Gets or sets the complete independent-scope state captured during arrangement.</summary>
         internal KeySnapshot[] OtherBefore { get; set; } = [];
 
+        /// <inheritdoc />
+        public ValueTask DisposeAsync() => Context.DisposeAsync();
+
         /// <summary>Creates an uninitialized node with the selected native identity and domain value.</summary>
         internal OrderingKeyNode<TKey, TParent> Node(
             int value,
@@ -326,11 +349,10 @@ public abstract partial class OrderingKeyTests : ProviderTest
         {
             var key = Key(value);
 
-            return _alias is null ? key : _alias(key);
+            return _alias is null
+                ? key
+                : _alias(key);
         }
-
-        /// <inheritdoc />
-        public ValueTask DisposeAsync() => Context.DisposeAsync();
     }
 
     /// <summary>Captures payload and structure without relying on array-reference equality.</summary>

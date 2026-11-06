@@ -48,9 +48,9 @@ public static class BenchmarkConfiguration
                 }
 
                 if (!string.Equals(
-                        job.Infrastructure.ResolveValue(InfrastructureMode.BuildConfigurationCharacteristic, "Release"),
-                        "Release",
-                        StringComparison.Ordinal))
+                    job.Infrastructure.ResolveValue(InfrastructureMode.BuildConfigurationCharacteristic, "Release"),
+                    "Release",
+                    StringComparison.Ordinal))
                 {
                     yield return new ValidationError(true, "Benchmark measurements require Release builds.", benchmark);
                 }

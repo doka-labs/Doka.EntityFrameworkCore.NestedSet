@@ -37,10 +37,10 @@ public sealed class ConsumerBenchmarkTests
         try
         {
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
             // Act
-            var error = await Record.ExceptionAsync(benchmark.VerifyAsync);
+            var error = await Record.ExceptionAsync(() => benchmark.VerifyAsync(TestContext.Current.CancellationToken));
 
             // Assert
             Assert.IsType<InvalidOperationException>(error);
@@ -103,7 +103,8 @@ public sealed class ConsumerBenchmarkTests
             {
                 Assert.Contains(
                     "Origins <= Nodes",
-                    Assert.IsType<ArgumentException>(error).Message,
+                    Assert.IsType<ArgumentException>(error)
+                        .Message,
                     StringComparison.Ordinal);
             }
         }
@@ -182,7 +183,7 @@ public sealed class ConsumerBenchmarkTests
         };
 
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         if (reference)
@@ -195,11 +196,14 @@ public sealed class ConsumerBenchmarkTests
         }
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(24, benchmark.Result.Count);
-        Assert.Contains(benchmark.Result, cell => cell.AnchorId == SignalData.Id(1)
-            && cell.ChannelId == SignalData.PulseChannel && cell.Source == SignalSource.Pulse
-            && cell is { HasData: true, Value: 70 + 40 - SignalData.SeedNodeCount });
+        Assert.Contains(
+            benchmark.Result,
+            cell => cell.AnchorId == SignalData.Id(1)
+                && cell.ChannelId == SignalData.PulseChannel
+                && cell.Source == SignalSource.Pulse
+                && cell is { HasData: true, Value: 70 + 40 - SignalData.SeedNodeCount });
     }
 
     /// <summary>Server reduction and application reduction agree on complete origin and evidence outcomes.</summary>
@@ -230,7 +234,7 @@ public sealed class ConsumerBenchmarkTests
         };
 
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         if (reference)
@@ -243,7 +247,7 @@ public sealed class ConsumerBenchmarkTests
         }
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(16, benchmark.Result.Origins.Count);
         Assert.True(benchmark.Result.Complete);
     }
@@ -254,7 +258,9 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(BenchmarkPersonSelection.RequireUnique)]
     [InlineData(BenchmarkPersonSelection.HighestBusinessPriority)]
     [InlineData(BenchmarkPersonSelection.SecondPerson)]
-    public async Task PreparedGroupExecutionMatchesItsCompleteReference(BenchmarkPersonSelection selection)
+    public async Task PreparedGroupExecutionMatchesItsCompleteReference(
+        BenchmarkPersonSelection selection
+    )
     {
         // Arrange
         const string variable = "NESTEDSET_BENCHMARK_OPTIONS";
@@ -278,7 +284,7 @@ public sealed class ConsumerBenchmarkTests
             };
 
             benchmark.Initialize();
-            await benchmark.PrepareAsync();
+            await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
             var observation = ((IDatabaseBenchmark)benchmark).Observation;
             var preparationCommands = observation.Commands;
 
@@ -287,7 +293,7 @@ public sealed class ConsumerBenchmarkTests
             var operationCommands = observation.Commands;
 
             // Assert
-            await benchmark.VerifyAsync();
+            await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(0, preparationCommands);
             Assert.Equal(1, operationCommands);
             Assert.Equal(32, benchmark.Result.Origins.Count);
@@ -331,13 +337,13 @@ public sealed class ConsumerBenchmarkTests
         };
 
         benchmark.Initialize();
-        await benchmark.PrepareAsync();
+        await benchmark.PrepareAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         await benchmark.Api();
 
         // Assert
-        await benchmark.VerifyAsync();
+        await benchmark.VerifyAsync(cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(32, benchmark.Result.Origins.Count);
         Assert.Contains(benchmark.Result.Origins, origin => origin.Status == SelectionStatus.NotFound);
     }

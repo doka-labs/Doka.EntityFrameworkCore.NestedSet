@@ -10,13 +10,14 @@ public sealed partial class CompositionBindingExpressionTests
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var options = new DbContextOptionsBuilder<CompositionContext>().UseSqlite(
-                connection,
-                provider => provider.UseNestedSets());
+            connection,
+            provider => provider.UseNestedSets());
 
         await using var services = Services(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         await context.AddRangeAsync(

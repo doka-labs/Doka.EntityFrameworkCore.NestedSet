@@ -4,6 +4,11 @@ NestedSet exposes typed failures plus standard .NET `ActivitySource` and
 `Meter` signals. It adds no OpenTelemetry package, logging framework, or
 exporter dependency.
 
+Row-count observation waits for the terminal result of an already-started
+provider command. Cancellation belongs to that command, rather than a second
+wait around diagnostic finalization. This keeps transaction cleanup from racing
+an active write and preserves the original provider result or exception.
+
 ## Sources
 
 Both public names are available through `NestedSetDiagnostics`:

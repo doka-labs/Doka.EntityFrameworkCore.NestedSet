@@ -75,9 +75,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var firstRequest = Request(false);
         var secondRequest = Request(true);
@@ -117,9 +118,10 @@ public sealed partial class SignalReportConstructionTests
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions("Sqlite", boundary);
         await using var provider = CreateServiceProvider(options.Options);
-        await using var context = new SignalLabContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new SignalLabContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var request = Request(nearest);
         var fixedGraphs = ReportProjectionFields();
@@ -131,12 +133,15 @@ public sealed partial class SignalReportConstructionTests
         // Assert
         var projection = fixedGraphs["QualifiedPath"];
         var properties = projection.ReturnType.GetProperties();
-        Assert.Equal(s_qualifiedPathGrain,
+        Assert.Equal(
+            s_qualifiedPathGrain,
             properties
                 .Select(property => property.Name)
                 .OrderBy(name => name));
+
         Assert.All(properties, property => Assert.True(property.PropertyType.IsValueType));
-        var measurementJoin = Assert.Single(graph.Calls,
+        var measurementJoin = Assert.Single(
+            graph.Calls,
             call => call.Method.DeclaringType == typeof(Queryable)
                 && call.Method.Name == nameof(Queryable.Join)
                 && call.Arguments[^1] is UnaryExpression { Operand: LambdaExpression result }
@@ -148,10 +153,13 @@ public sealed partial class SignalReportConstructionTests
         Assert.Equal(nameof(Queryable.Select), select.Method.Name);
         var selected = Assert.IsAssignableFrom<UnaryExpression>(select.Arguments[1]);
         Assert.Same(projection, selected.Operand);
-        Assert.DoesNotContain(graph.Calls,
+        Assert.DoesNotContain(
+            graph.Calls,
             call => call.Method.DeclaringType == typeof(Queryable)
                 && call.Method.Name == nameof(Queryable.Distinct)
-                && call.Method.GetGenericArguments()[0].Name is "MeasurementRow"
+                && call
+                        .Method
+                        .GetGenericArguments()[0].Name is "MeasurementRow"
                     or "MeasuredContribution"
                     or "DefinedContribution");
 
@@ -167,7 +175,8 @@ public sealed partial class SignalReportConstructionTests
 
         return type
             .GetFields(BindingFlags.Static | BindingFlags.NonPublic)
-            .ToDictionary(field => field.Name,
+            .ToDictionary(
+                field => field.Name,
                 field => Assert.IsAssignableFrom<LambdaExpression>(field.GetValue(null)));
     }
 

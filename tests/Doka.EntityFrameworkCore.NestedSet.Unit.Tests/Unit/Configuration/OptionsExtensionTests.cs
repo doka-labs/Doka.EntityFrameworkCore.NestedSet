@@ -20,7 +20,8 @@ public sealed partial class OptionsExtensionTests
         using var context = new EnabledContext(options);
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         var nodeEntity = model.FindEntityType(typeof(Node))
             ?? throw new InvalidOperationException("The enabled test model did not contain its hierarchy entity.");
@@ -61,18 +62,26 @@ public sealed partial class OptionsExtensionTests
         Assert.Equal(
             nodeEntity.FindProperty(nameof(Node.Scope))!.GetColumnType(),
             registry.FindProperty("Scope")!.GetColumnType());
+
         Assert.Equal(
             nodeEntity.FindProperty(nameof(Node.TreeId))!.GetColumnType(),
             registry.FindProperty("TreeId")!.GetColumnType());
-        Assert.Equal(nameof(Node.NodeKey),
+
+        Assert.Equal(
+            nameof(Node.NodeKey),
             nodeEntity.FindAnnotation("Doka:NestedSet:NodeKey")
                 ?.Value);
-        Assert.Equal(nameof(Node.TreeId),
+
+        Assert.Equal(
+            nameof(Node.TreeId),
             nodeEntity.FindAnnotation("Doka:NestedSet:TreeId")
                 ?.Value);
-        Assert.Equal(nameof(Node.Scope),
+
+        Assert.Equal(
+            nameof(Node.Scope),
             nodeEntity.FindAnnotation("Doka:NestedSet:Scope")
                 ?.Value);
+
         Assert.False(nodeEntity.FindProperty(nameof(Node.TreeId))!.IsNullable);
         Assert.Equal(ValueGenerated.Never, nodeEntity.FindProperty(nameof(Node.TreeId))!.ValueGenerated);
         Assert.Contains(
@@ -81,36 +90,41 @@ public sealed partial class OptionsExtensionTests
                 .Properties
                 .Select(property => property.Name)
                 .SequenceEqual([nameof(Node.Scope), nameof(Node.NodeKey)]));
+
         Assert.Equal(5, indexes.Length);
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.Left)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.Right)]));
+
         Assert.Contains(
             indexes,
             index => index.Properties.SequenceEqual(
                 [nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.ParentId), nameof(Node.Position)]));
+
         Assert.Contains(indexes, index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.ParentId)]));
 
         var order = Assert.Single(
             indexes,
             index => index.Properties.SequenceEqual(
-                [
-                    nameof(Node.Scope),
-                    nameof(Node.TreeId),
-                    nameof(Node.ParentId),
-                    nameof(Node.Name),
-                    nameof(Node.Kind),
-                    nameof(Node.NodeKey),
-                ]));
+            [
+                nameof(Node.Scope),
+                nameof(Node.TreeId),
+                nameof(Node.ParentId),
+                nameof(Node.Name),
+                nameof(Node.Kind),
+                nameof(Node.NodeKey),
+            ]));
 
         Assert.Equal([false, false, false, false, true, false], order.Descending);
         Assert.Equal([nameof(Node.Scope), nameof(Node.ParentId)], parent.Properties.Select(property => property.Name));
         Assert.Equal(
             [nameof(Node.Scope), nameof(Node.NodeKey)],
             parent.PrincipalKey.Properties.Select(property => property.Name));
+
         Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
         Assert.Equal(["\"Depth\" >= 0", "\"Left\" >= 1", "\"Position\" >= 0", "\"Right\" > \"Left\""], checks);
     }
@@ -282,7 +296,8 @@ public sealed partial class OptionsExtensionTests
         }
 
         var options = builder
-            .UseSqlite("Data Source=:memory:",
+            .UseSqlite(
+                "Data Source=:memory:",
                 sqlite =>
                 {
                     if (!nestedSetsFirst)
@@ -344,6 +359,21 @@ public sealed partial class OptionsExtensionTests
         Assert.IsType<NotSupportedException>(error);
     }
 
+    /// <summary>Configures the complete structural mapping shared by positive and negative model tests.</summary>
+    /// <param name="entity">The node entity builder.</param>
+    private static void ConfigureNestedSet(
+        EntityTypeBuilder<Node> entity
+    ) => entity.HasNestedSet(nestedSet => nestedSet
+        .HasNodeKey(node => node.NodeKey)
+        .HasScope(node => node.Scope)
+        .HasTreeId(node => node.TreeId)
+        .HasParent(node => node.ParentId)
+        .HasBounds(node => node.Left, node => node.Right)
+        .HasDepth(node => node.Depth)
+        .HasPosition(node => node.Position)
+        .OrderBy(node => node.Name)
+        .ThenByDescending(node => node.Kind));
+
     /// <summary>Provides a context whose only nested-set bootstrap is the options extension.</summary>
     private sealed class EnabledContext : DbContext
     {
@@ -364,11 +394,13 @@ public sealed partial class OptionsExtensionTests
                 node.Scope,
                 node.RecordId,
             });
+
             entity.HasAlternateKey(node => new
             {
                 node.Scope,
                 node.NodeKey,
             });
+
             ConfigureNestedSet(entity);
         }
     }
@@ -393,6 +425,7 @@ public sealed partial class OptionsExtensionTests
                 node.RecordId,
                 node.TreeId,
             });
+
             ConfigureNestedSet(entity);
         }
     }
@@ -453,19 +486,4 @@ public sealed partial class OptionsExtensionTests
         /// <summary>Gets or sets the sibling position.</summary>
         public long Position { get; set; }
     }
-
-    /// <summary>Configures the complete structural mapping shared by positive and negative model tests.</summary>
-    /// <param name="entity">The node entity builder.</param>
-    private static void ConfigureNestedSet(
-        EntityTypeBuilder<Node> entity
-    ) => entity.HasNestedSet(nestedSet => nestedSet
-        .HasNodeKey(node => node.NodeKey)
-        .HasScope(node => node.Scope)
-        .HasTreeId(node => node.TreeId)
-        .HasParent(node => node.ParentId)
-        .HasBounds(node => node.Left, node => node.Right)
-        .HasDepth(node => node.Depth)
-        .HasPosition(node => node.Position)
-        .OrderBy(node => node.Name)
-        .ThenByDescending(node => node.Kind));
 }

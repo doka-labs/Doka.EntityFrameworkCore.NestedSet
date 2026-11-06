@@ -37,12 +37,14 @@ public sealed partial class ComplexTopologyRollbackTests
             {
                 var original = collection.GetOriginalEntry(index);
 
-                return new OriginalElementObservation(original.State,
+                return new OriginalElementObservation(
+                    original.State,
                     ObserveScalar(original.Property(nameof(TopologyItem.Text))));
             })
             .ToArray();
 
         var write = Update(context, entry.Entity);
+
         // WHY: The managed-save overload captures the actual provider write set. Later acceptance can retire
         // deleted original ordinals, so restoring only the callback's surviving current entries is insufficient.
         var snapshot = NestedSetTrackerSnapshot.Capture(context, [write]);

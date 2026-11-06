@@ -13,19 +13,31 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ActualSupervisorQueriesProduceBoundedCommandAndPlanEvidence(bool unique)
+    public async Task ActualSupervisorQueriesProduceBoundedCommandAndPlanEvidence(
+        bool unique
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, planProbe);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, 16, 4);
+        await SeedOriginProfileAsync(context, data, 16, 4, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.NthTypeGroupThenValidate(4, 1),
-            Matches = s_profileFields.Take(4).Select(field => new App.MetadataMatch(
-                App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = s_profileFields
+                .Take(4)
+                .Select(field => new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    field,
+                    App.MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
         };
 
         var commandIndex = planProbe.Commands.Count;
@@ -33,15 +45,33 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var rows = unique
-            ? (await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-                App.SupervisorSelection.RequireUnique, CancellationToken.None)).Origins.Count
-            : (await App.SupervisorQueries.Candidates(context, data.TenantId, request)
+            ? (await App.SupervisorQueries.ResolveAsync(
+                context,
+                data.TenantId,
+                request,
+                App.SupervisorSelection.RequireUnique,
+                CancellationToken.None)).Origins.Count
+            : (await App
+                .SupervisorQueries
+                .Candidates(context, data.TenantId, request)
                 .ToArrayAsync(CancellationToken.None)).Length;
 
         var readers = probe.Commands.Count;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, commandIndex, Engine);
-        await QueryPlanTestSupport.WriteEvidenceAsync(Engine + "-usergroups-" + (unique ? "unique" : "candidates"),
-            [planProbe.Commands[commandIndex], plan]);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            commandIndex,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await QueryPlanTestSupport.WriteEvidenceAsync(
+            Engine
+            + "-usergroups-"
+            + (unique
+                ? "unique"
+                : "candidates"),
+            [planProbe.Commands[commandIndex], plan],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(16, rows);

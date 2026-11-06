@@ -12,12 +12,14 @@ public sealed partial class AncestorIndexTests
     )
     {
         // Arrange
-        await using var first = new AncestorContext("Sqlite",
+        await using var first = new AncestorContext(
+            "Sqlite",
             model =>
                 Configure(model)
                     .HasNestedSet(builder => builder.HasAncestorIndex("FirstFlag")));
 
-        await using var second = new AncestorContext("Sqlite",
+        await using var second = new AncestorContext(
+            "Sqlite",
             model =>
                 Configure(model)
                     .HasNestedSet(builder => builder.HasAncestorIndex("SecondFlag")));
@@ -55,7 +57,9 @@ public sealed partial class AncestorIndexTests
         Assert.NotNull(second.Model.FindEntityType(typeof(AncestorNode))!.FindProperty("SecondFlag"));
         Assert.Null(second.Model.FindEntityType(typeof(AncestorNode))!.FindProperty("FirstFlag"));
         Assert.IsType<ObjectDisposedException>(disposed);
-        Assert.Equal(ConnectionState.Closed,
-            second.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            second.Database.GetDbConnection()
+                .State);
     }
 }

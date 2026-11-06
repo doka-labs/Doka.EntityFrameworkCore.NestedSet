@@ -47,7 +47,8 @@ public sealed partial class ComplexTopologyRollbackTests
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
         Mutate(entry.Entity, change);
         unrelated.Entity.Name = "Callback unrelated";
-        unrelated.Property(value => value.Name).IsModified = true;
+        unrelated.Property(value => value.Name)
+            .IsModified = true;
 
         if (detectCallback)
         {
@@ -82,12 +83,16 @@ public sealed partial class ComplexTopologyRollbackTests
     )
     {
         // Arrange
-        await using var context = mode == "shared" ? new SharedTopologyContext() : new TopologyContext();
+        await using var context = mode == "shared"
+            ? new SharedTopologyContext()
+            : new TopologyContext();
+
         var entry = TrackGraph(context);
 
         if (mode == "modified")
         {
-            entry.Property(value => value.Marker).IsModified = true;
+            entry.Property(value => value.Marker)
+                .IsModified = true;
         }
 
         var before = Observe(entry);
@@ -97,7 +102,8 @@ public sealed partial class ComplexTopologyRollbackTests
         if (mode == "shared")
         {
             // WHY: IUpdateEntry uses EF's real flagless provider-promotion path rather than marking payload.
-            Update(context, entry.Entity).EntityState = EntityState.Modified;
+            Update(context, entry.Entity)
+                .EntityState = EntityState.Modified;
         }
 
         if (detectCallback)
@@ -109,10 +115,18 @@ public sealed partial class ComplexTopologyRollbackTests
         snapshot.Restore();
 
         // Assert
-        Assert.Equal(mode == "modified" ? EntityState.Modified : EntityState.Unchanged, before.State);
+        Assert.Equal(
+            mode == "modified"
+                ? EntityState.Modified
+                : EntityState.Unchanged,
+            before.State);
+
         AssertGraph(entry, before);
-        Assert.Equal(mode == "modified",
-            entry.Property(value => value.Marker).IsModified);
+        Assert.Equal(
+            mode == "modified",
+            entry.Property(value => value.Marker)
+                .IsModified);
+
         AssertSettings(context);
     }
 
@@ -128,16 +142,17 @@ public sealed partial class ComplexTopologyRollbackTests
         // Arrange
         await using var context = new TopologyContext();
         var entry = TrackGraph(context);
-        entry.Entity.Rows!.Add(new TopologyItem
-        {
-            Text = "Pending item",
-            Details = new TopologyDetails
+        entry.Entity.Rows!.Add(
+            new TopologyItem
             {
-                Text = "Pending details",
-                Code = "Pending code",
-            },
-            Leaves = [new TopologyLeaf { Text = "Pending leaf" }],
-        });
+                Text = "Pending item",
+                Details = new TopologyDetails
+                {
+                    Text = "Pending details",
+                    Code = "Pending code",
+                },
+                Leaves = [new TopologyLeaf { Text = "Pending leaf" }],
+            });
 
         if (detectPending)
         {
@@ -155,7 +170,12 @@ public sealed partial class ComplexTopologyRollbackTests
         // Assert
         Assert.Equal(3, before.Items.Length);
         Assert.Equal("Pending item", before.Items[2].Text.Current);
-        Assert.Equal(detectPending ? EntityState.Added : EntityState.Detached, before.Items[2].State);
+        Assert.Equal(
+            detectPending
+                ? EntityState.Added
+                : EntityState.Detached,
+            before.Items[2].State);
+
         AssertGraph(entry, before);
         AssertSettings(context);
     }
@@ -184,6 +204,7 @@ public sealed partial class ComplexTopologyRollbackTests
                 Leaves = [],
             },
         ];
+
         entry.Entity.Optional = new TopologyDetails
         {
             Text = "Callback details",
@@ -329,6 +350,7 @@ public sealed partial class ComplexTopologyRollbackTests
                     Text = "Callback details",
                     Code = "Callback code",
                 };
+
                 break;
             case "elementOptionalNull":
                 payload.Rows![0].Details = null;
@@ -342,16 +364,19 @@ public sealed partial class ComplexTopologyRollbackTests
                         Leaves = [],
                     },
                 ];
+
                 break;
             case "reverse":
                 payload.Rows!.Reverse();
                 break;
             case "add":
-                payload.Rows!.Add(new TopologyItem
-                {
-                    Text = "Callback added",
-                    Leaves = [],
-                });
+                payload.Rows!.Add(
+                    new TopologyItem
+                    {
+                        Text = "Callback added",
+                        Leaves = [],
+                    });
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(change));
@@ -367,7 +392,9 @@ public sealed partial class ComplexTopologyRollbackTests
             .GetService<IUpdateAdapterFactory>()
             .Create()
             .Entries
-            .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+            .Single(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
                 entity));
 
     /// <summary>Checks that model-only recovery leaves detection settings and database I/O unchanged.</summary>
@@ -378,7 +405,9 @@ public sealed partial class ComplexTopologyRollbackTests
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(CascadeTiming.Immediate, context.ChangeTracker.CascadeDeleteTiming);
         Assert.Equal(CascadeTiming.Immediate, context.ChangeTracker.DeleteOrphansTiming);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

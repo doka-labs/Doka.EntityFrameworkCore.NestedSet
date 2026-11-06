@@ -33,7 +33,11 @@ public sealed partial class ComplexTopologyRollbackTests
 
         IList<TopologyItem> values = fixedSize
             ? new[] { first, last }
-            : new List<TopologyItem> { first, last };
+            : new List<TopologyItem>
+            {
+                first,
+                last,
+            };
 
         var payload = new CollectionPayload
         {
@@ -50,7 +54,8 @@ public sealed partial class ComplexTopologyRollbackTests
             {
                 var element = collection[index];
 
-                return new ItemObservation(item,
+                return new ItemObservation(
+                    item,
                     element.State,
                     ObserveScalar(element.Property(nameof(TopologyItem.Text))),
                     ObserveDetails(element.ComplexProperty(nameof(TopologyItem.Details)), item.Details),
@@ -99,17 +104,22 @@ public sealed partial class ComplexTopologyRollbackTests
             Assert.Same(expected.Instance, payload.Rows[index]);
             Assert.Equal(expected.State, element.State);
             AssertScalar(element.Property(nameof(TopologyItem.Text)), expected.Text);
-            AssertDetails(element.ComplexProperty(nameof(TopologyItem.Details)),
+            AssertDetails(
+                element.ComplexProperty(nameof(TopologyItem.Details)),
                 payload.Rows[index].Details,
                 expected.Details);
-            AssertLeaves(element.ComplexCollection(nameof(TopologyItem.Leaves)),
+
+            AssertLeaves(
+                element.ComplexCollection(nameof(TopologyItem.Leaves)),
                 payload.Rows[index].Leaves,
                 expected.Leaves);
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A struct complex reference restores its value and caller-owned nested list.</summary>
@@ -141,6 +151,7 @@ public sealed partial class ComplexTopologyRollbackTests
             Text = "Pending struct",
             Leaves = leaves,
         };
+
         leaves[0].Text = "Pending struct leaf";
         var reference = entry.ComplexProperty(nameof(StructPayload.Data));
         var before = ObserveScalar(reference.Property(nameof(StructValue.Text)));
@@ -170,17 +181,25 @@ public sealed partial class ComplexTopologyRollbackTests
         Assert.Equal(referenceModified, reference.IsModified);
         AssertLeaves(reference.ComplexCollection(nameof(StructValue.Leaves)), payload.Data.Leaves, nested);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Id).IsModified);
+        Assert.False(
+            entry.Property(value => value.Id)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Validates actual collection and struct-reference metadata without database commands.</summary>
     private sealed class ValueShapeContext : DbContext
     {
         /// <summary>Keeps raw pending values independent of original and modified state.</summary>
-        internal ValueShapeContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal ValueShapeContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -197,13 +216,16 @@ public sealed partial class ComplexTopologyRollbackTests
             collection
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            collection.ComplexCollection(value => value.Rows,
+
+            collection.ComplexCollection(
+                value => value.Rows,
                 rows =>
                 {
                     rows.ToJson("Rows");
                     rows
                         .ComplexProperty(value => value.Details)
                         .IsRequired(false);
+
                     rows.ComplexCollection(value => value.Leaves);
                 });
 
@@ -211,7 +233,9 @@ public sealed partial class ComplexTopologyRollbackTests
             structure
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
-            structure.ComplexProperty(value => value.Data,
+
+            structure.ComplexProperty(
+                value => value.Data,
                 data =>
                 {
                     data.ToJson("Data");
@@ -227,6 +251,7 @@ public sealed partial class ComplexTopologyRollbackTests
         public int Id { get; set; }
 
         /// <summary>Gets or sets the runtime array or list independently of EF's original collection.</summary>
+
         // WHY: EF snapshots using the declared collection type. IList allows a mutable original snapshot
         // while callers retain either a fixed-size runtime array or a mutable runtime List instance.
         public IList<TopologyItem> Rows { get; set; } = [];

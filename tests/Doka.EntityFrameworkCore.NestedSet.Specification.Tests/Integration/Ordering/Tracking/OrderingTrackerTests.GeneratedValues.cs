@@ -7,14 +7,22 @@ public abstract partial class OrderingTrackerTests
     public async Task SaveWithoutAcceptancePreservesGeneratedTokenSemanticsAndUnchangedSiblings()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
-        await using var context = new TrackerContext(await OptionsAsync(database));
-        await using var plain = new PlainTrackerContext(await OptionsAsync(database));
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        await using var plain = new PlainTrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var nodes = await context
             .Set<TrackerNode>()
             .ToDictionaryAsync(node => node.Id, CancellationToken.None);
 
-        var plainNode = await LoadNodeAsync(plain, 3);
+        var plainNode = await LoadNodeAsync(plain, 3, cancellationToken: TestContext.Current.CancellationToken);
         nodes[3].Name = "Zulu";
         plainNode.Name = "Zulu";
         var siblingPositionBefore = nodes[4].Position;
@@ -26,13 +34,17 @@ public abstract partial class OrderingTrackerTests
         await context.SaveChangesAsync(false, CancellationToken.None);
         var changedSnapshot = Capture(context, nodes[3]);
         var siblingSnapshot = Capture(context, nodes[4]);
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var persisted = await verification
             .Set<TrackerNode>()
             .AsNoTracking()
             .ToDictionaryAsync(node => node.Id, CancellationToken.None);
 
-        var order = await ChildIdsAsync(verification);
+        var order = await ChildIdsAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(EntityState.Modified, changedSnapshot.State);
@@ -40,6 +52,7 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(
             plainSnapshot.Properties.Single(property => property.Name == "Name"),
             changedSnapshot.Properties.Single(property => property.Name == "Name"));
+
         Assert.Equal(
             plainSnapshot.Properties.Single(property => property.Name == "NameToken"),
             changedSnapshot.Properties.Single(property => property.Name == "NameToken"));
@@ -63,6 +76,7 @@ public abstract partial class OrderingTrackerTests
                 Assert.False(property.IsTemporary);
                 Assert.Equal(property.Current, property.Original);
             });
+
         Assert.Equal([2, 4, 3], order);
     }
 
@@ -71,8 +85,12 @@ public abstract partial class OrderingTrackerTests
     public async Task OrderedInsertRefreshesGeneratedTokenBeforeAnAttachedPayloadSave()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
-        await using var context = new TrackerContext(await OptionsAsync(database));
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var node = Node(10, "Alpha root");
 
         // Act
@@ -82,7 +100,11 @@ public abstract partial class OrderingTrackerTests
         var returnedToken = node.CoordinateToken;
         var returnedPosition = node.Position;
 
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var inserted = await verification
             .Set<TrackerNode>()
             .AsNoTracking()
@@ -118,8 +140,12 @@ public abstract partial class OrderingTrackerTests
                 .Where(value => value.Id == 1)
                 .Select(value => value.TreeId)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal("Zulu root", persisted.Name);
         Assert.Equal(persisted.CoordinateToken, node.CoordinateToken);
-        Assert.Equal(EntityState.Unchanged, Capture(context, node).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            Capture(context, node)
+                .State);
     }
 }

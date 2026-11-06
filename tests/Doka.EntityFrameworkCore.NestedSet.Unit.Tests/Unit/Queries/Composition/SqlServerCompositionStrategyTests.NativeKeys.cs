@@ -17,7 +17,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         var query = context
             .NestedSet<CoordinateBoundsNode>()
             .ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1,
+            .SelectAncestors(
+                node => node.Depth >= 1,
                 (source, owner, distance) => owner.Id);
 
         // Act
@@ -40,10 +41,12 @@ public sealed partial class SqlServerCompositionStrategyTests
     )
     {
         // Arrange
-        Func<Task<string>> translate = binary ? NativeOwnerKeySqlAsync<byte[]> : NativeOwnerKeySqlAsync<string>;
+        Func<CancellationToken, Task<string>> translate = binary
+            ? NativeOwnerKeySqlAsync<byte[]>
+            : NativeOwnerKeySqlAsync<string>;
 
         // Act
-        var sql = await translate();
+        var sql = await translate(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Contains("CROSS APPLY", sql, StringComparison.Ordinal);
@@ -51,9 +54,14 @@ public sealed partial class SqlServerCompositionStrategyTests
     }
 
     /// <summary>Translates the exact selected SQL Server strategy using native reference-valued keys.</summary>
-    private static async Task<string> NativeOwnerKeySqlAsync<TKey>()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task<string> NativeOwnerKeySqlAsync<TKey>(
+        CancellationToken cancellationToken
+    )
         where TKey : class
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var options = ModelCompatibilityDatabase.Options<NativeOwnerKeyContext<TKey>>("SqlServer");
         await using var services = NestedSetTestAdapters.BuildServices(options);
         await using var context = new NativeOwnerKeyContext<TKey>(
@@ -64,7 +72,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         return context
             .NestedSet<NativeOwnerKeyNode<TKey>>()
             .ForScope(7)
-            .SelectAncestors(node => node.Depth >= 1,
+            .SelectAncestors(
+                node => node.Depth >= 1,
                 (source, owner, distance) => owner.Id)
             .ToQueryString();
     }
@@ -87,10 +96,12 @@ public sealed partial class SqlServerCompositionStrategyTests
                 entity.Scope,
                 entity.Id,
             });
+
             node
                 .Property(entity => entity.Id)
                 .ValueGeneratedNever()
                 .HasMaxLength(40);
+
             node
                 .Property(entity => entity.ParentId)
                 .HasMaxLength(40);
@@ -100,6 +111,7 @@ public sealed partial class SqlServerCompositionStrategyTests
                 node
                     .Property(entity => entity.Id)
                     .UseCollation("Latin1_General_100_BIN2");
+
                 node
                     .Property(entity => entity.ParentId)
                     .UseCollation("Latin1_General_100_BIN2");

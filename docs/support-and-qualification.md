@@ -8,7 +8,7 @@ defines what this repository has exercised.
 
 | Component | Repository baseline |
 | --- | --- |
-| Stable package source contract | `10.2.0` across all six packages |
+| Stable package source contract | `10.3.0` across all six packages |
 | Target framework | .NET 10 |
 | SDK | `10.0.403`, pinned by `global.json`; includes runtime `10.0.14` |
 | Common EF Core declared range | `10.0.12` through, but excluding, `11.0.0`; adapter dependencies may narrow it |
@@ -68,19 +68,19 @@ recorded by a narrowly scoped compatibility suppression. This deliberately
 retains the original two-package baseline scope; the adapters introduced in
 `10.1.0` retain their own shipped API records and package/consumer qualification.
 
-Stable `10.2.0` adds optional registry naming and corrects manual detection and
-recovery, preserving the selected provider and framework ranges. See the
-[compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020).
+Stable `10.3.0` requires explicit cancellation arguments on owned asynchronous
+APIs. See the [cancellation upgrade](upgrading-provider-packages.md#upgrade-from-1020-to-1030).
+Earlier `10.2.0` added optional registry naming and detection/recovery fixes;
+its [compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020)
+remains documented.
 
 Version `10.0.0` is the initial stable contract. Stable `10.1.0` includes
 generic query composition and the explicitly breaking provider-package/callback
 registration transition described in the [upgrade guide](upgrading-provider-packages.md).
-The owner explicitly kept `10.1.0` for this narrow SemVer exception; package
-majors follow the .NET family and `11.x` is reserved for .NET 11. Other breaking
-minor changes are not authorized by that decision. Qualification
-always identifies its exact source and artifacts. The dated local results
-below describe their own runs; hosted release evidence belongs to the matching
-release and is not inferred from a successful local execution.
+Version exceptions follow the [version policy](release-governance.md#version-policy).
+Qualification always identifies its exact source and artifacts. The dated local
+results below describe their own runs; hosted release evidence belongs to the
+matching release and is not inferred from a successful local execution.
 
 `Doka.EntityFrameworkCore.NestedSet` 10.x does not support `PublishTrimmed` or
 `PublishAot`. Runtime model-based generic construction and dynamically
@@ -97,7 +97,7 @@ This statement does not assert the same limitation for the separate
 ## Framework release lines
 
 The current source and qualified graph remain .NET/EF Core 10 at package version
-`10.2.0`. [Release lines](operations/release-lines.md) defines future independent
+`10.3.0`. [Release lines](operations/release-lines.md) defines future independent
 framework servicing: main/10 starts active; maintenance/10.x and optional
 preview/11.x are registered inactive. The capability does not qualify .NET 11,
 create a branch or enable publication. Each later activated line needs its own
@@ -110,7 +110,7 @@ Install one NestedSet adapter for each context's native provider:
 
 | NestedSet adapter | Direct native provider range | Effective EF constraint |
 | --- | --- | --- |
-| `.MySql` | Doka `[10.6.3,10.7.0)` | Common EF minimum plus Doka's EF Relational `<10.1.0` bound |
+| `.MySql` | Doka `[10.6.4,10.7.0)` | Common EF minimum plus Doka's EF Relational `<10.1.0` bound |
 | `.Postgres` | Npgsql `[10.0.3,11.0.0)` | Common EF range intersected with the selected Npgsql version |
 | `.Sqlite` | Microsoft SQLite `[10.0.13,11.0.0)` | EF/provider 10, at least `10.0.13` |
 | `.SqlServer` | Microsoft SQL Server `[10.0.13,11.0.0)` | EF/provider 10, at least `10.0.13` |
@@ -121,8 +121,8 @@ The exact executed graph is identified by each qualification record below.
 
 | Database | EF provider baseline | Engine image baseline |
 | --- | --- | --- |
-| MySQL | `Doka.EntityFrameworkCore.MySql` 10.6.3 | MySQL 8.4.13 |
-| MariaDB | `Doka.EntityFrameworkCore.MySql` 10.6.3 | MariaDB 11.8.9 |
+| MySQL | `Doka.EntityFrameworkCore.MySql` 10.6.4 | MySQL 8.4.13 |
+| MariaDB | `Doka.EntityFrameworkCore.MySql` 10.6.4 | MariaDB 11.8.9 |
 | PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 | PostgreSQL 17.11 |
 | SQLite | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.14 | In-process native runtime from the resolved package graph |
 | SQL Server | `Microsoft.EntityFrameworkCore.SqlServer` 10.0.14 | SQL Server 2022 CU27-GDR1 on Ubuntu 22.04 |
@@ -137,12 +137,18 @@ digests at their existing tags. Earlier measurements retain their original
 engine, collector, and dependency identities; changing these inputs does not
 relabel those results as qualification of the refreshed artifacts.
 
-The 2026-10-29 refresh selects published Doka 10.6.3 and new official-registry
+The 2026-10-29 refresh selected published Doka 10.6.3 and new official-registry
 digests at the unchanged MySQL 8.4.13 and MariaDB 11.8.9 tags. Following the
-owner's publication notice, SafeMigrations Core and all four adapters use 10.6.1. PostgreSQL, SQL
+owner's publication notice, SafeMigrations Core and all four adapters used 10.6.1. PostgreSQL, SQL
 Server, SDK, EF, test tooling, SBOM tooling and action release versions were
-already current. The CodeQL 4.39.1 pin now names the release commit rather
+already current. The CodeQL 4.39.1 pin names the release commit rather
 than its annotated tag object. These input changes do not requalify old runs.
+
+The 2026-11-06 refresh selects published Doka 10.6.4 and SafeMigrations Core
+and all four adapters 10.7.0. The MySql adapter now requires Doka
+`[10.6.4,10.7.0)`, matching the optional SafeMigrations MySQL adapter. EF and
+the database LTS lines remain unchanged. Historical qualification and
+performance records retain their original package versions.
 
 These are the current declared qualification inputs. The
 [2026-10-26 six-package local record](qualification/provider-migrations.md#six-package-local-qualification-2026-10-26)
@@ -225,18 +231,18 @@ Optional adapter qualification uses:
 
 | Database | SafeMigrations adapter baseline | Qualification boundary |
 | --- | --- | --- |
-| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.6.1 | Optional adapter regression suite |
-| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.6.1 | Canonical null-filter indexes, replay, and drift |
-| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.6.1 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
-| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.6.1 | Optional adapter regression suite |
+| MySQL/MariaDB | `Doka.EntityFrameworkCore.SafeMigrations.MySql` 10.7.0 | Optional adapter regression suite |
+| PostgreSQL | `Doka.EntityFrameworkCore.SafeMigrations.PostgreSql` 10.7.0 | Canonical null-filter indexes, replay, and drift |
+| SQL Server | `Doka.EntityFrameworkCore.SafeMigrations.SqlServer` 10.7.0 | `dbo`/explicit schemas, integer widening, indexes and CHECKs |
+| SQLite | `Doka.EntityFrameworkCore.SafeMigrations.Sqlite` 10.7.0 | Optional adapter regression suite |
 
 SafeMigrations tests are additive. A failure there must not be described as a
 runtime requirement for Doka, Npgsql, SQLite, or SQL Server. Adapter packages
 are referenced only by the optional test project; no shipping NestedSet package
 depends on SafeMigrations.
 
-Published MySQL adapter 10.6.1 requires Doka [10.6.3,10.7.0), matching the
-declared 10.6.3 provider. Core and all four adapters use 10.6.1. The earlier
+Published MySQL adapter 10.7.0 requires Doka [10.6.4,10.7.0), matching the
+declared 10.6.4 provider. Core and all four adapters use 10.7.0. The earlier
 10.5.0 adapter range [10.5.0,10.6.0) did exclude 10.6.1; that historical
 compatibility restriction no longer describes the current pins.
 The [provider/migration qualification](qualification/provider-migrations.md)
@@ -362,7 +368,7 @@ dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrame
 ### Complete repository qualification
 
 The current SafeMigrations test contract uses the declared published Doka
-10.6.3 and SafeMigrations 10.6.1 graph documented in
+10.6.4 and SafeMigrations 10.7.0 graph documented in
 [provider qualification](qualification/provider-migrations.md). The earlier
 pin transition is resolved. The earlier Doka 10.6.2 local public-graph scope was repeated
 for the six-package working source on

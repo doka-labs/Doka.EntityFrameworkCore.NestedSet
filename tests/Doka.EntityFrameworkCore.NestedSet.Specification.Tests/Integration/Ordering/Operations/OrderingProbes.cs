@@ -45,7 +45,7 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -58,7 +58,7 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        await InspectAsync(command);
+        await InspectAsync(command, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -91,9 +91,12 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
 
     /// <summary>Fails or cancels before repair only when an earlier domain update has really executed.</summary>
     private async ValueTask InspectAsync(
-        DbCommand command
+        DbCommand command,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         Commands.Add(command.CommandText);
         var setters = GetSetters(command);
         if (!IsStructural(setters))
@@ -156,7 +159,9 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
             return "";
         }
 
-        return end < 0 ? sql[start..] : sql[start..end];
+        return end < 0
+            ? sql[start..]
+            : sql[start..end];
     }
 
     /// <summary>Recognizes hierarchy writes without counting lock-table or ordinary domain updates.</summary>

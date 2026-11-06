@@ -1,3 +1,9 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MariaDb;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.MySql;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.PostgreSql;
+using Doka.EntityFrameworkCore.NestedSet.Tests.CompiledModels.SqlServer;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>
@@ -49,8 +55,10 @@ public abstract class CompiledModelTests : ProviderTest
                 Assert.Equal(
                     ["Scope", "TreeId"],
                     registry.FindPrimaryKey()!.Properties.Select(property => property.Name));
+
                 Assert.Contains(registry.GetTableName()!, script, StringComparison.Ordinal);
             });
+
         Assert.DoesNotContain("DokaNestedSetLocks", script, StringComparison.Ordinal);
     }
 
@@ -108,8 +116,10 @@ public abstract class CompiledModelTests : ProviderTest
         };
 
         var design = context.Model.FindEntityType(typeof(CompiledFolder))!;
-        var generated = ModelFor(Engine).FindEntityType(typeof(CompiledFolder))!;
-        var names = new[] { nameof(CompiledFolder.Id), nameof(CompiledFolder.Scope), nameof(CompiledFolder.ParentId), };
+        var generated = ModelFor(Engine)
+            .FindEntityType(typeof(CompiledFolder))!;
+
+        var names = new[] { nameof(CompiledFolder.Id), nameof(CompiledFolder.Scope), nameof(CompiledFolder.ParentId) };
 
         // Act
         var captures = names
@@ -139,7 +149,10 @@ public abstract class CompiledModelTests : ProviderTest
                 .FindEntityType(typeof(CompiledFolder))!;
 
             Assert.Null(ordinary.FindProperty(nameof(CompiledFolder.Scope))!.GetCollation());
-            Assert.Equal(scopeCapture, ordinary.FindAnnotation(RelationalAnnotationNames.Collation)?.Value);
+            Assert.Equal(
+                scopeCapture,
+                ordinary.FindAnnotation(RelationalAnnotationNames.Collation)
+                    ?.Value);
         }
     }
 
@@ -151,7 +164,11 @@ public abstract class CompiledModelTests : ProviderTest
     {
         // Arrange
         var model = ModelFor(Engine);
-        await using var context = await _fixture.ResetAsync(Engine, model);
+        await using var context = await _fixture.ResetAsync(
+            Engine,
+            model,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<CompiledFolder>()
             .ForScope("SCOPE");
@@ -219,7 +236,11 @@ public abstract class CompiledModelTests : ProviderTest
     {
         // Arrange
         var model = ModelFor(Engine);
-        await using var context = await _fixture.ResetAsync(Engine, model);
+        await using var context = await _fixture.ResetAsync(
+            Engine,
+            model,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = context
             .NestedSet<CompiledNumber>()
             .ForScope(7);
@@ -265,7 +286,10 @@ public abstract class CompiledModelTests : ProviderTest
         // Arrange
         var model = ModelFor(Engine);
 
-        await using (var seeded = await _fixture.ResetAsync(Engine, model))
+        await using (var seeded = await _fixture.ResetAsync(
+            Engine,
+            model,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
             var folders = seeded
                 .NestedSet<CompiledFolder>()
@@ -294,6 +318,7 @@ public abstract class CompiledModelTests : ProviderTest
                 },
                 "ROOT",
                 CancellationToken.None);
+
             await numbers.InsertRootAsync(
                 new CompiledNumber
                 {
@@ -314,17 +339,22 @@ public abstract class CompiledModelTests : ProviderTest
         }
 
         // Act
-        await using var reset = await _fixture.ResetAsync(Engine, model);
+        await using var reset = await _fixture.ResetAsync(
+            Engine,
+            model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(
             await reset
                 .Set<CompiledFolder>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             await reset
                 .Set<CompiledNumber>()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Single(
             await reset
                 .Set<CompiledScope>()
@@ -336,11 +366,15 @@ public abstract class CompiledModelTests : ProviderTest
     public async Task SuppliedModelWithoutAdapterHasAnActionableDiagnostic()
     {
         // Arrange
-        var sourceOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine);
+        var sourceOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var source = new LegacyCompiledContext(sourceOptions);
         var supplied = source.Model;
         var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
             Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
             supplied,
             enableNestedSets: false);
 
@@ -362,7 +396,11 @@ public abstract class CompiledModelTests : ProviderTest
         Assert.Contains("callback", error.Message, StringComparison.Ordinal);
         Assert.Same(supplied, context.Model);
         Assert.True((bool)supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)!.Value!);
-        Assert.Null(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.Null(
+            context
+                .GetService<IDbContextOptions>()
+                .FindExtension<NestedSetOptionsExtension>());
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.CommandsCreated);
     }
@@ -375,13 +413,18 @@ public abstract class CompiledModelTests : ProviderTest
         var legacyOptions = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
             Engine,
             model: null,
-            enableNestedSets: false);
+            enableNestedSets: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = new LegacyCompiledContext(legacyOptions);
         var supplied = source.Model;
 
         // WHY: Register the runtime adapter independently; supplying the legacy model must skip regeneration.
-        var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(Engine, supplied);
+        var options = await _fixture.CreateOptionsAsync<LegacyCompiledContext>(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            supplied);
+
         var boundary = new ConfigurationIoBoundary();
         await using var context = new LegacyCompiledContext(
             new DbContextOptionsBuilder<LegacyCompiledContext>(options).AddInterceptors(boundary, boundary.Commands)
@@ -400,7 +443,11 @@ public abstract class CompiledModelTests : ProviderTest
         Assert.Contains("Regenerate", error.Message, StringComparison.Ordinal);
         Assert.Same(supplied, context.Model);
         Assert.Null(supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured));
-        Assert.NotNull(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.NotNull(
+            context
+                .GetService<IDbContextOptions>()
+                .FindExtension<NestedSetOptionsExtension>());
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.CommandsCreated);
     }
@@ -413,11 +460,16 @@ public abstract class CompiledModelTests : ProviderTest
         var options = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(
             Engine,
             model: null,
-            enableNestedSets: false);
+            enableNestedSets: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var source = new StaleCollationCaptureContext(options);
         var supplied = source.Model;
-        var runtimeOptions = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(Engine, supplied);
+        var runtimeOptions = await _fixture.CreateOptionsAsync<StaleCollationCaptureContext>(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            supplied);
+
         var boundary = new ConfigurationIoBoundary();
         await using var context = new StaleCollationCaptureContext(
             new DbContextOptionsBuilder<StaleCollationCaptureContext>(runtimeOptions)
@@ -435,9 +487,17 @@ public abstract class CompiledModelTests : ProviderTest
         Assert.Contains("regenerat", error.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Same(supplied, context.Model);
         Assert.True((bool)supplied.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)!.Value!);
-        Assert.Equal(string.Empty, key.FindAnnotation(NestedSetAnnotationNames.Collation)?.Value);
+        Assert.Equal(
+            string.Empty,
+            key.FindAnnotation(NestedSetAnnotationNames.Collation)
+                ?.Value);
+
         Assert.Null(owner.FindAnnotation(NestedSetAnnotationNames.Collation + ":" + key.Name));
-        Assert.NotNull(context.GetService<IDbContextOptions>().FindExtension<NestedSetOptionsExtension>());
+        Assert.NotNull(
+            context
+                .GetService<IDbContextOptions>()
+                .FindExtension<NestedSetOptionsExtension>());
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.CommandsCreated);
     }
@@ -449,11 +509,11 @@ public abstract class CompiledModelTests : ProviderTest
         string engine
     ) => engine switch
     {
-        "Sqlite" => CompiledModels.CompiledTreeContextModel.Instance,
-        "MySql" => CompiledModels.MySql.CompiledMySqlContextModel.Instance,
-        "MariaDb" => CompiledModels.MariaDb.CompiledMariaDbContextModel.Instance,
-        "PostgreSql" => CompiledModels.PostgreSql.CompiledPostgreSqlContextModel.Instance,
-        "SqlServer" => CompiledModels.SqlServer.CompiledSqlServerContextModel.Instance,
+        "Sqlite" => CompiledTreeContextModel.Instance,
+        "MySql" => CompiledMySqlContextModel.Instance,
+        "MariaDb" => CompiledMariaDbContextModel.Instance,
+        "PostgreSql" => CompiledPostgreSqlContextModel.Instance,
+        "SqlServer" => CompiledSqlServerContextModel.Instance,
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };
 }

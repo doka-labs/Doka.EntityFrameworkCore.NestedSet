@@ -34,6 +34,7 @@ internal sealed partial class PostgresNestedSetProvider
         AppendJsonValue(rows, mapping.TreeId, "t")
             .Append(" AS ")
             .Append(aliases.TreeId);
+
         rows
             .Append(", CAST(j.value->>'o' AS integer) AS ")
             .Append(aliases.Ordinal)

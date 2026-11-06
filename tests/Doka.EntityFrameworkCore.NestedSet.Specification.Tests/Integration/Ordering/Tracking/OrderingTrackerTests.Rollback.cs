@@ -9,10 +9,15 @@ public abstract partial class OrderingTrackerTests
     public async Task LateFailureRestoresAddedIdentityAndAllowsRetry()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new TrackerFailureProbe();
-        await using var context = new TrackerContext(await OptionsAsync(database, probe));
-        var node = await LoadNodeAsync(context, 3);
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe));
+
+        var node = await LoadNodeAsync(context, 3, cancellationToken: TestContext.Current.CancellationToken);
         node.Name = "Zulu";
         var addition = new TrackerAddition();
         await context.AddAsync(addition, CancellationToken.None);
@@ -29,15 +34,22 @@ public abstract partial class OrderingTrackerTests
         var completedPayload = probe.CompletedPayloadUpdates;
         var completedInsert = probe.CompletedAdditionInserts;
 
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var additionsAfterFailure = await verification
             .Set<TrackerAddition>()
             .CountAsync(CancellationToken.None);
 
-        var orderAfterFailure = await ChildIdsAsync(verification);
+        var orderAfterFailure = await ChildIdsAsync(
+            verification,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         probe.FailAfterPayload = false;
         var retry = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var finalOrder = await ChildIdsAsync(verification);
+        var finalOrder = await ChildIdsAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
         var persistedAddition = await verification
             .Set<TrackerAddition>()
             .AsNoTracking()
@@ -48,7 +60,10 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(1, completedPayload);
         Assert.Equal(1, completedInsert);
         Assert.Equal(0, clrIdentityBefore);
-        Assert.True(additionBefore.Properties.Single(property => property.Name == "Id").IsTemporary);
+        Assert.True(
+            additionBefore.Properties.Single(property => property.Name == "Id")
+                .IsTemporary);
+
         AssertSnapshot(nodeBefore, nodeAfterFailure);
         AssertSnapshot(additionBefore, additionAfterFailure);
         Assert.Equal(clrIdentityBefore, clrIdentityAfterFailure);
@@ -59,7 +74,10 @@ public abstract partial class OrderingTrackerTests
         Assert.NotNull(persistedAddition);
         Assert.True(addition.Id > 0);
         Assert.Equal(addition.Id, persistedAddition.Id);
-        Assert.Equal(EntityState.Unchanged, Capture(context, addition).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            Capture(context, addition)
+                .State);
     }
 
     /// <summary>Preserves a deferred required orphan so a later retry still performs its intended deletion.</summary>
@@ -67,9 +85,14 @@ public abstract partial class OrderingTrackerTests
     public async Task LateFailureRestoresDeferredOrphanAndAllowsRetry()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new TrackerFailureProbe();
-        await using var context = new TrackerContext(await OptionsAsync(database, probe));
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe));
+
         context.ChangeTracker.DeleteOrphansTiming =
             CascadeTiming.OnSaveChanges;
 
@@ -80,7 +103,7 @@ public abstract partial class OrderingTrackerTests
 
         var child = owner.Children.Single();
         owner.Children.Remove(child);
-        var node = await LoadNodeAsync(context, 3);
+        var node = await LoadNodeAsync(context, 3, cancellationToken: TestContext.Current.CancellationToken);
         node.Name = "Zulu";
         context.ChangeTracker.DetectChanges();
         var childBefore = Capture(context, child);
@@ -92,7 +115,11 @@ public abstract partial class OrderingTrackerTests
         var navigationAfterFailure = child.Owner;
         var collectionCountAfterFailure = owner.Children.Count;
         var completedPayload = probe.CompletedPayloadUpdates;
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var childrenAfterFailure = await verification
             .Set<TrackerChild>()
             .CountAsync(CancellationToken.None);
@@ -103,7 +130,7 @@ public abstract partial class OrderingTrackerTests
             .Set<TrackerChild>()
             .CountAsync(CancellationToken.None);
 
-        var finalOrder = await ChildIdsAsync(verification);
+        var finalOrder = await ChildIdsAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsType<TrackerInjectedException>(failure);
@@ -116,7 +143,10 @@ public abstract partial class OrderingTrackerTests
         Assert.Null(retry);
         Assert.Equal(0, childrenAfterRetry);
         Assert.Equal([2, 4, 3], finalOrder);
-        Assert.Equal(EntityState.Detached, Capture(context, child).State);
+        Assert.Equal(
+            EntityState.Detached,
+            Capture(context, child)
+                .State);
     }
 
     /// <summary>
@@ -126,8 +156,12 @@ public abstract partial class OrderingTrackerTests
     public async Task RequiredOrphanWithNeverTimingStillFailsWithoutChangingPolicy()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
-        await using var context = new TrackerContext(await OptionsAsync(database));
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.Never;
         var owner = await context
             .Set<TrackerOwner>()
@@ -136,7 +170,7 @@ public abstract partial class OrderingTrackerTests
 
         var child = owner.Children.Single();
         owner.Children.Remove(child);
-        var node = await LoadNodeAsync(context, 3);
+        var node = await LoadNodeAsync(context, 3, cancellationToken: TestContext.Current.CancellationToken);
         node.Name = "Zulu";
         context.ChangeTracker.DetectChanges();
         var before = Capture(context, child);
@@ -144,12 +178,16 @@ public abstract partial class OrderingTrackerTests
         // Act
         var failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var after = Capture(context, child);
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var childCount = await verification
             .Set<TrackerChild>()
             .CountAsync(CancellationToken.None);
 
-        var order = await ChildIdsAsync(verification);
+        var order = await ChildIdsAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsType<InvalidOperationException>(failure);
@@ -157,6 +195,7 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(
             CascadeTiming.Never,
             context.ChangeTracker.DeleteOrphansTiming);
+
         Assert.Equal(1, childCount);
         Assert.Null(child.Owner);
         Assert.Empty(owner.Children);
@@ -168,10 +207,15 @@ public abstract partial class OrderingTrackerTests
     public async Task SavingChangesCallbackCannotBypassInitialOrderingCandidateDiscovery()
     {
         // Arrange
-        var database = await CreateDatabaseAsync(Engine);
+        var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new TrackerFailureProbe { FailAfterPayload = false };
-        await using var context = new TrackerContext(await OptionsAsync(database, probe));
-        var node = await LoadNodeAsync(context, 3);
+        await using var context = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken,
+                probe));
+
+        var node = await LoadNodeAsync(context, 3, cancellationToken: TestContext.Current.CancellationToken);
         var addition = new TrackerAddition();
 
         await context.AddAsync(addition, CancellationToken.None);
@@ -184,12 +228,16 @@ public abstract partial class OrderingTrackerTests
         var failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
         var nodeAfter = Capture(context, node);
         var additionAfter = Capture(context, addition);
-        await using var verification = new TrackerContext(await OptionsAsync(database));
+        await using var verification = new TrackerContext(
+            await OptionsAsync(
+                database,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var additions = await verification
             .Set<TrackerAddition>()
             .CountAsync(CancellationToken.None);
 
-        var order = await ChildIdsAsync(verification);
+        var order = await ChildIdsAsync(verification, cancellationToken: TestContext.Current.CancellationToken);
         var persistedName = await verification
             .Set<TrackerNode>()
             .Where(value => value.Id == 3)
@@ -202,9 +250,13 @@ public abstract partial class OrderingTrackerTests
         Assert.Equal(EntityState.Unchanged, nodeBefore.State);
         Assert.Equal(0, probe.CompletedPayloadUpdates);
         Assert.Equal(0, probe.CompletedAdditionInserts);
+
         // WHY: The read-only guard rejects before EF's global detection, retaining the caller's unmarked CLR edit.
         Assert.Equal(EntityState.Unchanged, nodeAfter.State);
-        Assert.False(Assert.Single(nodeAfter.Properties, value => value.Name == nameof(TrackerNode.Name)).IsModified);
+        Assert.False(
+            Assert.Single(nodeAfter.Properties, value => value.Name == nameof(TrackerNode.Name))
+                .IsModified);
+
         Assert.Equal("Zulu", node.Name);
         AssertSnapshot(additionBefore, additionAfter);
         Assert.Equal(0, addition.Id);

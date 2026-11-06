@@ -62,7 +62,9 @@ internal static partial class NestedSetSaveChanges
                     }
 
                     var structure = model.StructuralProperties(entry.EntityType);
-                    var parent = allowMarkedTriggers ? descriptor.Parent.Resolve(entry.EntityType) : null;
+                    var parent = allowMarkedTriggers
+                        ? descriptor.Parent.Resolve(entry.EntityType)
+                        : null;
 
                     // WHY: These read-only wrappers otherwise allocate an interface enumerator per tracked node.
                     // ReSharper disable once ForCanBeConvertedToForeach
@@ -72,9 +74,9 @@ internal static partial class NestedSetSaveChanges
                         var property = structure[index];
 
                         if (UnplannedPropertyChanged(
-                                entry,
-                                property,
-                                property == parent && entry.IsModified(property)))
+                            entry,
+                            property,
+                            property == parent && entry.IsModified(property)))
                         {
                             return true;
                         }
@@ -90,9 +92,9 @@ internal static partial class NestedSetSaveChanges
                             var property = ordering.Properties[index];
 
                             if (UnplannedPropertyChanged(
-                                    entry,
-                                    property,
-                                    allowMarkedTriggers && entry.IsModified(property)))
+                                entry,
+                                property,
+                                allowMarkedTriggers && entry.IsModified(property)))
                             {
                                 return true;
                             }

@@ -121,14 +121,18 @@ public sealed partial class ProviderCapabilitiesTests
         var sql = adapter.BuildTreeRowsetSource(command, parameters, aliases, requests[0].Mapping, requests);
 
         // Assert
-        Assert.Equal("WITH \"RequestedTrees\" (\"TreeId\", \"Ordinal\", \"Create\") AS (VALUES "
+        Assert.Equal(
+            "WITH \"RequestedTrees\" (\"TreeId\", \"Ordinal\", \"Create\") AS (VALUES "
             + "({0}, 0, 1), ({1}, 1, 2)) ",
             sql);
+
         Assert.Equal(2, parameters.Count);
-        Assert.Equal(["treeId0", "treeId1"],
+        Assert.Equal(
+            ["treeId0", "treeId1"],
             parameters
                 .Cast<DbParameter>()
                 .Select(parameter => parameter.ParameterName));
+
         Assert.Equal(Guid.Empty, ((DbParameter)parameters[0]).Value);
         Assert.Equal(treeId, ((DbParameter)parameters[1]).Value);
         Assert.Equal(0, boundary.ConnectionStarts);

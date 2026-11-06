@@ -35,7 +35,9 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
         string fixtureTable
     )
     {
-        var bindings = BindingRegex().Matches(sql);
+        var bindings = BindingRegex()
+            .Matches(sql);
+
         var aliases = bindings
             .Where(match => match.Groups["table"].Value == fixtureTable)
             .Select(match => match.Groups["alias"].Value)
@@ -66,7 +68,8 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
         {
             foreach (var line in plan.Split('\n'))
             {
-                var access = AccessRegex().Match(line);
+                var access = AccessRegex()
+                    .Match(line);
 
                 if (!access.Success
                     || !aliases.Contains(access.Groups["alias"].Value))
@@ -83,7 +86,9 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
 
                 // WHY: Reuse the established finite/nonnegative actual-number reader; Filter/hash outputs
                 // are intentionally excluded, so a C lookup is not mistaken for another base-table visit.
-                tuples += CompositionPlanWork.ReadMySqlTree(line).RootOutputTuples;
+                tuples += CompositionPlanWork.ReadMySqlTree(line)
+                    .RootOutputTuples;
+
                 accesses++;
                 unknown++;
             }

@@ -1,11 +1,38 @@
 # Changelog
 
 All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version review follows
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with the owner's
-explicit one-time `10.1.0` exception for the provider-package/registration break
-below. The package major follows the .NET family; `11.x` is reserved for .NET 11.
-This exception does not authorize other breaking minor releases.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version policy,
+including documented exceptions to Semantic Versioning, is defined in
+[Release governance](docs/release-governance.md#version-policy).
+
+## 10.3.0 (2026-11-06)
+
+Stable contract for all six packages on .NET 10 and EF Core 10. Update all
+selected adapters and the common EF package together.
+
+### Changed
+
+- Refresh the published dependency graph to Doka 10.6.4 and SafeMigrations
+  Core/all four adapters 10.7.0. Raise the MySql adapter's Doka floor to
+  `[10.6.4,10.7.0)` while preserving the EF and database LTS lines.
+- Require explicit `CancellationToken` arguments on owned asynchronous
+  operations and helpers. This is source-breaking for calls that omitted them;
+  see the [upgrade guide](docs/upgrading-provider-packages.md#upgrade-from-1020-to-1030).
+
+### Fixed
+
+- Retry temporarily unavailable dispatched maintenance-run metadata on
+  authenticated HTTP 404 within five minutes and the original execution deadline.
+  Preserve exact child identity and successful producer verification.
+- Restore the explicit backing fields and writable owned payload needed by EF
+  regression fixtures after cleanup. Check exact field bindings, changed field
+  identities and application payload across valid and rejected rollback paths.
+  Restore the migration fixture's stable entity-name getter and cover the
+  historical, current and specialized model identities without database I/O.
+- Align the portable signed build-provenance filename with Doka and
+  SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
+  discover it. Preserve signature verification and exact asset inventories;
+  published releases retain their original assets and tagged verification guide.
 
 ## Unreleased
 

@@ -39,8 +39,11 @@ public sealed class TypedTreeReadBoundaryTests
         // Assert
         Assert.IsType<ArgumentException>(error);
         Assert.Equal(0, attempts);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
         Assert.Empty(context.ChangeTracker.Entries());
     }

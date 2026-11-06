@@ -25,11 +25,14 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -46,7 +49,8 @@ public abstract partial class SingleInsertGuardTests
         var failure = AttachSingleDetachmentFailure(context, input, afterChange, owned);
         var generatedObserved = false;
         context.SavingChanges += (_, _) => details.Label = "callback payload";
-        context.SavedChanges += (_, _) => generatedObserved = input.GeneratedValue == 42 && details is { GeneratedValue: 43, OwnerId.Value: 3 };
+        context.SavedChanges += (_, _) =>
+            generatedObserved = input.GeneratedValue == 42 && details is { GeneratedValue: 43, OwnerId.Value: 3 };
 
         // Act
         var error = await Record.ExceptionAsync(() => context
@@ -60,6 +64,7 @@ public abstract partial class SingleInsertGuardTests
                 .IsType<AggregateException>(error)
                 .Flatten()
                 .InnerExceptions);
+
         Assert.True(failure.Triggered());
         Assert.True(generatedObserved);
         Assert.Equal(ValueGenerated.Never, ownershipGeneration);
@@ -70,19 +75,26 @@ public abstract partial class SingleInsertGuardTests
             (3, treeId, 8, 71L, 72L, 3, 4L),
             (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth,
                 input.Position));
+
         Assert.Same(details, input.Details);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Null(await context.FindAsync<SingleIdentityNode>([new SingleIdentityKey(3)], CancellationToken.None));
         Assert.Empty(
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
     }
 
@@ -109,11 +121,14 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -141,12 +156,14 @@ public abstract partial class SingleInsertGuardTests
                 .IsType<AggregateException>(rejection)
                 .Flatten()
                 .InnerExceptions);
+
         Assert.True(triggered);
         Assert.Same(details, input.Details);
         Assert.Equal((42, 43, 3), (input.GeneratedValue, details.GeneratedValue, details.OwnerId.Value));
         Assert.Equal(
             (3, Guid.Empty, 1L, 2L, 0, 0L),
             (input.Id.Value, input.TreeId, input.Left, input.Right, input.Depth, input.Position));
+
         Assert.Null(input.ParentId);
         var saved = Assert.Single(
             await context
@@ -157,12 +174,18 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(
             (3, 42, 43, 3),
             (saved.Id.Value, saved.GeneratedValue, saved.Details.GeneratedValue, saved.Details.OwnerId.Value));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(
             1,
             await context
                 .Set<UnrelatedRow>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Same(transaction, context.Database.CurrentTransaction);
         Assert.NotSame(
             input,
@@ -183,7 +206,11 @@ public abstract partial class SingleInsertGuardTests
         {
             if (throwOnce
                 && state == EntityState.Detached
-                && ReferenceEquals(entry.Entity, owned ? input.Details : input))
+                && ReferenceEquals(
+                    entry.Entity,
+                    owned
+                        ? input.Details
+                        : input))
             {
                 throwOnce = false;
 

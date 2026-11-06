@@ -25,9 +25,13 @@ public abstract partial class InsertionCleanupTests : ProviderTest
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
-        var probe = new InsertionFailureProbe(cancel ? cancellation : null);
+        var probe = new InsertionFailureProbe(
+            cancel
+                ? cancellation
+                : null);
+
         await using var context = database.CreateContext(probe);
         var marker = new UnrelatedRow { Id = 701 };
         context.Attach(marker);
@@ -92,12 +96,27 @@ public abstract partial class InsertionCleanupTests : ProviderTest
         Assert.Equal(1, detachCallbacks);
         Assert.Equal((9, 71, 72, 3, 4), (root.Tree, root.Start, root.End, root.Depth, root.Position));
         Assert.Equal((8, 81, 82, 5, 6), (child.Tree, child.Start, child.End, child.Depth, child.Position));
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
-        Assert.Equal(EntityState.Detached, context.Entry(child).State);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(child)
+                .State);
+
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await verification
+                .Set<TreeNode>()
+                .ToArrayAsync(CancellationToken.None));
     }
 
     /// <summary>A pre-detach callback failure aborts the bulk wave and restores every owned input.</summary>
@@ -105,7 +124,7 @@ public abstract partial class InsertionCleanupTests : ProviderTest
     public async Task BulkWaveDetachFailureRollsBackAndRestoresAllInputs()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var root = new TreeNode
         {
@@ -164,11 +183,22 @@ public abstract partial class InsertionCleanupTests : ProviderTest
         Assert.Equal((8, 81, 82, 5, 6), (child.Tree, child.Start, child.End, child.Depth, child.Position));
         Assert.Equal(Guid.Empty, root.TreeId);
         Assert.Equal(Guid.Empty, child.TreeId);
-        Assert.Equal(EntityState.Detached, context.Entry(root).State);
-        Assert.Equal(EntityState.Detached, context.Entry(child).State);
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(root)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(child)
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = database.CreateContext();
-        Assert.Empty(await verification.Set<TreeNode>().ToArrayAsync(CancellationToken.None));
+        Assert.Empty(
+            await verification
+                .Set<TreeNode>()
+                .ToArrayAsync(CancellationToken.None));
     }
 }

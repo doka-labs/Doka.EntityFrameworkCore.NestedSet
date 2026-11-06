@@ -8,7 +8,7 @@ public abstract partial class EnterpriseTests
     public async Task BinaryKeysRemainCorrectAcrossRepairBatches()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var setup = database.CreateContext();
 
         // WHY: Distinct positive leaf intervals satisfy database checks while remaining inconsistent with the
@@ -19,12 +19,16 @@ public abstract partial class EnterpriseTests
                 .Select(id => new BinaryNode
                 {
                     Id = BitConverter.GetBytes(id),
-                    ParentId = id == 1 ? null : BitConverter.GetBytes(1),
+                    ParentId = id == 1
+                        ? null
+                        : BitConverter.GetBytes(1),
                     Tree = 1,
-                    Left = (id * 2L) - 1,
+                    Left = id * 2L - 1,
                     Right = id * 2L,
                     Depth = 0,
-                    Position = id == 1 ? 0 : id - 2,
+                    Position = id == 1
+                        ? 0
+                        : id - 2,
                 }),
             CancellationToken.None);
 
@@ -57,8 +61,9 @@ public abstract partial class EnterpriseTests
             {
                 var id = BitConverter.ToInt32(node.Id);
                 Assert.Equal(
-                    (((long)id * 2) - 2, ((long)id * 2) - 1, 1, (long)id - 2),
+                    ((long)id * 2 - 2, (long)id * 2 - 1, 1, (long)id - 2),
                     (node.Left, node.Right, node.Depth, node.Position));
+
                 Assert.Equal(BitConverter.GetBytes(1), node.ParentId);
             });
     }
@@ -71,8 +76,11 @@ public abstract partial class EnterpriseTests
     public async Task StringKeysAndParentAliasesRemainCorrectAcrossRepairBatches()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        var parent = Engine == "PostgreSql" ? "ROOT" : "root";
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        var parent = Engine == "PostgreSql"
+            ? "ROOT"
+            : "root";
+
         await using var setup = database.CreateContext();
 
         // WHY: Constraint-valid but adjacency-inconsistent leaves keep the repair path reachable on every provider.
@@ -81,13 +89,19 @@ public abstract partial class EnterpriseTests
                 .Range(1, 129)
                 .Select(id => new TextNode
                 {
-                    Id = id == 1 ? "ROOT" : $"node{id:D4}",
-                    ParentId = id == 1 ? null : parent,
+                    Id = id == 1
+                        ? "ROOT"
+                        : $"node{id:D4}",
+                    ParentId = id == 1
+                        ? null
+                        : parent,
                     Tree = "scope",
-                    Left = (id * 2L) - 1,
+                    Left = id * 2L - 1,
                     Right = id * 2L,
                     Depth = 0,
-                    Position = id == 1 ? 0 : id - 2,
+                    Position = id == 1
+                        ? 0
+                        : id - 2,
                 }),
             CancellationToken.None);
 
@@ -120,13 +134,15 @@ public abstract partial class EnterpriseTests
             nodes
                 .Skip(1)
                 .Select(node => node.Position));
+
         Assert.All(
             nodes.Skip(1),
             node =>
             {
                 Assert.Equal(
-                    ((node.Position * 2) + 2, (node.Position * 2) + 3, 1),
+                    (node.Position * 2 + 2, node.Position * 2 + 3, 1),
                     (node.Left, node.Right, node.Depth));
+
                 Assert.Equal(parent, node.ParentId);
             });
     }

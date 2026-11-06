@@ -41,6 +41,7 @@ public abstract class TableMappingTests : ProviderTest
                 "ON " + sql.DelimitIdentifier("EntitySplitStructure"),
                 statement,
                 StringComparison.Ordinal));
+
         Assert.DoesNotContain(
             structureIndexes,
             statement => statement.Contains(
@@ -55,7 +56,8 @@ public abstract class TableMappingTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TableSplitContext>(
             Engine,
-            static options => new TableSplitContext(options));
+            static options => new TableSplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<TableSplitNode>();
         var treeId = Guid.NewGuid();
@@ -123,6 +125,7 @@ public abstract class TableMappingTests : ProviderTest
                 (node.Id, node.ParentId, node.Depth, node.Left, node.Right)),
             node => Assert.Equal((3, (int?)1, 1, 2L, 5L), (node.Id, node.ParentId, node.Depth, node.Left, node.Right)),
             node => Assert.Equal((2, (int?)3, 2, 3L, 4L), (node.Id, node.ParentId, node.Depth, node.Left, node.Right)));
+
         Assert.Equal("Kept", initialPayload.Description);
         Assert.Equal("Kept", payload.Description);
     }
@@ -134,7 +137,8 @@ public abstract class TableMappingTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
             Engine,
-            static options => new EntitySplitContext(options));
+            static options => new EntitySplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<EntitySplitNode>();
         var treeId = Guid.NewGuid();

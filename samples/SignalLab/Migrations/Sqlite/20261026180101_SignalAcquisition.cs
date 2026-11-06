@@ -6,7 +6,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab.Migrations.Sqlite
 public partial class SignalAcquisition : Migration
 {
     /// <inheritdoc />
-    protected override void Up(MigrationBuilder migrationBuilder)
+    protected override void Up(
+        MigrationBuilder migrationBuilder
+    )
     {
         migrationBuilder.CreateTable(
             name: "DokaNestedSetTrees_F2BE5E0377B809DD",
@@ -15,11 +17,17 @@ public partial class SignalAcquisition : Migration
                 Scope = table.Column<Guid>(type: "TEXT", nullable: false),
                 TreeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Lifecycle = table.Column<byte>(type: "INTEGER", nullable: false),
-                Revision = table.Column<long>(type: "INTEGER", nullable: false)
+                Revision = table.Column<long>(type: "INTEGER", nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_DokaNestedSetTrees_F2BE5E0377B809DD", x => new { x.Scope, x.TreeId });
+                table.PrimaryKey(
+                    "PK_DokaNestedSetTrees_F2BE5E0377B809DD",
+                    x => new
+                    {
+                        x.Scope,
+                        x.TreeId,
+                    });
             });
 
         migrationBuilder.CreateTable(
@@ -28,11 +36,17 @@ public partial class SignalAcquisition : Migration
             {
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                Code = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false)
+                Code = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_NodeKinds", x => new { x.TenantId, x.Id });
+                table.PrimaryKey(
+                    "PK_NodeKinds",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.Id,
+                    });
             });
 
         migrationBuilder.CreateTable(
@@ -49,25 +63,52 @@ public partial class SignalAcquisition : Migration
                 NestedSetParentId = table.Column<Guid>(type: "TEXT", nullable: true),
                 NestedSetPosition = table.Column<long>(type: "INTEGER", nullable: false),
                 NestedSetRight = table.Column<long>(type: "INTEGER", nullable: false),
-                NestedSetTreeId = table.Column<Guid>(type: "TEXT", nullable: false)
+                NestedSetTreeId = table.Column<Guid>(type: "TEXT", nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_ReportingNodes", x => new { x.TenantId, x.Id });
-                table.UniqueConstraint("AK_ReportingNodes_TenantId_TypeId_Id", x => new { x.TenantId, x.TypeId, x.Id });
+                table.PrimaryKey(
+                    "PK_ReportingNodes",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.Id,
+                    });
+
+                table.UniqueConstraint(
+                    "AK_ReportingNodes_TenantId_TypeId_Id",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.Id,
+                    });
+
                 table.CheckConstraint("CK_NestedSet_DepthMin_706EF85AC4FF", "\"NestedSetDepth\" >= 0");
                 table.CheckConstraint("CK_NestedSet_LeftMin_9C29CC100F5D", "\"NestedSetLeft\" >= 1");
                 table.CheckConstraint("CK_NestedSet_PositionMin_5C730A1DDB5A", "\"NestedSetPosition\" >= 0");
-                table.CheckConstraint("CK_NestedSet_RightAfterLeft_D817C86A9A56", "\"NestedSetRight\" > \"NestedSetLeft\"");
+                table.CheckConstraint(
+                    "CK_NestedSet_RightAfterLeft_D817C86A9A56",
+                    "\"NestedSetRight\" > \"NestedSetLeft\"");
+
                 table.ForeignKey(
                     name: "FK_ReportingNodes_NodeKinds_TenantId_TypeId",
-                    columns: x => new { x.TenantId, x.TypeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                    },
                     principalTable: "NodeKinds",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_ReportingNodes_ReportingNodes_TenantId_NestedSetParentId",
-                    columns: x => new { x.TenantId, x.NestedSetParentId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.NestedSetParentId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -81,14 +122,25 @@ public partial class SignalAcquisition : Migration
                 Id = table.Column<Guid>(type: "TEXT", nullable: false),
                 MeasurementTypeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                UnitCode = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false)
+                UnitCode = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_SignalChannels", x => new { x.TenantId, x.Id });
+                table.PrimaryKey(
+                    "PK_SignalChannels",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.Id,
+                    });
+
                 table.ForeignKey(
                     name: "FK_SignalChannels_NodeKinds_TenantId_MeasurementTypeId",
-                    columns: x => new { x.TenantId, x.MeasurementTypeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.MeasurementTypeId,
+                    },
                     principalTable: "NodeKinds",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -101,14 +153,26 @@ public partial class SignalAcquisition : Migration
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 TypeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
-                Label = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false)
+                Label = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_TagDefinitions", x => new { x.TenantId, x.TypeId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_TagDefinitions",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_TagDefinitions_NodeKinds_TenantId_TypeId",
-                    columns: x => new { x.TenantId, x.TypeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                    },
                     principalTable: "NodeKinds",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -122,21 +186,42 @@ public partial class SignalAcquisition : Migration
                 ParentId = table.Column<Guid>(type: "TEXT", nullable: false),
                 ChildId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FromDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true)
+                ToDate = table.Column<DateOnly>(type: "TEXT", nullable: true),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_LinkAvailability", x => new { x.TenantId, x.ParentId, x.ChildId, x.FromDate });
-                table.CheckConstraint("CK_LinkAvailability_OrderedDays", "\"ToDate\" IS NULL OR \"ToDate\" >= \"FromDate\"");
+                table.PrimaryKey(
+                    "PK_LinkAvailability",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.ParentId,
+                        x.ChildId,
+                        x.FromDate,
+                    });
+
+                table.CheckConstraint(
+                    "CK_LinkAvailability_OrderedDays",
+                    "\"ToDate\" IS NULL OR \"ToDate\" >= \"FromDate\"");
+
                 table.ForeignKey(
                     name: "FK_LinkAvailability_ReportingNodes_TenantId_ChildId",
-                    columns: x => new { x.TenantId, x.ChildId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ChildId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_LinkAvailability_ReportingNodes_TenantId_ParentId",
-                    columns: x => new { x.TenantId, x.ParentId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ParentId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -146,27 +231,37 @@ public partial class SignalAcquisition : Migration
             name: "BurstRecords",
             columns: table => new
             {
-                Sequence = table.Column<long>(type: "INTEGER", nullable: false)
+                Sequence = table
+                    .Column<long>(type: "INTEGER", nullable: false)
                     .Annotation("Sqlite:Autoincrement", true),
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 SignalId = table.Column<Guid>(type: "TEXT", nullable: false),
                 DeviceId = table.Column<Guid>(type: "TEXT", nullable: false),
                 BucketSize = table.Column<int>(type: "INTEGER", nullable: false),
                 CapturedOn = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                Magnitude = table.Column<double>(type: "REAL", nullable: false)
+                Magnitude = table.Column<double>(type: "REAL", nullable: false),
             },
             constraints: table =>
             {
                 table.PrimaryKey("PK_BurstRecords", x => x.Sequence);
                 table.ForeignKey(
                     name: "FK_BurstRecords_ReportingNodes_TenantId_DeviceId",
-                    columns: x => new { x.TenantId, x.DeviceId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.DeviceId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_BurstRecords_SignalChannels_TenantId_SignalId",
-                    columns: x => new { x.TenantId, x.SignalId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.SignalId,
+                    },
                     principalTable: "SignalChannels",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -176,27 +271,37 @@ public partial class SignalAcquisition : Migration
             name: "PulseRecords",
             columns: table => new
             {
-                Sequence = table.Column<long>(type: "INTEGER", nullable: false)
+                Sequence = table
+                    .Column<long>(type: "INTEGER", nullable: false)
                     .Annotation("Sqlite:Autoincrement", true),
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 ChannelId = table.Column<Guid>(type: "TEXT", nullable: false),
                 NodeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Granularity = table.Column<int>(type: "INTEGER", nullable: false),
                 Day = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                PulseCount = table.Column<double>(type: "REAL", nullable: false)
+                PulseCount = table.Column<double>(type: "REAL", nullable: false),
             },
             constraints: table =>
             {
                 table.PrimaryKey("PK_PulseRecords", x => x.Sequence);
                 table.ForeignKey(
                     name: "FK_PulseRecords_ReportingNodes_TenantId_NodeId",
-                    columns: x => new { x.TenantId, x.NodeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.NodeId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_PulseRecords_SignalChannels_TenantId_ChannelId",
-                    columns: x => new { x.TenantId, x.ChannelId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ChannelId,
+                    },
                     principalTable: "SignalChannels",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -206,27 +311,37 @@ public partial class SignalAcquisition : Migration
             name: "SweepRecords",
             columns: table => new
             {
-                Sequence = table.Column<long>(type: "INTEGER", nullable: false)
+                Sequence = table
+                    .Column<long>(type: "INTEGER", nullable: false)
                     .Annotation("Sqlite:Autoincrement", true),
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 StreamId = table.Column<Guid>(type: "TEXT", nullable: false),
                 ReceiverId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Resolution = table.Column<int>(type: "INTEGER", nullable: false),
                 CompletedOn = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                IntegratedTicks = table.Column<double>(type: "REAL", nullable: false)
+                IntegratedTicks = table.Column<double>(type: "REAL", nullable: false),
             },
             constraints: table =>
             {
                 table.PrimaryKey("PK_SweepRecords", x => x.Sequence);
                 table.ForeignKey(
                     name: "FK_SweepRecords_ReportingNodes_TenantId_ReceiverId",
-                    columns: x => new { x.TenantId, x.ReceiverId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.ReceiverId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_SweepRecords_SignalChannels_TenantId_StreamId",
-                    columns: x => new { x.TenantId, x.StreamId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.StreamId,
+                    },
                     principalTable: "SignalChannels",
                     principalColumns: ["TenantId", "Id"],
                     onDelete: ReferentialAction.Restrict);
@@ -239,14 +354,28 @@ public partial class SignalAcquisition : Migration
                 TenantId = table.Column<Guid>(type: "TEXT", nullable: false),
                 TypeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
-                Value = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false, collation: "BINARY")
+                Value = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false, collation: "BINARY"),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_TagChoices", x => new { x.TenantId, x.TypeId, x.FieldCode, x.Value });
+                table.PrimaryKey(
+                    "PK_TagChoices",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.FieldCode,
+                        x.Value,
+                    });
+
                 table.ForeignKey(
                     name: "FK_TagChoices_TagDefinitions_TenantId_TypeId_FieldCode",
-                    columns: x => new { x.TenantId, x.TypeId, x.FieldCode },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.FieldCode,
+                    },
                     principalTable: "TagDefinitions",
                     principalColumns: ["TenantId", "TypeId", "FieldCode"],
                     onDelete: ReferentialAction.Restrict);
@@ -260,20 +389,39 @@ public partial class SignalAcquisition : Migration
                 NodeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 FieldCode = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false, collation: "BINARY"),
                 TypeId = table.Column<Guid>(type: "TEXT", nullable: false),
-                Value = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false, collation: "BINARY")
+                Value = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false, collation: "BINARY"),
             },
             constraints: table =>
             {
-                table.PrimaryKey("PK_TagValues", x => new { x.TenantId, x.NodeId, x.FieldCode });
+                table.PrimaryKey(
+                    "PK_TagValues",
+                    x => new
+                    {
+                        x.TenantId,
+                        x.NodeId,
+                        x.FieldCode,
+                    });
+
                 table.ForeignKey(
                     name: "FK_TagValues_ReportingNodes_TenantId_TypeId_NodeId",
-                    columns: x => new { x.TenantId, x.TypeId, x.NodeId },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.NodeId,
+                    },
                     principalTable: "ReportingNodes",
                     principalColumns: ["TenantId", "TypeId", "Id"],
                     onDelete: ReferentialAction.Restrict);
+
                 table.ForeignKey(
                     name: "FK_TagValues_TagDefinitions_TenantId_TypeId_FieldCode",
-                    columns: x => new { x.TenantId, x.TypeId, x.FieldCode },
+                    columns: x => new
+                    {
+                        x.TenantId,
+                        x.TypeId,
+                        x.FieldCode,
+                    },
                     principalTable: "TagDefinitions",
                     principalColumns: ["TenantId", "TypeId", "FieldCode"],
                     onDelete: ReferentialAction.Restrict);
@@ -356,7 +504,9 @@ public partial class SignalAcquisition : Migration
     }
 
     /// <inheritdoc />
-    protected override void Down(MigrationBuilder migrationBuilder)
+    protected override void Down(
+        MigrationBuilder migrationBuilder
+    )
     {
         migrationBuilder.DropTable(
             name: "BurstRecords");

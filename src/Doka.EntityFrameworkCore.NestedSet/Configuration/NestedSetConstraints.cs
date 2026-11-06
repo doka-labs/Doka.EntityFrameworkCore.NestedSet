@@ -28,6 +28,7 @@ internal static class NestedSetConstraints
                 store,
                 "RightAfterLeft",
                 $"{sql.DelimitIdentifier(right)} > {sql.DelimitIdentifier(left)}");
+
             EnsureCheck(entity, store, "DepthMin", $"{sql.DelimitIdentifier(depth)} >= 0");
             EnsureCheck(entity, store, "PositionMin", $"{sql.DelimitIdentifier(position)} >= 0");
         }
@@ -74,7 +75,7 @@ internal static class NestedSetConstraints
                 $"Nested-set check constraint '{name}' conflicts with application SQL '{conflicting.Sql}'.");
         }
 
-        var configured = entity.Builder.HasCheckConstraint(name, expression, false)
+        var configured = entity.Builder.HasCheckConstraint(name, expression)
             ?? throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' rejected required check constraint '{name}'.");
     }
@@ -98,12 +99,13 @@ internal static class NestedSetConstraints
         var principalKey = entity
                 .GetKeys()
                 .SingleOrDefault(key => key.Properties.SequenceEqual(principal))
+
             // WHY: EF inheritance keys belong to root metadata even when an independently configured concrete
             // TPC hierarchy needs a scope-qualified parent key over properties inherited from that root.
             ?? entity
                 .GetRootType()
                 .Builder
-                .HasKey(principal, false)
+                .HasKey(principal)
                 ?.Metadata
             ?? throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' rejected its required parent identity key.");
@@ -123,8 +125,8 @@ internal static class NestedSetConstraints
         }
 
         if (!dependent
-                .Zip(principal, RelationallyCompatible)
-                .All(compatible => compatible))
+            .Zip(principal, RelationallyCompatible)
+            .All(compatible => compatible))
         {
             if (candidates.Length > 0)
             {
@@ -153,7 +155,7 @@ internal static class NestedSetConstraints
 
         var relationship = exact.SingleOrDefault()
                 ?.Builder
-            ?? entity.Builder.HasRelationship(entity, dependent, principalKey, false)
+            ?? entity.Builder.HasRelationship(entity, dependent, principalKey)
             ?? throw new InvalidOperationException(
                 $"Nested-set entity '{entity.Name}' rejected its required parent relationship.");
 

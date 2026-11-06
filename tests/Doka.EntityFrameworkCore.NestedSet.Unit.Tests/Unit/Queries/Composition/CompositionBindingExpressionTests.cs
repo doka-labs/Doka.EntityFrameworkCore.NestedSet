@@ -9,6 +9,9 @@ public sealed partial class CompositionBindingExpressionTests(
     ITestOutputHelper output
 )
 {
+    /// <summary>Gets the second seeded tree without allocating mutable shared identity state.</summary>
+    private static Guid OtherTree => new("d74a68e0-0000-4000-8000-000000000002");
+
     /// <summary>A scoped tree has one owned predicate rather than repeated EF-visible Where calls.</summary>
     [Fact]
     public void ScopeAndTreeUseOneOwnedPredicate()
@@ -19,16 +22,19 @@ public sealed partial class CompositionBindingExpressionTests(
             .AddInterceptors(boundary, boundary.Commands);
 
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var root = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping);
         var scoped = root.ForScope(11);
 
         // Act
         var tree = scoped.InTree(Guid.Empty);
-        var treeCalls = WhereCalls(BoundRoot(tree).Expression);
+        var treeCalls = WhereCalls(
+            BoundRoot(tree)
+                .Expression);
 
         // Assert
         Assert.Equal(1, treeCalls);
@@ -52,9 +58,10 @@ public sealed partial class CompositionBindingExpressionTests(
         // Arrange
         var options = Options();
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var scopedEntity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var unscopedEntity = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
@@ -66,8 +73,10 @@ public sealed partial class CompositionBindingExpressionTests(
         var expression = binding switch
         {
             "unbound" => unscoped.OrderedNodes.Expression,
-            "scope" => scoped.ForScope(11).OrderedNodes.Expression,
-            "tree" => unscoped.InTree(Guid.Empty, operations).Nodes.Expression,
+            "scope" => scoped.ForScope(11)
+                .OrderedNodes.Expression,
+            "tree" => unscoped.InTree(Guid.Empty, operations)
+                .Nodes.Expression,
             _ => throw new ArgumentOutOfRangeException(nameof(binding)),
         };
 
@@ -88,9 +97,10 @@ public sealed partial class CompositionBindingExpressionTests(
             .AddInterceptors(boundary, boundary.Commands);
 
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var tree = context
             .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
@@ -125,11 +135,12 @@ public sealed partial class CompositionBindingExpressionTests(
         await connection.OpenAsync(CancellationToken.None);
         var options = Options(connection);
         await using var services = Services(options.Options);
-        await using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
-        await SeedBindingsAsync(context);
+        await SeedBindingsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
         var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
@@ -137,7 +148,10 @@ public sealed partial class CompositionBindingExpressionTests(
             .InTree(Guid.Empty, mutations);
 
         var rebound = Query(original)
-            .ForScope(sameScope ? 11 : 22);
+            .ForScope(
+                sameScope
+                    ? 11
+                    : 22);
 
         // Act
         var originalRows = await original
@@ -152,12 +166,26 @@ public sealed partial class CompositionBindingExpressionTests(
 
         // Assert
         Assert.Equal([1], originalRows);
-        Assert.Equal(sameScope ? [1] : Array.Empty<int>(), reboundRows);
-        Assert.Equal(1,
-            WhereCalls(BoundRoot(original).Expression));
-        Assert.Equal(1,
-            WhereCalls(Assert.IsAssignableFrom<MethodCallExpression>(
-                    rebound.OrderedNodes.Expression).Arguments[0]));
+        Assert.Equal(
+            sameScope
+                ? [1]
+                : Array.Empty<int>(),
+            reboundRows);
+
+        Assert.Equal(
+            1,
+            WhereCalls(
+                BoundRoot(original)
+                    .Expression));
+
+        Assert.Equal(
+            1,
+            WhereCalls(
+                Assert
+                    .IsAssignableFrom<MethodCallExpression>(
+                        rebound.OrderedNodes.Expression)
+                    .Arguments[0]));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -175,11 +203,12 @@ public sealed partial class CompositionBindingExpressionTests(
         await connection.OpenAsync(CancellationToken.None);
         var options = Options(connection);
         await using var services = Services(options.Options);
-        await using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
-        await SeedBindingsAsync(context);
+        await SeedBindingsAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var mutations = new NestedSetMutationBinding<CompositionGuardNode>(context, entity);
         var original = new NestedSetQuery<CompositionGuardNode>(context, entity)
@@ -187,7 +216,11 @@ public sealed partial class CompositionBindingExpressionTests(
             .InTree(Guid.Empty, mutations);
 
         var rebound = Query(original)
-            .InTree(sameTree ? Guid.Empty : OtherTree, mutations);
+            .InTree(
+                sameTree
+                    ? Guid.Empty
+                    : OtherTree,
+                mutations);
 
         // Act
         var originalRows = await original
@@ -202,9 +235,18 @@ public sealed partial class CompositionBindingExpressionTests(
 
         // Assert
         Assert.Equal([1], originalRows);
-        Assert.Equal(sameTree ? [1] : Array.Empty<int>(), reboundRows);
-        Assert.Equal(1,
-            WhereCalls(BoundRoot(rebound).Expression));
+        Assert.Equal(
+            sameTree
+                ? [1]
+                : Array.Empty<int>(),
+            reboundRows);
+
+        Assert.Equal(
+            1,
+            WhereCalls(
+                BoundRoot(rebound)
+                    .Expression));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -219,9 +261,10 @@ public sealed partial class CompositionBindingExpressionTests(
             .AddInterceptors(boundary, boundary.Commands);
 
         using var services = Services(options.Options);
-        using var context = new CompositionGuardContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        using var context = new CompositionGuardContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var entity = context.Model.FindEntityType(CompositionGuardContext.ScopedMapping)!;
         var source = context
@@ -268,9 +311,6 @@ public sealed partial class CompositionBindingExpressionTests(
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Gets the second seeded tree without allocating mutable shared identity state.</summary>
-    private static Guid OtherTree => new("d74a68e0-0000-4000-8000-000000000002");
-
     /// <summary>Extracts the exact current binding below its presentation ordering.</summary>
     private static IQueryable<CompositionGuardNode> BoundRoot(
         NestedSetTree<CompositionGuardNode, Guid> tree
@@ -285,9 +325,10 @@ public sealed partial class CompositionBindingExpressionTests(
     private static NestedSetQuery<CompositionGuardNode> Query(
         NestedSetTree<CompositionGuardNode, Guid> tree
     )
-        => Assert.IsType<NestedSetQuery<CompositionGuardNode>>(tree
-            .GetType()
-            .GetField("_query", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(tree));
+        => Assert.IsType<NestedSetQuery<CompositionGuardNode>>(
+            tree
+                .GetType()
+                .GetField("_query", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(tree));
 
     /// <summary>Creates owned SQLite options for construction or actual in-memory reads.</summary>
     private static DbContextOptionsBuilder<CompositionGuardContext> Options(
@@ -295,11 +336,11 @@ public sealed partial class CompositionBindingExpressionTests(
     )
         => connection is null
             ? new DbContextOptionsBuilder<CompositionGuardContext>().UseSqlite(
-                    "Data Source=:memory:",
-                    provider => provider.UseNestedSets())
+                "Data Source=:memory:",
+                provider => provider.UseNestedSets())
             : new DbContextOptionsBuilder<CompositionGuardContext>().UseSqlite(
-                    connection,
-                    provider => provider.UseNestedSets());
+                connection,
+                provider => provider.UseNestedSets());
 
     /// <summary>Keeps new model variants outside EF's process-global service cache.</summary>
     private static ServiceProvider Services(
@@ -317,17 +358,21 @@ public sealed partial class CompositionBindingExpressionTests(
     }
 
     /// <summary>Seeds identical coordinates in independent scopes and trees without hierarchy mutations.</summary>
+    /// <param name="context">The context used by this fixture operation.</param>
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
     private static async Task SeedBindingsAsync(
-        CompositionGuardContext context
+        CompositionGuardContext context,
+        CancellationToken cancellationToken
     )
     {
-        await context.Database.EnsureCreatedAsync(CancellationToken.None);
+        await context.Database.EnsureCreatedAsync(cancellationToken);
         await context
             .Set<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
             .AddRangeAsync(
                 [Node(1, 11, Guid.Empty), Node(2, 22, Guid.Empty), Node(3, 11, OtherTree)],
-                CancellationToken.None);
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+                cancellationToken);
+
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
     }
 

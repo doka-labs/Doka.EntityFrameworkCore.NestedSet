@@ -46,7 +46,11 @@ public sealed class SupervisorOriginSelectionTests
             .Select(person => Candidate(7, person))
             .ToArray();
 
-        var batch = Batch(people == 0 ? Missing(7) : Found(7, candidates), Missing(9));
+        var batch = Batch(
+            people == 0
+                ? Missing(7)
+                : Found(7, candidates),
+            Missing(9));
 
         // Act
         var result = SupervisorSelectionRules.Across(batch, new RequireUniquePerson());
@@ -187,7 +191,9 @@ public sealed class SupervisorOriginSelectionTests
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21))) with { Complete = false };
-        AcrossOriginsSelection selection = prioritize ? new FromPrioritizedOrigin([7]) : new RequireUniquePerson();
+        AcrossOriginsSelection selection = prioritize
+            ? new FromPrioritizedOrigin([7])
+            : new RequireUniquePerson();
 
         // Act
         var result = SupervisorSelectionRules.Across(batch, selection);
@@ -245,7 +251,10 @@ public sealed class SupervisorOriginSelectionTests
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21)));
-        var selection = new FromPrioritizedOrigin(repeated ? [7, 7] : []);
+        var selection = new FromPrioritizedOrigin(
+            repeated
+                ? [7, 7]
+                : []);
 
         // Act
         var error = Record.Exception(() => SupervisorSelectionRules.Across(batch, selection));

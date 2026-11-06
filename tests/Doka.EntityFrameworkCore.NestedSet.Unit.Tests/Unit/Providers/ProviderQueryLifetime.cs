@@ -36,7 +36,11 @@ internal static class ProviderQueryLifetime
             selector = compose;
         }
 
-        return [new(probe), new(source), new(request), new(selector), new(query!)];
+        return
+        [
+            new WeakReference(probe), new WeakReference(source), new WeakReference(request),
+            new WeakReference(selector), new WeakReference(query!),
+        ];
     }
 
     /// <summary>Exercises closed typed provider methods with an actual collectible row identity.</summary>
@@ -47,7 +51,8 @@ internal static class ProviderQueryLifetime
     )
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(
-            new AssemblyName("NestedSet.TypedQueryArgument."
+            new AssemblyName(
+                "NestedSet.TypedQueryArgument."
                 + Guid
                     .NewGuid()
                     .ToString("N")),
@@ -68,7 +73,8 @@ internal static class ProviderQueryLifetime
 
         // WHY: The only surviving references are weak. This probes Doka's real closed-method caches,
         // rather than the removed optional-binding cache or a synthetic replacement provider method.
-        return [new(assembly), new(row), new(probe), new(query)];
+        return
+            [new WeakReference(assembly), new WeakReference(row), new WeakReference(probe), new WeakReference(query)];
     }
 
     /// <summary>Constructs the actual public operator after the CLR closes the collectible row type.</summary>
@@ -97,7 +103,8 @@ internal static class ProviderQueryLifetime
         switch (position)
         {
             case 0:
-                adapter.TryOrderedJoin(probe.Source<T>(),
+                adapter.TryOrderedJoin(
+                    probe.Source<T>(),
                     probe.Source<int>(),
                     _ => 1,
                     value => value,
@@ -106,7 +113,8 @@ internal static class ProviderQueryLifetime
 
                 return outer!;
             case 1:
-                adapter.TryOrderedJoin(probe.Source<int>(),
+                adapter.TryOrderedJoin(
+                    probe.Source<int>(),
                     probe.Source<T>(),
                     value => value,
                     _ => 1,
@@ -115,16 +123,18 @@ internal static class ProviderQueryLifetime
 
                 return inner!;
             case 2:
-                adapter.TryOrderedJoin(probe.Source<int>(),
+                adapter.TryOrderedJoin(
                     probe.Source<int>(),
-                    _ => default(T)!,
+                    probe.Source<int>(),
+                    _ => default!,
                     _ => default(T)!,
                     (left, right) => left + right,
                     out var key);
 
                 return key!;
             case 3:
-                adapter.TryOrderedJoin(probe.Source<int>(),
+                adapter.TryOrderedJoin(
+                    probe.Source<int>(),
                     probe.Source<int>(),
                     value => value,
                     value => value,

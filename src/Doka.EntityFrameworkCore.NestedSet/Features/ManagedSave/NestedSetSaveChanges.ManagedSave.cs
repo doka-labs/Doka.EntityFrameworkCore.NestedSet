@@ -172,7 +172,9 @@ internal static partial class NestedSetSaveChanges
 
         // WHY: A persisted ordinary FK has the same collection semantics with or without an ordering candidate,
         // and with either native save API. Only a coordinated save supplies an outer rollback owner.
-        return (state is { ManagedDepth: > 0 } ? state.ManagedPersistenceCompleted : null, capture(entries));
+        return (state is { ManagedDepth: > 0 }
+            ? state.ManagedPersistenceCompleted
+            : null, capture(entries));
     }
 
     /// <summary>Allows the coordinated save to reuse the exact-tree mutation engine after its payload save.</summary>

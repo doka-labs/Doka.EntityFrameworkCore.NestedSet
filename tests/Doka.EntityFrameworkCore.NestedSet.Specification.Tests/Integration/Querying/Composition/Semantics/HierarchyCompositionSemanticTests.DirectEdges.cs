@@ -22,44 +22,85 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = Guid.NewGuid();
         await context.AddRangeAsync(
-        [
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 11, Left = 1, Right = 6, Candidate = true,
-            },
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 12, ParentId = 11, Left = 2, Right = 5, Depth = 1,
-            },
-            new CompositionNode
-            {
-                Scope = scope, TreeId = tree, Id = 13, ParentId = parentId, Left = 3, Right = 4, Depth = 2,
-            },
-        ], CancellationToken.None);
+            [
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 11,
+                    Left = 1,
+                    Right = 6,
+                    Candidate = true,
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 12,
+                    ParentId = 11,
+                    Left = 2,
+                    Right = 5,
+                    Depth = 1,
+                },
+                new CompositionNode
+                {
+                    Scope = scope,
+                    TreeId = tree,
+                    Id = 13,
+                    ParentId = parentId,
+                    Left = 3,
+                    Right = 4,
+                    Depth = 2,
+                },
+            ],
+            CancellationToken.None);
 
         // WHY: The fixture boundary deliberately admits corrupt structure so the query must reject its incomplete path.
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var pairs = hierarchy.SelectSubtrees(node => node.Id == 11,
-                (upper, node, distance) => new { Upper = upper, Node = node })
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var pairs = hierarchy
+            .SelectSubtrees(
+                node => node.Id == 11,
+                (upper, node, distance) => new
+                {
+                    Upper = upper,
+                    Node = node,
+                })
             .Where(row => row.Node.Id == 13);
 
         // Act
         var query = nearest
-            ? hierarchy.WhereNearestAncestorOrSelf(pairs, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => true)
-            : hierarchy.WherePathEdges(pairs, row => row.Upper, row => row.Node,
+            ? hierarchy.WhereNearestAncestorOrSelf(
+                pairs,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => true)
+            : hierarchy.WherePathEdges(
+                pairs,
+                row => row.Upper,
+                row => row.Node,
                 (row, parent, child) => true);
 
-        var actual = await query.Select(row => row.Node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(row => row.Node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
-        int[] expected = parentId == 12 ? [13] : [];
+        int[] expected = parentId == 12
+            ? [13]
+            : [];
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);

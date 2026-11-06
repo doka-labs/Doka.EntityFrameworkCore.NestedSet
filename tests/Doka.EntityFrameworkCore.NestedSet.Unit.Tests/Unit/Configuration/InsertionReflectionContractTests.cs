@@ -184,8 +184,10 @@ public sealed class InsertionReflectionContractTests
         Assert.Equal(1, update.GetOriginalValue<int?>(parentProperty));
         Assert.False(update.IsModified(parentProperty));
         Assert.Equal(EntityState.Unchanged, update.EntityState);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Known detached members enter only the native reference set, without implicit graph tracking.</summary>
@@ -214,14 +216,21 @@ public sealed class InsertionReflectionContractTests
         Assert.Equal(2, snapshot.Count);
         Assert.True(snapshot.Contains(first));
         Assert.True(snapshot.Contains(sameKey));
-        Assert.Collection(parent.Children,
+        Assert.Collection(
+            parent.Children,
             member => Assert.Same(first, member),
             member => Assert.Same(sameKey, member));
-        Assert.Same(parent,
-            Assert.Single(context.ChangeTracker.Entries()).Entity);
+
+        Assert.Same(
+            parent,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Equal(EntityState.Unchanged, update.EntityState);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Removing a recorded relationship never edits its current collection or tracked entity state.</summary>
@@ -253,8 +262,10 @@ public sealed class InsertionReflectionContractTests
         Assert.Same(parent, child.Parent);
         Assert.Equal(1, child.ParentId);
         Assert.All(context.ChangeTracker.Entries(), entry => Assert.Equal(EntityState.Unchanged, entry.State));
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Closed handler identity matches EF event subscriptions and never retains another entry.</summary>
@@ -270,7 +281,7 @@ public sealed class InsertionReflectionContractTests
         // Arrange
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
         var contract = NestedSetInsertionContract.Instance;
-        var first = contract.Entry(context.Attach(HierarchyChangeDetectionTests.CreateNode(1)));
+        var first = contract.Entry(context.Attach(HierarchyChangeDetectionTests.CreateNode()));
         var second = contract.Entry(context.Attach(HierarchyChangeDetectionTests.CreateNode(2)));
         var factory = NotificationFactory(contract, kind);
 
@@ -288,8 +299,10 @@ public sealed class InsertionReflectionContractTests
         Assert.Equal(first.GetType(), handler.Method.DeclaringType);
         Assert.Equal(EntityState.Unchanged, first.EntityState);
         Assert.Equal(EntityState.Unchanged, second.EntityState);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Exact property delegates pause EF, retain application callbacks and resume native tracking.</summary>
@@ -305,7 +318,9 @@ public sealed class InsertionReflectionContractTests
 
         // WHY: Notification originals are lazy. Establish a real original before testing that pausing EF
         // preserves it; otherwise resumption correctly snapshots the current value when its slot is created.
-        tracked.Property(value => value.Payload).OriginalValue = "initial";
+        tracked.Property(value => value.Payload)
+            .OriginalValue = "initial";
+
         var update = contract.Entry(tracked);
         var property = update.EntityType.FindProperty(nameof(HierarchyChangeDetectionTests.ProbeNode.Payload))!;
         var originalBefore = update.GetOriginalValue<string>(property);
@@ -339,8 +354,10 @@ public sealed class InsertionReflectionContractTests
         Assert.Equal(2, applicationChanging);
         Assert.Equal(2, applicationChanged);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Collection event pause leaves raw members untracked; restoring its handler resumes EF fixup.</summary>
@@ -349,7 +366,7 @@ public sealed class InsertionReflectionContractTests
     {
         // Arrange
         await using var context = new NotificationBindingContext();
-        var parent = HierarchyChangeDetectionTests.CreateNode(1);
+        var parent = HierarchyChangeDetectionTests.CreateNode();
         var child = HierarchyChangeDetectionTests.CreateNode(2);
         var contract = NestedSetInsertionContract.Instance;
         var update = contract.Entry(context.Attach(parent));
@@ -369,23 +386,28 @@ public sealed class InsertionReflectionContractTests
         children.Remove(child);
         children.CollectionChanged += handler;
         children.Add(child);
-        var childState = context.Entry(child).State;
+        var childState = context.Entry(child)
+            .State;
 
         // Assert
         Assert.Equal(1, pausedEntries);
-        Assert.Equal(2,
+        Assert.Equal(
+            2,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.Equal(EntityState.Added, childState);
         Assert.Same(parent, child.Parent);
         Assert.Equal(parent.Id, child.ParentId);
         Assert.Same(children, parent.Children);
         Assert.Equal(3, applicationEvents);
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Notification handlers require exact argument and return types before any model can run.</summary>
@@ -420,8 +442,16 @@ public sealed class InsertionReflectionContractTests
             _ => throw new ArgumentOutOfRangeException(nameof(member)),
         };
 
-        Type[] parameters = [typeof(object), wrongReturn ? arguments : typeof(EventArgs)];
-        var result = wrongReturn ? typeof(object) : typeof(void);
+        Type[] parameters =
+        [
+            typeof(object), wrongReturn
+                ? arguments
+                : typeof(EventArgs),
+        ];
+
+        var result = wrongReturn
+            ? typeof(object)
+            : typeof(void);
 
         // Act
         var error = Record.Exception(() => resolve.Invoke(
@@ -477,7 +507,10 @@ public sealed class InsertionReflectionContractTests
             BindingFlags.Instance | BindingFlags.NonPublic)!;
 
         var scalar = member == "SetRelationshipSnapshotValue";
-        var expectedMetadata = scalar ? typeof(IPropertyBase) : typeof(INavigationBase);
+        var expectedMetadata = scalar
+            ? typeof(IPropertyBase)
+            : typeof(INavigationBase);
+
         Type[] parameters =
         [
             wrongReturn
@@ -488,7 +521,9 @@ public sealed class InsertionReflectionContractTests
             typeof(object),
         ];
 
-        var result = wrongReturn ? typeof(object) : typeof(void);
+        var result = wrongReturn
+            ? typeof(object)
+            : typeof(void);
 
         // Act
         var error = Record.Exception(() => resolve.Invoke(
@@ -527,10 +562,14 @@ public sealed class InsertionReflectionContractTests
 
         Type[] parameters =
         [
-            typeof(IReadOnlyList<object>), wrongReturn ? typeof(IForeignKey) : typeof(IReadOnlyForeignKey),
+            typeof(IReadOnlyList<object>), wrongReturn
+                ? typeof(IForeignKey)
+                : typeof(IReadOnlyForeignKey),
         ];
 
-        var result = wrongReturn ? typeof(object) : typeof(IEnumerable<IUpdateEntry>);
+        var result = wrongReturn
+            ? typeof(object)
+            : typeof(IEnumerable<IUpdateEntry>);
 
         // Act
         var error = Record.Exception(() => resolve.Invoke(
@@ -615,7 +654,9 @@ public sealed class InsertionReflectionContractTests
             Assert.False(initiallyCreated);
             Assert.Same(native, registered);
             Assert.True((bool)created.GetValue(lazy)!);
-            Assert.False(Assert.Single(options.Options.Extensions).Info.IsDatabaseProvider);
+            Assert.False(
+                Assert.Single(options.Options.Extensions)
+                    .Info.IsDatabaseProvider);
         }
         finally
         {
@@ -654,6 +695,7 @@ public sealed class InsertionReflectionContractTests
             entity
                 .Property(node => node.Id)
                 .ValueGeneratedNever();
+
             entity
                 .HasOne(node => node.Parent)
                 .WithMany(node => node.Children)

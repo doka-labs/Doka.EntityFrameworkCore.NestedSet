@@ -7,8 +7,9 @@ internal sealed class NestedSetIssueCollector<TKey>
     /// <summary>Maximum retained issue keys in a tree-bound report or rebuild plan.</summary>
     internal const int ReportLimit = 1024;
 
-    private readonly int _limit;
     private readonly Dictionary<NestedSetValidationCode, long> _counts = new();
+
+    private readonly int _limit;
 
     /// <summary>Creates a collector with a maximum number of retained node diagnostics.</summary>
     internal NestedSetIssueCollector(

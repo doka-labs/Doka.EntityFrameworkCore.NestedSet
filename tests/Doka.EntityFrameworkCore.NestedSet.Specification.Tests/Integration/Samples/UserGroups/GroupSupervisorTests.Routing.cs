@@ -25,32 +25,62 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
-            context, data, sourceOwner, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue");
+            context,
+            data,
+            sourceOwner,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await AddMetadataAsync(
-            context, data, candidateOwner, data.Users[1], data.Groups[4], 3, "ManagerRoute", "lane-blue");
+            context,
+            data,
+            candidateOwner,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ManagerRoute",
+            "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         var request = data.Request(group: data.Groups[5]) with
         {
             Matches =
             [
-                new((App.MetadataOwner)sourceOwner, "ChannelClass", (App.MetadataOwner)candidateOwner, "ManagerRoute"),
+                new App.MetadataMatch(
+                    (App.MetadataOwner)sourceOwner,
+                    "ChannelClass",
+                    (App.MetadataOwner)candidateOwner,
+                    "ManagerRoute"),
             ],
         };
 
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.HighestBusinessPriority, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.HighestBusinessPriority,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
         Assert.Equal(App.SupervisorResolutionStatus.Found, origin.Status);
-        Assert.Equal(data.Users[1], Assert.Single(origin.Evidence).CandidateUserId);
+        Assert.Equal(
+            data.Users[1],
+            Assert.Single(origin.Evidence)
+                .CandidateUserId);
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
     }
@@ -65,32 +95,66 @@ public abstract partial class GroupSupervisorTests
     [InlineData("KEY-ABC123")]
     [InlineData("key-other")]
     [InlineData("lane-blue ")]
-    public async Task InvalidRoutingValuesCannotMatch(string? value)
+    public async Task InvalidRoutingValuesCannotMatch(
+        string? value
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "lane-blue");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ManagerRoute", value);
+        await AddMetadataAsync(
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "lane-blue",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ManagerRoute",
+            value,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
             Groups = new App.NthTypeGroupThenValidate(3, 1),
             Matches =
             [
-                new(App.MetadataOwner.SourceUser, "ChannelClass", App.MetadataOwner.CandidateMembership, "ManagerRoute"),
+                new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    "ChannelClass",
+                    App.MetadataOwner.CandidateMembership,
+                    "ManagerRoute"),
             ],
         };
 
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
-        Assert.Equal(App.SupervisorResolutionStatus.NotFound, Assert.Single(result.Origins).Status);
+        Assert.Equal(
+            App.SupervisorResolutionStatus.NotFound,
+            Assert.Single(result.Origins)
+                .Status);
+
         Assert.Single(probe.Commands);
     }
 
@@ -99,48 +163,133 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MetadataAndConditionsCannotMixDifferentPeople(bool matchingPerson)
+    public async Task MetadataAndConditionsCannotMixDifferentPeople(
+        bool matchingPerson
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "ChannelClass", "channel-A");
-        await AddMetadataAsync(context, data, 0, data.Users[0], data.Groups[5], 4, "RoutingZone", "zone-A");
-        await AddMetadataAsync(context, data, 4, data.Users[1], data.Groups[4], 3, "ChannelClass", "channel-A");
         await AddMetadataAsync(
-            context, data, 4, data.Users[1], data.Groups[4], 3, "RoutingZone", matchingPerson ? "zone-A" : "zone-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "ChannelClass", "channel-B");
-        await AddMetadataAsync(context, data, 4, data.Users[2], data.Groups[4], 3, "RoutingZone", "zone-A");
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "ChannelClass",
+            "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            0,
+            data.Users[0],
+            data.Groups[5],
+            4,
+            "RoutingZone",
+            "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "ChannelClass",
+            "channel-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[1],
+            data.Groups[4],
+            3,
+            "RoutingZone",
+            matchingPerson
+                ? "zone-A"
+                : "zone-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[2],
+            data.Groups[4],
+            3,
+            "ChannelClass",
+            "channel-B",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await AddMetadataAsync(
+            context,
+            data,
+            4,
+            data.Users[2],
+            data.Groups[4],
+            3,
+            "RoutingZone",
+            "zone-A",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.SaveChangesAsync(CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
             Groups = new App.NthTypeGroupThenValidate(3, 1),
             Matches =
             [
-                new(App.MetadataOwner.SourceUser, "ChannelClass", App.MetadataOwner.CandidateMembership, "ChannelClass"),
-                new(App.MetadataOwner.SourceUser, "RoutingZone", App.MetadataOwner.CandidateMembership, "RoutingZone"),
+                new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    "ChannelClass",
+                    App.MetadataOwner.CandidateMembership,
+                    "ChannelClass"),
+                new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    "RoutingZone",
+                    App.MetadataOwner.CandidateMembership,
+                    "RoutingZone"),
             ],
         };
 
         probe.Enabled = true;
 
         // Act
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         var origin = Assert.Single(result.Origins);
         Assert.Equal(
-            matchingPerson ? App.SupervisorResolutionStatus.Found : App.SupervisorResolutionStatus.NotFound,
+            matchingPerson
+                ? App.SupervisorResolutionStatus.Found
+                : App.SupervisorResolutionStatus.NotFound,
             origin.Status);
+
         Assert.Equal(
-            matchingPerson ? new[] { data.Users[1] } : [],
-            origin.Evidence.Select(row => row.CandidateUserId).ToArray());
+            matchingPerson
+                ? new[] { data.Users[1] }
+                : [],
+            origin
+                .Evidence
+                .Select(row => row.CandidateUserId)
+                .ToArray());
+
         Assert.Single(probe.Commands);
     }
 
     /// <summary>Creates real owner-specific rows using the application's definitions and constraints.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context that persists the metadata row.</param>
     /// <param name="data">The tenant-qualified fixture identities.</param>
     /// <param name="owner">The source or candidate metadata owner.</param>
@@ -157,43 +306,53 @@ public abstract partial class GroupSupervisorTests
         int group,
         int type,
         string field,
-        string? value
+        string? value,
+        CancellationToken cancellationToken
     )
     {
         switch ((App.MetadataOwner)owner)
         {
             case App.MetadataOwner.SourceUser:
             case App.MetadataOwner.CandidateUser:
-                await context.UserMetadatas.AddAsync(new App.UserMetadata
-                {
-                    TenantId = data.TenantId,
-                    UserId = user,
-                    FieldCode = field,
-                    Value = value,
-                }, CancellationToken.None);
+                await context.UserMetadatas.AddAsync(
+                    new App.UserMetadata
+                    {
+                        TenantId = data.TenantId,
+                        UserId = user,
+                        FieldCode = field,
+                        Value = value,
+                    },
+                    cancellationToken);
+
                 break;
             case App.MetadataOwner.SourceMembership:
             case App.MetadataOwner.CandidateMembership:
-                await context.MembershipMetadatas.AddAsync(new App.MembershipMetadata
-                {
-                    TenantId = data.TenantId,
-                    UserId = user,
-                    UserGroupId = group,
-                    GroupTypeId = type,
-                    FieldCode = field,
-                    Value = value,
-                }, CancellationToken.None);
+                await context.MembershipMetadatas.AddAsync(
+                    new App.MembershipMetadata
+                    {
+                        TenantId = data.TenantId,
+                        UserId = user,
+                        UserGroupId = group,
+                        GroupTypeId = type,
+                        FieldCode = field,
+                        Value = value,
+                    },
+                    cancellationToken);
+
                 break;
             case App.MetadataOwner.SourceGroup:
             case App.MetadataOwner.CandidateGroup:
-                await context.GroupMetadatas.AddAsync(new App.GroupMetadata
-                {
-                    TenantId = data.TenantId,
-                    UserGroupId = group,
-                    GroupTypeId = type,
-                    FieldCode = field,
-                    Value = value,
-                }, CancellationToken.None);
+                await context.GroupMetadatas.AddAsync(
+                    new App.GroupMetadata
+                    {
+                        TenantId = data.TenantId,
+                        UserGroupId = group,
+                        GroupTypeId = type,
+                        FieldCode = field,
+                        Value = value,
+                    },
+                    cancellationToken);
+
                 break;
         }
     }

@@ -25,14 +25,15 @@ internal static class NestedSetCollations
             NestedSetIdentityLength.Capture(hierarchy, descriptor, provider, typeMappings);
 
             foreach (var role in new[]
-                     {
-                         NestedSetPropertyRoles.NodeKey,
-                         NestedSetPropertyRoles.Parent,
-                         NestedSetPropertyRoles.Scope,
-                         NestedSetPropertyRoles.TreeId,
-                     })
+                {
+                    NestedSetPropertyRoles.NodeKey,
+                    NestedSetPropertyRoles.Parent,
+                    NestedSetPropertyRoles.Scope,
+                    NestedSetPropertyRoles.TreeId,
+                })
             {
-                if (hierarchy.FindAnnotation(NestedSetAnnotationNames.Prefix + role)?.Value is not string name
+                if (hierarchy.FindAnnotation(NestedSetAnnotationNames.Prefix + role)
+                        ?.Value is not string name
                     || hierarchy.FindProperty(name) is not { } property
                     || !HasStringStore(property, typeMappings))
                 {
@@ -80,15 +81,18 @@ internal static class NestedSetCollations
         }
 
         if (context.Model.FindAnnotation(NestedSetAnnotationNames.CollationsCaptured)
-                ?.Value is true)
+            ?.Value is true)
         {
-            var captured = hierarchy.FindAnnotation(AnnotationName(property.Name))?.Value as string
+            var captured = hierarchy.FindAnnotation(AnnotationName(property.Name))
+                    ?.Value as string
                 ?? throw new InvalidOperationException(
                     $"The nested-set collation capture for '{hierarchy.Name}.{property.Name}' is incomplete. "
                     + "Regenerate after configuring the native provider callback's UseNestedSets() before model generation "
                     + "so hierarchy-owned physical identity collations are captured.");
 
-            return captured.Length == 0 ? null : captured;
+            return captured.Length == 0
+                ? null
+                : captured;
         }
 
         if (context
@@ -105,7 +109,9 @@ internal static class NestedSetCollations
 
         // WHY: Legacy convention-free contexts need their design model; a supplied model must never enter here.
         // This fallback runs while constructing immutable mapping/query metadata, not within a mutation loop.
-        var design = context.GetService<IDesignTimeModel>().Model;
+        var design = context.GetService<IDesignTimeModel>()
+            .Model;
+
         var designHierarchy = design.FindEntityType(hierarchy.Name)
             ?? throw new InvalidOperationException("The nested-set design-time hierarchy is not mapped.");
 
@@ -163,11 +169,15 @@ internal static class NestedSetCollations
         // WHY: HasConversion metadata omits an enum-to-text converter selected solely by a store type. Runtime
         // mappings are already cached; conventions ask the same provider service before those mappings exist.
         var mapping = property.FindTypeMapping()
-            ?? (property is IProperty mapped && typeMappings is not null ? typeMappings.FindMapping(mapped) : null);
+            ?? (property is IProperty mapped && typeMappings is not null
+                ? typeMappings.FindMapping(mapped)
+                : null);
 
         return (mapping?.Converter?.ProviderClrType
-            ?? property.GetValueConverter()?.ProviderClrType
-            ?? property.GetProviderClrType() ?? property.ClrType) == typeof(string);
+                ?? property.GetValueConverter()
+                    ?.ProviderClrType
+                ?? property.GetProviderClrType() ?? property.ClrType)
+            == typeof(string);
     }
 
     /// <summary>Keys the runtime-safe facet by property within its exact hierarchy owner.</summary>

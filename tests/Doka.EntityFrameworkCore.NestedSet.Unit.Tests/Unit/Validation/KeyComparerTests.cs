@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards typed key equality against per-lookup boxing while preserving custom EF comparers.</summary>
+
 // WHY: Fixed allocation budgets use the same isolated scheduling as the other comparer measurements.
 [Collection("Allocation measurements")]
 public sealed class KeyComparerTests
@@ -26,7 +27,9 @@ public sealed class KeyComparerTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < 100_000; index++)
         {
-            found += dictionary.ContainsKey(42) ? 1 : 0;
+            found += dictionary.ContainsKey(42)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

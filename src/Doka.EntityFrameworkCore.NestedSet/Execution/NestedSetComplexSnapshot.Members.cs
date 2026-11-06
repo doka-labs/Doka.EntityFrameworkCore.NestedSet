@@ -5,10 +5,10 @@ internal sealed partial class NestedSetComplexSnapshot
     /// <summary>Retains one mapped container and its independently copied list membership.</summary>
     private sealed class MemberSnapshot
     {
+        private readonly object?[]? _items;
         private readonly int[] _ordinals;
         private readonly IComplexProperty _property;
         private readonly object? _value;
-        private readonly object?[]? _items;
         private object? _replacement;
 
         /// <summary>Retains a container without invoking a setter or accepting any pending graph change.</summary>
@@ -32,6 +32,10 @@ internal sealed partial class NestedSetComplexSnapshot
 
         /// <summary>Gets the instance now holding the captured membership.</summary>
         private object? Expected => _replacement ?? _value;
+
+        /// <summary>Distinguishes a boxed struct reference from containers with a CLR reference identity.</summary>
+        private bool IsValueContainer =>
+            _value is not null && _property is { IsCollection: false, ComplexType.ClrType.IsValueType: true };
 
         /// <summary>Restores the original list in place before restoring members nested below its ordinals.</summary>
         internal void Restore(
@@ -100,7 +104,9 @@ internal sealed partial class NestedSetComplexSnapshot
                         .GetGetter()
                         .GetClrValueUsingContainingEntity(root, _ordinals);
 
-                    _replacement = ReferenceEquals(assigned, _value) ? null : assigned;
+                    _replacement = ReferenceEquals(assigned, _value)
+                        ? null
+                        : assigned;
                 }
             }
         }
@@ -126,10 +132,6 @@ internal sealed partial class NestedSetComplexSnapshot
                 throw new InvalidOperationException("The coordinated save could not restore a complex container.");
             }
         }
-
-        /// <summary>Distinguishes a boxed struct reference from containers with a CLR reference identity.</summary>
-        private bool IsValueContainer =>
-            _value is not null && _property is { IsCollection: false, ComplexType.ClrType.IsValueType: true };
 
         /// <summary>Checks exact positional membership, including null slots and repeated references.</summary>
         private bool MatchesItems(

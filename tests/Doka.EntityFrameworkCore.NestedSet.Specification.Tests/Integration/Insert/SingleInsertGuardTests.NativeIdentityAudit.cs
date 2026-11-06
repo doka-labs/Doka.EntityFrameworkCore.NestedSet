@@ -10,7 +10,8 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var marker = new UnrelatedRow { Id = 701 };
         await context.AddAsync(marker, CancellationToken.None);
@@ -41,17 +42,24 @@ public abstract partial class SingleInsertGuardTests
             errors,
             error => error is InvalidOperationException
                 && error.Message.Contains("Discard the context", StringComparison.Ordinal));
+
         Assert.Equal(
             (3, treeId, 8, 71L, 72L, 3, 4L),
             (input.Id.Value, input.TreeId, input.ParentId?.Value, input.Left, input.Right, input.Depth,
                 input.Position));
+
         Assert.Same(details, input.Details);
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
+
         Assert.Empty(
             await context
                 .Set<SingleIdentityNode>()
                 .AsNoTracking()
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Equal(
             1,
             await context
@@ -67,7 +75,8 @@ public abstract partial class SingleInsertGuardTests
         await using var database = new ModelCompatibilityDatabase();
         await using var context = await database.CreateContextAsync<SingleIdentityContext>(
             Engine,
-            static options => new SingleIdentityContext(options));
+            static options => new SingleIdentityContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var marker = new UnrelatedRow { Id = 701 };
         await context.AddAsync(marker, CancellationToken.None);
@@ -90,7 +99,10 @@ public abstract partial class SingleInsertGuardTests
         Assert.Equal(3, input.Id.Value);
         Assert.Same(details, input.Details);
         Assert.Equal((42, 43), (input.GeneratedValue, details.GeneratedValue));
-        Assert.Same(marker, Assert.Single(context.ChangeTracker.Entries()).Entity);
+        Assert.Same(
+            marker,
+            Assert.Single(context.ChangeTracker.Entries())
+                .Entity);
 
         var saved = Assert.Single(
             await context

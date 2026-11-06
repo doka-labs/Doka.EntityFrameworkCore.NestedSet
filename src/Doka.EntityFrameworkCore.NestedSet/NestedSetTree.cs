@@ -7,8 +7,8 @@ public sealed partial class NestedSetTree<TEntity, TTreeId>
     where TEntity : class
     where TTreeId : notnull
 {
-    private readonly NestedSetQuery<TEntity> _query;
     private readonly NestedSetMutationBinding<TEntity> _operations;
+    private readonly NestedSetQuery<TEntity> _query;
     private readonly TTreeId _treeId;
 
     /// <summary>Creates a tree facade from its already validated identity query.</summary>
@@ -24,6 +24,7 @@ public sealed partial class NestedSetTree<TEntity, TTreeId>
         _query = query;
         Nodes = query.OrderedNodes;
         _operations = operations;
+
         // WHY: InTree already created one immutable identity for both the deferred query and maintenance.
         // Cloning again would duplicate configured snapshot work without adding an ownership boundary.
         _treeId = treeId;
@@ -39,20 +40,20 @@ public sealed partial class NestedSetTree<TEntity, TTreeId>
     /// <returns>A stable report containing tree-wide and node-specific issues.</returns>
     public Task<NestedSetValidationReport> ValidateAsync(
         NestedSetValidationLevel level,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => _operations.ValidateTreeAsync(_treeId, level, cancellationToken);
 
     /// <summary>Computes the deterministic rebuild work without modifying the database.</summary>
     /// <param name="cancellationToken">The token used for snapshot reads and plan construction.</param>
     /// <returns>The repairability, bounded batch count, and structural roles that would change.</returns>
     public Task<NestedSetRebuildPlan> PlanRebuildAsync(
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => _operations.PlanRebuildAsync(_treeId, cancellationToken);
 
     /// <summary>Reconstructs bounds, depth, and position from valid stored adjacency and sibling order.</summary>
     /// <param name="cancellationToken">The token used for lock acquisition, traversal, and repair batches.</param>
     /// <returns>A task that completes after the atomic rebuild boundary.</returns>
     public Task RebuildAsync(
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     ) => _operations.RebuildTreeAsync(_treeId, cancellationToken);
 }

@@ -31,13 +31,15 @@ public sealed class TreeRegistryLockSqlTests
         INestedSetTreeLockRequest[] requests =
         [
             new NestedSetTreeLockRequest<Guid, int>(metadata, 1, Guid.Empty, NestedSetTreeLockMode.New),
-            new NestedSetTreeLockRequest<Guid, int>(metadata,
+            new NestedSetTreeLockRequest<Guid, int>(
+                metadata,
                 2,
                 new Guid("00000000-0000-0000-0000-000000000001"),
                 NestedSetTreeLockMode.Existing),
         ];
 
-        var aliases = new NestedSetTreeRowsetAliases("\"RequestedTrees\"",
+        var aliases = new NestedSetTreeRowsetAliases(
+            "\"RequestedTrees\"",
             "\"Scope\"",
             "\"TreeId\"",
             "\"Ordinal\"",
@@ -55,14 +57,18 @@ public sealed class TreeRegistryLockSqlTests
         var sql = adapter.BuildTreeRowsetSource(command, parameters, aliases, requests[0].Mapping, requests);
 
         // Assert
-        Assert.Equal("WITH \"RequestedTrees\" (\"Scope\", \"TreeId\", \"Ordinal\", \"Create\") AS (VALUES "
+        Assert.Equal(
+            "WITH \"RequestedTrees\" (\"Scope\", \"TreeId\", \"Ordinal\", \"Create\") AS (VALUES "
             + "({0}, {1}, 0, 1), ({2}, {3}, 1, 0)) ",
             sql);
+
         Assert.Equal(adapter.TreeRowsetParameterCount(requests.Length, scoped: true), parameters.Count);
-        Assert.Equal(["scope0", "treeId0", "scope1", "treeId1"],
+        Assert.Equal(
+            ["scope0", "treeId0", "scope1", "treeId1"],
             parameters
                 .Cast<DbParameter>()
                 .Select(parameter => parameter.ParameterName));
+
         Assert.Equal(1, ((DbParameter)parameters[0]).Value);
         Assert.Equal(2, ((DbParameter)parameters[2]).Value);
         Assert.Equal(0, boundary.ConnectionStarts);

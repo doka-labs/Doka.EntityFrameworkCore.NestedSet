@@ -7,9 +7,6 @@ internal sealed class OwnedModelTestServices<TContext> : IDisposable, IAsyncDisp
 {
     private readonly ServiceProvider _provider;
 
-    /// <summary>Gets typed options explicitly bound to this owner's provider graph.</summary>
-    internal DbContextOptions<TContext> Options { get; }
-
     /// <summary>Retains the completed provider and the caller's real configuration.</summary>
     private OwnedModelTestServices(
         ServiceProvider provider,
@@ -17,8 +14,18 @@ internal sealed class OwnedModelTestServices<TContext> : IDisposable, IAsyncDisp
     )
     {
         _provider = provider;
-        Options = new DbContextOptionsBuilder<TContext>(options).UseInternalServiceProvider(provider).Options;
+        Options = new DbContextOptionsBuilder<TContext>(options).UseInternalServiceProvider(provider)
+            .Options;
     }
+
+    /// <summary>Gets typed options explicitly bound to this owner's provider graph.</summary>
+    internal DbContextOptions<TContext> Options { get; }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync() => _provider.DisposeAsync();
+
+    /// <inheritdoc />
+    public void Dispose() => _provider.Dispose();
 
     /// <summary>Builds a disposable provider graph without adding intentional variants to EF's global cache.</summary>
     /// <param name="options">The actual provider, warning policy, and nested-set registrations under test.</param>
@@ -44,10 +51,4 @@ internal sealed class OwnedModelTestServices<TContext> : IDisposable, IAsyncDisp
 
         return new OwnedModelTestServices<TContext>(services.BuildServiceProvider(), options);
     }
-
-    /// <inheritdoc />
-    public void Dispose() => _provider.Dispose();
-
-    /// <inheritdoc />
-    public ValueTask DisposeAsync() => _provider.DisposeAsync();
 }

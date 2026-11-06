@@ -35,7 +35,10 @@ internal static class NestedSetInspector<TKey>
         var children = new Dictionary<TKey, List<int>>(keyComparer);
         var roots = new List<int>();
         var errors = new List<string>();
-        var issues = collectIssues ? new NestedSetIssueCollector<TKey>(issueLimit) : null;
+        var issues = collectIssues
+            ? new NestedSetIssueCollector<TKey>(issueLimit)
+            : null;
+
         var keys = parents is null
             ? new HashSet<TKey>(nodes.Select(node => node.Key), keyComparer)
             : null;
@@ -85,10 +88,8 @@ internal static class NestedSetInspector<TKey>
             }
         }
 
-        var siblingComparer = Comparer<int>.Create((
-            first,
-            second
-        ) => nodes[first]
+        var siblingComparer = Comparer<int>.Create((first,
+            second) => nodes[first]
             .Position
             .CompareTo(nodes[second].Position));
 
@@ -168,6 +169,7 @@ internal static class NestedSetInspector<TKey>
                     NestedSetValidationCode.CycleOrUnreachableNode,
                     nodes[nodeIndex].Key,
                     "Adjacency contains a cycle.");
+
                 break;
             }
 

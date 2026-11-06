@@ -8,9 +8,14 @@ public abstract partial class OrderingRefreshScaleTests
     {
         // Arrange
         // WHY: SQL Server needs more than 1,050 candidates to cross its 2,100 scalar-parameter limit.
-        var children = Engine == "SqlServer" ? 1052 : 128;
+        var children = Engine == "SqlServer"
+            ? 1052
+            : 128;
 
-        await using var seed = await _fixture.ResetAsync(Engine);
+        await using var seed = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var treeId = Guid.NewGuid();
         var nodes = new List<OrderingNode>(children + 1)
         {
@@ -35,8 +40,8 @@ public abstract partial class OrderingRefreshScaleTests
                     TreeId = treeId,
                     Name = $"node-{index:D8}",
                     ParentId = 1,
-                    Left = (index * 2L) + 2,
-                    Right = (index * 2L) + 3,
+                    Left = index * 2L + 2,
+                    Right = index * 2L + 3,
                     Depth = 1,
                     Position = index,
                 });
@@ -44,7 +49,10 @@ public abstract partial class OrderingRefreshScaleTests
 
         await seed.AddRangeAsync(nodes, CancellationToken.None);
         await seed.SavePrecomputedHierarchyAsync(CancellationToken.None);
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict");
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tracked = await context
             .Set<OrderingNode>()
             .OrderBy(node => node.Id)
@@ -63,7 +71,10 @@ public abstract partial class OrderingRefreshScaleTests
 
         // Assert
         Assert.Equal(children, saved);
-        await using var verification = await _fixture.CreateContextAsync(Engine, "Strict");
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var moved = await verification
             .Set<OrderingNode>()
             .SingleAsync(node => node.Id == 2, CancellationToken.None);
@@ -75,6 +86,7 @@ public abstract partial class OrderingRefreshScaleTests
             await verification
                 .Set<OrderingNode>()
                 .CountAsync(node => node.Payload == "updated", CancellationToken.None));
+
         Assert.Equal(
             children,
             await verification

@@ -77,21 +77,24 @@ public sealed partial class SqlServerCompositionStrategyTests
 
         var nodes = Enumerable
             .Range(0, 13)
-            .Select(index => BoundsNode(index,
+            .Select(index => BoundsNode(
+                index,
                 index + 1,
                 26 - index,
-                parent: index == 0 ? null : index - 1,
+                parent: index == 0
+                    ? null
+                    : index - 1,
                 depth: index))
             .ToList();
 
         switch (mode)
         {
-            case "blocked": nodes[location].Position = 99; break;
+            case "blocked":           nodes[location].Position = 99; break;
             case "row-aware-blocked": nodes[location].Position = 99; break;
-            case "hidden": nodes[location].Visible = false; break;
-            case "missing": nodes[location].ParentId = new BoundsKey(999); break;
-            case "depth": nodes[location].Depth = 50; break;
-            case "hidden-above": nodes[0].Visible = false; break;
+            case "hidden":            nodes[location].Visible = false; break;
+            case "missing":           nodes[location].ParentId = new BoundsKey(999); break;
+            case "depth":             nodes[location].Depth = 50; break;
+            case "hidden-above":      nodes[0].Visible = false; break;
             case "empty":
                 foreach (var node in nodes)
                 {
@@ -123,7 +126,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         await context.AddRangeAsync(nodes, CancellationToken.None);
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        var root = new NestedSetQuery<CoordinateBoundsNode>(context,
+        var root = new NestedSetQuery<CoordinateBoundsNode>(
+            context,
             context.Model.FindEntityType(typeof(CoordinateBoundsNode))!);
 
         if (scoped)
@@ -141,10 +145,14 @@ public sealed partial class SqlServerCompositionStrategyTests
             visible = visible.Where(node => node.Scope == 7);
         }
 
-        var upperDepth = mode == "hidden-above" ? 1 : 0;
+        var upperDepth = mode == "hidden-above"
+            ? 1
+            : 0;
+
         var rows = visible
             .Where(node => node.Depth == upperDepth)
-            .SelectMany(_ => visible.Where(node => node.Depth == 12),
+            .SelectMany(
+                _ => visible.Where(node => node.Depth == 12),
                 (upper, lower) => new
                 {
                     Upper = upper,
@@ -152,11 +160,12 @@ public sealed partial class SqlServerCompositionStrategyTests
                 });
 
         Expression<Func<object, CoordinateBoundsNode, CoordinateBoundsNode, bool>> allowed =
-        (_, parent, child) => child.Position != 99;
+            (_, parent, child) => child.Position != 99;
 
         var occurrences = rows.Concat(rows);
         var filtered = mode.StartsWith("row-aware", StringComparison.Ordinal)
-            ? root.WherePathEdges(occurrences,
+            ? root.WherePathEdges(
+                occurrences,
                 row => row.Upper,
                 row => row.Lower,
                 (row, parent, child) => child.Position != row.Upper.Position + 99,
@@ -213,7 +222,8 @@ public sealed partial class SqlServerCompositionStrategyTests
         var row = Expression.Parameter(typeof(TRow), "row");
         var violation = (Expression)type
             .GetMethod("InvalidCompletedPathChildren", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(root,
+            .Invoke(
+                root,
                 [
                     NestedSetQueryExpressions.Inline(upper, row),
                     NestedSetQueryExpressions.Inline(lower, row),

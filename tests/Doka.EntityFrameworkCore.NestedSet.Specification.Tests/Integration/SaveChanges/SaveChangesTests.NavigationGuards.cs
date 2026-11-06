@@ -30,10 +30,19 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
-        var root = await context.Set<NavigationNode>().Include(node => node.Children)
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
+        var root = await context
+            .Set<NavigationNode>()
+            .Include(node => node.Children)
             .SingleAsync(node => node.Id == 1, CancellationToken.None);
 
         var child = Assert.Single(root.Children, node => node.Id == 2);
@@ -51,18 +60,45 @@ public abstract partial class SaveChangesTests
         };
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
-        var storedParent = await verification.Set<NavigationNode>().Where(node => node.Id == 2)
-            .Select(node => node.ParentId).SingleAsync(CancellationToken.None);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
 
-        var storedNodes = await verification.Set<NavigationNode>().CountAsync(CancellationToken.None);
-        var storedNotes = await verification.Set<NavigationNote>().CountAsync(CancellationToken.None);
-        var remainsTracked = context.GetService<IUpdateAdapterFactory>().Create().Entries
-            .Any(entry => ReferenceEquals(entry.ToEntityEntry().Entity, child));
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedParent = await verification
+            .Set<NavigationNode>()
+            .Where(node => node.Id == 2)
+            .Select(node => node.ParentId)
+            .SingleAsync(CancellationToken.None);
+
+        var storedNodes = await verification
+            .Set<NavigationNode>()
+            .CountAsync(CancellationToken.None);
+
+        var storedNotes = await verification
+            .Set<NavigationNote>()
+            .CountAsync(CancellationToken.None);
+
+        var remainsTracked = context
+            .GetService<IUpdateAdapterFactory>()
+            .Create()
+            .Entries
+            .Any(entry => ReferenceEquals(
+                entry.ToEntityEntry()
+                    .Entity,
+                child));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(0, probe.Writes);
         Assert.Equal(1, storedParent);
         Assert.Equal(3, storedNodes);
@@ -99,23 +135,35 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
         var originalLeft = node.Left;
         context.ChangeTracker.AutoDetectChangesEnabled = automaticDetection;
 
         if (insertion)
         {
-            await context.AddAsync(new NavigationNode
-            {
-                Id = 4,
-                Scope = node.Scope,
-                TreeId = s_treeId,
-                ParentId = 1,
-                Name = "Delta",
-            }, CancellationToken.None);
+            await context.AddAsync(
+                new NavigationNode
+                {
+                    Id = 4,
+                    Scope = node.Scope,
+                    TreeId = s_treeId,
+                    ParentId = 1,
+                    Name = "Delta",
+                },
+                CancellationToken.None);
         }
         else
         {
@@ -123,12 +171,25 @@ public abstract partial class SaveChangesTests
         }
 
         // Act
-        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
-        var storedLeft = await verification.Set<NavigationNode>().Where(value => value.Id == 2)
-            .Select(value => value.Left).SingleAsync(CancellationToken.None);
+        var failure = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
 
-        var storedNodes = await verification.Set<NavigationNode>().CountAsync(CancellationToken.None);
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedLeft = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == 2)
+            .Select(value => value.Left)
+            .SingleAsync(CancellationToken.None);
+
+        var storedNodes = await verification
+            .Set<NavigationNode>()
+            .CountAsync(CancellationToken.None);
 
         // Assert
         var rejection = Assert.IsType<NestedSetException>(failure);

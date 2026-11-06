@@ -17,23 +17,27 @@ public class ForestImportBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _imported = false;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(
-            _imported && await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            _imported && await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "Forest import did not persist every node.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(node => node.ParentId == null, CancellationToken.None) == Trees,
+            await Fixture.Context.Nodes.CountAsync(node => node.ParentId == null, cancellationToken) == Trees,
             "Forest import changed root ownership.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 }

@@ -12,11 +12,7 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool CompletesFactSelections => true;
 
     /// <inheritdoc />
-    internal override void AddServices(
-        IServiceCollection services
-    ) => services.TryAddEnumerable(ServiceDescriptor.Singleton<IInterceptor, SqlServerCompositionPlanInterceptor>());
 
-    /// <inheritdoc />
     // WHY: Valid ancestors form one nested chain, so descending Left selects the same nearest
     // candidate as descending Depth and exposes the existing coordinate-index order without a depth sort.
     internal override NestedSetNearestQueryStrategy NearestQueryStrategy => NestedSetNearestQueryStrategy.ProjectedLeft;
@@ -25,12 +21,17 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override NestedSetPathFailureStrategy PathFailureStrategy => NestedSetPathFailureStrategy.CompletedPoints;
 
     /// <inheritdoc />
+    internal override void AddServices(
+        IServiceCollection services
+    ) => services.TryAddEnumerable(ServiceDescriptor.Singleton<IInterceptor, SqlServerCompositionPlanInterceptor>());
+
+    /// <inheritdoc />
     internal override bool SupportsTrackedKeyCollection(
         IProperty key
     )
     {
         if (key.GetTypeMapping()
-                .Converter is not null)
+            .Converter is not null)
         {
             return false;
         }

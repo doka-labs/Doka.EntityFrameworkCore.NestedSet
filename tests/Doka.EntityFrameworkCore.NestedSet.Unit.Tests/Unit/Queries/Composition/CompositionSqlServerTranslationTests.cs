@@ -40,7 +40,8 @@ public sealed class CompositionSqlServerTranslationTests
                 .Options);
 
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
-        var down = hierarchy.SelectSubtrees(node => node.Id == 1,
+        var down = hierarchy.SelectSubtrees(
+            node => node.Id == 1,
             (upper, lower, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -48,7 +49,10 @@ public sealed class CompositionSqlServerTranslationTests
                 Distance = distance,
             });
 
-        var query = shape == "mixed" ? Mixed(hierarchy, down) : CompositionEndpointTests.Filter(hierarchy, down, shape);
+        var query = shape == "mixed"
+            ? Mixed(hierarchy, down)
+            : CompositionEndpointTests.Filter(hierarchy, down, shape);
+
         var scalar = query.Select(row => new
         {
             AnchorId = row.Upper.Id,
@@ -90,7 +94,8 @@ public sealed class CompositionSqlServerTranslationTests
         IQueryable<CompositionGuardRow> down
     )
     {
-        var up = hierarchy.SelectAncestors(node => node.Id == 3,
+        var up = hierarchy.SelectAncestors(
+            node => node.Id == 3,
             (lower, upper, distance) => new CompositionGuardRow
             {
                 Upper = upper,
@@ -98,7 +103,8 @@ public sealed class CompositionSqlServerTranslationTests
                 Distance = distance,
             });
 
-        var mixed = up.Join(down,
+        var mixed = up.Join(
+            down,
             ancestor => ancestor.Upper.Id,
             descendant => descendant.Upper.Id,
             (ancestor, descendant) => new CompositionGuardRow
@@ -109,7 +115,8 @@ public sealed class CompositionSqlServerTranslationTests
                 Distance = descendant.Distance,
             });
 
-        return hierarchy.WherePathEdges(mixed,
+        return hierarchy.WherePathEdges(
+            mixed,
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => row.Payload != null && child.Id != row.Payload.Id);

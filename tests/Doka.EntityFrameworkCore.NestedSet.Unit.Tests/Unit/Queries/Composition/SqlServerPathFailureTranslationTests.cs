@@ -24,16 +24,18 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var tree = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty);
 
-        var rows = tree.SelectSubtrees(node => node.Id == 1,
+        var rows = tree.SelectSubtrees(
+            node => node.Id == 1,
             (upper, lower, distance) => new
             {
                 Upper = upper,
@@ -41,11 +43,13 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             });
 
         var query = rowAware
-            ? tree.WherePathEdges(rows,
+            ? tree.WherePathEdges(
+                rows,
                 row => row.Upper,
                 row => row.Lower,
                 (row, parent, child) => child.EdgeOpen && child.Id <= row.Upper.Id + 100)
-            : tree.WherePathEdges(rows,
+            : tree.WherePathEdges(
+                rows,
                 row => row.Upper,
                 row => row.Lower,
                 (row, parent, child) => child.EdgeOpen);
@@ -59,7 +63,12 @@ public sealed partial class SqlServerPathFailureTranslationTests(
         output.WriteLine(sql);
 
         // Assert
-        Assert.Equal(rowAware ? 0 : 1, fenced.Length);
+        Assert.Equal(
+            rowAware
+                ? 0
+                : 1,
+            fenced.Length);
+
         Assert.All(fenced, AssertUncorrelated);
         Assert.Equal(rowAware, sql.Contains("COUNT_BIG(*)", StringComparison.Ordinal));
         Assert.DoesNotContain("GROUP BY", sql, StringComparison.Ordinal);
@@ -85,16 +94,18 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             .AddInterceptors(boundary);
 
         await using var services = NestedSetTestAdapters.BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(services)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(services)
+                .Options);
 
         var tree = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Empty)
             .InTree(Guid.Empty);
 
-        var rows = tree.SelectSubtrees(node => node.Id == 1,
+        var rows = tree.SelectSubtrees(
+            node => node.Id == 1,
             (upper, lower, distance) => new
             {
                 Upper = upper,
@@ -102,11 +113,13 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             });
 
         var query = nearest
-            ? tree.WhereNearestAncestorOrSelf(rows,
+            ? tree.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Lower,
                 (row, owner) => owner.Candidate && owner.Id != row.Lower.Id,
                 (row, owner) => owner.Matches)
-            : tree.WherePathEdges(rows,
+            : tree.WherePathEdges(
+                rows,
                 row => row.Upper,
                 row => row.Lower,
                 (_, parent, child) => child.EdgeOpen);
@@ -192,7 +205,8 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             .Select(match => match.Groups["alias"].Value)
             .ToHashSet(StringComparer.Ordinal);
 
-        Assert.All(Regex.Matches(relation, @"\[(?<alias>\w+)\]\.\["),
+        Assert.All(
+            Regex.Matches(relation, @"\[(?<alias>\w+)\]\.\["),
             reference => Assert.Contains(reference.Groups["alias"].Value, declared));
     }
 }

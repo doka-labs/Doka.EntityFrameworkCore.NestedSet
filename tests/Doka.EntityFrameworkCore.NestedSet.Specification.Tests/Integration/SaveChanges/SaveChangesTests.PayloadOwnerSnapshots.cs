@@ -24,20 +24,42 @@ public abstract partial class SaveChangesTests
     )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedPayloadOwnersAsync(
+            database,
+            assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped, probe);
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
-        var target = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
+        var target = await context
+            .Set<NavigationPayloadOwner>()
+            .Include(value => value.Nodes)
             .SingleAsync(value => value.Scope == node.Scope && value.Id == 2, CancellationToken.None);
 
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var nodeEntry = context.Entry(node);
         var name = nodeEntry.Property(value => value.Name);
         var payloadOwner = nodeEntry.Property(value => value.PayloadOwnerId);
-        var noteValue = context.Entry(note).Property(value => value.Value);
+        var noteValue = context
+            .Entry(note)
+            .Property(value => value.Value);
+
         var detections = 0;
         context.ChangeTracker.DetectedAllChanges += (_, _) => detections++;
 
@@ -57,33 +79,66 @@ public abstract partial class SaveChangesTests
 
         target.Nodes.Add(node);
         var snapshotBefore = PayloadOwnerSnapshotContains(context, target, node);
+
         // WHY: This first save is the persistence precondition for testing a later detached collection member.
-        await SaveNavigationAsync(context, synchronous);
+        await SaveNavigationAsync(context, synchronous, cancellationToken: TestContext.Current.CancellationToken);
         var snapshotAfter = PayloadOwnerSnapshotContains(context, target, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
-        var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => new { value.Name, value.PayloadOwnerId }).SingleAsync(CancellationToken.None);
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedAfterSave = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => new
+            {
+                value.Name,
+                value.PayloadOwnerId,
+            })
+            .SingleAsync(CancellationToken.None);
 
         nodeEntry.State = EntityState.Detached;
         noteValue.CurrentValue = "following payload";
         var writesBeforeFollowup = probe.Writes;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SaveNavigationAsync(context, synchronous));
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+        var error = await Record.ExceptionAsync(() => SaveNavigationAsync(
+            context,
+            synchronous,
+            cancellationToken: TestContext.Current.CancellationToken));
+
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
-        var storedOwner = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
+        var storedOwner = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => value.PayloadOwnerId)
+            .SingleAsync(CancellationToken.None);
 
-        var validation = await verification.NestedSet<NavigationNode>().ForScope(node.Scope).InTree(s_treeId)
+        var validation = await verification
+            .NestedSet<NavigationNode>()
+            .ForScope(node.Scope)
+            .InTree(s_treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
         Assert.False(snapshotBefore);
         Assert.Equal(marked, snapshotAfter);
-        Assert.Equal(coordinated ? "Zulu" : "Alpha", storedAfterSave.Name);
-        Assert.Equal(marked ? 2 : 1, storedAfterSave.PayloadOwnerId);
+        Assert.Equal(
+            coordinated
+                ? "Zulu"
+                : "Alpha",
+            storedAfterSave.Name);
+
+        Assert.Equal(
+            marked
+                ? 2
+                : 1,
+            storedAfterSave.PayloadOwnerId);
 
         if (marked)
         {
@@ -92,7 +147,11 @@ public abstract partial class SaveChangesTests
         }
         else
         {
-            Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+            Assert.Equal(
+                NestedSetErrorCode.InvalidContext,
+                Assert.IsType<NestedSetException>(error)
+                    .Code);
+
             Assert.Equal(writesBeforeFollowup, probe.Writes);
             Assert.Equal("original", storedNote);
         }
@@ -108,32 +167,65 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PayloadOwnerSnapshotExcludesPostPersistenceCallbackMutation(bool coordinated)
+    public async Task PayloadOwnerSnapshotExcludesPostPersistenceCallbackMutation(
+        bool coordinated
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await SeedPayloadOwnersAsync(
+            database,
+            assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using (var setup = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
-            await setup.AddAsync(new NavigationPayloadOwner { Scope = 1, Id = 3 }, CancellationToken.None);
+            await setup.AddAsync(
+                new NavigationPayloadOwner
+                {
+                    Scope = 1,
+                    Id = 3,
+                },
+                CancellationToken.None);
+
             await setup.SaveChangesAsync(CancellationToken.None);
         }
 
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, probe);
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
-        var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
-            .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
+        var owners = await context
+            .Set<NavigationPayloadOwner>()
+            .Include(value => value.Nodes)
+            .Where(value => value.Scope == node.Scope)
+            .ToArrayAsync(CancellationToken.None);
 
         var target = owners.Single(value => value.Id == 2);
         var callbackTarget = owners.Single(value => value.Id == 3);
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var nodeEntry = context.Entry(node);
         var name = nodeEntry.Property(value => value.Name);
         var payloadOwner = nodeEntry.Property(value => value.PayloadOwnerId);
-        var noteValue = context.Entry(note).Property(value => value.Value);
+        var noteValue = context
+            .Entry(note)
+            .Property(value => value.Value);
 
         if (coordinated)
         {
@@ -156,9 +248,16 @@ public abstract partial class SaveChangesTests
         context.SavedChanges -= completion;
         var savedSnapshot = PayloadOwnerSnapshotContains(context, target, node);
         var callbackSnapshot = PayloadOwnerSnapshotContains(context, callbackTarget, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
-        var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedAfterSave = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => value.PayloadOwnerId)
+            .SingleAsync(CancellationToken.None);
 
         nodeEntry.State = EntityState.Detached;
         noteValue.CurrentValue = "following payload";
@@ -166,13 +265,21 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
-        var storedOwner = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
+        var storedOwner = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => value.PayloadOwnerId)
+            .SingleAsync(CancellationToken.None);
 
-        var validation = await verification.NestedSet<NavigationNode>().ForScope(node.Scope).InTree(s_treeId)
+        var validation = await verification
+            .NestedSet<NavigationNode>()
+            .ForScope(node.Scope)
+            .InTree(s_treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
@@ -180,7 +287,11 @@ public abstract partial class SaveChangesTests
         Assert.Equal(3, node.PayloadOwnerId);
         Assert.True(savedSnapshot);
         Assert.False(callbackSnapshot);
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(writesBeforeFollowup, probe.Writes);
         Assert.Equal("original", storedNote);
         Assert.Equal(2, storedOwner);
@@ -192,33 +303,67 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PayloadOwnerSnapshotExcludesCommandCompletionMutation(bool coordinated)
+    public async Task PayloadOwnerSnapshotExcludesCommandCompletionMutation(
+        bool coordinated
+    )
     {
         // Arrange
-        await using var database = await CreateNavigationDatabaseAsync();
-        await SeedPayloadOwnersAsync(database, assigned: true);
+        await using var database = await CreateNavigationDatabaseAsync(
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await using (var setup = await CreateNavigationContextAsync(database, wrapped: true))
+        await SeedPayloadOwnersAsync(
+            database,
+            assigned: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await using (var setup = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken))
         {
-            await setup.AddAsync(new NavigationPayloadOwner { Scope = 1, Id = 3 }, CancellationToken.None);
+            await setup.AddAsync(
+                new NavigationPayloadOwner
+                {
+                    Scope = 1,
+                    Id = 3,
+                },
+                CancellationToken.None);
+
             await setup.SaveChangesAsync(CancellationToken.None);
         }
 
         var callback = new PayloadOwnerCommandCallback();
         var probe = new NavigationWriteProbe();
-        await using var context = await CreateNavigationContextAsync(database, wrapped: true, callback, probe);
-        var node = await context.Set<NavigationNode>().SingleAsync(value => value.Id == 2, CancellationToken.None);
-        var owners = await context.Set<NavigationPayloadOwner>().Include(value => value.Nodes)
-            .Where(value => value.Scope == node.Scope).ToArrayAsync(CancellationToken.None);
+        await using var context = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken,
+            callback,
+            probe);
+
+        var node = await context
+            .Set<NavigationNode>()
+            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+
+        var owners = await context
+            .Set<NavigationPayloadOwner>()
+            .Include(value => value.Nodes)
+            .Where(value => value.Scope == node.Scope)
+            .ToArrayAsync(CancellationToken.None);
 
         var target = owners.Single(value => value.Id == 2);
         var callbackTarget = owners.Single(value => value.Id == 3);
-        var note = await context.Set<NavigationNote>().SingleAsync(CancellationToken.None);
+        var note = await context
+            .Set<NavigationNote>()
+            .SingleAsync(CancellationToken.None);
+
         context.ChangeTracker.AutoDetectChangesEnabled = false;
         var nodeEntry = context.Entry(node);
         var name = nodeEntry.Property(value => value.Name);
         var payloadOwner = nodeEntry.Property(value => value.PayloadOwnerId);
-        var noteValue = context.Entry(note).Property(value => value.Value);
+        var noteValue = context
+            .Entry(note)
+            .Property(value => value.Value);
 
         if (coordinated)
         {
@@ -239,9 +384,16 @@ public abstract partial class SaveChangesTests
         await context.SaveChangesAsync(CancellationToken.None);
         var savedSnapshot = PayloadOwnerSnapshotContains(context, target, node);
         var callbackSnapshot = PayloadOwnerSnapshotContains(context, callbackTarget, node);
-        await using var verification = await CreateNavigationContextAsync(database, wrapped: true);
-        var storedAfterSave = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
+        await using var verification = await CreateNavigationContextAsync(
+            database,
+            wrapped: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var storedAfterSave = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => value.PayloadOwnerId)
+            .SingleAsync(CancellationToken.None);
 
         nodeEntry.State = EntityState.Detached;
         noteValue.CurrentValue = "following payload";
@@ -249,13 +401,21 @@ public abstract partial class SaveChangesTests
 
         // Act
         var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var storedNote = await verification.Set<NavigationNote>().Select(value => value.Value)
+        var storedNote = await verification
+            .Set<NavigationNote>()
+            .Select(value => value.Value)
             .SingleAsync(CancellationToken.None);
 
-        var storedOwner = await verification.Set<NavigationNode>().Where(value => value.Id == node.Id)
-            .Select(value => value.PayloadOwnerId).SingleAsync(CancellationToken.None);
+        var storedOwner = await verification
+            .Set<NavigationNode>()
+            .Where(value => value.Id == node.Id)
+            .Select(value => value.PayloadOwnerId)
+            .SingleAsync(CancellationToken.None);
 
-        var validation = await verification.NestedSet<NavigationNode>().ForScope(node.Scope).InTree(s_treeId)
+        var validation = await verification
+            .NestedSet<NavigationNode>()
+            .ForScope(node.Scope)
+            .InTree(s_treeId)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
         // Assert
@@ -264,7 +424,11 @@ public abstract partial class SaveChangesTests
         Assert.Equal(3, node.PayloadOwnerId);
         Assert.True(savedSnapshot);
         Assert.False(callbackSnapshot);
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(writesBeforeFollowup, probe.Writes);
         Assert.Equal("original", storedNote);
         Assert.Equal(2, storedOwner);
@@ -279,8 +443,14 @@ public abstract partial class SaveChangesTests
         NavigationNode node
     )
     {
-        var entry = context.GetService<IUpdateAdapterFactory>().Create().Entries
-            .Single(value => ReferenceEquals(value.ToEntityEntry().Entity, owner));
+        var entry = context
+            .GetService<IUpdateAdapterFactory>()
+            .Create()
+            .Entries
+            .Single(value => ReferenceEquals(
+                value.ToEntityEntry()
+                    .Entity,
+                owner));
 
         var navigation = entry.EntityType.FindNavigation(nameof(NavigationPayloadOwner.Nodes))!;
 
@@ -324,12 +494,15 @@ public abstract partial class SaveChangesTests
         }
 
         /// <summary>Ignores reads and later ordering commands so only the first sent-value boundary changes.</summary>
-        private void Observe(DbCommand command)
+        private void Observe(
+            DbCommand command
+        )
         {
             var sql = command.CommandText;
 
             // WHY: Match the table immediately after UPDATE so a provider's SELECT FOR UPDATE cannot fire this hook.
-            if (Reached || !sql.Contains(nameof(NavigationNode.PayloadOwnerId), StringComparison.Ordinal)
+            if (Reached
+                || !sql.Contains(nameof(NavigationNode.PayloadOwnerId), StringComparison.Ordinal)
                 || !(sql.Contains("UPDATE \"NavigationSaveNodes\"", StringComparison.OrdinalIgnoreCase)
                     || sql.Contains("UPDATE [NavigationSaveNodes]", StringComparison.OrdinalIgnoreCase)
                     || sql.Contains("UPDATE `NavigationSaveNodes`", StringComparison.OrdinalIgnoreCase)))

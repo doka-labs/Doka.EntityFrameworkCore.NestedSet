@@ -27,6 +27,7 @@ internal static class ReportingScenario
         await SampleConsole.HeadingAsync(
             $"{scenario}: current hierarchy, dated acquisition events, inclusive direct-link availability",
             cancellationToken);
+
         await SampleConsole.WriteLineAsync(
             "Each report reads one scalar catalog and one SQL aggregate inside one snapshot. "
             + "No facts or nodes are loaded by reporting.",
@@ -40,18 +41,21 @@ internal static class ReportingScenario
                 "Any Receiver module: Sensor P contributes 10",
                 10,
                 cancellationToken);
+
             await PrintAsync(
                 context,
                 data.Request(TagOwnerMode.Nearest, includeSensor: false),
                 "Nearest Receiver module: Relay blocks fallback",
                 null,
                 cancellationToken);
+
             await PrintAsync(
                 context,
                 data.Request(TagOwnerMode.Nearest, "Relay", includeSensor: false),
                 "Nearest Relay module: Sensor P contributes 10",
                 10,
                 cancellationToken);
+
             await PrintAsync(
                 context,
                 data.Request(moduleClass: "Relay"),
@@ -82,6 +86,7 @@ internal static class ReportingScenario
                 "Band Narrow AND ModuleClass Receiver AND sensor (Liquid AND R7), each kind on one owner",
                 70,
                 cancellationToken);
+
             var rejectedValues = data.Request() with
             {
                 Criteria = [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Wide")],
@@ -160,8 +165,14 @@ internal static class ReportingScenario
 
         foreach (var cell in cells)
         {
-            var channel = cell.ChannelId == SignalReportDataset.PulseChannel ? "Pulse ticks" : "Sweep ticks";
-            var value = cell.HasData ? cell.Value.ToString("0.##", CultureInfo.InvariantCulture) : "no data";
+            var channel = cell.ChannelId == SignalReportDataset.PulseChannel
+                ? "Pulse ticks"
+                : "Sweep ticks";
+
+            var value = cell.HasData
+                ? cell.Value.ToString("0.##", CultureInfo.InvariantCulture)
+                : "no data";
+
             await SampleConsole.WriteLineAsync(
                 $"{SignalReportDataset.AnchorName(cell.AnchorId)}: {channel}, {cell.Source} = {value}",
                 cancellationToken);

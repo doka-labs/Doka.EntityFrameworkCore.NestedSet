@@ -87,7 +87,9 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                         .Where(node => EF.Property<long>(node, _store.Map.Left) != source.Left),
                     _store.Map.Position,
                     1,
-                    position < source.Position ? 1 : -1,
+                    position < source.Position
+                        ? 1
+                        : -1,
                     token)
                 .ConfigureAwait(false);
         }

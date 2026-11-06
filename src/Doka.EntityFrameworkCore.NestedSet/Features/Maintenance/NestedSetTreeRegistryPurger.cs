@@ -26,9 +26,9 @@ internal static class NestedSetTreeRegistryPurger<TEntity, TKey, TTreeId, TScope
             async token =>
             {
                 if (await store
-                        .Nodes
-                        .AnyAsync(token)
-                        .ConfigureAwait(false))
+                    .Nodes
+                    .AnyAsync(token)
+                    .ConfigureAwait(false))
                 {
                     // WHY: A tombstone with live nodes proves out-of-protocol database damage. Removing its
                     // reservation would permit two logical generations to share one TreeId.

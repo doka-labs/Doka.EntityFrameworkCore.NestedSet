@@ -42,6 +42,7 @@ internal static class OrderingRefreshTestSupport
     /// <summary>
     ///     Seeds valid ordered structure directly so setup does not measure repeated hierarchy mutations.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="fixture">The independently owned ordering database.</param>
     /// <param name="engine">The concrete suite's immutable provider engine.</param>
     /// <param name="nodes">The measured child cardinality excluding its enclosing root.</param>
@@ -51,12 +52,12 @@ internal static class OrderingRefreshTestSupport
         OrderingFixture fixture,
         string engine,
         int nodes,
+        CancellationToken cancellationToken,
         params IInterceptor[] interceptors
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegative(nodes);
-        var cancellationToken = TestContext.Current.CancellationToken;
-        await using var setup = await fixture.ResetAsync(engine);
+        await using var setup = await fixture.ResetAsync(engine, cancellationToken: cancellationToken);
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions
@@ -112,14 +113,24 @@ internal static class OrderingRefreshTestSupport
         var table = helper.DelimitIdentifier(store.Name, store.Schema);
         var names = new[]
         {
-            nameof(OrderingNode.Id), nameof(OrderingNode.Scope), nameof(OrderingNode.TreeId),
-            nameof(OrderingNode.ParentId), nameof(OrderingNode.Name), nameof(OrderingNode.Priority),
-            nameof(OrderingNode.Payload), nameof(OrderingNode.Category), nameof(OrderingNode.Left),
-            nameof(OrderingNode.Right), nameof(OrderingNode.Depth), nameof(OrderingNode.Position),
+            nameof(OrderingNode.Id),
+            nameof(OrderingNode.Scope),
+            nameof(OrderingNode.TreeId),
+            nameof(OrderingNode.ParentId),
+            nameof(OrderingNode.Name),
+            nameof(OrderingNode.Priority),
+            nameof(OrderingNode.Payload),
+            nameof(OrderingNode.Category),
+            nameof(OrderingNode.Left),
+            nameof(OrderingNode.Right),
+            nameof(OrderingNode.Depth),
+            nameof(OrderingNode.Position),
         };
 
-        var columns = string.Join(", ", names.Select(name =>
-            helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
+        var columns = string.Join(
+            ", ",
+            names.Select(name =>
+                helper.DelimitIdentifier(entity.FindProperty(name)!.GetColumnName(store)!)));
 
         var offset = helper.GenerateParameterName("offset");
         var limit = helper.GenerateParameterName("limit");
@@ -142,7 +153,11 @@ internal static class OrderingRefreshTestSupport
         // partially populated tree. Batch size bounds each command's work while retaining every requested row.
         for (long first = 1; first <= nodes; first += SeedBatchSize)
         {
-            await using var command = context.Database.GetDbConnection().CreateCommand();
+            await using var command = context
+                .Database
+                .GetDbConnection()
+                .CreateCommand();
+
             var parameters = new object[]
             {
                 Parameter(nameof(OrderingNode.Id), "offset", checked((int)first)),

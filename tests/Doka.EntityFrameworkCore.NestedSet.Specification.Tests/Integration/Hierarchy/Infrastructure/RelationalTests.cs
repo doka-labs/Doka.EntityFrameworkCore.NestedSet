@@ -23,130 +23,146 @@ public abstract partial class RelationalTests : ProviderTest
     ) => new() { NodeId = id };
 
     /// <summary>Seeds siblings and a grandchild without performing assertions during Arrange.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedPlacementTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(scope);
 
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(Node(2), 1, cancellationToken: CancellationToken.None);
-        await tree.InsertAsFirstChildAsync(Node(3), 1, CancellationToken.None);
-        await tree.InsertBeforeAsync(Node(4), 2, CancellationToken.None);
-        await tree.InsertAfterAsync(Node(5), 2, CancellationToken.None);
-        await tree.InsertChildAsync(Node(6), 2, cancellationToken: CancellationToken.None);
+        await tree.InsertRootAsync(Node(1), Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(Node(2), 1, cancellationToken: cancellationToken);
+        await tree.InsertAsFirstChildAsync(Node(3), 1, cancellationToken);
+        await tree.InsertBeforeAsync(Node(4), 2, cancellationToken);
+        await tree.InsertAfterAsync(Node(5), 2, cancellationToken);
+        await tree.InsertChildAsync(Node(6), 2, cancellationToken: cancellationToken);
     }
 
     /// <summary>Seeds two branches whose unequal depths expose subtree-level depth errors.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedDeepTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(scope);
 
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(Node(2), 1, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(3), 2, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(4), 3, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(5), 4, cancellationToken: CancellationToken.None);
-        await tree.InsertRootAsync(Node(6), Guid.NewGuid(), CancellationToken.None);
-        await tree.InsertChildAsync(Node(7), 6, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(8), 7, cancellationToken: CancellationToken.None);
+        await tree.InsertRootAsync(Node(1), Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(Node(2), 1, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(3), 2, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(4), 3, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(5), 4, cancellationToken: cancellationToken);
+        await tree.InsertRootAsync(Node(6), Guid.NewGuid(), cancellationToken);
+        await tree.InsertChildAsync(Node(7), 6, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(8), 7, cancellationToken: cancellationToken);
     }
 
     /// <summary>
     ///     Seeds branching children so repair checks nonzero positions in multiple sibling groups.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedRebuildTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(scope);
 
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(Node(2), 1, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(3), 1, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(4), 2, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(5), 4, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(6), 1, CancellationToken.None);
+        await tree.InsertRootAsync(Node(1), Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(Node(2), 1, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(3), 1, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(4), 2, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(5), 4, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(6), 1, cancellationToken);
     }
 
     /// <summary>Seeds multiple child subtrees between surrounding siblings for promotion tests.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedPromotionTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(scope);
 
-        await SeedDeepTreeAsync(context, scope);
-        await tree.InsertBeforeAsync(Node(9), 3, CancellationToken.None);
-        await tree.InsertAfterAsync(Node(10), 3, CancellationToken.None);
-        await tree.InsertAfterAsync(Node(11), 4, CancellationToken.None);
-        await tree.InsertChildAsync(Node(12), 11, cancellationToken: CancellationToken.None);
+        await SeedDeepTreeAsync(context, scope, cancellationToken: cancellationToken);
+        await tree.InsertBeforeAsync(Node(9), 3, cancellationToken);
+        await tree.InsertAfterAsync(Node(10), 3, cancellationToken);
+        await tree.InsertAfterAsync(Node(11), 4, cancellationToken);
+        await tree.InsertChildAsync(Node(12), 11, cancellationToken: cancellationToken);
     }
 
     /// <summary>Seeds a three-node subtree and a deeper destination for executed-depth rollback probes.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedDepthFailureTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(scope);
 
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(Node(2), 1, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(3), 2, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(Node(4), 3, cancellationToken: CancellationToken.None);
-        await tree.InsertRootAsync(Node(6), Guid.NewGuid(), CancellationToken.None);
-        await tree.InsertChildAsync(Node(7), 6, cancellationToken: CancellationToken.None);
+        await tree.InsertRootAsync(Node(1), Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(Node(2), 1, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(3), 2, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(Node(4), 3, cancellationToken: cancellationToken);
+        await tree.InsertRootAsync(Node(6), Guid.NewGuid(), cancellationToken);
+        await tree.InsertChildAsync(Node(7), 6, cancellationToken: cancellationToken);
     }
 
     /// <summary>Seeds a branch whose parent links are protected by an immediate restrictive foreign key.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedConstrainedTreeAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
             .NestedSet<ConstrainedNode>()
             .ForScope(scope);
 
-        await tree.InsertRootAsync(new ConstrainedNode { Id = 1 }, Guid.Empty, CancellationToken.None);
-        await tree.InsertChildAsync(new ConstrainedNode { Id = 2 }, 1, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(new ConstrainedNode { Id = 3 }, 2, cancellationToken: CancellationToken.None);
-        await tree.InsertChildAsync(new ConstrainedNode { Id = 4 }, 1, cancellationToken: CancellationToken.None);
+        await tree.InsertRootAsync(new ConstrainedNode { Id = 1 }, Guid.Empty, cancellationToken);
+        await tree.InsertChildAsync(new ConstrainedNode { Id = 2 }, 1, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(new ConstrainedNode { Id = 3 }, 2, cancellationToken: cancellationToken);
+        await tree.InsertChildAsync(new ConstrainedNode { Id = 4 }, 1, cancellationToken: cancellationToken);
     }
 
     /// <summary>Delays an independent tree creation until both contexts are ready.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task InsertAfterGateAsync(
         ScopedNestedSet<TreeNode, int> tree,
         int id,
-        Task gate
+        Task gate,
+        CancellationToken cancellationToken
     )
     {
         await gate;
-        await tree.InsertRootAsync(Node(id), Guid.NewGuid(), CancellationToken.None);
+        await tree.InsertRootAsync(Node(id), Guid.NewGuid(), cancellationToken);
     }
 
     /// <summary>Dispatches exactly one mutation selected by a scope-isolation theory case.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task ApplyScopedMutationAsync(
         TreeContext context,
         int scope,
-        string operation
+        string operation,
+        CancellationToken cancellationToken
     )
     {
         var tree = context
@@ -155,30 +171,32 @@ public abstract partial class RelationalTests : ProviderTest
 
         return operation switch
         {
-            "InsertRoot" => tree.InsertRootAsync(Node(7), Guid.NewGuid(), CancellationToken.None),
-            "InsertFirstChild" => tree.InsertAsFirstChildAsync(Node(7), 1, CancellationToken.None),
-            "InsertLastChild" => tree.InsertAsLastChildAsync(Node(7), 1, CancellationToken.None),
-            "InsertBefore" => tree.InsertBeforeAsync(Node(7), 2, CancellationToken.None),
-            "InsertAfter" => tree.InsertAfterAsync(Node(7), 2, CancellationToken.None),
-            "MoveBefore" => tree.MoveBeforeAsync(2, 3, CancellationToken.None),
-            "MoveAfter" => tree.MoveAfterAsync(2, 5, CancellationToken.None),
-            "MoveFirstChild" => tree.MoveBeforeAsync(5, 6, CancellationToken.None),
-            "MoveLastChild" => tree.MoveToAsync(3, 2, CancellationToken.None),
-            "DetachAsTree" => tree.DetachAsTreeAsync(2, Guid.NewGuid(), CancellationToken.None),
-            "Delete" => tree.DeleteAsync(2, CancellationToken.None),
-            "DeleteSubtree" => tree.DeleteSubtreeAsync(2, CancellationToken.None),
+            "InsertRoot" => tree.InsertRootAsync(Node(7), Guid.NewGuid(), cancellationToken),
+            "InsertFirstChild" => tree.InsertAsFirstChildAsync(Node(7), 1, cancellationToken),
+            "InsertLastChild" => tree.InsertAsLastChildAsync(Node(7), 1, cancellationToken),
+            "InsertBefore" => tree.InsertBeforeAsync(Node(7), 2, cancellationToken),
+            "InsertAfter" => tree.InsertAfterAsync(Node(7), 2, cancellationToken),
+            "MoveBefore" => tree.MoveBeforeAsync(2, 3, cancellationToken),
+            "MoveAfter" => tree.MoveAfterAsync(2, 5, cancellationToken),
+            "MoveFirstChild" => tree.MoveBeforeAsync(5, 6, cancellationToken),
+            "MoveLastChild" => tree.MoveToAsync(3, 2, cancellationToken),
+            "DetachAsTree" => tree.DetachAsTreeAsync(2, Guid.NewGuid(), cancellationToken),
+            "Delete" => tree.DeleteAsync(2, cancellationToken),
+            "DeleteSubtree" => tree.DeleteSubtreeAsync(2, cancellationToken),
             "Rebuild" => tree
                 .InTree(Guid.Empty)
-                .RebuildAsync(CancellationToken.None),
+                .RebuildAsync(cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
     }
 
     /// <summary>Corrupts derived values while retaining the ordered adjacency used by repair.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<int> CorruptStructureAsync(
         TreeContext context,
         int scope,
-        string corruption
+        string corruption,
+        CancellationToken cancellationToken
     )
     {
         var nodes = context
@@ -193,19 +211,21 @@ public abstract partial class RelationalTests : ProviderTest
                 x => x
                     .SetProperty(n => n.Start, 1)
                     .SetProperty(n => n.End, 2),
-                CancellationToken.None),
-            "NegativeDepth" => nodes.ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, 0), CancellationToken.None),
-            "ExcessiveDepth" => nodes.ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, 77), CancellationToken.None),
+                cancellationToken),
+            "NegativeDepth" => nodes.ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, 0), cancellationToken),
+            "ExcessiveDepth" => nodes.ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, 77), cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(corruption)),
         };
     }
 
     /// <summary>Creates one unrepairable adjacency defect without testing it during Arrange.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static Task<int> CorruptAdjacencyAsync(
         TreeContext context,
         int scope,
         string engine,
-        string corruption
+        string corruption,
+        CancellationToken cancellationToken
     )
     {
         var nodes = context
@@ -217,27 +237,29 @@ public abstract partial class RelationalTests : ProviderTest
         {
             "Cycle" => nodes
                 .Where(x => x.NodeId == 1)
-                .ExecuteUpdateAsync(x => x.SetProperty(n => n.Parent, 2), CancellationToken.None),
-            "Orphan" => CorruptOrphanAsync(context, scope, engine),
+                .ExecuteUpdateAsync(x => x.SetProperty(n => n.Parent, 2), cancellationToken),
+            "Orphan" => CorruptOrphanAsync(context, scope, engine, cancellationToken: cancellationToken),
             "DuplicateChildPosition" => nodes
                 .Where(x => x.NodeId == 3)
-                .ExecuteUpdateAsync(x => x.SetProperty(n => n.Position, 0), CancellationToken.None),
+                .ExecuteUpdateAsync(x => x.SetProperty(n => n.Position, 0), cancellationToken),
             "MultipleRoots" => nodes
                 .Where(x => x.NodeId == 6)
                 .ExecuteUpdateAsync(
                     x => x
                         .SetProperty(n => n.Position, 0)
                         .SetProperty(n => n.Parent, (int?)null),
-                    CancellationToken.None),
+                    cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(corruption)),
         };
     }
 
     /// <summary>Creates external orphan corruption while restoring normal FK enforcement before Rebuild.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<int> CorruptOrphanAsync(
         TreeContext context,
         int scope,
-        string engine
+        string engine,
+        CancellationToken cancellationToken
     )
     {
         var entity = context.Model.FindEntityType(typeof(TreeNode))!;
@@ -261,28 +283,31 @@ public abstract partial class RelationalTests : ProviderTest
             _ => throw new ArgumentOutOfRangeException(nameof(engine)),
         };
 
-        var wasOpen = context.Database.GetDbConnection().State == ConnectionState.Open;
+        var wasOpen = context.Database.GetDbConnection()
+                .State
+            == ConnectionState.Open;
+
         if (!wasOpen)
         {
-            await context.Database.OpenConnectionAsync(CancellationToken.None);
+            await context.Database.OpenConnectionAsync(cancellationToken);
         }
 
         try
         {
             // WHY: The production model correctly prevents orphans. Rebuild must still diagnose externally
             // corrupted or adopted databases, so this test bypasses the FK only for the corrupting statement.
-            await context.Database.ExecuteSqlRawAsync(disable, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(disable, cancellationToken);
 
             return await context
                 .Set<TreeNode>()
                 .AsNoTracking()
                 .Where(node => node.Tree == scope)
                 .Where(node => node.NodeId == 2)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Parent, -1), CancellationToken.None);
+                .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Parent, -1), cancellationToken);
         }
         finally
         {
-            await context.Database.ExecuteSqlRawAsync(enable, CancellationToken.None);
+            await context.Database.ExecuteSqlRawAsync(enable, cancellationToken);
 
             if (!wasOpen)
             {
@@ -292,19 +317,23 @@ public abstract partial class RelationalTests : ProviderTest
     }
 
     /// <summary>Compares the complete ordered result of a hierarchy query.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertOrderAsync(
         IQueryable<TreeNode> query,
+        CancellationToken cancellationToken,
         params int[] expected
     ) => Assert.Equal(
         expected,
         await query
             .Select(x => x.NodeId)
-            .ToArrayAsync(CancellationToken.None));
+            .ToArrayAsync(cancellationToken));
 
     /// <summary>Checks selected depth values while keeping all assertions in the assertion phase.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertDepthsAsync(
         TreeContext context,
         int scope,
+        CancellationToken cancellationToken,
         params (int Id, int Depth)[] expected
     )
     {
@@ -316,31 +345,35 @@ public abstract partial class RelationalTests : ProviderTest
                 .Where(node => node.Tree == scope)
                 .Where(x => x.NodeId == id)
                 .Select(x => x.Depth)
-                .SingleAsync(CancellationToken.None);
+                .SingleAsync(cancellationToken);
 
             Assert.Equal(depth, actual);
         }
     }
 
     /// <summary>Captures every structural value in key order for rollback and scope-isolation comparisons.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<string[]> SnapshotAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     ) => (await context
             .Set<TreeNode>()
             .AsNoTracking()
             .Where(node => node.Tree == scope)
             .OrderBy(x => x.NodeId)
-            .ToListAsync(CancellationToken.None))
+            .ToListAsync(cancellationToken))
         .Select(x => $"{x.NodeId}:{x.Start}:{x.End}:{x.Parent}:{x.Depth}:{x.Position}:{x.Tree}:{x.TreeId}")
         .ToArray();
 
     /// <summary>
     ///     Checks validation output and independently recomputes interval, parent, depth and position invariants.
     /// </summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task AssertValidAsync(
         TreeContext context,
-        int scope
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
@@ -348,7 +381,7 @@ public abstract partial class RelationalTests : ProviderTest
             .AsNoTracking()
             .Where(node => node.Tree == scope)
             .OrderBy(node => node.Start)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         // WHY: Bounds and positions are local to TreeId. Equal coordinates in independent trees are intentional.
         foreach (var group in nodes.GroupBy(node => node.TreeId))
@@ -361,7 +394,7 @@ public abstract partial class RelationalTests : ProviderTest
                 .NestedSet<TreeNode>()
                 .ForScope(scope)
                 .InTree(group.Key)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
 
             Assert.True(report.IsValid, string.Join("; ", report.Issues.Select(issue => issue.Message)));
             Assert.Single(treeNodes, node => node.Parent == null);
@@ -381,7 +414,11 @@ public abstract partial class RelationalTests : ProviderTest
 
                 Assert.True(node.Start < node.End);
                 Assert.Equal(0, (node.End - node.Start + 1) % 2);
-                Assert.Equal(ancestors.LastOrDefault()?.NodeId, node.Parent);
+                Assert.Equal(
+                    ancestors.LastOrDefault()
+                        ?.NodeId,
+                    node.Parent);
+
                 Assert.Equal(ancestors.Length, node.Depth);
             }
 

@@ -3,6 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal static partial class CompositionCapacityProfiles
 {
     /// <summary>Retains original failures and diagnostic plans without changing the qualification outcome.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The failed query's provider context.</param>
     /// <param name="engine">The native engine used for an optional estimated plan.</param>
     /// <param name="profile">The unique synthetic workload evidence name.</param>
@@ -16,10 +17,15 @@ internal static partial class CompositionCapacityProfiles
         string profile,
         EnterpriseProbe probe,
         Exception failure,
+        CancellationToken cancellationToken,
         int commandIndex = 0
     )
     {
-        var evidence = new List<string> { profile, failure.ToString() };
+        var evidence = new List<string>
+        {
+            profile,
+            failure.ToString(),
+        };
 
         if (probe.Commands.Count > commandIndex)
         {
@@ -28,11 +34,18 @@ internal static partial class CompositionCapacityProfiles
 
         try
         {
-            if ((engine is "PostgreSql" or "MySql" or "MariaDb") && probe.Commands.Count > commandIndex)
+            if (engine is "PostgreSql" or "MySql" or "MariaDb"
+                && probe.Commands.Count > commandIndex)
             {
-                await context.Database.OpenConnectionAsync(CancellationToken.None);
-                await using var command = context.Database.GetDbConnection().CreateCommand();
-                command.CommandText = (engine == "PostgreSql" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN FORMAT=JSON ")
+                await context.Database.OpenConnectionAsync(cancellationToken);
+                await using var command = context
+                    .Database
+                    .GetDbConnection()
+                    .CreateCommand();
+
+                command.CommandText = (engine == "PostgreSql"
+                        ? "EXPLAIN (FORMAT JSON) "
+                        : "EXPLAIN FORMAT=JSON ")
                     + probe.Commands[commandIndex];
 
                 // WHY: A failed actual-plan replay may still own its bindings; independent native clones
@@ -41,13 +54,13 @@ internal static partial class CompositionCapacityProfiles
                 {
                     command.Parameters.Add(((ICloneable)parameter).Clone());
                 }
-                await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
 
-                while (await reader.ReadAsync(CancellationToken.None))
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(cancellationToken))
                 {
                     evidence.Add(reader.GetString(0));
                 }
-
             }
         }
         catch (Exception diagnosticFailure)
@@ -57,6 +70,8 @@ internal static partial class CompositionCapacityProfiles
         }
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
-            engine + "-composition-capacity-failed-" + profile, evidence);
+            engine + "-composition-capacity-failed-" + profile,
+            evidence,
+            cancellationToken: cancellationToken);
     }
 }

@@ -16,7 +16,11 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var query = BuildMixedQuery(context, scope);
 
         // Act
@@ -44,7 +48,11 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
         var query = BuildMixedQuery(context, scope);
@@ -68,6 +76,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
         Assert.False(completed);
+
         // WHY: EF may call the provider interceptor before the driver checks an already-canceled token.
         // Cancellation promises propagation and no successful result, not zero command dispatch attempts.
         Assert.InRange(probe.CommandCount, 0, 1);
@@ -95,7 +104,11 @@ public abstract partial class HierarchyCompositionConsistencyTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var setup = await CreateContextAsync(scope, probe);
+        await using var setup = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         var observedToken = CancellationToken.None;
         var boundary = new CompositionReadBoundaryProbe(async token =>
@@ -108,6 +121,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe,
             boundary);
 

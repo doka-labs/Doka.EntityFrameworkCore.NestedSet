@@ -3,10 +3,12 @@ namespace Doka.EntityFrameworkCore.NestedSet.SqlServer;
 internal sealed partial class SqlServerNestedSetProvider
 {
     /// <inheritdoc />
+
     // https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers
     internal override int? MaxIdentifierLength => 128;
 
     /// <inheritdoc />
+
     // WHY: A leading number sign denotes a temporary table even inside delimiters, which a registry cannot be.
     // https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers
     internal override bool IsReservedTableName(

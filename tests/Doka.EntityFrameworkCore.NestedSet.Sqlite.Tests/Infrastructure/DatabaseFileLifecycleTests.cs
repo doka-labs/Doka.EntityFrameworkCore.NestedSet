@@ -10,6 +10,59 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         ProviderFixture<ProviderResources, SqliteEngine> fixture
     ) : base(fixture) { }
 
+    /// <summary>Passes the exact caller token through database creation into its initializer.</summary>
+    [Fact]
+    public async Task InitializationReceivesTheCallerToken()
+    {
+        // Arrange
+        using var cancellation = new CancellationTokenSource();
+        var observed = CancellationToken.None;
+
+        // Act
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            async (context, token) =>
+            {
+                observed = token;
+                await context.Database.EnsureCreatedAsync(token);
+            },
+            cancellation.Token);
+
+        // Assert
+        Assert.Equal(cancellation.Token, observed);
+    }
+
+    /// <summary>Cancellation during initialization still removes every file owned by the failed creation.</summary>
+    [Fact]
+    public async Task CanceledInitializationReleasesItsDatabaseFile()
+    {
+        // Arrange
+        using var cancellation = new CancellationTokenSource();
+        string? databaseFile = null;
+
+        // Act
+        var error = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
+            Engine,
+            async (context, token) =>
+            {
+                await context.Database.EnsureCreatedAsync(token);
+                databaseFile = context.Database.GetDbConnection()
+                    .DataSource;
+
+                await cancellation.CancelAsync();
+                token.ThrowIfCancellationRequested();
+            },
+            cancellation.Token));
+
+        // Assert
+        var canceled = Assert.IsAssignableFrom<OperationCanceledException>(error);
+        Assert.Equal(cancellation.Token, canceled.CancellationToken);
+        Assert.NotNull(databaseFile);
+        Assert.False(File.Exists(databaseFile));
+        Assert.False(File.Exists(databaseFile + "-wal"));
+        Assert.False(File.Exists(databaseFile + "-shm"));
+    }
+
     /// <summary>Removes a created SQLite file while preserving the exact initialization exception.</summary>
     [Fact]
     public async Task InitializationFailureReleasesItsDatabaseFile()
@@ -22,7 +75,10 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         try
         {
             // Act
-            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(Engine, Initialize));
+            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
+                Engine,
+                Initialize,
+                cancellationToken: TestContext.Current.CancellationToken));
 
             // Assert
             Assert.Same(failure, actual);
@@ -45,11 +101,14 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         return;
 
         async Task Initialize(
-            TreeContext context
+            TreeContext context,
+            CancellationToken cancellationToken
         )
         {
-            await context.Database.EnsureCreatedAsync(CancellationToken.None);
-            databaseFile = context.Database.GetDbConnection().DataSource;
+            await context.Database.EnsureCreatedAsync(cancellationToken);
+            databaseFile = context.Database.GetDbConnection()
+                .DataSource;
+
             existedDuringInitialization = File.Exists(databaseFile);
 
             throw failure;
@@ -67,7 +126,10 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         try
         {
             // Act
-            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(Engine, Initialize));
+            var actual = await Record.ExceptionAsync(() => TestDatabase.CreateAsync(
+                Engine,
+                Initialize,
+                cancellationToken: TestContext.Current.CancellationToken));
 
             // Assert
             var combined = Assert.IsType<AggregateException>(actual);
@@ -87,12 +149,16 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
         return;
 
         async Task Initialize(
-            TreeContext context
+            TreeContext context,
+            CancellationToken cancellationToken
         )
         {
-            await context.Database.EnsureCreatedAsync(CancellationToken.None);
-            databaseFile = context.Database.GetDbConnection().DataSource;
+            await context.Database.EnsureCreatedAsync(cancellationToken);
+            databaseFile = context.Database.GetDbConnection()
+                .DataSource;
+
             File.Delete(databaseFile);
+
             // WHY: A directory at the owned file path makes File.Delete fail consistently without changing permissions.
             Directory.CreateDirectory(databaseFile);
 

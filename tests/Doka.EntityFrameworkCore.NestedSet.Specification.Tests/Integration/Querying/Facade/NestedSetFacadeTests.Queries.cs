@@ -11,8 +11,8 @@ public abstract partial class NestedSetFacadeTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedScopedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedScopedAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<TreeNode>()
@@ -43,8 +43,8 @@ public abstract partial class NestedSetFacadeTests
     public async Task TreeBindingIsolatesIdenticalBounds()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedScopedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedScopedAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
 
         // Act
@@ -65,8 +65,8 @@ public abstract partial class NestedSetFacadeTests
     public async Task ComposedAnchorQueryUsesOneCommand()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedScopedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedScopedAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         await using var context = database.CreateContext(probe);
 
@@ -89,8 +89,8 @@ public abstract partial class NestedSetFacadeTests
     public async Task MissingAnchorReturnsEmptyQuery()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await SeedScopedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedScopedAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
 
         // Act

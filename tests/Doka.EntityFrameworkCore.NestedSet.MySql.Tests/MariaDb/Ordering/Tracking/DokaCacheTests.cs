@@ -1,8 +1,10 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MariaDb;
 
 /// <summary>Runs the Doka family's reseeded refresh-cache measurements on MariaDB.</summary>
 [Collection("Allocation measurements")]
-public sealed class DokaCacheTests : MySql.DokaCacheTestBase,
+public sealed class DokaCacheTests : DokaCacheTestBase,
     IClassFixture<ProviderFixture<OrderingFixture, MariaDbEngine>>
 {
     /// <summary>Uses this suite's isolated ordering database and measurement output.</summary>

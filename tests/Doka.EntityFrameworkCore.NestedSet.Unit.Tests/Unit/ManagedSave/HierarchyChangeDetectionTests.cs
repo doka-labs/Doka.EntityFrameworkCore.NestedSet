@@ -34,11 +34,19 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.False(changed);
         Assert.Equal(EntityState.Unchanged, nodeEntry.State);
         Assert.Equal(EntityState.Unchanged, ownerEntry.State);
-        Assert.False(nodeEntry.Property(value => value.Payload).IsModified);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
+        Assert.False(
+            nodeEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A normal principal's collection can change the hierarchy scope before FK fixup runs.</summary>
@@ -69,8 +77,13 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Null(node.ScopeOwner);
         Assert.Equal(EntityState.Unchanged, ownerEntry.State);
         Assert.Equal(EntityState.Unchanged, nodeEntry.State);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(nodeEntry.Property(value => value.Scope).IsModified);
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            nodeEntry.Property(value => value.Scope)
+                .IsModified);
     }
 
     /// <summary>A base-declared scope FK remains relevant when only its concrete TPC subtype is a hierarchy.</summary>
@@ -109,8 +122,14 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Null(node.ScopeOwner);
         Assert.Equal(EntityState.Unchanged, ownerEntry.State);
         Assert.Equal(EntityState.Unchanged, nodeEntry.State);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(nodeEntry.Property(value => value.Scope).IsModified);
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            nodeEntry.Property(value => value.Scope)
+                .IsModified);
+
         var foreignKey = nodeEntry
             .Metadata
             .GetForeignKeys()
@@ -148,7 +167,9 @@ public sealed partial class HierarchyChangeDetectionTests
         var ordinary = new OrdinaryScopeNode
         {
             Id = 2,
-            Scope = remove ? owner.Id : 9,
+            Scope = remove
+                ? owner.Id
+                : 9,
         };
 
         context.AttachRange(owner, hierarchy, ordinary);
@@ -177,9 +198,17 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(EntityState.Unchanged, ownerEntry.State);
         Assert.Equal(EntityState.Unchanged, hierarchyEntry.State);
         Assert.Equal(EntityState.Unchanged, ordinaryEntry.State);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(hierarchyEntry.Property(value => value.Scope).IsModified);
-        Assert.False(ordinaryEntry.Property(value => value.Scope).IsModified);
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            hierarchyEntry.Property(value => value.Scope)
+                .IsModified);
+
+        Assert.False(
+            ordinaryEntry.Property(value => value.Scope)
+                .IsModified);
     }
 
     /// <summary>An ordinary inherited dependent's reference edit cannot activate a sibling hierarchy mapping.</summary>
@@ -229,9 +258,17 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(EntityState.Unchanged, ownerEntry.State);
         Assert.Equal(EntityState.Unchanged, hierarchyEntry.State);
         Assert.Equal(EntityState.Unchanged, ordinaryEntry.State);
-        Assert.False(ownerEntry.Property(value => value.Payload).IsModified);
-        Assert.False(hierarchyEntry.Property(value => value.Scope).IsModified);
-        Assert.False(ordinaryEntry.Property(value => value.Scope).IsModified);
+        Assert.False(
+            ownerEntry.Property(value => value.Payload)
+                .IsModified);
+
+        Assert.False(
+            hierarchyEntry.Property(value => value.Scope)
+                .IsModified);
+
+        Assert.False(
+            ordinaryEntry.Property(value => value.Scope)
+                .IsModified);
     }
 
     /// <summary>A duplicate hierarchy reference does not change membership in a mixed inherited collection.</summary>
@@ -265,8 +302,10 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.False(changed);
         Assert.Equal(2, owner.Nodes.Count(value => ReferenceEquals(value, hierarchy)));
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(hierarchy).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(hierarchy)
+                .State);
     }
 
     /// <summary>Every structural role and configured order criterion is checked before flags are populated.</summary>
@@ -298,7 +337,10 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(propertyName).IsModified);
+        Assert.False(
+            entry.Property(propertyName)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -311,7 +353,8 @@ public sealed partial class HierarchyChangeDetectionTests
         var node = CreateNode();
         context.Attach(node);
         var entry = context.Entry(node);
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
 
         // Act
         var changed = NestedSetSaveChanges.HasHierarchyChanges(context);
@@ -319,7 +362,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(EntityState.Modified, entry.State);
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>Added and deleted hierarchy entries require coordination without any scalar comparison.</summary>
@@ -362,7 +407,9 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.False(changed);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.Name).IsModified);
+        Assert.False(
+            entry.Property(value => value.Name)
+                .IsModified);
     }
 
     /// <summary>A changed parent reference is detected before EF copies its key into the scalar foreign key.</summary>
@@ -371,7 +418,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var original = CreateNode(1);
+        var original = CreateNode();
         var replacement = CreateNode(3);
         var child = CreateNode(2);
         child.ParentId = original.Id;
@@ -387,7 +434,9 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.True(changed);
         Assert.Equal(original.Id, child.ParentId);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
     }
 
     /// <summary>Clearing a dependent reference still changes its FK after the old principal is detached.</summary>
@@ -396,13 +445,15 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var child = CreateNode(2);
         child.ParentId = parent.Id;
         child.Parent = parent;
         context.Attach(child);
         var entry = context.Entry(child);
-        context.Entry(parent).State = EntityState.Detached;
+        context.Entry(parent)
+            .State = EntityState.Detached;
+
         child.Parent = null;
 
         // Act
@@ -411,17 +462,28 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.Null(child.Parent);
         Assert.Equal(parent.Id, child.ParentId);
-        Assert.Equal(parent.Id,
-            entry.Property(value => value.ParentId).OriginalValue);
+        Assert.Equal(
+            parent.Id,
+            entry.Property(value => value.ParentId)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(parent).State);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(parent)
+                .State);
+
         var navigation = entry.Metadata.FindNavigation(nameof(ProbeNode.Parent))!;
 
-        Assert.Same(parent,
+        Assert.Same(
+            parent,
             UpdateEntry(context, child)
                 .GetRelationshipSnapshotValue(navigation));
+
         Assert.True(changed);
     }
 
@@ -431,7 +493,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var replacement = CreateNode(3);
         var child = CreateNode(2);
         child.ParentId = parent.Id;
@@ -440,7 +502,8 @@ public sealed partial class HierarchyChangeDetectionTests
         var entry = context.Entry(child);
         child.ParentId = replacement.Id;
         child.Payload = "Undetected payload";
-        entry.Property(value => value.ParentId).OriginalValue = replacement.Id;
+        entry.Property(value => value.ParentId)
+            .OriginalValue = replacement.Id;
 
         // Act
         var changed = NestedSetSaveChanges.HasHierarchyChanges(context);
@@ -448,11 +511,19 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Same(parent, child.Parent);
-        Assert.Equal(replacement.Id,
-            entry.Property(value => value.ParentId).OriginalValue);
+        Assert.Equal(
+            replacement.Id,
+            entry.Property(value => value.ParentId)
+                .OriginalValue);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
-        Assert.False(entry.Property(value => value.Payload).IsModified);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
+
+        Assert.False(
+            entry.Property(value => value.Payload)
+                .IsModified);
     }
 
     /// <summary>Collection membership edits are visible without fixing the dependent's foreign key.</summary>
@@ -466,7 +537,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var child = CreateNode(2);
 
         if (remove)
@@ -493,9 +564,16 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.Equal(remove ? parent.Id : (int?)null, child.ParentId);
+        Assert.Equal(
+            remove
+                ? parent.Id
+                : null,
+            child.ParentId);
+
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.False(entry.Property(value => value.ParentId).IsModified);
+        Assert.False(
+            entry.Property(value => value.ParentId)
+                .IsModified);
     }
 
     /// <summary>A detached child in a tracked parent's collection is observed without tracking the child.</summary>
@@ -504,7 +582,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         context.Attach(parent);
         var child = CreateNode(2);
         parent.Children!.Add(child);
@@ -514,10 +592,16 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.True(changed);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(parent).State);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(child).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(parent)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(child)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries());
         Assert.Null(child.ParentId);
         Assert.Null(child.Parent);
@@ -547,7 +631,13 @@ public sealed partial class HierarchyChangeDetectionTests
         }
 
         context.Attach(node);
-        var replacement = new ProbeOwner { Id = sameKey ? owner.Id : owner.Id + 1 };
+        var replacement = new ProbeOwner
+        {
+            Id = sameKey
+                ? owner.Id
+                : owner.Id + 1,
+        };
+
         node.ScopeOwner = replacement;
 
         // Act
@@ -557,21 +647,37 @@ public sealed partial class HierarchyChangeDetectionTests
         Assert.Equal(!sameKey, changed);
         Assert.Same(replacement, node.ScopeOwner);
         Assert.Equal(owner.Id, node.Scope);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(node).State);
-        Assert.Equal(loaded ? EntityState.Unchanged : EntityState.Detached,
-            context.Entry(owner).State);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(replacement).State);
-        Assert.Equal(loaded ? 2 : 1,
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(node)
+                .State);
+
+        Assert.Equal(
+            loaded
+                ? EntityState.Unchanged
+                : EntityState.Detached,
+            context.Entry(owner)
+                .State);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(replacement)
+                .State);
+
+        Assert.Equal(
+            loaded
+                ? 2
+                : 1,
             context
                 .ChangeTracker
                 .Entries()
                 .Count());
-        Assert.False(context
-            .Entry(node)
-            .Property(value => value.Scope)
-            .IsModified);
+
+        Assert.False(
+            context
+                .Entry(node)
+                .Property(value => value.Scope)
+                .IsModified);
     }
 
     /// <summary>A different collection object with the same members does not introduce hierarchy work.</summary>
@@ -580,7 +686,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var child = CreateNode(2);
         child.ParentId = parent.Id;
         child.Parent = parent;
@@ -608,17 +714,24 @@ public sealed partial class HierarchyChangeDetectionTests
         // Arrange
         await using var context = new SnapshotContext();
         var node = CreateNode();
-        node.Children = initiallyNull ? null : [];
+        node.Children = initiallyNull
+            ? null
+            : [];
+
         context.Attach(node);
-        node.Children = initiallyNull ? [] : null;
+        node.Children = initiallyNull
+            ? []
+            : null;
 
         // Act
         var changed = NestedSetSaveChanges.HasHierarchyChanges(context);
 
         // Assert
         Assert.False(changed);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(node).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(node)
+                .State);
     }
 
     /// <summary>Notification collection navigations have no relationship snapshot slot to inspect.</summary>
@@ -627,7 +740,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new NotificationContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var child = CreateNode(2);
         child.ParentId = parent.Id;
         child.Parent = parent;
@@ -639,8 +752,10 @@ public sealed partial class HierarchyChangeDetectionTests
 
         // Assert
         Assert.False(changed);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(child).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(child)
+                .State);
     }
 
     /// <summary>Notification fixup flags identify collection changes without collection snapshot storage.</summary>
@@ -649,7 +764,7 @@ public sealed partial class HierarchyChangeDetectionTests
     {
         // Arrange
         await using var context = new NotificationContext();
-        var parent = CreateNode(1);
+        var parent = CreateNode();
         var child = CreateNode(2);
         context.AttachRange(parent, child);
         parent.Children!.Add(child);
@@ -660,10 +775,11 @@ public sealed partial class HierarchyChangeDetectionTests
         // Assert
         Assert.True(changed);
         Assert.Equal(parent.Id, child.ParentId);
-        Assert.True(context
-            .Entry(child)
-            .Property(value => value.ParentId)
-            .IsModified);
+        Assert.True(
+            context
+                .Entry(child)
+                .Property(value => value.ParentId)
+                .IsModified);
     }
 
     /// <summary>Shadow values use their tracked storage rather than requiring a CLR property getter.</summary>
@@ -745,6 +861,7 @@ public sealed partial class HierarchyChangeDetectionTests
         await using var context = new SnapshotContext();
         var node = CreateNode();
         context.Attach(node);
+
         // WHY: Retain EF's conceptual-null state for inspection instead of immediately processing the orphan.
         context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.Never;
         var property = context
@@ -779,6 +896,7 @@ public sealed partial class HierarchyChangeDetectionTests
             .Metadata;
 
         var update = UpdateEntry(context, node);
+
         // WHY: The existing framework seam sets setModified=false, unlike PropertyEntry.CurrentValue. This
         // isolates conceptual null from equal CLR/original/relationship values and independent Modified flags.
         NestedSetInsertionContract.Instance.SetProperty(update, property, null);
@@ -806,6 +924,8 @@ public sealed partial class HierarchyChangeDetectionTests
         .GetService<IUpdateAdapterFactory>()
         .Create()
         .Entries
-        .Single(entry => ReferenceEquals(entry.ToEntityEntry().Entity,
+        .Single(entry => ReferenceEquals(
+            entry.ToEntityEntry()
+                .Entity,
             entity));
 }

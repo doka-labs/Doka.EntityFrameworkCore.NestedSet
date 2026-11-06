@@ -63,7 +63,9 @@ internal static class Program
                 await SampleDatabase.PrepareAsync(setup, configuration, command.Reset, cancellation.Token);
             }
 
-            var selected = command.Scenario == "all" ? Scenarios : [command.Scenario];
+            var selected = command.Scenario == "all"
+                ? Scenarios
+                : [command.Scenario];
 
             foreach (var scenario in selected)
             {
@@ -94,7 +96,10 @@ internal static class Program
                     case "ancestor-selection":
                     case "supervisor-chain":
                         await GroupSupervisorScenario.RunAsync(
-                            configuration, scenario, command.Details, cancellation.Token);
+                            configuration,
+                            scenario,
+                            command.Details,
+                            cancellation.Token);
 
                         break;
 

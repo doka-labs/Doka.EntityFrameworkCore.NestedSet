@@ -22,15 +22,20 @@ public sealed class SignalReportModelTests
             SignalStorage.Right, SignalStorage.Depth, SignalStorage.Position,
         ];
 
-        Assert.All(roles,
+        Assert.All(
+            roles,
             role =>
             {
                 Assert.True(node.FindProperty(role)!.IsShadowProperty());
                 Assert.Null(typeof(SignalNode).GetProperty(role));
             });
-        Assert.Equal([nameof(SignalNode.TenantId), nameof(SignalNode.Id)],
+
+        Assert.Equal(
+            [nameof(SignalNode.TenantId), nameof(SignalNode.Id)],
             node.FindPrimaryKey()!.Properties.Select(property => property.Name));
-        Assert.Contains(node.GetForeignKeys(),
+
+        Assert.Contains(
+            node.GetForeignKeys(),
             key => key.PrincipalEntityType == node
                 && key
                     .Properties
@@ -53,17 +58,22 @@ public sealed class SignalReportModelTests
             .ToArray();
 
         // Assert
-        Assert.Equal(3,
+        Assert.Equal(
+            3,
             mappings
                 .Select(mapping => mapping.GetTableName())
                 .Distinct()
                 .Count());
-        Assert.All(mappings,
+
+        Assert.All(
+            mappings,
             mapping =>
             {
                 Assert.Null(mapping.BaseType);
-                Assert.Equal([nameof(PulseRecord.Sequence)],
+                Assert.Equal(
+                    [nameof(PulseRecord.Sequence)],
                     mapping.FindPrimaryKey()!.Properties.Select(property => property.Name));
+
                 Assert.Equal(ValueGenerated.OnAdd, mapping.FindProperty(nameof(PulseRecord.Sequence))!.ValueGenerated);
             });
     }
@@ -78,21 +88,28 @@ public sealed class SignalReportModelTests
     {
         // Arrange
         var dokaOptions = new DbContextOptionsBuilder<SignalLabContext>()
-            .UseMySql("Server=localhost;Database=unused;User ID=unused;Password=unused",
+            .UseMySql(
+                "Server=localhost;Database=unused;User ID=unused;Password=unused",
                 MySqlServerVersion.MariaDb(new Version(11, 8, 0)),
                 provider => provider.UseNestedSets());
 
         var sqliteOptions = new DbContextOptionsBuilder<SignalLabSqliteContext>()
             .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
 
-        using var services = SampleTestServices.Create(doka ? dokaOptions.Options : sqliteOptions.Options);
+        using var services = SampleTestServices.Create(
+            doka
+                ? dokaOptions.Options
+                : sqliteOptions.Options);
+
         using var context = doka
-            ? new SignalLabContext(dokaOptions
-                .UseInternalServiceProvider(services)
-                .Options)
-            : new SignalLabSqliteContext(sqliteOptions
-                .UseInternalServiceProvider(services)
-                .Options);
+            ? new SignalLabContext(
+                dokaOptions
+                    .UseInternalServiceProvider(services)
+                    .Options)
+            : new SignalLabSqliteContext(
+                sqliteOptions
+                    .UseInternalServiceProvider(services)
+                    .Options);
 
         // Act
         var pending = context.Database.HasPendingModelChanges();

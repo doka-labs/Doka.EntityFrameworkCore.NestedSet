@@ -11,21 +11,21 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
     where TTreeId : notnull
     where TScope : notnull
 {
-    private readonly DbContext _context;
     private readonly EntityEntry<TEntity>[] _changed;
-    private readonly EntityEntry<TEntity>[] _tracked;
-    private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
-    private readonly Dictionary<TScope, HashSet<TKey>> _scopes;
-    private readonly Dictionary<TScope, HashSet<TTreeId>> _requestedTrees;
-    private readonly NestedSetProviderComparer<TTreeId> _treeIdComparer;
-    private readonly List<PersistedIdentity> _identities = [];
-    private readonly ParentChange[] _parentChanges;
-    private ParentChange[]? _orderedParentChanges;
-    private readonly List<NestedSetTreeLockRequest<TTreeId, TScope>> _treeRequests = [];
-    private readonly IProperty[] _refreshProperties;
-    private readonly Expression<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>> _refreshProjection;
-    private Expression<Func<TEntity, object[]>>? _nativeProjection;
     private readonly List<TreeIntervals> _changedIntervals = [];
+    private readonly DbContext _context;
+    private readonly List<PersistedIdentity> _identities = [];
+    private readonly NestedSetMapping<TEntity, TKey, TScope> _map;
+    private readonly ParentChange[] _parentChanges;
+    private readonly Expression<Func<NestedSetTrackedRowset<TEntity>.Row, object[]>> _refreshProjection;
+    private readonly IProperty[] _refreshProperties;
+    private readonly Dictionary<TScope, HashSet<TTreeId>> _requestedTrees;
+    private readonly Dictionary<TScope, HashSet<TKey>> _scopes;
+    private readonly EntityEntry<TEntity>[] _tracked;
+    private readonly NestedSetProviderComparer<TTreeId> _treeIdComparer;
+    private readonly List<NestedSetTreeLockRequest<TTreeId, TScope>> _treeRequests = [];
+    private Expression<Func<TEntity, object[]>>? _nativeProjection;
+    private ParentChange[]? _orderedParentChanges;
 
     /// <summary>Captures tracked identities and validated structural metadata before the payload save.</summary>
     /// <param name="context">The context that owns all reads, writes, and tracked entries.</param>
@@ -73,7 +73,8 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
         _treeIdComparer = new NestedSetProviderComparer<TTreeId>(_map.TreeIdProperty);
         _parentChanges = _changed
-            .Where(entry => entry.Property(_map.Parent).IsModified)
+            .Where(entry => entry.Property(_map.Parent)
+                .IsModified)
             .Select(entry =>
             {
                 // WHY: CurrentValues is live tracker metadata, but each access allocates a wrapper. Reuse one
@@ -91,7 +92,10 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                 return new ParentChange(
                     entry,
                     NestedSetTypedValue<TKey>.Read(values, _map.KeyProperty),
-                    NestedSetStructuralValue.Snapshot(_map.ParentProperty, entry.Property(_map.Parent).OriginalValue),
+                    NestedSetStructuralValue.Snapshot(
+                        _map.ParentProperty,
+                        entry.Property(_map.Parent)
+                            .OriginalValue),
                     NestedSetTypedValue<TKey>.Snapshot(_map.ParentProperty, parent.Value),
                     _map.ScopeProperty is not { } scopeProperty
                         ? default!

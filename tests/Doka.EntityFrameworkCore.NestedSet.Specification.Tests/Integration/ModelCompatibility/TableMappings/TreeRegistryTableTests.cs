@@ -44,7 +44,8 @@ public abstract class TreeRegistryTableTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NamedRegistryContext>(
             Engine,
-            static options => new NamedRegistryContext(options));
+            static options => new NamedRegistryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<ReportingNode>();
         var other = context.NestedSet<OrganizationNode>();
@@ -100,16 +101,30 @@ public abstract class TreeRegistryTableTests : ProviderTest
             active,
             CancellationToken.None);
 
-        var beforePurge = await ReadLifecyclesAsync(context, mapping.Registry.Name);
+        var beforePurge = await ReadLifecyclesAsync(
+            context,
+            mapping.Registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await hierarchy.PurgeTreeIdAsync(retired, CancellationToken.None);
-        var afterPurge = await ReadLifecyclesAsync(context, mapping.Registry.Name);
+        var afterPurge = await ReadLifecyclesAsync(
+            context,
+            mapping.Registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(NamedTable, mapping.Store.Name);
         Assert.Equal(NestedSetTreeRegistryMetadata.Tombstoned, beforePurge[retired]);
         Assert.Equal(NestedSetTreeRegistryMetadata.Active, beforePurge[active]);
         Assert.Equal([active], afterPurge.Keys);
-        Assert.Equal(1, await CountRowsAsync(context, NamedTable, mapping.Registry.GetSchema()));
+        Assert.Equal(
+            1,
+            await CountRowsAsync(
+                context,
+                NamedTable,
+                mapping.Registry.GetSchema(),
+                cancellationToken: TestContext.Current.CancellationToken));
+
         var nodes = await hierarchy
             .InTree(active)
             .Nodes
@@ -127,7 +142,8 @@ public abstract class TreeRegistryTableTests : ProviderTest
         // Arrange
         await using var before = await _fixture.CreateContextAsync<RegistryMigrationBeforeContext>(
             Engine,
-            static options => new RegistryMigrationBeforeContext(options));
+            static options => new RegistryMigrationBeforeContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await using var after = new RegistryMigrationAfterContext(
             ModelCompatibilityDatabase.Options<RegistryMigrationAfterContext>(
@@ -165,8 +181,14 @@ public abstract class TreeRegistryTableTests : ProviderTest
             CancellationToken.None);
 
         await hierarchy.DeleteTreeAsync(retired, CancellationToken.None);
-        var registry = NestedSetTreeRegistryMapping.For(before.Model.FindEntityType(typeof(ReportingNode))!).Registry;
-        var rowsBefore = await ReadRowsAsync(before, registry.Name);
+        var registry = NestedSetTreeRegistryMapping.For(before.Model.FindEntityType(typeof(ReportingNode))!)
+            .Registry;
+
+        var rowsBefore = await ReadRowsAsync(
+            before,
+            registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var differ = before.GetService<IMigrationsModelDiffer>();
         var source = before
             .GetService<IDesignTimeModel>()
@@ -184,9 +206,15 @@ public abstract class TreeRegistryTableTests : ProviderTest
         await ExecuteAsync(
             before,
             forward,
-            after.GetService<IDesignTimeModel>().Model);
+            after.GetService<IDesignTimeModel>()
+                .Model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var rowsAfter = await ReadRowsAsync(after, registry.Name);
+        var rowsAfter = await ReadRowsAsync(
+            after,
+            registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var reuse = await Record.ExceptionAsync(() => after
             .NestedSet<ReportingNode>()
             .InsertRootAsync(
@@ -209,13 +237,23 @@ public abstract class TreeRegistryTableTests : ProviderTest
                 1L,
                 CancellationToken.None);
 
-        var rowsBeforeDown = await ReadRowsAsync(after, registry.Name);
+        var rowsBeforeDown = await ReadRowsAsync(
+            after,
+            registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await ExecuteAsync(
             after,
             backward,
-            before.GetService<IDesignTimeModel>().Model);
+            before.GetService<IDesignTimeModel>()
+                .Model,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var rowsAfterDown = await ReadRowsAsync(before, registry.Name);
+        var rowsAfterDown = await ReadRowsAsync(
+            before,
+            registry.Name,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var reuseAfterDown = await Record.ExceptionAsync(() => hierarchy.InsertRootAsync(
             new ReportingNode
             {
@@ -233,7 +271,6 @@ public abstract class TreeRegistryTableTests : ProviderTest
             },
             1L,
             CancellationToken.None);
-
 
         var nodes = await hierarchy
             .InTree(active)
@@ -256,10 +293,12 @@ public abstract class TreeRegistryTableTests : ProviderTest
     }
 
     /// <summary>Applies operations through EF's ordinary provider generator.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task ExecuteAsync(
         DbContext context,
         IReadOnlyList<MigrationOperation> operations,
-        IModel model
+        IModel model,
+        CancellationToken cancellationToken
     )
     {
         var connection = context.GetService<IRelationalConnection>();
@@ -269,20 +308,27 @@ public abstract class TreeRegistryTableTests : ProviderTest
 
         foreach (var command in commands)
         {
-            await command.ExecuteNonQueryAsync(connection, cancellationToken: CancellationToken.None);
+            await command.ExecuteNonQueryAsync(connection, cancellationToken: cancellationToken);
         }
     }
 
     /// <summary>Reads identities and lifecycles through the mapped registry entity.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<Dictionary<Guid, byte>> ReadLifecyclesAsync(
         DbContext context,
-        string registry
-    ) => (await ReadRowsAsync(context, registry)).ToDictionary(row => row.TreeId, row => row.Lifecycle);
+        string registry,
+        CancellationToken cancellationToken
+    ) => (await ReadRowsAsync(
+        context,
+        registry,
+        cancellationToken: cancellationToken)).ToDictionary(row => row.TreeId, row => row.Lifecycle);
 
     /// <summary>Reads each complete registry row in a stable order.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<RegistryRow[]> ReadRowsAsync(
         DbContext context,
-        string registry
+        string registry,
+        CancellationToken cancellationToken
     )
     {
         var rows = await context
@@ -292,7 +338,7 @@ public abstract class TreeRegistryTableTests : ProviderTest
                 EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return rows
             .OrderBy(row => row.TreeId)
@@ -300,10 +346,12 @@ public abstract class TreeRegistryTableTests : ProviderTest
     }
 
     /// <summary>Proves the physical table exists under its delimited name, independent of the mapping.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<int> CountRowsAsync(
         DbContext context,
         string table,
-        string? schema
+        string? schema,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
@@ -313,11 +361,11 @@ public abstract class TreeRegistryTableTests : ProviderTest
             .CreateCommand();
 
         command.CommandText = "SELECT COUNT(*) FROM " + sql.DelimitIdentifier(table, schema);
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(cancellationToken);
 
         try
         {
-            var count = await command.ExecuteScalarAsync(CancellationToken.None);
+            var count = await command.ExecuteScalarAsync(cancellationToken);
 
             return Convert.ToInt32(count, CultureInfo.InvariantCulture);
         }

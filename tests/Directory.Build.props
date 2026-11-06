@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))"/>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -13,6 +13,6 @@
     <!-- WHY: Independent collections own their databases, while shared fixtures explicitly use one collection.
          Keep xUnit's CPU-based default instead of imposing a repository-wide concurrency limit. -->
     <Content Include="$(MSBuildThisFileDirectory)Shared/xunit.runner.json"
-             Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest"/>
+             Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

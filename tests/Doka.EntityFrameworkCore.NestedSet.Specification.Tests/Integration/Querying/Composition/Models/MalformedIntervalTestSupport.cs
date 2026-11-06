@@ -29,24 +29,44 @@ internal static class MalformedIntervalTestSupport
         int first,
         Guid tree,
         Guid foreignTree,
-        (long Left, long Right)[] bounds
+        (long Left, long Right)[] bounds,
+        CancellationToken cancellationToken
     )
     {
-        var nodes = bounds.Select((pair, offset) => new EntitySplitNode
-        {
-            Id = first + offset,
-            TreeId = tree,
-            Left = pair.Left,
-            Right = pair.Right,
-            Name = $"interval-{offset}",
-        }).ToList();
+        var nodes = bounds
+            .Select((pair, offset) => new EntitySplitNode
+            {
+                Id = first + offset,
+                TreeId = tree,
+                Left = pair.Left,
+                Right = pair.Right,
+                Name = $"interval-{offset}",
+            })
+            .ToList();
 
-        nodes.Add(new EntitySplitNode { Id = first + bounds.Length, TreeId = foreignTree, Left = 1, Right = 10 });
-        nodes.Add(new EntitySplitNode { Id = first + bounds.Length + 1, TreeId = foreignTree, Left = 3, Right = 4 });
-        await context.AddRangeAsync(nodes, CancellationToken.None);
+        nodes.Add(
+            new EntitySplitNode
+            {
+                Id = first + bounds.Length,
+                TreeId = foreignTree,
+                Left = 1,
+                Right = 10,
+            });
+
+        nodes.Add(
+            new EntitySplitNode
+            {
+                Id = first + bounds.Length + 1,
+                TreeId = foreignTree,
+                Left = 3,
+                Right = 4,
+            });
+
+        await context.AddRangeAsync(nodes, cancellationToken);
+
         // WHY: Entity splitting has no cross-fragment width CHECK. Precomputed import deliberately
         // supplies representable malformed intervals, so the oracle cannot rely on valid-tree assumptions.
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
 
         return nodes;

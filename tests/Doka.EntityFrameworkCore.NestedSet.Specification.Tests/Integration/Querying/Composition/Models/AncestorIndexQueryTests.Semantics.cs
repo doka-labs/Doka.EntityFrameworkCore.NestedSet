@@ -16,50 +16,95 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(true, "missing-source")]
     [InlineData(false, "empty-selection")]
     [InlineData(true, "empty-selection")]
-    public async Task IndexedAncestorsKeepScopeTreeVisibilityAndEmptySelection(bool includeSelf, string shape)
+    public async Task IndexedAncestorsKeepScopeTreeVisibilityAndEmptySelection(
+        bool includeSelf,
+        string shape
+    )
     {
         // Arrange
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe, foreignTrees: true);
+        await using var context = await CreateContextAsync(
+            scope,
+            tree,
+            probe,
+            foreignTrees: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         if (shape is "hidden-source" or "hidden-owner")
         {
-            var hidden = shape == "hidden-source" ? 3 : 2;
-            await context.Set<CompositionNavigationNode>().Where(node => node.Scope == scope && node.Id == hidden)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Visible, false), CancellationToken.None);
+            var hidden = shape == "hidden-source"
+                ? 3
+                : 2;
+
+            await context
+                .Set<CompositionNavigationNode>()
+                .Where(node => node.Scope == scope && node.Id == hidden)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(node => node.Visible, false),
+                    CancellationToken.None);
         }
 
-        var selected = shape == "missing-source" ? 99 : shape == "empty-selection" ? -1 : 3;
-        var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope);
+        var selected = shape == "missing-source"
+            ? 99
+            : shape == "empty-selection"
+                ? -1
+                : 3;
+
+        var hierarchy = context
+            .NestedSet<CompositionNavigationNode>()
+            .ForScope(scope);
+
         var query = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => node.Id == selected,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, owner.Scope, owner.TreeId })
-            : hierarchy.SelectAncestors(node => node.Id == selected,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id, owner.Scope, owner.TreeId });
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => node.Id == selected,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    owner.Scope,
+                    owner.TreeId,
+                })
+            : hierarchy.SelectAncestors(
+                node => node.Id == selected,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                    owner.Scope,
+                    owner.TreeId,
+                });
 
         int[] expected = shape switch
         {
             "hidden-source" or "missing-source" or "empty-selection" => [],
-            "hidden-owner" => includeSelf ? [1, 3] : [1],
-            _ => includeSelf ? [1, 2, 3] : [1, 2],
+            "hidden-owner" => includeSelf
+                ? [1, 3]
+                : [1],
+            _ => includeSelf
+                ? [1, 2, 3]
+                : [1, 2],
         };
 
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(row => row.Owner).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(row => row.Owner)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);
         Assert.Equal(expected, actual.Select(row => row.Owner));
-        Assert.All(actual, row =>
-        {
-            Assert.Equal(3, row.Source);
-            Assert.Equal(scope, row.Scope);
-            Assert.Equal(tree, row.TreeId);
-        });
+        Assert.All(
+            actual,
+            row =>
+            {
+                Assert.Equal(3, row.Source);
+                Assert.Equal(scope, row.Scope);
+                Assert.Equal(tree, row.TreeId);
+            });
 
         Assert.Equal(1, probe.CommandCount);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -77,36 +122,63 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(true, "shared-left")]
     [InlineData(false, "shared-right")]
     [InlineData(true, "shared-right")]
-    public async Task IndexedAncestorsPreserveEqualAndSharedBounds(bool includeSelf, string shape)
+    public async Task IndexedAncestorsPreserveEqualAndSharedBounds(
+        bool includeSelf,
+        string shape
+    )
     {
         // Arrange
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
-        var source = shape == "equal-nonleaf" ? 2 : 3;
+        await using var context = await CreateContextAsync(
+            scope,
+            tree,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var source = shape == "equal-nonleaf"
+            ? 2
+            : 3;
+
         var owner = CreateNode(scope, tree, 4);
         owner.ParentId = null;
         owner.Tags.Clear();
         owner.Items.Clear();
-        owner.Left = shape is "equal-nonleaf" or "shared-right" ? 2 : 3;
-        owner.Right = shape is "equal-nonleaf" or "shared-left" ? 5 : 4;
+        owner.Left = shape is "equal-nonleaf" or "shared-right"
+            ? 2
+            : 3;
+
+        owner.Right = shape is "equal-nonleaf" or "shared-left"
+            ? 5
+            : 4;
+
         await context.AddAsync(owner, CancellationToken.None);
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
+        var hierarchy = context
+            .NestedSet<CompositionNavigationNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
         var query = includeSelf
             ? hierarchy.SelectAncestorsOrSelf(node => node.Id == source, (node, ancestor, distance) => ancestor.Id)
             : hierarchy.SelectAncestors(node => node.Id == source, (node, ancestor, distance) => ancestor.Id);
 
         int[] expected = source == 2
-            ? includeSelf ? [1, 2, 4] : [1]
-            : includeSelf ? [1, 2, 3, 4] : [1, 2];
+            ? includeSelf
+                ? [1, 2, 4]
+                : [1]
+            : includeSelf
+                ? [1, 2, 3, 4]
+                : [1, 2];
 
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(key => key).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(key => key)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);
@@ -120,22 +192,48 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsRetainConsumerOccurrenceBags(bool includeSelf)
+    public async Task IndexedAncestorsRetainConsumerOccurrenceBags(
+        bool includeSelf
+    )
     {
         // Arrange
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, tree, probe);
-        var hierarchy = context.NestedSet<CompositionNavigationNode>().ForScope(scope).InTree(tree);
-        var pairs = includeSelf
-            ? hierarchy.SelectAncestorsOrSelf(node => node.Id == 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id })
-            : hierarchy.SelectAncestors(node => node.Id == 3,
-                (source, owner, distance) => new { Source = source.Id, Owner = owner.Id });
+        await using var context = await CreateContextAsync(
+            scope,
+            tree,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var query = pairs.Join(context.Set<CompositionNavigationItem>().Where(item => item.Scope == scope),
-            pair => pair.Source, item => item.NodeId, (pair, item) => 0);
+        var hierarchy = context
+            .NestedSet<CompositionNavigationNode>()
+            .ForScope(scope)
+            .InTree(tree);
+
+        var pairs = includeSelf
+            ? hierarchy.SelectAncestorsOrSelf(
+                node => node.Id == 3,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                })
+            : hierarchy.SelectAncestors(
+                node => node.Id == 3,
+                (source, owner, distance) => new
+                {
+                    Source = source.Id,
+                    Owner = owner.Id,
+                });
+
+        var query = pairs.Join(
+            context
+                .Set<CompositionNavigationItem>()
+                .Where(item => item.Scope == scope),
+            pair => pair.Source,
+            item => item.NodeId,
+            (pair, item) => 0);
 
         probe.Reset();
 
@@ -144,7 +242,12 @@ public abstract partial class AncestorIndexQueryTests
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);
-        Assert.Equal(includeSelf ? 6 : 4, actual.Length);
+        Assert.Equal(
+            includeSelf
+                ? 6
+                : 4,
+            actual.Length);
+
         Assert.All(actual, value => Assert.Equal(0, value));
         Assert.Equal(1, probe.CommandCount);
         Assert.Empty(context.ChangeTracker.Entries());

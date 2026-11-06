@@ -24,10 +24,11 @@ public sealed partial class SampleReadSnapshotTests
         // Arrange
         using var stop = new CancellationTokenSource();
         var observer = new FailingSnapshotOpenNotification(stop, cancel);
-        await using var context = new SampleLifecycleContext(new DbContextOptionsBuilder<SampleLifecycleContext>()
-            .UseSqlite("Data Source=:memory:")
-            .AddInterceptors(observer)
-            .Options);
+        await using var context = new SampleLifecycleContext(
+            new DbContextOptionsBuilder<SampleLifecycleContext>()
+                .UseSqlite("Data Source=:memory:")
+                .AddInterceptors(observer)
+                .Options);
 
         if (alreadyOpen)
         {
@@ -38,7 +39,8 @@ public sealed partial class SampleReadSnapshotTests
         var readInvoked = false;
 
         // Act
-        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(context,
+        var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync(
+            context,
             _ =>
             {
                 readInvoked = true;
@@ -47,7 +49,8 @@ public sealed partial class SampleReadSnapshotTests
             },
             stop.Token));
 
-        var state = context.Database.GetDbConnection().State;
+        var state = context.Database.GetDbConnection()
+            .State;
 
         if (alreadyOpen)
         {
@@ -61,8 +64,10 @@ public sealed partial class SampleReadSnapshotTests
         }
         else if (cancel)
         {
-            Assert.Equal(stop.Token,
-                Assert.IsAssignableFrom<OperationCanceledException>(error).CancellationToken);
+            Assert.Equal(
+                stop.Token,
+                Assert.IsAssignableFrom<OperationCanceledException>(error)
+                    .CancellationToken);
         }
         else
         {
@@ -70,11 +75,23 @@ public sealed partial class SampleReadSnapshotTests
         }
 
         Assert.Equal(alreadyOpen, readInvoked);
-        Assert.Equal(alreadyOpen ? 0 : 1, observer.FailedOpens);
+        Assert.Equal(
+            alreadyOpen
+                ? 0
+                : 1,
+            observer.FailedOpens);
+
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(alreadyOpen ? ConnectionState.Open : ConnectionState.Closed, state);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            alreadyOpen
+                ? ConnectionState.Open
+                : ConnectionState.Closed,
+            state);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Fails only after the real physical open, before EF finishes recording that open.</summary>

@@ -24,41 +24,59 @@ internal sealed class SignalReportProbe : DbCommandInterceptor
     }
 
     /// <summary>Counts actual entity instances; scalar aggregate DTOs never enter this callback.</summary>
-    internal void Materialized(object entity) => Entities++;
+    internal void Materialized(
+        object entity
+    ) => Entities++;
 
     /// <inheritdoc />
     public override InterceptionResult<DbDataReader> ReaderExecuting(
-        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<DbDataReader> result
     ) => throw new InvalidOperationException("The signal sample must execute reader I/O asynchronously.");
 
     /// <inheritdoc />
     public override InterceptionResult<int> NonQueryExecuting(
-        DbCommand command, CommandEventData eventData, InterceptionResult<int> result
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<int> result
     ) => throw new InvalidOperationException("The signal sample must execute command I/O asynchronously.");
 
     /// <inheritdoc />
     public override InterceptionResult<object> ScalarExecuting(
-        DbCommand command, CommandEventData eventData, InterceptionResult<object> result
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<object> result
     ) => throw new InvalidOperationException("The signal sample must execute scalar I/O asynchronously.");
 
     /// <inheritdoc />
     public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default
     )
     {
         Readers.Add(command.CommandText);
-        ParameterValues.AddRange(command.Parameters.Cast<DbParameter>().Select(parameter => parameter.Value));
+        ParameterValues.AddRange(
+            command
+                .Parameters
+                .Cast<DbParameter>()
+                .Select(parameter => parameter.Value));
 
         return ValueTask.FromResult(result);
     }
+
     /// <inheritdoc />
     public override async ValueTask<DbDataReader> ReaderExecutedAsync(
-        DbCommand command, CommandExecutedEventData eventData, DbDataReader result,
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        DbDataReader result,
         CancellationToken cancellationToken = default
     )
     {
-        if (Readers.Count == 1 && AfterFirstReader is { } callback)
+        if (Readers.Count == 1
+            && AfterFirstReader is { } callback)
         {
             AfterFirstReader = null;
             await callback(cancellationToken);
@@ -66,5 +84,4 @@ internal sealed class SignalReportProbe : DbCommandInterceptor
 
         return result;
     }
-
 }

@@ -75,16 +75,18 @@ public sealed partial class HierarchyChangeDetectionTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.Rank)
                 .HasConversion(
                     value => Convert.ToBase64String(value),
                     value => Convert.FromBase64String(value))
                 .Metadata
-                .SetValueComparer(new ValueComparer<byte[]>(
-                    (left, right) => Enumerable.SequenceEqual(left!, right!),
-                    value => value.Length,
-                    value => value.ToArray()));
+                .SetValueComparer(
+                    new ValueComparer<byte[]>(
+                        (left, right) => Enumerable.SequenceEqual(left!, right!),
+                        value => value.Length,
+                        value => value.ToArray()));
 
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
@@ -96,14 +98,17 @@ public sealed partial class HierarchyChangeDetectionTests
     /// <summary>Provides a mutable domain ordering value beside ordinary nested-set scalar roles.</summary>
     private sealed class MutablePlanNode : INestedSetNode<int, Guid>
     {
+        /// <summary>Gets or sets the optional direct parent key.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets the domain criterion with a deep snapshot comparer.</summary>
+        public byte[] Rank { get; set; } = [];
+
         /// <inheritdoc />
         public int Id { get; set; }
 
         /// <inheritdoc />
         public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the optional direct parent key.</summary>
-        public int? ParentId { get; set; }
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -116,8 +121,5 @@ public sealed partial class HierarchyChangeDetectionTests
 
         /// <inheritdoc />
         public long Position { get; set; }
-
-        /// <summary>Gets or sets the domain criterion with a deep snapshot comparer.</summary>
-        public byte[] Rank { get; set; } = [];
     }
 }

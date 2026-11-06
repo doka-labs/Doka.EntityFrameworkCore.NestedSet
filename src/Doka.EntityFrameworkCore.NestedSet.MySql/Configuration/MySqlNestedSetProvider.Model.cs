@@ -5,6 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.MySql;
 internal sealed partial class MySqlNestedSetProvider
 {
     /// <inheritdoc />
+
     // WHY: Both servers document 64 characters for table names, independent of their UTF-8 byte length.
     // https://dev.mysql.com/doc/refman/8.4/en/identifier-length.html
     // https://mariadb.com/docs/server/reference/sql-structure/sql-language-structure/identifier-names

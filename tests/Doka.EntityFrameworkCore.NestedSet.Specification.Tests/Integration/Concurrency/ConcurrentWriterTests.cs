@@ -22,7 +22,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
     public async Task SameTreeSerializes64ChildWritersWithDensePositions()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = TreeId(1);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await using (var setup = database.CreateContext())
@@ -58,6 +58,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
         Assert.Equal(
             (1L, (WriterCount + 1) * 2L, 0, 0L, (int?)null),
             (root.Left, root.Right, root.Depth, root.Position, root.ParentId));
+
         Assert.Equal(
             Enumerable.Range(1, WriterCount + 1),
             nodes
@@ -68,7 +69,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
         {
             var child = nodes[index + 1];
             Assert.Equal(
-                (2L + (index * 2L), 3L + (index * 2L), 1, (long)index, (int?)1),
+                (2L + index * 2L, 3L + index * 2L, 1, (long)index, (int?)1),
                 (child.Left, child.Right, child.Depth, child.Position, child.ParentId));
         }
 
@@ -95,5 +96,4 @@ public abstract class ConcurrentWriterTests : ProviderTest
             .ForScope(Scope)
             .InsertChildAsync(new ConcurrentNode { Id = id }, 1, cancellationToken);
     }
-
 }

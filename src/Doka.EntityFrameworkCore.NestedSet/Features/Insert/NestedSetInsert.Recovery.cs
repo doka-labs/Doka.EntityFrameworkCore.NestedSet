@@ -92,7 +92,9 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             try
             {
                 NestedSetInputNavigations.RestoreEmpty(
-                    candidate.Entry.Metadata, candidate.Entry.Entity, includeOwned: false);
+                    candidate.Entry.Metadata,
+                    candidate.Entry.Entity,
+                    includeOwned: false);
             }
             catch (Exception error)
             {

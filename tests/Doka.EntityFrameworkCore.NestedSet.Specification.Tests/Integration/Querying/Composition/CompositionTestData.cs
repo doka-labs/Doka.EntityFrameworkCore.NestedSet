@@ -9,6 +9,7 @@ internal static class CompositionTestData
         string engine,
         Guid scope,
         CompositionCommandProbe probe,
+        CancellationToken cancellationToken,
         int? hidden = null,
         int? closed = null,
         EnterpriseProbe? planProbe = null,
@@ -19,6 +20,7 @@ internal static class CompositionTestData
         var context = await fixture.CreateContextAsync<CompositionContext>(
             engine,
             static options => new CompositionContext(options),
+            cancellationToken: cancellationToken,
             planProbe is null
                 ? [probe, TestMaterializationObserver.Instance]
                 : [probe, planProbe, TestMaterializationObserver.Instance]);
@@ -41,8 +43,8 @@ internal static class CompositionTestData
                 ];
 
             // WHY: Every case has its own scope, so stable oracle keys can coexist without reset races.
-            await context.AddRangeAsync(nodes, CancellationToken.None);
-            await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+            await context.AddRangeAsync(nodes, cancellationToken);
+            await context.SavePrecomputedHierarchyAsync(cancellationToken);
             context.ChangeTracker.Clear();
             probe.Reset();
 
@@ -69,7 +71,9 @@ internal static class CompositionTestData
                 EdgeOpen = id != closed,
                 Candidate = id is 1 or 2,
                 Matches = id == 1,
-                ToDate = id == 2 ? new DateOnly(2044, 10, 31) : null,
+                ToDate = id == 2
+                    ? new DateOnly(2044, 10, 31)
+                    : null,
             };
         }
         catch
@@ -97,9 +101,11 @@ internal static class CompositionTestData
                 Scope = scope,
                 TreeId = treeId,
                 Id = index + 1,
-                ParentId = index == 0 ? null : index,
+                ParentId = index == 0
+                    ? null
+                    : index,
                 Left = index + 1,
-                Right = (2L * count) - index,
+                Right = 2L * count - index,
                 Depth = index,
                 Candidate = ownerMode != ChainOwnerMode.RootOnly || index == 0,
                 Matches = ownerMode == ChainOwnerMode.AllValues || index == 0,
@@ -121,5 +127,4 @@ internal static class CompositionTestData
         /// <summary>Only the root is eligible, so its complete path to the selected leaf is checked.</summary>
         RootOnly,
     }
-
 }

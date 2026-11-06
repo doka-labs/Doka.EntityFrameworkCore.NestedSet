@@ -87,7 +87,11 @@ public sealed class SignalMaterializationBenchmarkTests
     )
     {
         // Arrange
-        var benchmark = new SignalMaterializationBenchmarks { Cells = cells, Density = density };
+        var benchmark = new SignalMaterializationBenchmarks
+        {
+            Cells = cells,
+            Density = density,
+        };
 
         // Act
         var error = await Record.ExceptionAsync(benchmark.SetupAsync);
@@ -103,13 +107,18 @@ public sealed class SignalMaterializationBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UninitializedFixtureIsRejected(bool verify)
+    public async Task UninitializedFixtureIsRejected(
+        bool verify
+    )
     {
         // Arrange
         var benchmark = new SignalMaterializationBenchmarks();
 
         // Act
-        var error = await Record.ExceptionAsync(verify ? benchmark.VerifyAsync : benchmark.MaterializeAsync);
+        var error = await Record.ExceptionAsync(
+            verify
+                ? benchmark.VerifyAsync
+                : benchmark.MaterializeAsync);
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -162,10 +171,17 @@ public sealed class SignalMaterializationBenchmarkTests
     [InlineData("missing")]
     [InlineData("value")]
     [InlineData("order")]
-    public async Task CleanupRejectsAlteredResult(string change)
+    public async Task CleanupRejectsAlteredResult(
+        string change
+    )
     {
         // Arrange
-        var benchmark = new SignalMaterializationBenchmarks { Cells = 24, Density = SignalMaterializationDensity.Dense };
+        var benchmark = new SignalMaterializationBenchmarks
+        {
+            Cells = 24,
+            Density = SignalMaterializationDensity.Dense,
+        };
+
         await benchmark.SetupAsync();
         var result = (SignalReportCell[])await benchmark.MaterializeAsync();
         switch (change)
@@ -197,7 +213,9 @@ public sealed class SignalMaterializationBenchmarkTests
     {
         // Arrange
         var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
-        using var discovery = BenchmarkConverter.TypeToBenchmarks(typeof(SignalMaterializationBenchmarks), configuration);
+        using var discovery = BenchmarkConverter.TypeToBenchmarks(
+            typeof(SignalMaterializationBenchmarks),
+            configuration);
 
         // Act
         var cases = discovery.BenchmarksCases;
@@ -207,18 +225,27 @@ public sealed class SignalMaterializationBenchmarkTests
         Assert.False(typeof(SignalMaterializationBenchmarks).IsSealed);
         Assert.Contains(discovery.Config.GetDiagnosers(), diagnoser => diagnoser is MemoryDiagnoser);
         Assert.Contains(discovery.Config.GetDiagnosers(), diagnoser => diagnoser is ThreadingDiagnoser);
-        Assert.All(cases, benchmark =>
-        {
-            Assert.Equal(nameof(SignalMaterializationBenchmarks.MaterializeAsync),
-                benchmark.Descriptor.WorkloadMethod.Name);
-            Assert.Equal(nameof(SignalMaterializationBenchmarks.SetupAsync), benchmark.Descriptor.GlobalSetupMethod?.Name);
-            Assert.Equal(nameof(SignalMaterializationBenchmarks.VerifyAsync),
-                benchmark.Descriptor.GlobalCleanupMethod?.Name);
-            Assert.Null(benchmark.Descriptor.IterationSetupMethod);
-            Assert.Null(benchmark.Descriptor.IterationCleanupMethod);
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
-            Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.UnrollFactorCharacteristic));
-        });
+        Assert.All(
+            cases,
+            benchmark =>
+            {
+                Assert.Equal(
+                    nameof(SignalMaterializationBenchmarks.MaterializeAsync),
+                    benchmark.Descriptor.WorkloadMethod.Name);
+
+                Assert.Equal(
+                    nameof(SignalMaterializationBenchmarks.SetupAsync),
+                    benchmark.Descriptor.GlobalSetupMethod?.Name);
+
+                Assert.Equal(
+                    nameof(SignalMaterializationBenchmarks.VerifyAsync),
+                    benchmark.Descriptor.GlobalCleanupMethod?.Name);
+
+                Assert.Null(benchmark.Descriptor.IterationSetupMethod);
+                Assert.Null(benchmark.Descriptor.IterationCleanupMethod);
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.InvocationCountCharacteristic));
+                Assert.False(benchmark.Job.Run.HasValue(BenchmarkRunMode.UnrollFactorCharacteristic));
+            });
     }
 
     /// <summary>
@@ -229,7 +256,10 @@ public sealed class SignalMaterializationBenchmarkTests
         SignalMaterializationDensity density
     )
     {
-        var signals = cells == 24 ? 2 : 32;
+        var signals = cells == 24
+            ? 2
+            : 32;
+
         var measured = density switch
         {
             SignalMaterializationDensity.Empty => 0,
@@ -249,7 +279,9 @@ public sealed class SignalMaterializationBenchmarkTests
                 signal,
                 sources[position % 3],
                 exists,
-                exists ? position : 0);
+                exists
+                    ? position
+                    : 0);
         }
 
         return expected;

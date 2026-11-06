@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 var options = new DbContextOptionsBuilder<ConsumerContext>();
 options.UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets());
-await ConsumerContext.VerifyQueryAsync(options.Options);
+await ConsumerContext.VerifyQueryAsync(options.Options, CancellationToken.None);
 
 await using var context = new ConsumerContext(options.Options);
 await context.Database.OpenConnectionAsync(CancellationToken.None);

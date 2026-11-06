@@ -40,27 +40,37 @@ The owner explicitly retained `10.1.0` for the provider-package and registration
 break in [D-020](decisions/D-020-provider-owned-runtime-packages.md). This is a
 narrow, documented exception to SemVer's major-version treatment of breaking
 changes, not permission for unrelated breaking changes in future minor releases.
-The upgrade guide and changelog must identify the removed options-level API and
-selected-adapter installation. Consumers must review/pin their qualified graph
-rather than infer compatibility solely from the unchanged package major.
+The upgrade guide and changelog identify the removed options-level API and
+selected-adapter installation.
+
+On 2026-11-06 the owner separately approved `10.3.0` for the source-breaking
+removal of optional `CancellationToken` defaults from NestedSet-owned async
+APIs. Existing binary method signatures remain compatible; recompilation
+requires an explicit token argument. This exception is limited to that change
+and does not authorize other breaking minor updates. Actual EF/.NET override
+and interface contracts retain their upstream optional signatures; mandatory
+cleanup remains uninterruptible. Consumers must review/pin their qualified
+graph rather than infer source compatibility solely from the unchanged major.
 
 An RC communicates a candidate public contract. A stable release communicates
-the reviewed stable contract and moves the public API additions from
+the reviewed stable contract and promotes the accepted public API changes from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
-The current shipped API files record the stable `10.2.0` contract: Core is
-unchanged, the common EF API includes query composition and optional registry
-naming, and each adapter owns its native callback. The removed options-level registration is absent from the
-current contract. All unshipped files are ready for subsequent changes. The
-two original package IDs retain SDK compatibility validation against the
-published `10.0.0` baseline with only the approved registration removal
-suppressed. Historical declarations remain in the original release tag. The
-provider-package/registration break is approved in
-[D-020](decisions/D-020-provider-owned-runtime-packages.md) and documented in
-the [upgrade guide](upgrading-provider-packages.md). The source uses
-`VersionPrefix=10.2.0` without a prerelease suffix and the dated
-`10.2.0 (2026-11-03)` changelog entry. Publication evidence remains the exact
+The current shipped API files record the stable `10.3.0` contract: Core is
+unchanged, the common EF API includes query composition, optional registry
+naming and 36 required-cancellation declarations, and each adapter owns its
+native callback. The removed options-level registration remains absent. All
+unshipped files are reserved for subsequent changes. The historical optional
+cancellation signatures remain in the `10.2.0` release tag. The two original
+package IDs retain SDK compatibility validation against the published `10.0.0`
+baseline with only the approved registration removal suppressed; the source
+exception does not add a binary-compatibility suppression. The earlier
+registration exception is approved in
+[D-020](decisions/D-020-provider-owned-runtime-packages.md); both exceptions
+are documented in the [upgrade guide](upgrading-provider-packages.md). The
+source uses `VersionPrefix=10.3.0` without a prerelease suffix and the dated
+`10.3.0 (2026-11-06)` changelog entry. Publication evidence remains the exact
 release's hosted qualification and successful public readback.
 
 ## Entry conditions

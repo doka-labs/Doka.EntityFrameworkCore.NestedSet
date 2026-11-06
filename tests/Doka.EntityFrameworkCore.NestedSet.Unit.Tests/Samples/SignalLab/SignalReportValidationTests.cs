@@ -39,7 +39,9 @@ public sealed partial class SignalReportValidationTests(
     {
         // Arrange
         var from = DateOnly.MinValue;
-        DateOnly? until = openEnd ? null : DateOnly.MaxValue;
+        DateOnly? until = openEnd
+            ? null
+            : DateOnly.MaxValue;
 
         // Act
         var allowed = SignalReportValidation.IsAllowed(from, until, DateOnly.MaxValue);
@@ -85,7 +87,9 @@ public sealed partial class SignalReportValidationTests(
         Assert.Single(snapshot.AnchorIds);
         Assert.Single(snapshot.ChannelIds);
         Assert.Single(snapshot.Sources);
-        Assert.Single(Assert.Single(snapshot.Groups).Criteria);
+        Assert.Single(
+            Assert.Single(snapshot.Groups)
+                .Criteria);
     }
 
     /// <summary>Two AND values of one scalar field are a request error rather than an implicit OR.</summary>
@@ -218,12 +222,13 @@ public sealed partial class SignalReportValidationTests(
 
         var snapshot = SignalReportValidation.Snapshot(request);
         var catalog = Catalog(snapshot)
-            .Append(new SignalCatalogRow
-            {
-                Kind = 1,
-                Id = SignalReportDataset.SweepChannel,
-                UnitCode = unit,
-            })
+            .Append(
+                new SignalCatalogRow
+                {
+                    Kind = 1,
+                    Id = SignalReportDataset.SweepChannel,
+                    UnitCode = unit,
+                })
             .ToArray();
 
         // Act
@@ -259,10 +264,11 @@ public sealed partial class SignalReportValidationTests(
     public void GridPreservesMissingVersusMeasuredZero()
     {
         // Arrange
-        var snapshot = SignalReportValidation.Snapshot(Request() with
-        {
-            Sources = [CapturePort.Pulse, CapturePort.Sweep],
-        });
+        var snapshot = SignalReportValidation.Snapshot(
+            Request() with
+            {
+                Sources = [CapturePort.Pulse, CapturePort.Sweep],
+            });
 
         SignalReportTotal[] totals =
         [
@@ -279,7 +285,8 @@ public sealed partial class SignalReportValidationTests(
         var cells = SignalReportValidation.CreateGrid(snapshot, totals);
 
         // Assert
-        Assert.Collection(cells,
+        Assert.Collection(
+            cells,
             actual =>
             {
                 Assert.True(actual.HasData);
@@ -293,7 +300,8 @@ public sealed partial class SignalReportValidationTests(
     }
 
     /// <summary>Creates the smallest valid sample request for pure validation.</summary>
-    private static SignalReportRequest Request() => new(Guid.NewGuid(),
+    private static SignalReportRequest Request() => new(
+        Guid.NewGuid(),
         Guid.NewGuid(),
         [SignalReportDataset.Id(1)],
         [SignalReportDataset.PulseChannel],

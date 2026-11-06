@@ -14,24 +14,45 @@ public abstract partial class GroupSupervisorTests
     [Trait("Category", "Capacity")]
     [InlineData(1)]
     [InlineData(16)]
-    public async Task AllOriginsRetainDirectEvidenceAndBoundedNativeWork(int fields)
+    public async Task AllOriginsRetainDirectEvidenceAndBoundedNativeWork(
+        int fields
+    )
     {
         // Arrange
         const int origins = 1_000;
         var probe = new SupervisorCommandProbe();
         var plans = new EnterpriseProbe(captureParameterBindings: true);
-        await using var context = await CreateAsync(probe, plans);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            plans);
+
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await SeedOriginProfileAsync(context, data, origins, fields);
-        var expectedOrigins = await context.UserGroupMemberships
+        await SeedOriginProfileAsync(
+            context,
+            data,
+            origins,
+            fields,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var expectedOrigins = await context
+            .UserGroupMemberships
             .Where(member => member.TenantId == data.TenantId && member.UserId == data.Users[0])
-            .Select(member => member.UserGroupId).Order().ToArrayAsync(CancellationToken.None);
+            .Select(member => member.UserGroupId)
+            .Order()
+            .ToArrayAsync(CancellationToken.None);
 
         var request = data.Request(App.SearchStart.IncludeSelf) with
         {
             Groups = new App.AllEligibleGroups(s_allOriginTypes),
-            Matches = s_profileFields.Take(fields).Select(field => new App.MetadataMatch(
-                App.MetadataOwner.SourceUser, field, App.MetadataOwner.CandidateMembership, field)).ToArray(),
+            Matches = s_profileFields
+                .Take(fields)
+                .Select(field => new App.MetadataMatch(
+                    App.MetadataOwner.SourceUser,
+                    field,
+                    App.MetadataOwner.CandidateMembership,
+                    field))
+                .ToArray(),
         };
 
         // WHY: Reuse the origin/routing profile's fixed linear allowance. Direct All evidence may grow with
@@ -42,8 +63,12 @@ public abstract partial class GroupSupervisorTests
         if (Engine is "MySql" or "MariaDb")
         {
             await context.Database.OpenConnectionAsync(CancellationToken.None);
-            calibration = await CalibrateRankingHandlersAsync(context, data.Users[0]);
-            before = await ReadRankingHandlersAsync(context);
+            calibration = await CalibrateRankingHandlersAsync(
+                context,
+                data.Users[0],
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            before = await ReadRankingHandlersAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var index = plans.Commands.Count;
@@ -53,8 +78,12 @@ public abstract partial class GroupSupervisorTests
         App.SupervisorResolutionBatch result;
         try
         {
-            result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-                App.SupervisorSelection.All, CancellationToken.None);
+            result = await App.SupervisorQueries.ResolveAsync(
+                context,
+                data.TenantId,
+                request,
+                App.SupervisorSelection.All,
+                CancellationToken.None);
         }
         catch (Exception error)
         {
@@ -64,7 +93,12 @@ public abstract partial class GroupSupervisorTests
                 failure.Add(plans.Commands[index]);
                 try
                 {
-                    failure.Add(await EstimatedOriginPlanAsync(context, plans, index));
+                    failure.Add(
+                        await EstimatedOriginPlanAsync(
+                            context,
+                            plans,
+                            index,
+                            cancellationToken: TestContext.Current.CancellationToken));
                 }
                 catch (Exception captureError)
                 {
@@ -74,52 +108,77 @@ public abstract partial class GroupSupervisorTests
             }
 
             await QueryPlanTestSupport.WriteEvidenceAsync(
-                $"{Engine}-usergroups-all-origins-failed-{fields}", failure);
+                $"{Engine}-usergroups-all-origins-failed-{fields}",
+                failure,
+                cancellationToken: TestContext.Current.CancellationToken);
 
             throw;
         }
 
-        var handlers = before is null ? null : RankingHandlerDelta(before, await ReadRankingHandlersAsync(context));
+        var handlers = before is null
+            ? null
+            : RankingHandlerDelta(
+                before,
+                await ReadRankingHandlersAsync(
+                    context,
+                    cancellationToken: TestContext.Current.CancellationToken));
+
         var commandCount = probe.Commands.Count;
         var readerAdvances = probe.ReaderAdvances;
         var sql = plans.Commands[index];
         var bytes = Encoding.UTF8.GetByteCount(sql);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, plans, index, Engine);
-        await QueryPlanTestSupport.WriteEvidenceAsync($"{Engine}-usergroups-all-origins-{fields}",
-        [
-            $"Origins={origins}; fields={fields}; SQL={bytes} B; linearWorkBudget={linearWorkBudget}",
-            "Actual-command SESSION read requests: " + FormatRankingHandlers(handlers),
-            "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
-            "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
-            sql, plan,
-        ]);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            plans,
+            index,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await QueryPlanTestSupport.WriteEvidenceAsync(
+            $"{Engine}-usergroups-all-origins-{fields}",
+            [
+                $"Origins={origins}; fields={fields}; SQL={bytes} B; linearWorkBudget={linearWorkBudget}",
+                "Actual-command SESSION read requests: " + FormatRankingHandlers(handlers),
+                "Calibration status-only delta: " + FormatRankingHandlers(calibration?.Empty),
+                "Calibration fully drained fixture-lookup delta: " + FormatRankingHandlers(calibration?.Lookup),
+                sql, plan,
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.Completed, result.Status);
         Assert.True(result.Complete);
         Assert.Equal(origins, expectedOrigins.Length);
-        Assert.Equal(expectedOrigins.Select(key => (int?)key),
-            result.Origins.Select(origin => origin.StartGroupId).Order());
-        Assert.All(result.Origins, origin =>
-        {
-            Assert.Equal(App.SupervisorResolutionStatus.Found, origin.Status);
-            Assert.Null(origin.Continuation);
-            var evidence = Assert.Single(origin.Evidence);
-            Assert.Equal(data.TenantId, evidence.TenantId);
-            Assert.Equal(data.Users[0], evidence.SourceUserId);
-            Assert.Equal(origin.StartGroupId, evidence.StartGroupId);
-            Assert.Equal(data.TreeId, evidence.StartTreeId);
-            Assert.Equal(origin.StartGroupId, evidence.FoundGroupId);
-            Assert.Equal(data.Users[1], evidence.CandidateUserId);
-            Assert.Equal(0, evidence.Distance);
-            Assert.Equal(10, evidence.LeadershipPriority);
-        });
+        Assert.Equal(
+            expectedOrigins.Select(key => (int?)key),
+            result
+                .Origins
+                .Select(origin => origin.StartGroupId)
+                .Order());
+
+        Assert.All(
+            result.Origins,
+            origin =>
+            {
+                Assert.Equal(App.SupervisorResolutionStatus.Found, origin.Status);
+                Assert.Null(origin.Continuation);
+                var evidence = Assert.Single(origin.Evidence);
+                Assert.Equal(data.TenantId, evidence.TenantId);
+                Assert.Equal(data.Users[0], evidence.SourceUserId);
+                Assert.Equal(origin.StartGroupId, evidence.StartGroupId);
+                Assert.Equal(data.TreeId, evidence.StartTreeId);
+                Assert.Equal(origin.StartGroupId, evidence.FoundGroupId);
+                Assert.Equal(data.Users[1], evidence.CandidateUserId);
+                Assert.Equal(0, evidence.Distance);
+                Assert.Equal(10, evidence.LeadershipPriority);
+            });
 
         Assert.Equal(1, commandCount);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());
         Assert.InRange(probe.ParameterCounts[0], 0, 999);
         Assert.InRange(bytes, 1, 2_000_000);
+
         // WHY: All transports one source marker, one marker per original membership, and each direct
         // evidence occurrence. The observer may additionally report the final end-of-stream advance.
         const int expectedRows = 1 + origins + origins;
@@ -127,7 +186,8 @@ public abstract partial class GroupSupervisorTests
         if (calibration is { } calibrated)
         {
             Assert.Equal(1, calibrated.Rows);
-            Assert.True(calibrated.Lookup.Values.Sum() > calibrated.Empty.Values.Sum(),
+            Assert.True(
+                calibrated.Lookup.Values.Sum() > calibrated.Empty.Values.Sum(),
                 "A real fixture lookup must add read requests beyond the SHOW SESSION STATUS control.");
         }
 
@@ -136,6 +196,7 @@ public abstract partial class GroupSupervisorTests
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"All origins={origins}; fields={fields}; SESSION requests={handlers.Values.Sum()}; "
                 + $"budget={linearWorkBudget}.");
+
             Assert.InRange(handlers.Values.Sum(), 0, linearWorkBudget);
         }
 
@@ -147,7 +208,8 @@ public abstract partial class GroupSupervisorTests
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"All fields={fields}; native tuples={work.MaximumOperatorTuples}; "
                 + $"materialized output={work.MaximumMaterializedTuples}.");
-            Assert.Equal((double)expectedRows, work.RootOutputTuples);
+
+            Assert.Equal(expectedRows, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, linearWorkBudget);
             Assert.InRange(work.MaximumMaterializedTuples, 0, linearWorkBudget);
         }
@@ -160,7 +222,8 @@ public abstract partial class GroupSupervisorTests
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"All fields={fields}; native tuples={work.MaximumOperatorTuples}; "
                 + $"rejected joins={work.MaximumRejectedJoinTuples}.");
-            Assert.Equal((double)expectedRows, work.RootOutputTuples);
+
+            Assert.Equal(expectedRows, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, linearWorkBudget);
             Assert.InRange(work.MaximumRejectedJoinTuples, 0, linearWorkBudget);
         }

@@ -24,18 +24,28 @@ public sealed class NearestDecisionWorkTests : ProviderTest,
     [InlineData(10_000)]
     [InlineData(100_000)]
     [Trait("Category", "Capacity")]
-    public async Task BroadPayloadDoesNotRepeatWholePopulationMaterialization(int nodes)
+    public async Task BroadPayloadDoesNotRepeatWholePopulationMaterialization(
+        int nodes
+    )
     {
         // Arrange
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes);
+        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
         int[] anchors = [1, 10, 100, 1_000];
 
         // Act
         // WHY: Reuse the exact composed capacity query and native replay. A hand-written nearest
         // query would miss the inactive subplans that distorted the full payload join's estimate.
-        var observations = await CompositionCapacityProfiles.MeasureAsync(database, Engine, nodes, broad: true);
+        var observations = await CompositionCapacityProfiles.MeasureAsync(
+            database,
+            Engine,
+            nodes,
+            broad: true,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(anchors.Length, observations.Count);
@@ -47,8 +57,10 @@ public sealed class NearestDecisionWorkTests : ProviderTest,
             var budget = CompositionPlanWorkBudget.ForPairs(nodes, count, nodes, contributions);
             var work = CompositionPlanWork.ReadPostgreSqlJson(observation.Plan);
 
-            _output.WriteLine($"{observation.Profile}; emitted={work.MaximumOperatorTuples}; "
+            _output.WriteLine(
+                $"{observation.Profile}; emitted={work.MaximumOperatorTuples}; "
                 + $"rejected={work.MaximumRejectedJoinTuples}; maximum={budget.OperatorTuples}");
+
             Assert.Equal(observation.Expected.Length, work.RootOutputTuples);
             Assert.InRange(work.MaximumOperatorTuples, 0, budget.OperatorTuples);
             Assert.InRange(work.MaximumRejectedJoinTuples, 0, budget.OperatorTuples);

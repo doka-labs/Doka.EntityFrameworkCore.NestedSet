@@ -15,8 +15,8 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     )
     {
         // Arrange
-        await WarmAsync();
-        await WarmDetectedComplexRebindAsync();
+        await WarmAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await WarmDetectedComplexRebindAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new TopologyContext();
         var payload = CreatePayload(rows);
         var entry = context.Attach(payload);
@@ -42,6 +42,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         var originalState = entry.State;
         var snapshotEntry = NestedSetInsertionContract.Instance.Entry(entry);
         var snapshot = NestedSetTrackerSnapshot.Capture(context);
+
         // WHY: Native Deleted entries and invalidated current ordinals require the full rebind path. Callback
         // mutation and explicit consumer detection stay outside the measured Restore interval.
         originalRows.Clear();
@@ -58,7 +59,8 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         // Assert
         var maximum = 262_144L + rows * 16_384L;
         var elapsed = Stopwatch.GetElapsedTime(started, completed);
-        _output.WriteLine($"Complex topology native rebind: entities=1; width={rows}; nested leaves={rows * 2}; "
+        _output.WriteLine(
+            $"Complex topology native rebind: entities=1; width={rows}; nested leaves={rows * 2}; "
             + $"restore={restoreAllocated} B/{maximum} B; "
             + $"elapsed={elapsed.TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture)} ms.");
 
@@ -86,13 +88,20 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         Assert.Equal(expectedStates, ObserveStates(entry));
         Assert.Single(context.ChangeTracker.Entries());
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Warms the actual detected-removal rebind against a separate two-element graph.</summary>
-    private static async Task WarmDetectedComplexRebindAsync()
+    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
+    private static async Task WarmDetectedComplexRebindAsync(
+        CancellationToken cancellationToken
+    )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var context = new TopologyContext();
         var payload = CreatePayload(2);
         var entry = context.Attach(payload);

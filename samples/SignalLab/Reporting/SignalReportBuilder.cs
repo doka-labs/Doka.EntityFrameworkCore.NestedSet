@@ -6,40 +6,46 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 /// <summary>Builds one scalar report while leaving topology, owner selection and direct paths to NestedSet.</summary>
 internal static partial class SignalReportBuilder
 {
+    /// <summary>Moves otherwise ignored trailing spaces inside the exact text comparison.</summary>
+    private const string TextComparisonSuffix = "|";
+
     // WHY: These fixed projections contain no context or request. Reusing their immutable expressions avoids
     // recreating property metadata and member bindings for every report without retaining application state.
-    private static readonly Expression<Func<PulseRecord, MeasurementRow>> s_pulseMeasurement = value => new()
-    {
-        TenantId = value.TenantId,
-        NodeId = value.NodeId,
-        ChannelId = value.ChannelId,
-        Granularity = value.Granularity,
-        Day = value.Day,
-        Value = value.PulseCount,
-        Source = CapturePort.Pulse,
-    };
+    private static readonly Expression<Func<PulseRecord, MeasurementRow>> s_pulseMeasurement = value =>
+        new MeasurementRow
+        {
+            TenantId = value.TenantId,
+            NodeId = value.NodeId,
+            ChannelId = value.ChannelId,
+            Granularity = value.Granularity,
+            Day = value.Day,
+            Value = value.PulseCount,
+            Source = CapturePort.Pulse,
+        };
 
-    private static readonly Expression<Func<SweepRecord, MeasurementRow>> s_sweepMeasurement = value => new()
-    {
-        TenantId = value.TenantId,
-        NodeId = value.ReceiverId,
-        ChannelId = value.StreamId,
-        Granularity = value.Resolution,
-        Day = value.CompletedOn,
-        Value = value.IntegratedTicks,
-        Source = CapturePort.Sweep,
-    };
+    private static readonly Expression<Func<SweepRecord, MeasurementRow>> s_sweepMeasurement = value =>
+        new MeasurementRow
+        {
+            TenantId = value.TenantId,
+            NodeId = value.ReceiverId,
+            ChannelId = value.StreamId,
+            Granularity = value.Resolution,
+            Day = value.CompletedOn,
+            Value = value.IntegratedTicks,
+            Source = CapturePort.Sweep,
+        };
 
-    private static readonly Expression<Func<BurstRecord, MeasurementRow>> s_burstMeasurement = value => new()
-    {
-        TenantId = value.TenantId,
-        NodeId = value.DeviceId,
-        ChannelId = value.SignalId,
-        Granularity = value.BucketSize,
-        Day = value.CapturedOn,
-        Value = value.Magnitude,
-        Source = CapturePort.Burst,
-    };
+    private static readonly Expression<Func<BurstRecord, MeasurementRow>> s_burstMeasurement = value =>
+        new MeasurementRow
+        {
+            TenantId = value.TenantId,
+            NodeId = value.DeviceId,
+            ChannelId = value.SignalId,
+            Granularity = value.BucketSize,
+            Day = value.CapturedOn,
+            Value = value.Magnitude,
+            Source = CapturePort.Burst,
+        };
 
     private static readonly MethodInfo s_metadataAny = typeof(Queryable)
         .GetMethods()
@@ -64,13 +70,8 @@ internal static partial class SignalReportBuilder
         nameof(LinkWindow.TenantId));
 
     private static readonly MethodInfo s_textConcat =
-        ((MethodCallExpression)((Expression<Func<string, string, string>>)((
-            left,
-            right
-        ) => string.Concat(left, right))).Body).Method;
-
-    /// <summary>Moves otherwise ignored trailing spaces inside the exact text comparison.</summary>
-    private const string TextComparisonSuffix = "|";
+        ((MethodCallExpression)((Expression<Func<string, string, string>>)((left,
+            right) => string.Concat(left, right))).Body).Method;
 
     private static readonly ConstantExpression s_comparisonSuffix = Expression.Constant(TextComparisonSuffix);
 
@@ -139,6 +140,7 @@ internal static partial class SignalReportBuilder
                     Catalog(context, validated)
                         .AsAsyncEnumerable(),
                     token);
+
                 // WHY: A buffered provider can finish the catalog after cancellation. Reject the next
                 // stage before building or submitting an aggregate that the caller no longer needs.
                 token.ThrowIfCancellationRequested();

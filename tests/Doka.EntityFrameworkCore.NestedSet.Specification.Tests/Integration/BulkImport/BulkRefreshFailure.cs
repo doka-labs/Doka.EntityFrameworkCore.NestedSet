@@ -3,8 +3,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Fails at final result refresh after all writes, independently of the batch count.</summary>
 public sealed class BulkRefreshFailure : DbCommandInterceptor
 {
-    private readonly string _table;
     private readonly CancellationTokenSource? _cancellation;
+    private readonly string _table;
 
     /// <summary>Selects the imported table and optionally cancels instead of throwing an injected failure.</summary>
     public BulkRefreshFailure(

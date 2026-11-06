@@ -21,10 +21,17 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ScalarScopeAliasContext>(
             Engine,
-            static options => new ScalarScopeAliasContext(options));
+            static options => new ScalarScopeAliasContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedAsync(context, "tenant-a");
-        var alias = await AttachAliasAsync(context, "tenant-a", "TENANT-A", 2);
+        await SeedAsync(context, "tenant-a", cancellationToken: TestContext.Current.CancellationToken);
+        var alias = await AttachAliasAsync(
+            context,
+            "tenant-a",
+            "TENANT-A",
+            2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         alias.Name = "Zulu";
 
         // Act
@@ -44,11 +51,18 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ScopedScopeAliasContext>(
             Engine,
-            static options => new ScopedScopeAliasContext(options));
+            static options => new ScopedScopeAliasContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        await SeedAsync(context, "tenant-b");
-        await SeedAsync(context, "tenant-c");
-        var alias = await AttachAliasAsync(context, "tenant-b", "TENANT-B", 2);
+        await SeedAsync(context, "tenant-b", cancellationToken: TestContext.Current.CancellationToken);
+        await SeedAsync(context, "tenant-c", cancellationToken: TestContext.Current.CancellationToken);
+        var alias = await AttachAliasAsync(
+            context,
+            "tenant-b",
+            "TENANT-B",
+            2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var other = await context
             .Set<ScopeAliasNode>()
             .Where(node => node.Scope == "tenant-c")
@@ -72,9 +86,11 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
     }
 
     /// <summary>Creates one root with Alpha, Bravo, and Charlie children in rule order.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedAsync(
         DbContext context,
-        string scope
+        string scope,
+        CancellationToken cancellationToken
     )
     {
         var hierarchy = context
@@ -88,7 +104,7 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
                 Name = "Root",
             },
             Guid.NewGuid(),
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new ScopeAliasNode
@@ -97,7 +113,7 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
                 Name = "Alpha",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new ScopeAliasNode
@@ -106,7 +122,7 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
                 Name = "Bravo",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         await hierarchy.InsertChildAsync(
             new ScopeAliasNode
@@ -115,23 +131,25 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
                 Name = "Charlie",
             },
             1,
-            CancellationToken.None);
+            cancellationToken);
 
         context.ChangeTracker.Clear();
     }
 
     /// <summary>Tracks a persisted row under a different spelling of its database-equal scope.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task<ScopeAliasNode> AttachAliasAsync(
         DbContext context,
         string scope,
         string alias,
-        int id
+        int id,
+        CancellationToken cancellationToken
     )
     {
         var persisted = await context
             .Set<ScopeAliasNode>()
             .AsNoTracking()
-            .SingleAsync(node => node.Scope == scope && node.Id == id, CancellationToken.None);
+            .SingleAsync(node => node.Scope == scope && node.Id == id, cancellationToken);
 
         var tracked = persisted.WithScope(alias);
         context.Attach(tracked);

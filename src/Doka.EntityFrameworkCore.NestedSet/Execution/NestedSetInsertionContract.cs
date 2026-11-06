@@ -10,80 +10,10 @@ internal sealed class NestedSetInsertionContract
         s_instance = new(() => Bind(typeof(IUpdateEntry).Assembly));
 
     private readonly Assembly _assembly;
-    private readonly Type _entryType;
-    private readonly MethodInfo _relationshipSnapshot;
-    private readonly ConditionalWeakTable<Type, KeyMap> _maps = new();
     private readonly ConditionalWeakTable<Type, KeyMap>.CreateValueCallback _createMap;
-
-    /// <summary>Gets the once-validated contract without retaining any application context or model.</summary>
-    internal static NestedSetInsertionContract Instance => s_instance.Value;
-
-    /// <summary>Reads EF's invariant entry identity through its exact infrastructure interface.</summary>
-    internal Func<EntityEntry, IUpdateEntry> Entry { get; }
-
-    /// <summary>Reads the context-local manager belonging to an introduced entry.</summary>
-    internal Func<IUpdateEntry, object> Manager { get; }
-
-    /// <summary>Closes EF's exact changing handler for rollback-only notification pause and resumption.</summary>
-    internal Func<IUpdateEntry, PropertyChangingEventHandler> PropertyChangingHandler { get; }
-
-    /// <summary>Closes EF's exact changed handler without capturing a context in the binding owner.</summary>
-    internal Func<IUpdateEntry, PropertyChangedEventHandler> PropertyChangedHandler { get; }
-
-    /// <summary>Closes EF's exact collection handler without creating or replacing a collection.</summary>
-    internal Func<IUpdateEntry, NotifyCollectionChangedEventHandler> CollectionChangedHandler { get; }
-
-    /// <summary>Reads an exact reference registration without detecting changes or creating entries.</summary>
-    internal Func<object, object, IEntityType, IUpdateEntry?> FindTrackedEntry { get; }
-
-    /// <summary>Restores a shadow key through EF's setter with setModified disabled.</summary>
-    internal Action<IUpdateEntry, IProperty, object?> SetProperty { get; }
-
-    /// <summary>Restores a scalar or reference relationship snapshot without changing its live value.</summary>
-    internal Action<IUpdateEntry, IPropertyBase, object?> SetRelationshipSnapshot { get; }
-
-    /// <summary>Records one known collection relationship without attaching or adding the live object.</summary>
-    internal Action<IUpdateEntry, INavigationBase, object> AddCollectionSnapshot { get; }
-
-    /// <summary>Removes one member from an existing collection snapshot without changing its live collection.</summary>
-    internal Action<IUpdateEntry, INavigationBase, object> RemoveCollectionSnapshot { get; }
-
-    /// <summary>Finds an existing native identity map without creating one.</summary>
-    internal Func<object, IKey, object?> FindMap { get; }
-
-    /// <summary>Reads an exact native foreign-key bucket through its public update-entry result.</summary>
-    internal Func<object, IReadOnlyList<object?>, IEnumerable<IUpdateEntry>> Dependents { get; }
-
-    /// <summary>Reads actual FK membership, letting EF initialize its own lazy dependent map when needed.</summary>
-    internal Func<object, IReadOnlyList<object?>, IForeignKey, IEnumerable<IUpdateEntry>> GetOrCreateDependents { get; }
-
-    /// <summary>Re-indexes one tracked dependent through EF's map when a lazy map missed its reattachment.</summary>
-    internal Action<object, IUpdateEntry, IForeignKey> UpdateDependentMap { get; }
-
-    /// <summary>Reads EF's count of pending entries, which gates whether a save does any work.</summary>
-    internal Func<object, int> GetChangedCount { get; }
-
-    /// <summary>Corrects EF's pending count after a transition of an entry that Clear already uncounted.</summary>
-    internal Action<object, int> SetChangedCount { get; }
-
-    /// <summary>Removes a partially installed entry through EF's normal identity cleanup.</summary>
-    internal Action<object, IUpdateEntry, EntityState> StopTracking { get; }
-
-    /// <summary>Removes exact partial reference registrations without a fabricated state transition.</summary>
-    internal Action<object, IUpdateEntry, EntityState, EntityState?> UpdateReferences { get; }
-
-    /// <summary>Gets EF's metadata-owned setter without duplicating complex value copyback.</summary>
-    internal Func<IPropertyBase, IClrPropertySetter> Setter { get; }
-
-    /// <summary>Validates every used native member and scalar, composite and nullable generic map shapes.</summary>
-    internal static void Validate() => _ = Instance;
-
-    /// <summary>Binds an assembly using the same complete resolver used by options registration.</summary>
-    /// <param name="assembly">The loaded EF assembly whose exact member shapes must match.</param>
-    /// <returns>The validated model-free delegates for this assembly.</returns>
-    internal static NestedSetInsertionContract Bind(
-        Assembly assembly
-    ) => new(assembly);
+    private readonly Type _entryType;
+    private readonly ConditionalWeakTable<Type, KeyMap> _maps = new();
+    private readonly MethodInfo _relationshipSnapshot;
 
     /// <summary>Resolves the loaded framework once and validates declared returns before delegate adaptation.</summary>
     private NestedSetInsertionContract(
@@ -177,7 +107,7 @@ internal sealed class NestedSetInsertionContract
                 typeof(object),
                 typeof(bool),
                 typeof(bool),
-                typeof(bool)
+                typeof(bool),
             ]);
 
         SetProperty = Expression
@@ -332,6 +262,7 @@ internal sealed class NestedSetInsertionContract
                 update,
                 state)
             .Compile();
+
         UpdateReferences = Expression
             .Lambda<Action<object, IUpdateEntry, EntityState, EntityState?>>(
                 Expression.Call(nativeManager, references, nativeEntry, state, oldState),
@@ -365,7 +296,7 @@ internal sealed class NestedSetInsertionContract
             typeof(Guid),
             typeof(string),
             typeof(byte[]),
-            typeof(IReadOnlyList<object>)
+            typeof(IReadOnlyList<object>),
         ];
 
         foreach (var definition in new[] { NativeType("IdentityMap`1"), NativeType("NullableKeyIdentityMap`1") })
@@ -376,6 +307,76 @@ internal sealed class NestedSetInsertionContract
             }
         }
     }
+
+    /// <summary>Gets the once-validated contract without retaining any application context or model.</summary>
+    internal static NestedSetInsertionContract Instance => s_instance.Value;
+
+    /// <summary>Reads EF's invariant entry identity through its exact infrastructure interface.</summary>
+    internal Func<EntityEntry, IUpdateEntry> Entry { get; }
+
+    /// <summary>Reads the context-local manager belonging to an introduced entry.</summary>
+    internal Func<IUpdateEntry, object> Manager { get; }
+
+    /// <summary>Closes EF's exact changing handler for rollback-only notification pause and resumption.</summary>
+    internal Func<IUpdateEntry, PropertyChangingEventHandler> PropertyChangingHandler { get; }
+
+    /// <summary>Closes EF's exact changed handler without capturing a context in the binding owner.</summary>
+    internal Func<IUpdateEntry, PropertyChangedEventHandler> PropertyChangedHandler { get; }
+
+    /// <summary>Closes EF's exact collection handler without creating or replacing a collection.</summary>
+    internal Func<IUpdateEntry, NotifyCollectionChangedEventHandler> CollectionChangedHandler { get; }
+
+    /// <summary>Reads an exact reference registration without detecting changes or creating entries.</summary>
+    internal Func<object, object, IEntityType, IUpdateEntry?> FindTrackedEntry { get; }
+
+    /// <summary>Restores a shadow key through EF's setter with setModified disabled.</summary>
+    internal Action<IUpdateEntry, IProperty, object?> SetProperty { get; }
+
+    /// <summary>Restores a scalar or reference relationship snapshot without changing its live value.</summary>
+    internal Action<IUpdateEntry, IPropertyBase, object?> SetRelationshipSnapshot { get; }
+
+    /// <summary>Records one known collection relationship without attaching or adding the live object.</summary>
+    internal Action<IUpdateEntry, INavigationBase, object> AddCollectionSnapshot { get; }
+
+    /// <summary>Removes one member from an existing collection snapshot without changing its live collection.</summary>
+    internal Action<IUpdateEntry, INavigationBase, object> RemoveCollectionSnapshot { get; }
+
+    /// <summary>Finds an existing native identity map without creating one.</summary>
+    internal Func<object, IKey, object?> FindMap { get; }
+
+    /// <summary>Reads an exact native foreign-key bucket through its public update-entry result.</summary>
+    internal Func<object, IReadOnlyList<object?>, IEnumerable<IUpdateEntry>> Dependents { get; }
+
+    /// <summary>Reads actual FK membership, letting EF initialize its own lazy dependent map when needed.</summary>
+    internal Func<object, IReadOnlyList<object?>, IForeignKey, IEnumerable<IUpdateEntry>> GetOrCreateDependents { get; }
+
+    /// <summary>Re-indexes one tracked dependent through EF's map when a lazy map missed its reattachment.</summary>
+    internal Action<object, IUpdateEntry, IForeignKey> UpdateDependentMap { get; }
+
+    /// <summary>Reads EF's count of pending entries, which gates whether a save does any work.</summary>
+    internal Func<object, int> GetChangedCount { get; }
+
+    /// <summary>Corrects EF's pending count after a transition of an entry that Clear already uncounted.</summary>
+    internal Action<object, int> SetChangedCount { get; }
+
+    /// <summary>Removes a partially installed entry through EF's normal identity cleanup.</summary>
+    internal Action<object, IUpdateEntry, EntityState> StopTracking { get; }
+
+    /// <summary>Removes exact partial reference registrations without a fabricated state transition.</summary>
+    internal Action<object, IUpdateEntry, EntityState, EntityState?> UpdateReferences { get; }
+
+    /// <summary>Gets EF's metadata-owned setter without duplicating complex value copyback.</summary>
+    internal Func<IPropertyBase, IClrPropertySetter> Setter { get; }
+
+    /// <summary>Validates every used native member and scalar, composite and nullable generic map shapes.</summary>
+    internal static void Validate() => _ = Instance;
+
+    /// <summary>Binds an assembly using the same complete resolver used by options registration.</summary>
+    /// <param name="assembly">The loaded EF assembly whose exact member shapes must match.</param>
+    /// <returns>The validated model-free delegates for this assembly.</returns>
+    internal static NestedSetInsertionContract Bind(
+        Assembly assembly
+    ) => new(assembly);
 
     /// <summary>Compiles a model-owned typed reader for the exact native relationship snapshot.</summary>
     /// <typeparam name="TValue">The shared model and member value type.</typeparam>
@@ -492,8 +493,11 @@ internal sealed class NestedSetInsertionContract
             .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             .SingleOrDefault(candidate => candidate.Name == name
                 && candidate.IsGenericMethodDefinition
-                && candidate.GetGenericArguments() is [{ GenericParameterAttributes: GenericParameterAttributes.None } argument]
-                && argument.GetGenericParameterConstraints().Length == 0
+                && candidate.GetGenericArguments() is
+                    [{ GenericParameterAttributes: GenericParameterAttributes.None } argument]
+                && argument.GetGenericParameterConstraints()
+                    .Length
+                == 0
                 && candidate.ReturnType == argument
                 && candidate.GetParameters() is [{ ParameterType: var parameter }]
                 && parameter == typeof(IPropertyBase));
@@ -566,8 +570,12 @@ internal sealed class NestedSetInsertionContract
         string member
     )
     {
-        var version = _assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? _assembly.GetName().Version?.ToString()
+        var version = _assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion
+            ?? _assembly
+                .GetName()
+                .Version
+                ?.ToString()
             ?? "unknown";
 
         return new InvalidOperationException(

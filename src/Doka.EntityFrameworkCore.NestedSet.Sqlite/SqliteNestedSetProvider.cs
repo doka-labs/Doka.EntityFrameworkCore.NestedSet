@@ -10,16 +10,10 @@ internal sealed partial class SqliteNestedSetProvider : NestedSetProviderCapabil
     internal override string ProviderName => "Microsoft.EntityFrameworkCore.Sqlite";
 
     /// <inheritdoc />
-    // WHY: SQLite reserves this prefix in any ASCII letter case and rejects CREATE TABLE for it.
-    // https://www.sqlite.org/lang_createtable.html
-    internal override bool IsReservedTableName(
-        string name
-    ) => SqliteIdentifierComparer.StartsWith(name, "sqlite_");
-
-    /// <inheritdoc />
     internal override StringComparer IdentifierComparer => SqliteIdentifierComparer.Instance;
 
     /// <inheritdoc />
+
     // WHY: The SQLite provider does not support schemas; its DDL drops them, so equal names collide.
     // https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations
     internal override bool HonorsSchemas => false;
@@ -29,4 +23,12 @@ internal sealed partial class SqliteNestedSetProvider : NestedSetProviderCapabil
 
     /// <inheritdoc />
     internal override string TelemetryName => "sqlite";
+
+    /// <inheritdoc />
+
+    // WHY: SQLite reserves this prefix in any ASCII letter case and rejects CREATE TABLE for it.
+    // https://www.sqlite.org/lang_createtable.html
+    internal override bool IsReservedTableName(
+        string name
+    ) => SqliteIdentifierComparer.StartsWith(name, "sqlite_");
 }

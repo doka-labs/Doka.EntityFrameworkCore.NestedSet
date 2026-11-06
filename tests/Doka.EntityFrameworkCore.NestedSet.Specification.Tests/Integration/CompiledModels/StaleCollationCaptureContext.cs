@@ -14,12 +14,15 @@ internal sealed class StaleCollationCaptureContext(DbContextOptions<StaleCollati
             .Property(row => row.Id)
             .HasMaxLength(64)
             .ValueGeneratedNever();
+
         node
             .Property(row => row.ParentId)
             .HasMaxLength(64);
+
         node
             .Property(row => row.Tree)
             .HasMaxLength(64);
+
         node.HasNestedSet(builder => builder
             .HasTreeId(row => row.TreeId)
             .HasScope(row => row.Tree)

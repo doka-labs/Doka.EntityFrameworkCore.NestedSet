@@ -24,7 +24,13 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        await using var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(scope)
@@ -48,13 +54,40 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        await using var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var secondTree = Guid.NewGuid();
         await context.AddRangeAsync(
             [
-                Node(scope, secondTree, 101, null, 1, 12, 0),
-                Node(scope, secondTree, 102, 101, 2, 7, 1),
-                Node(scope, secondTree, 103, 102, 3, 4, 2),
+                Node(
+                    scope,
+                    secondTree,
+                    101,
+                    null,
+                    1,
+                    12,
+                    0),
+                Node(
+                    scope,
+                    secondTree,
+                    102,
+                    101,
+                    2,
+                    7,
+                    1),
+                Node(
+                    scope,
+                    secondTree,
+                    103,
+                    102,
+                    3,
+                    4,
+                    2),
             ],
             CancellationToken.None);
 
@@ -95,7 +128,13 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         var scope = Guid.NewGuid();
         var foreignScope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        await using var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var tree = await context
             .Set<CompositionNode>()
             .Where(node => node.Scope == scope)
@@ -104,11 +143,33 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
 
         await context.AddRangeAsync(
             [
-                Node(foreignScope, tree, 1, null, 1, 12, 0),
-                Node(foreignScope, tree, 2, 1, 2, 7, 1),
-                Node(foreignScope, tree, 3, 2, 3, 4, 2),
+                Node(
+                    foreignScope,
+                    tree,
+                    1,
+                    null,
+                    1,
+                    12,
+                    0),
+                Node(
+                    foreignScope,
+                    tree,
+                    2,
+                    1,
+                    2,
+                    7,
+                    1),
+                Node(
+                    foreignScope,
+                    tree,
+                    3,
+                    2,
+                    3,
+                    4,
+                    2),
             ],
             CancellationToken.None);
+
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
@@ -144,7 +205,14 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
         await using var context =
-            await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe, hidden: 2);
+            await CompositionTestData.CreateContextAsync(
+                _fixture,
+                Engine,
+                scope,
+                probe,
+                hidden: 2,
+                cancellationToken: TestContext.Current.CancellationToken);
+
         var query = context
             .NestedSet<CompositionNode>()
             .ForScope(scope)
@@ -168,7 +236,13 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        await using var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.AddRangeAsync(
             [
                 new CompositionInputOne
@@ -187,6 +261,7 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
                 },
             ],
             CancellationToken.None);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
@@ -239,7 +314,13 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CompositionTestData.CreateContextAsync(_fixture, Engine, scope, probe);
+        await using var context = await CompositionTestData.CreateContextAsync(
+            _fixture,
+            Engine,
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<CompositionNode>()
             .ForScope(scope);
@@ -320,7 +401,8 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
             Engine,
             scope,
             probe,
-            planProbe: capture);
+            planProbe: capture,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: RAND is server-volatile, but its documented nonnegative range gives this test a fixed
         // ancestry oracle. Its single SQL occurrence guards source sharing independently of that oracle.
@@ -356,9 +438,10 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
             capture
                 .Commands
                 .Single()
-                .Split("RAND()", StringSplitOptions.None)
+                .Split("RAND()")
                 .Length
             - 1);
+
         Assert.Equal(1, probe.CommandCount);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -382,7 +465,8 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
             Engine,
             scope,
             probe,
-            planProbe: capture);
+            planProbe: capture,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         await context.AddRangeAsync(
             [
@@ -509,12 +593,27 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<CompositionContext>(
             Engine,
             static options => new CompositionContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         await context.AddRangeAsync(
             [
-                Node(scope, tree, 1, null, 1, long.MaxValue, 0),
-                Node(scope, tree, 2, 1, long.MaxValue - 2, long.MaxValue - 1, 1),
+                Node(
+                    scope,
+                    tree,
+                    1,
+                    null,
+                    1,
+                    long.MaxValue,
+                    0),
+                Node(
+                    scope,
+                    tree,
+                    2,
+                    1,
+                    long.MaxValue - 2,
+                    long.MaxValue - 1,
+                    1),
             ],
             CancellationToken.None);
 
@@ -553,11 +652,17 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
         // Arrange
         const int nodes = 100_001;
         const double physicalAccessBudget = 128;
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using (var setup = database.CreateContext())
         {
-            await CapacitySeed.SeedAsync(setup, nodes);
-            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(setup, Engine);
+            await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
+            await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
+                setup,
+                Engine,
+                cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var commands = new CompositionCommandProbe();
@@ -603,7 +708,12 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
 
         // WHY: Actual-plan replay is a separate execution. Freeze the completed query's counters first
         // so diagnostic work cannot satisfy or obscure its one-reader and zero-materialization contract.
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            capture,
+            0,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Attribution deliberately fails closed. Keep the original SQL and native plan available
         // even when an unexpected optimizer shape prevents the work reader from completing.
@@ -614,7 +724,8 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
                 + $"physicalAccessBudget={physicalAccessBudget}",
                 sql,
                 plan,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var physical = hasOptimizedPath
             ? AncestorIndexBaseTableWork.ReadUnindexed(sql, plan, Engine)
@@ -636,7 +747,8 @@ public abstract class IndependentAncestorEnvelopeTestBase : ProviderTest
                 + $"materialized={materialized}; tracked={tracked}; {qualification}",
                 sql,
                 plan,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(hasOptimizedPath);

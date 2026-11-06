@@ -1,3 +1,5 @@
+using Doka.EntityFrameworkCore.NestedSet.Execution;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 
 /// <summary>Verifies PostgreSQL registry lock ordering for wide request rowsets.</summary>
@@ -20,21 +22,36 @@ public sealed class WideRowsetLockTests : ProviderTest,
     public async Task OppositeWideRequestsCompleteWithoutDeadlock()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        var treeIds = Enumerable.Range(0, 256).Select(_ => Guid.NewGuid()).ToArray();
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        var treeIds = Enumerable
+            .Range(0, 256)
+            .Select(_ => Guid.NewGuid())
+            .ToArray();
+
         await using (var setup = database.CreateContext())
         {
-            await TreeRegistryLockTestSupport.AcquireManyAsync(setup, treeIds
-                .Select(treeId => TreeRegistryLockTestSupport.Request(
-                    setup, 7, treeId, Execution.NestedSetTreeLockMode.New))
-                .ToArray(), CancellationToken.None);
+            await TreeRegistryLockTestSupport.AcquireManyAsync(
+                setup,
+                treeIds
+                    .Select(treeId => TreeRegistryLockTestSupport.Request(
+                        setup,
+                        7,
+                        treeId,
+                        NestedSetTreeLockMode.New))
+                    .ToArray(),
+                CancellationToken.None);
         }
 
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         var ascending = TreeRegistryLockTestSupport.LockAfterGateAsync(database, 7, treeIds, gate.Task, timeout.Token);
         var descending = TreeRegistryLockTestSupport.LockAfterGateAsync(
-            database, 7, treeIds.Reverse().ToArray(), gate.Task,
+            database,
+            7,
+            treeIds
+                .Reverse()
+                .ToArray(),
+            gate.Task,
             timeout.Token);
 
         // Act

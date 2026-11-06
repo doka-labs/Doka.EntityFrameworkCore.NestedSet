@@ -6,9 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup Label="Common hierarchy and native provider">
-    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer"/>
-    <PackageReference Include="System.Security.Cryptography.Pkcs"/>
+    <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">

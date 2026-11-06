@@ -56,9 +56,16 @@ public sealed class DatabaseImageManifestTests
     )
     {
         // Arrange
-        var image = mariaDb ? DatabaseTestTargets.MariaDbImage : DatabaseTestTargets.MySqlImage;
-        var version = mariaDb ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql;
-        var tag = image.Split(':', '@')[1];
+        var image = mariaDb
+            ? DatabaseTestTargets.MariaDbImage
+            : DatabaseTestTargets.MySqlImage;
+
+        var version = mariaDb
+            ? DatabaseTestTargets.MariaDb
+            : DatabaseTestTargets.MySql;
+
+        var tag = image
+            .Split(':', '@')[1];
 
         // Act
         var actual = version.Version.ToString();
@@ -118,11 +125,11 @@ public sealed class DatabaseImageManifestTests
     /// Builds test input from the actual pins so normal dependency updates do not require duplicate versions.
     /// </summary>
     private static string CompleteManifest() => $"""
-                                               FROM {DatabaseTestTargets.MySqlImage} AS mysql
-                                               FROM {DatabaseTestTargets.MariaDbImage} AS mariadb
-                                               FROM {DatabaseTestTargets.PostgreSqlImage} AS postgres
-                                               FROM {DatabaseTestTargets.SqlServerImage} AS sqlserver
-                                               """;
+                                                 FROM {DatabaseTestTargets.MySqlImage} AS mysql
+                                                 FROM {DatabaseTestTargets.MariaDbImage} AS mariadb
+                                                 FROM {DatabaseTestTargets.PostgreSqlImage} AS postgres
+                                                 FROM {DatabaseTestTargets.SqlServerImage} AS sqlserver
+                                                 """;
 
     /// <summary>Introduces exactly one configuration defect into an otherwise complete image source.</summary>
     /// <param name="fault">The named defect selected by the regression case.</param>

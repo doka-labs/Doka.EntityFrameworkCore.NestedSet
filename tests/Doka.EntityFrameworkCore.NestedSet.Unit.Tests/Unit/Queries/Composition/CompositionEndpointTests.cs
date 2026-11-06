@@ -44,7 +44,8 @@ public sealed class CompositionEndpointTests
                 Upper = node,
                 Lower = node,
             }),
-            "join-payload" => first.Join(second,
+            "join-payload" => first.Join(
+                second,
                 node => node.Id,
                 payload => payload.Id,
                 (node, payload) => new CompositionGuardRow
@@ -53,7 +54,8 @@ public sealed class CompositionEndpointTests
                     Lower = node,
                     Payload = payload,
                 }),
-            "select-many-payload" => first.SelectMany(node => second.Where(payload => payload.Id == node.Id),
+            "select-many-payload" => first.SelectMany(
+                node => second.Where(payload => payload.Id == node.Id),
                 (node, payload) => new CompositionGuardRow
                 {
                     Upper = node,
@@ -88,7 +90,8 @@ public sealed class CompositionEndpointTests
         var hierarchy = context.NestedSet<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var first = context.Set<CompositionGuardNode>(CompositionGuardContext.FirstMapping);
         var second = context.Set<CompositionGuardNode>(CompositionGuardContext.SecondMapping);
-        var source = first.Join(second,
+        var source = first.Join(
+            second,
             node => node.Id,
             other => other.Id,
             (node, other) => new CompositionGuardRow
@@ -156,7 +159,8 @@ public sealed class CompositionEndpointTests
             .OfType<TpcFolderNode>();
 
         // Act
-        var query = hierarchy.WhereAnyAncestorOrSelf(source,
+        var query = hierarchy.WhereAnyAncestorOrSelf(
+            source,
             node => node,
             (row, owner) => owner.Id == row.Id);
 
@@ -182,7 +186,8 @@ public sealed class CompositionEndpointTests
         var source = context.Set<TphFolderNode>();
 
         // Act
-        var query = hierarchy.WhereAnyAncestorOrSelf(source,
+        var query = hierarchy.WhereAnyAncestorOrSelf(
+            source,
             node => node,
             (row, owner) => owner.Id == row.Id);
 
@@ -204,10 +209,12 @@ public sealed class CompositionEndpointTests
             row => row.Upper,
             row => row.Lower,
             (row, parent, child) => parent.Id != child.Id),
-        "any" => hierarchy.WhereAnyAncestorOrSelf(source,
+        "any" => hierarchy.WhereAnyAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Id == row.Upper.Id),
-        "nearest" => hierarchy.WhereNearestAncestorOrSelf(source,
+        "nearest" => hierarchy.WhereNearestAncestorOrSelf(
+            source,
             row => row.Lower,
             (row, owner) => owner.Depth == 1,
             (row, owner) => owner.Id == row.Upper.Id),

@@ -8,7 +8,7 @@ public abstract partial class ContractTests
     public async Task TrackedNodesAreRejectedWithoutClearingTracker()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         var commands = new EnterpriseProbe();
         await using var context = database.CreateContext(probe, commands);
@@ -28,7 +28,10 @@ public abstract partial class ContractTests
         var exception = await Record.ExceptionAsync(() => tree.DeleteSubtreeAsync(1, CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(exception).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(exception)
+                .Code);
 
         // WHY: NodeKey-only mutations must resolve the current persisted tree before rejecting its tracked entries.
         // Other unchanged tracked trees remain valid application state and cannot be rejected globally.
@@ -39,7 +42,10 @@ public abstract partial class ContractTests
         Assert.StartsWith("SELECT", lookup.TrimStart(), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(nameof(TreeNode.Payload), lookup, StringComparison.Ordinal);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
     }
 
     /// <summary>Verifies that unrelated pending changes survive rejection without executing SQL.</summary>
@@ -48,7 +54,7 @@ public abstract partial class ContractTests
     public async Task PendingChangesAreRejectedWithoutClearingTracker()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new CommandProbe();
         await using var context = database.CreateContext(probe);
         var tree = context
@@ -71,7 +77,10 @@ public abstract partial class ContractTests
         // Assert
         Assert.IsAssignableFrom<InvalidOperationException>(exception);
         Assert.Equal(0, probe.CommandCount);
-        Assert.Equal(EntityState.Added, context.Entry(pending).State);
+        Assert.Equal(
+            EntityState.Added,
+            context.Entry(pending)
+                .State);
     }
 
     /// <summary>Verifies that a caller can roll back a mutation without losing transaction ownership.</summary>
@@ -80,7 +89,7 @@ public abstract partial class ContractTests
     public async Task CallerTransactionRetainsOwnershipAndCanRollBackTreeMutation()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TreeNode>()
@@ -88,7 +97,9 @@ public abstract partial class ContractTests
 
         await tree.InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, CancellationToken.None);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            Engine == "Sqlite"
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         // Act

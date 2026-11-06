@@ -31,7 +31,10 @@ public sealed partial class QueryPlanReplayTests
         context.Database.SetCommandTimeout(configured);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer");
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+            context,
+            "SqlServer",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(4, connection.Commands.Count);
@@ -43,7 +46,8 @@ public sealed partial class QueryPlanReplayTests
         Assert.EndsWith("ORDER BY [stats_id]", catalog.CommandText.TrimEnd(), StringComparison.Ordinal);
         Assert.Equal("[fixture]]scope].[Owned]]Statistics]", Assert.Single(catalog.ParameterValues));
         Assert.DoesNotContain("Owned", catalog.CommandText, StringComparison.Ordinal);
-        Assert.Equal(s_statisticsRefreshCommands,
+        Assert.Equal(
+            s_statisticsRefreshCommands,
             connection
                 .Commands
                 .Skip(1)
@@ -63,13 +67,16 @@ public sealed partial class QueryPlanReplayTests
         // Arrange
         PlanReplayConnection connection = null!;
         object?[] parameters = [];
-        connection = new PlanReplayConnection(() =>
+        connection = new PlanReplayConnection(
+            () =>
             {
                 parameters = connection.Command!.ParameterValues;
 
-                return Results(Statistics(parameters is ["[fixture]]scope].[Owned]]Statistics]"]
-                    ? "owned statistic"
-                    : "foreign statistic"));
+                return Results(
+                    Statistics(
+                        parameters is ["[fixture]]scope].[Owned]]Statistics]"]
+                            ? "owned statistic"
+                            : "foreign statistic"));
             },
             () => 0);
 
@@ -77,16 +84,21 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, "SqlServer");
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+            context,
+            "SqlServer",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(parameters);
         Assert.Equal(2, connection.Commands.Count);
-        Assert.Contains("WHERE [object_id] = OBJECT_ID(@p0)",
+        Assert.Contains(
+            "WHERE [object_id] = OBJECT_ID(@p0)",
             connection.Commands[0].CommandText,
             StringComparison.Ordinal);
 
-        Assert.Equal("UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [owned statistic] WITH FULLSCAN",
+        Assert.Equal(
+            "UPDATE STATISTICS [fixture]]scope].[Owned]]Statistics] [owned statistic] WITH FULLSCAN",
             connection.Commands[1].CommandText);
     }
 
@@ -113,7 +125,10 @@ public sealed partial class QueryPlanReplayTests
         await using var context = CreateStatisticsContext(connection);
 
         // Act
-        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(context, engine);
+        await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
+            context,
+            engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var command = Assert.Single(connection.Commands);
@@ -144,10 +159,11 @@ public sealed partial class QueryPlanReplayTests
     /// <summary>Uses SQL Server's actual identifier delimiter while substituting only raw command execution.</summary>
     private static StatisticsContext CreateStatisticsContext(
         PlanReplayConnection connection
-    ) => new(new DbContextOptionsBuilder<StatisticsContext>()
-        .UseSqlServer(connection)
-        .EnableServiceProviderCaching(false)
-        .Options);
+    ) => new(
+        new DbContextOptionsBuilder<StatisticsContext>()
+            .UseSqlServer(connection)
+            .EnableServiceProviderCaching(false)
+            .Options);
 
     /// <summary>Maps an explicitly owned table with identifiers that require provider escaping.</summary>
     private sealed class StatisticsContext(

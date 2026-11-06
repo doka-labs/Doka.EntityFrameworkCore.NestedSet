@@ -3,9 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Holds successful exact-tree registry lock commands before a mutation can reach structural writes.</summary>
 internal sealed class ConcurrentCapacityLockProbe : DbCommandInterceptor
 {
+    private readonly ConcurrentCapacityBarrier _barrier;
     private readonly int _scope;
     private readonly Guid _treeId;
-    private readonly ConcurrentCapacityBarrier _barrier;
 
     /// <summary>Observes the complete registry identity assigned exclusively to this writer.</summary>
     internal ConcurrentCapacityLockProbe(

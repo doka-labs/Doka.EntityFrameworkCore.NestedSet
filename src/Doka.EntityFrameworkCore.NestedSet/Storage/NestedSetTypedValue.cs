@@ -23,6 +23,7 @@ internal static class NestedSetTypedValue<TValue>
         IProperty property
     )
         where TEntity : class
+
     // WHY: A single typed PropertyEntry avoids the complex-property lists allocated by CurrentValues.
     // Shared multirole readers use the PropertyValues overload instead of repeating either wrapper.
         => entry.Property<TValue>(property)
@@ -105,16 +106,12 @@ internal static class NestedSetTypedEquality<TValue>
             {
                 // WHY: The probe already resolved the operator. Retain that exact method so repeated builds
                 // preserve native/lifted equality without rediscovering operators through reflection.
-                return (
-                    left,
-                    right
-                ) => Expression.Equal(left, right, liftToNull: false, method);
+                return (left,
+                    right) => Expression.Equal(left, right, liftToNull: false, method);
             }
 
-            return static (
-                left,
-                right
-            ) => Expression.Equal(left, right);
+            return static (left,
+                right) => Expression.Equal(left, right);
         }
         catch (InvalidOperationException)
         {
@@ -132,10 +129,8 @@ internal static class NestedSetTypedEquality<TValue>
             {
                 // WHY: EF translates concrete Equals(TValue) to database equality for converted structs even
                 // when their CLR type implements IEquatable<TValue> without defining operator ==.
-                return (
-                    left,
-                    right
-                ) => Expression.Call(left, equals, right);
+                return (left,
+                    right) => Expression.Call(left, equals, right);
             }
 
             // WHY: An operator-free struct can expose only Equals(object). This erasure exists solely inside the
@@ -149,10 +144,8 @@ internal static class NestedSetTypedEquality<TValue>
 
             // WHY: The exact framework overload is stable and already known; name-based Expression.Call would
             // repeat reflection and overload discovery for every equality node.
-            return (
-                left,
-                right
-            ) => Expression.Call(
+            return (left,
+                right) => Expression.Call(
                 objectEquals,
                 Expression.Convert(left, typeof(object)),
                 Expression.Convert(right, typeof(object)));

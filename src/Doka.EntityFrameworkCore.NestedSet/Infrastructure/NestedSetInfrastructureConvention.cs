@@ -85,13 +85,14 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
         // WHY: The registry's entity name stays independent of this choice, so changing the table name diffs as
         // a rename of the same table rather than as a new registry that loses identities and tombstones.
         registry.Metadata.SetTableName(
-            hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryTable)?.Value as string
-                ?? NestedSetTreeRegistryMetadata.TableName(
-                    hierarchyStore.Schema,
-                    hierarchyStore.Name,
-                    nodeKeyColumn,
-                    scopeColumn,
-                    treeIdColumn),
+            hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryTable)
+                ?.Value as string
+            ?? NestedSetTreeRegistryMetadata.TableName(
+                hierarchyStore.Schema,
+                hierarchyStore.Name,
+                nodeKeyColumn,
+                scopeColumn,
+                treeIdColumn),
             true);
 
         registry.Metadata.SetSchema(hierarchyStore.Schema, true);
@@ -108,7 +109,11 @@ internal sealed class NestedSetInfrastructureConvention : IModelFinalizingConven
                     scopeProperty,
                     NestedSetTreeRegistryMetadata.Scope,
                     NestedSetCollations.ResolveEffective(
-                        hierarchy, scopeProperty, hierarchyStore, provider, typeMappings)));
+                        hierarchy,
+                        scopeProperty,
+                        hierarchyStore,
+                        provider,
+                        typeMappings)));
         }
 
         var treeProperty = descriptor.TreeId.Resolve(hierarchy);

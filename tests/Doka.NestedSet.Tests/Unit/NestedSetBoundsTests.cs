@@ -20,7 +20,7 @@ public sealed class NestedSetBoundsTests
         var text = format switch
         {
             "Direct" => bounds.ToString(),
-            "Boxed" => ((object)bounds).ToString(),
+            "Boxed" => bounds.ToString(),
             "Interpolated" => $"{bounds}",
             _ => throw new ArgumentOutOfRangeException(nameof(format)),
         };

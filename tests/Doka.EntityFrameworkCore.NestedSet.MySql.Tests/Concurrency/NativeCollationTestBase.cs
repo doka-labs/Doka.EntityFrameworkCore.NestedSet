@@ -9,7 +9,9 @@ public abstract class NativeCollationTestBase : ProviderTest
 
     /// <summary>Shares the provider collection's isolated compatibility database.</summary>
     /// <param name="fixture">The engine-bound compatibility fixture.</param>
-    protected NativeCollationTestBase(IProviderFixture<ModelCompatibilityDatabase> fixture) : base(fixture)
+    protected NativeCollationTestBase(
+        IProviderFixture<ModelCompatibilityDatabase> fixture
+    ) : base(fixture)
     {
         _fixture = fixture.Value;
     }
@@ -20,19 +22,41 @@ public abstract class NativeCollationTestBase : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InheritedBinaryScopeCollationKeepsUnaffectedDuplicateKey(bool convertedKeys)
+    public async Task InheritedBinaryScopeCollationKeepsUnaffectedDuplicateKey(
+        bool convertedKeys
+    )
     {
         // Arrange
         var probe = new NativeGuardProbe();
-        await using var context = await CreateInheritedScopeContextAsync(Engine, convertedKeys, false, probe);
+        await using var context = await CreateInheritedScopeContextAsync(
+            Engine,
+            convertedKeys,
+            false,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var trackedScope = new BroadScope($"GUARD-INHERITED-{root}");
         var requestedScope = new BroadScope(trackedScope.Value.ToLowerInvariant());
         var trackedTree = Guid.NewGuid();
         var requestedTree = Guid.NewGuid();
-        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, trackedScope, trackedTree, root);
-        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, requestedScope, requestedTree, root);
-        var tracked = await context.Set<BroadScopeNode>().AsNoTracking()
+        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(
+            context,
+            trackedScope,
+            trackedTree,
+            root,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(
+            context,
+            requestedScope,
+            requestedTree,
+            root,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var tracked = await context
+            .Set<BroadScopeNode>()
+            .AsNoTracking()
             .SingleAsync(node => node.Scope == trackedScope && node.Id == root + 1, CancellationToken.None);
 
         context.Attach(tracked);
@@ -41,19 +65,25 @@ public abstract class NativeCollationTestBase : ProviderTest
 
         var entityType = context.Model.FindEntityType(typeof(BroadScopeNode))!;
         var request = new NestedSetTreeLockRequest<Guid, BroadScope>(
-            entityType, requestedScope, requestedTree, NestedSetTreeLockMode.Existing);
+            entityType,
+            requestedScope,
+            requestedTree,
+            NestedSetTreeLockMode.Existing);
 
         var executor = new NestedSetMutationExecutor<BroadScopeNode, int, Guid, BroadScope>(context, entityType);
         var operationCalls = 0;
         probe.Armed = true;
 
         // Act
-        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(_ =>
-        {
-            operationCalls++;
+        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(
+            _ =>
+            {
+                operationCalls++;
 
-            return Task.CompletedTask;
-        }, [request], CancellationToken.None));
+                return Task.CompletedTask;
+            },
+            [request],
+            CancellationToken.None));
 
         // Assert
         Assert.Null(failure);
@@ -63,14 +93,34 @@ public abstract class NativeCollationTestBase : ProviderTest
         Assert.Equal(1, probe.NativeScopeComparisons);
         Assert.InRange(probe.MaximumNativeParameters, 1, 4);
         Assert.Equal(1, operationCalls);
-        Assert.Equal(before, (tracked.Scope.Value, tracked.Id, tracked.TreeId, tracked.ParentId,
-            tracked.Left, tracked.Right, tracked.Depth, tracked.Position, tracked.Name));
+        Assert.Equal(
+            before,
+            (tracked.Scope.Value, tracked.Id, tracked.TreeId, tracked.ParentId,
+                tracked.Left, tracked.Right, tracked.Depth, tracked.Position, tracked.Name));
+
         Assert.Single(context.ChangeTracker.Entries<BroadScopeNode>());
-        Assert.Equal(EntityState.Unchanged, context.Entry(tracked).State);
-        Assert.Equal(2, await context.NestedSet<BroadScopeNode>().ForScope(trackedScope).InTree(trackedTree).Nodes
-            .CountAsync(CancellationToken.None));
-        Assert.Equal(2, await context.NestedSet<BroadScopeNode>().ForScope(requestedScope).InTree(requestedTree).Nodes
-            .CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(tracked)
+                .State);
+
+        Assert.Equal(
+            2,
+            await context
+                .NestedSet<BroadScopeNode>()
+                .ForScope(trackedScope)
+                .InTree(trackedTree)
+                .Nodes
+                .CountAsync(CancellationToken.None));
+
+        Assert.Equal(
+            2,
+            await context
+                .NestedSet<BroadScopeNode>()
+                .ForScope(requestedScope)
+                .InTree(requestedTree)
+                .Nodes
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>A PAD SPACE Scope alias still identifies its persisted affected row.</summary>
@@ -80,13 +130,24 @@ public abstract class NativeCollationTestBase : ProviderTest
         // Arrange
         var probe = new NativeGuardProbe();
         await using var context = await _fixture.CreateContextAsync<ScopedScopeAliasContext>(
-            Engine, static options => new ScopedScopeAliasContext(options), probe);
+            Engine,
+            static options => new ScopedScopeAliasContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var scope = $"guard-pad-space-{root}";
         var treeId = Guid.NewGuid();
-        await NativeTrackedIdentityGuardTestSupport.SeedScopedNativeAsync(context, scope, treeId, root);
-        var persisted = await context.Set<ScopeAliasNode>().AsNoTracking()
+        await NativeTrackedIdentityGuardTestSupport.SeedScopedNativeAsync(
+            context,
+            scope,
+            treeId,
+            root,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var persisted = await context
+            .Set<ScopeAliasNode>()
+            .AsNoTracking()
             .SingleAsync(node => node.Scope == scope && node.Id == root + 1, CancellationToken.None);
 
         var alias = persisted.WithScope(scope + " ");
@@ -97,32 +158,55 @@ public abstract class NativeCollationTestBase : ProviderTest
 
         var entityType = context.Model.FindEntityType(typeof(ScopeAliasNode))!;
         var request = new NestedSetTreeLockRequest<Guid, string>(
-            entityType, scope, treeId, NestedSetTreeLockMode.Existing);
+            entityType,
+            scope,
+            treeId,
+            NestedSetTreeLockMode.Existing);
 
         var executor = new NestedSetMutationExecutor<ScopeAliasNode, int, Guid, string>(context, entityType);
         var operationCalls = 0;
         probe.Armed = true;
 
         // Act
-        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(_ =>
-        {
-            operationCalls++;
+        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(
+            _ =>
+            {
+                operationCalls++;
 
-            return Task.CompletedTask;
-        }, [request], CancellationToken.None));
+                return Task.CompletedTask;
+            },
+            [request],
+            CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, probe.NativeReads);
         Assert.Equal(1, probe.NativeScopeComparisons);
         Assert.InRange(probe.MaximumNativeParameters, 1, 4);
         Assert.Equal(0, operationCalls);
-        Assert.Equal(before, (alias.Scope, alias.Id, alias.TreeId, alias.ParentId,
-            alias.Left, alias.Right, alias.Depth, alias.Position, alias.Name));
+        Assert.Equal(
+            before,
+            (alias.Scope, alias.Id, alias.TreeId, alias.ParentId,
+                alias.Left, alias.Right, alias.Depth, alias.Position, alias.Name));
+
         Assert.Single(context.ChangeTracker.Entries<ScopeAliasNode>());
-        Assert.Equal(EntityState.Unchanged, context.Entry(alias).State);
-        Assert.Equal(2, await context.NestedSet<ScopeAliasNode>().ForScope(scope).InTree(treeId).Nodes
-            .CountAsync(CancellationToken.None));
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
+        Assert.Equal(
+            2,
+            await context
+                .NestedSet<ScopeAliasNode>()
+                .ForScope(scope)
+                .InTree(treeId)
+                .Nodes
+                .CountAsync(CancellationToken.None));
     }
 
     /// <summary>An unknown database-default case alias still identifies an affected stale tracked row.</summary>
@@ -131,7 +215,9 @@ public abstract class NativeCollationTestBase : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnknownDatabaseScopeAliasRejectsAffectedStaleMembership(bool convertedKeys)
+    public async Task UnknownDatabaseScopeAliasRejectsAffectedStaleMembership(
+        bool convertedKeys
+    )
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -139,26 +225,38 @@ public abstract class NativeCollationTestBase : ProviderTest
         // WHY: This scenario tests the database default itself. Other compatibility models legitimately change
         // their database's default collation, so sharing only distinct tables would make this premise order-dependent.
         // The isolated schema still reuses the assembly-owned server container.
-        await using var database = await TestDatabase.CreateAsync(Engine);
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using BroadScopeContext context = convertedKeys
             ? await CreateUnknownDatabaseContextAsync<ConvertedUnknownDatabaseScopeContext>(
                 database,
                 static options => new ConvertedUnknownDatabaseScopeContext(options),
-                probe)
+                probe,
+                cancellationToken: TestContext.Current.CancellationToken)
             : await CreateUnknownDatabaseContextAsync<UnknownDatabaseScopeContext>(
                 database,
                 static options => new UnknownDatabaseScopeContext(options),
-                probe);
+                probe,
+                cancellationToken: TestContext.Current.CancellationToken);
 
         var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
         var persistedScope = new BroadScope($"GUARD-UNKNOWN-DEFAULT-{root}");
         var aliasScope = new BroadScope(persistedScope.Value.ToLowerInvariant());
         var treeId = Guid.NewGuid();
-        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(context, persistedScope, treeId, root);
+        await NativeTrackedIdentityGuardTestSupport.SeedBroadScopeAsync(
+            context,
+            persistedScope,
+            treeId,
+            root,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: One ordinary Scope predicate proves the real database default accepts this case alias. No model
         // collation or CLR equality is used to assume that premise for arbitrary server defaults.
-        var alias = await context.Set<BroadScopeNode>().AsNoTracking()
+        var alias = await context
+            .Set<BroadScopeNode>()
+            .AsNoTracking()
             .SingleAsync(node => node.Scope == aliasScope && node.Id == root + 1, CancellationToken.None);
 
         var storedScope = alias.Scope.Value;
@@ -166,33 +264,60 @@ public abstract class NativeCollationTestBase : ProviderTest
         alias.TreeId = Guid.NewGuid();
         context.Attach(alias);
         var before = ScopeSnapshot(alias);
-        var rowsBefore = await BroadScopeRowsAsync(context, root);
-        var registryBefore = await BroadScopeRegistriesAsync(context, treeId);
+        var rowsBefore = await BroadScopeRowsAsync(
+            context,
+            root,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var registryBefore = await BroadScopeRegistriesAsync(
+            context,
+            treeId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var entityType = context.Model.FindEntityType(typeof(BroadScopeNode))!;
         var request = new NestedSetTreeLockRequest<Guid, BroadScope>(
-            entityType, persistedScope, treeId, NestedSetTreeLockMode.Existing);
+            entityType,
+            persistedScope,
+            treeId,
+            NestedSetTreeLockMode.Existing);
 
         var executor = new NestedSetMutationExecutor<BroadScopeNode, int, Guid, BroadScope>(context, entityType);
         var operationCalls = 0;
         probe.Armed = true;
 
         // Act
-        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(_ =>
-        {
-            operationCalls++;
+        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(
+            _ =>
+            {
+                operationCalls++;
 
-            return Task.CompletedTask;
-        }, [request], CancellationToken.None));
+                return Task.CompletedTask;
+            },
+            [request],
+            CancellationToken.None));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
-        var designModel = context.GetService<IDesignTimeModel>().Model;
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
+        var designModel = context.GetService<IDesignTimeModel>()
+            .Model;
+
         var designEntity = designModel.FindEntityType(entityType.Name)!;
         Assert.Null(designModel.GetCollation());
         Assert.Null(designEntity.FindProperty(nameof(BroadScopeNode.Scope))!.GetCollation());
-        Assert.Null(designEntity.FindAnnotation(RelationalAnnotationNames.Collation)?.Value);
-        Assert.Null(NestedSetCollations.Resolve(context, entityType.FindProperty(nameof(BroadScopeNode.Scope))!,
-            entityType));
+        Assert.Null(
+            designEntity.FindAnnotation(RelationalAnnotationNames.Collation)
+                ?.Value);
+
+        Assert.Null(
+            NestedSetCollations.Resolve(
+                context,
+                entityType.FindProperty(nameof(BroadScopeNode.Scope))!,
+                entityType));
+
         Assert.Equal(persistedScope.Value, storedScope);
         Assert.NotEqual(storedScope, aliasScope.Value);
         Assert.Equal(1, probe.NativeReads);
@@ -201,10 +326,25 @@ public abstract class NativeCollationTestBase : ProviderTest
         Assert.Equal(0, operationCalls);
         Assert.Equal(before, ScopeSnapshot(alias));
         Assert.Single(context.ChangeTracker.Entries<BroadScopeNode>());
-        Assert.Equal(EntityState.Unchanged, context.Entry(alias).State);
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(alias)
+                .State);
+
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(rowsBefore, await BroadScopeRowsAsync(context, root));
-        Assert.Equal(registryBefore, await BroadScopeRegistriesAsync(context, treeId));
+        Assert.Equal(
+            rowsBefore,
+            await BroadScopeRowsAsync(
+                context,
+                root,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            registryBefore,
+            await BroadScopeRegistriesAsync(
+                context,
+                treeId,
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Verifies table inheritance is known despite absent property and model collation settings.</summary>
@@ -217,44 +357,73 @@ public abstract class NativeCollationTestBase : ProviderTest
         string expected
     )
     {
-        var designModel = context.GetService<IDesignTimeModel>().Model;
+        var designModel = context.GetService<IDesignTimeModel>()
+            .Model;
+
         var designEntity = designModel.FindEntityType(entityType.Name)!;
         Assert.Null(designModel.GetCollation());
         Assert.Null(designEntity.FindProperty(nameof(BroadScopeNode.Scope))!.GetCollation());
-        Assert.Equal(expected, designEntity.FindAnnotation(RelationalAnnotationNames.Collation)?.Value);
-        Assert.Equal(expected, NestedSetCollations.Resolve(context,
-            entityType.FindProperty(nameof(BroadScopeNode.Scope))!, entityType));
+        Assert.Equal(
+            expected,
+            designEntity.FindAnnotation(RelationalAnnotationNames.Collation)
+                ?.Value);
+
+        Assert.Equal(
+            expected,
+            NestedSetCollations.Resolve(
+                context,
+                entityType.FindProperty(nameof(BroadScopeNode.Scope))!,
+                entityType));
     }
 
     /// <summary>Captures complete mutable tracker values without retaining the converted Scope instance.</summary>
     private static (string Scope, int Id, Guid TreeId, int? Parent, long Left, long Right, int Depth, long Position,
-        string Name) ScopeSnapshot(BroadScopeNode node)
+        string Name) ScopeSnapshot(
+            BroadScopeNode node
+        )
         => (node.Scope.Value, node.Id, node.TreeId, node.ParentId,
             node.Left, node.Right, node.Depth, node.Position, node.Name);
 
     /// <summary>Reads every persisted value in this test's independently assigned node-key range.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="root">The synthetic root node.</param>
     private static async Task<(string Scope, int Id, Guid TreeId, int? Parent, long Left, long Right, int Depth,
         long Position, string Name)[]> BroadScopeRowsAsync(
         DbContext context,
-        int root
+        int root,
+        CancellationToken cancellationToken
     )
     {
-        var rows = await context.Set<BroadScopeNode>().AsNoTracking()
+        var rows = await context
+            .Set<BroadScopeNode>()
+            .AsNoTracking()
             .Where(node => node.Id >= root && node.Id <= root + 1)
-            .OrderBy(node => node.Id).ToArrayAsync(CancellationToken.None);
+            .OrderBy(node => node.Id)
+            .ToArrayAsync(cancellationToken);
 
-        return rows.Select(ScopeSnapshot).ToArray();
+        return rows
+            .Select(ScopeSnapshot)
+            .ToArray();
     }
 
     /// <summary>Captures all persisted registry identity and lifecycle fields for the selected tree.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="treeId">The hierarchy tree identity.</param>
     private static async Task<(string Scope, Guid TreeId, long Revision, byte Lifecycle)[]> BroadScopeRegistriesAsync(
         DbContext context,
-        Guid treeId
+        Guid treeId,
+        CancellationToken cancellationToken
     )
     {
         var entityType = context.Model.FindEntityType(typeof(BroadScopeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType).Registry;
-        var rows = await context.Set<NestedSetTreeRegistry>(registry.Name).AsNoTracking()
+        var registry = NestedSetTreeRegistryMapping.For(entityType)
+            .Registry;
+
+        var rows = await context
+            .Set<NestedSetTreeRegistry>(registry.Name)
+            .AsNoTracking()
             .Where(row => EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId) == treeId)
             .Select(row => new
             {
@@ -262,10 +431,13 @@ public abstract class NativeCollationTestBase : ProviderTest
                 TreeId = EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
                 Revision = EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
                 Lifecycle = EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle),
-            }).ToArrayAsync(CancellationToken.None);
+            })
+            .ToArrayAsync(cancellationToken);
 
-        return rows.OrderBy(row => row.Scope.Value, StringComparer.Ordinal)
-            .Select(row => (row.Scope.Value, row.TreeId, row.Revision, row.Lifecycle)).ToArray();
+        return rows
+            .OrderBy(row => row.Scope.Value, StringComparer.Ordinal)
+            .Select(row => (row.Scope.Value, row.TreeId, row.Revision, row.Lifecycle))
+            .ToArray();
     }
 
     /// <summary>Creates the unknown-facet model in a schema whose native default no other suite can change.</summary>
@@ -273,11 +445,13 @@ public abstract class NativeCollationTestBase : ProviderTest
     /// <param name="database">The independently owned schema on the existing assembly server.</param>
     /// <param name="create">Constructs the exact mapped context from its provider options.</param>
     /// <param name="probe">The observer for the guard operation.</param>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>The ready context, whose lifetime transfers to the caller.</returns>
     private async Task<TContext> CreateUnknownDatabaseContextAsync<TContext>(
         TestDatabase database,
         Func<DbContextOptions<TContext>, TContext> create,
-        NativeGuardProbe probe
+        NativeGuardProbe probe,
+        CancellationToken cancellationToken
     )
         where TContext : BroadScopeContext
     {
@@ -293,7 +467,7 @@ public abstract class NativeCollationTestBase : ProviderTest
         {
             await context
                 .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(CancellationToken.None);
+                .CreateTablesAsync(cancellationToken);
 
             return context;
         }
@@ -310,12 +484,14 @@ public abstract class NativeCollationTestBase : ProviderTest
     /// <param name="convertedKeys">Whether to exercise the converted NodeKey transport.</param>
     /// <param name="noPad">Whether to use MySQL's table-level NO PAD comparison.</param>
     /// <param name="probe">The native command observer for this independently arranged scenario.</param>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <returns>The existing compatibility model with its exact configured physical collation.</returns>
     private protected async Task<BroadScopeContext> CreateInheritedScopeContextAsync(
         string engine,
         bool convertedKeys,
         bool noPad,
-        NativeGuardProbe probe
+        NativeGuardProbe probe,
+        CancellationToken cancellationToken
     )
     {
         if (noPad)
@@ -324,10 +500,12 @@ public abstract class NativeCollationTestBase : ProviderTest
                 ? await _fixture.CreateContextAsync<ConvertedInheritedNoPadScopeContext>(
                     engine,
                     static options => new ConvertedInheritedNoPadScopeContext(options),
+                    cancellationToken: cancellationToken,
                     probe)
                 : await _fixture.CreateContextAsync<InheritedNoPadScopeContext>(
                     engine,
                     static options => new InheritedNoPadScopeContext(options),
+                    cancellationToken: cancellationToken,
                     probe);
         }
 
@@ -335,10 +513,12 @@ public abstract class NativeCollationTestBase : ProviderTest
             ? await _fixture.CreateContextAsync<ConvertedInheritedBinaryScopeContext>(
                 engine,
                 static options => new ConvertedInheritedBinaryScopeContext(options),
+                cancellationToken: cancellationToken,
                 probe)
             : await _fixture.CreateContextAsync<InheritedBinaryScopeContext>(
                 engine,
                 static options => new InheritedBinaryScopeContext(options),
+                cancellationToken: cancellationToken,
                 probe);
     }
 }

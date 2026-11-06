@@ -7,8 +7,11 @@ public abstract partial class OrderingQueryShapeTests
     public async Task PersistedIntervalsExcludeStaleTrackedAliases()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        await SeedAsync(setup);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var probe = new ScaleProbe();
         var ordinals = new OrdinalProbe();
         await using var context = CreateContext(setup, probe, ordinals);
@@ -51,6 +54,7 @@ public abstract partial class OrderingQueryShapeTests
                 .Readers[1]
                 .Ordinals
                 .OrderBy(value => value));
+
         Assert.Equal((4, 5, 1), (renamed.Left, renamed.Right, renamed.Position));
         Assert.Equal((2, 3, 0), (sibling.Left, sibling.Right, sibling.Position));
         Assert.Equal(distantBefore, Coordinates(distant));
@@ -61,21 +65,24 @@ public abstract partial class OrderingQueryShapeTests
                 .Entry(distant)
                 .Property(node => node.Left)
                 .OriginalValue);
+
         Assert.Equal(
             9999,
             context
                 .Entry(foreign)
                 .Property(node => node.Left)
                 .OriginalValue);
+
         Assert.True(
             context
                 .Entry(renamed)
                 .Property(node => node.Name)
                 .IsModified);
-        AssertPersisted(await ReadScopeAsync(setup, 1), 1);
-        AssertPersisted(await ReadScopeAsync(setup, 2), 0);
-        await AssertRootAsync(setup, 1);
-        await AssertRootAsync(setup, 2);
+
+        AssertPersisted(await ReadScopeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken), 1);
+        AssertPersisted(await ReadScopeAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken), 0);
+        await AssertRootAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertRootAsync(setup, 2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.All(
             observation.Commands,
             command =>

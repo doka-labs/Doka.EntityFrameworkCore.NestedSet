@@ -79,6 +79,7 @@ internal static class NestedSetTrackedRowset<TEntity>
         for (var index = 0; index < values.Count; index++)
         {
             var ordinal = index;
+
             // WHY: The scope/key index can satisfy an ordered existence probe without scanning every
             // matching node, while the ordering keeps Take deterministic and warning-free.
             var branch = source
@@ -87,7 +88,9 @@ internal static class NestedSetTrackedRowset<TEntity>
                 .Select(_ => ordinal)
                 .Take(1);
 
-            query = query is null ? branch : query.Concat(branch);
+            query = query is null
+                ? branch
+                : query.Concat(branch);
         }
 
         return query!;
@@ -107,11 +110,13 @@ internal static class NestedSetTrackedRowset<TEntity>
                 .Select(entity => new Row
                 {
                     Entity = entity,
-                    Ordinal = ordinal
+                    Ordinal = ordinal,
                 });
 
             // WHY: The ordinal remains in SQL, so aliases and converted keys never need a CLR lookup fallback.
-            query = query is null ? rows : query.Concat(rows);
+            query = query is null
+                ? rows
+                : query.Concat(rows);
         }
 
         return query!;

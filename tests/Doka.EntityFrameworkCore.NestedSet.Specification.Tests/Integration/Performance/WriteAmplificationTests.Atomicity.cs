@@ -16,15 +16,20 @@ public abstract partial class WriteAmplificationTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         using var cancellation = new CancellationTokenSource();
         var probe = new StructuralWriteProbe { CancelAfterBounds = cancellation };
         await using var context = database.CreateContext(probe);
-        var before = await SnapshotAsync(context);
+        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -37,7 +42,7 @@ public abstract partial class WriteAmplificationTests
             ? service.DeleteAsync(2, cancellation.Token)
             : service.MoveBeforeAsync(2, 5, cancellation.Token));
 
-        var after = await SnapshotAsync(context);
+        var after = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
@@ -58,13 +63,18 @@ public abstract partial class WriteAmplificationTests
     )
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var observer = new InsertSavepointProbe();
         await using var context = database.CreateContext(observer);
         await using var transaction = callerTransaction
             ? await context.Database.BeginTransactionAsync(
-                Engine == "Sqlite" ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+                Engine == "Sqlite"
+                    ? IsolationLevel.Serializable
+                    : IsolationLevel.ReadCommitted,
                 CancellationToken.None)
             : null;
 
@@ -76,7 +86,12 @@ public abstract partial class WriteAmplificationTests
         await service.InsertRootAsync(new TreeNode { NodeId = 108 }, Guid.NewGuid(), CancellationToken.None);
 
         // Assert
-        Assert.Equal(callerTransaction ? 1 : 0, observer.Created);
+        Assert.Equal(
+            callerTransaction
+                ? 1
+                : 0,
+            observer.Created);
+
         Assert.True(context.Database.AutoSavepointsEnabled);
     }
 
@@ -87,10 +102,13 @@ public abstract partial class WriteAmplificationTests
     public async Task FailedInsertRestoresAutomaticSavepoints()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
-        await WriteAmplificationTestSupport.SeedAsync(database);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
+        await WriteAmplificationTestSupport.SeedAsync(
+            database,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var context = database.CreateContext();
-        var before = await SnapshotAsync(context);
+        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var service = context
             .NestedSet<TreeNode>()
             .ForScope(1);
@@ -101,7 +119,7 @@ public abstract partial class WriteAmplificationTests
             Guid.NewGuid(),
             CancellationToken.None));
 
-        var after = await SnapshotAsync(context);
+        var after = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.IsAssignableFrom<DbUpdateException>(error);
@@ -114,7 +132,7 @@ public abstract partial class WriteAmplificationTests
     public async Task TransactionObservationReusesFixtureServices()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var plain = database.CreateContext();
         await using var observed = database.CreateContext(new InsertSavepointProbe());
 
@@ -130,14 +148,15 @@ public abstract partial class WriteAmplificationTests
     /// Captures all structure, including the overlapping isolated scope, for exact rollback comparisons.
     /// </summary>
     private static async Task<string[]> SnapshotAsync(
-        TreeContext context
+        TreeContext context,
+        CancellationToken cancellationToken
     )
     {
         var nodes = await context
             .Set<TreeNode>()
             .AsNoTracking()
             .OrderBy(node => node.NodeId)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         return nodes
             .Select(node =>

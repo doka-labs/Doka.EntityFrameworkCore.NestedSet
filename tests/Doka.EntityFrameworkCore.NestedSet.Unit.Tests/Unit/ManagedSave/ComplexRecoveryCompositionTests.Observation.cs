@@ -25,7 +25,8 @@ public sealed partial class ComplexRecoveryCompositionTests
         var graph = ObserveClr(entry.Entity);
         var root = s_memberOwner.GetValue(entry.Property(value => value.Id))!;
         var native = new List<NativeObservation>();
-        ReadNative(root,
+        ReadNative(
+            root,
             entry.Metadata,
             "payload",
             native,
@@ -39,15 +40,18 @@ public sealed partial class ComplexRecoveryCompositionTests
     private static ClrObservation ObserveClr(
         TopologyPayload payload
     )
-        => new(payload.Marker,
+        => new(
+            payload.Marker,
             payload.Rows,
-            payload.Rows
+            payload
+                .Rows
                 ?.Select(row => new ClrItemObservation(
                     row,
                     row.Text,
                     Details(row.Details),
                     row.Leaves,
-                    row.Leaves
+                    row
+                        .Leaves
                         ?.Select(leaf => new ClrLeafObservation(leaf, leaf.Text))
                         .ToArray()
                     ?? []))
@@ -94,18 +98,22 @@ public sealed partial class ComplexRecoveryCompositionTests
             .GetType()
             .GetProperty("EntityState")!.GetValue(owner)!;
 
-        var hasCurrent = hasCurrentPath && (ordinal is null or >= 0);
+        var hasCurrent = hasCurrentPath && ordinal is null or >= 0;
         var scalars = metadata
             .GetFlattenedProperties()
             .Select(property =>
             {
                 var scalar = (PropertyEntry)s_scalarConstructor.Invoke([owner, property]);
+
                 // WHY: A deleted original or any child below it has no current CLR path. Original values and flags
                 // remain observable even when a child's own ordinal is valid below an absent ancestor.
 
-                return new NativeScalarObservation(property,
+                return new NativeScalarObservation(
+                    property,
                     hasCurrent,
-                    hasCurrent ? scalar.CurrentValue : null,
+                    hasCurrent
+                        ? scalar.CurrentValue
+                        : null,
                     scalar.OriginalValue,
                     scalar.IsModified,
                     scalar.IsTemporary);
@@ -118,8 +126,8 @@ public sealed partial class ComplexRecoveryCompositionTests
         var collections = new List<NativeCollectionObservation>();
 
         foreach (var collection in metadata
-                     .GetFlattenedComplexProperties()
-                     .Where(property => property.IsCollection))
+            .GetFlattenedComplexProperties()
+            .Where(property => property.IsCollection))
         {
             var lane = cache.GetValue(collection.GetIndex())!;
             var current = ReadLane(lane, "_entries");
@@ -127,21 +135,23 @@ public sealed partial class ComplexRecoveryCompositionTests
             collections.Add(new NativeCollectionObservation(collection, current, original));
 
             foreach (var child in current
-                         .Concat(original)
-                         .Where(child => child is not null))
+                .Concat(original)
+                .Where(child => child is not null))
             {
                 ReadNative(child!, collection.ComplexType, $"{path}.{collection.Name}", result, visited, hasCurrent);
             }
         }
 
-        result.Add(new NativeObservation(owner,
-            metadata,
-            path,
-            state,
-            ordinal,
-            originalOrdinal,
-            scalars,
-            collections.ToArray()));
+        result.Add(
+            new NativeObservation(
+                owner,
+                metadata,
+                path,
+                state,
+                ordinal,
+                originalOrdinal,
+                scalars,
+                collections.ToArray()));
     }
 
     /// <summary>Reads exact lane length and null holes without EF capacity getters or element construction.</summary>
@@ -186,12 +196,14 @@ public sealed partial class ComplexRecoveryCompositionTests
         AssertClr(entry.Entity, before.Clr);
         var root = s_memberOwner.GetValue(entry.Property(value => value.Id))!;
         var actual = new List<NativeObservation>();
-        ReadNative(root,
+        ReadNative(
+            root,
             entry.Metadata,
             "payload",
             actual,
             new HashSet<object>(ReferenceEqualityComparer.Instance),
             hasCurrentPath: true);
+
         AssertNative(before.Native, actual, exactLanes: true);
     }
 
@@ -246,10 +258,13 @@ public sealed partial class ComplexRecoveryCompositionTests
                     continue;
                 }
 
-                AssertLane(expectedCollection.Current,
+                AssertLane(
+                    expectedCollection.Current,
                     restoredCollection.Current,
                     $"{expected.Path}.{expectedCollection.Metadata.Name}: current");
-                AssertLane(expectedCollection.Original,
+
+                AssertLane(
+                    expectedCollection.Original,
                     restoredCollection.Original,
                     $"{expected.Path}.{expectedCollection.Metadata.Name}: original");
             }
@@ -282,7 +297,8 @@ public sealed partial class ComplexRecoveryCompositionTests
         string path
     )
     {
-        Assert.True(expected.Length == actual.Length,
+        Assert.True(
+            expected.Length == actual.Length,
             $"{path}: expected lane length {expected.Length}; actual {actual.Length}.");
 
         // WHY: Reference equality includes null holes; value or filtered sequence equality would miss lane corruption.

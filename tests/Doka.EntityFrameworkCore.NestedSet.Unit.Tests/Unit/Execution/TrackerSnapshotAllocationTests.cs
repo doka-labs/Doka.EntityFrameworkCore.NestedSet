@@ -20,9 +20,11 @@ public sealed partial class TrackerSnapshotAllocationTests
     {
         // Arrange
         await using var context = new SnapshotContext();
-        context.AttachRange(Enumerable
-            .Range(1, 20_000)
-            .Select(id => new SnapshotScalars { Id = id }));
+        context.AttachRange(
+            Enumerable
+                .Range(1, 20_000)
+                .Select(id => new SnapshotScalars { Id = id }));
+
         _ = NestedSetTrackerSnapshot.Capture(context);
         var before = GC.GetAllocatedBytesForCurrentThread();
 
@@ -32,10 +34,12 @@ public sealed partial class TrackerSnapshotAllocationTests
 
         // Assert
         _output.WriteLine($"Tracked entities: 20000; scalar properties: 15; allocated bytes: {allocated}");
+
         // WHY: The 60 MB budget leaves about 24% headroom over the measured 48.48 MB compact snapshot.
         Assert.InRange(allocated, 1, 60_000_000);
         GC.KeepAlive(snapshot);
-        Assert.Equal(20_000,
+        Assert.Equal(
+            20_000,
             context
                 .ChangeTracker
                 .Entries()
@@ -64,16 +68,22 @@ public sealed partial class TrackerSnapshotAllocationTests
 
         // Assert
         Assert.Equal<int>([1, 2, 3], entity.Values);
-        Assert.Equal(EntityState.Unchanged,
-            context.Entry(entity).State);
-        Assert.Equal<int>([1, 2, 3],
+        Assert.Equal(
+            EntityState.Unchanged,
+            context.Entry(entity)
+                .State);
+
+        Assert.Equal<int>(
+            [1, 2, 3],
             context
                 .Entry(entity)
                 .Property(value => value.Values)
                 .OriginalValue);
-        Assert.False(context
-            .Entry(entity)
-            .Property(value => value.Values)
-            .IsModified);
+
+        Assert.False(
+            context
+                .Entry(entity)
+                .Property(value => value.Values)
+                .IsModified);
     }
 }

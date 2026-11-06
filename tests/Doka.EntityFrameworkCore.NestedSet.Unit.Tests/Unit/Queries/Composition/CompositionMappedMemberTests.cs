@@ -42,6 +42,7 @@ public sealed class CompositionMappedMemberTests
 
         await using var context = new MappedReadContext(options);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
+
         // WHY: SQL fixture writes bypass the deliberately throwing application getters. The observed
         // query returns scalars, so a getter invocation identifies client evaluation or incorrect binding.
         await context.Database.ExecuteSqlRawAsync(
@@ -56,7 +57,9 @@ public sealed class CompositionMappedMemberTests
             CancellationToken.None);
 
         boundary.Observe = true;
-        var expected = matches ? 7L : 99L;
+        var expected = matches
+            ? 7L
+            : 99L;
 
         // Act
         var query = SelectBoundary(context, storage)
@@ -71,7 +74,12 @@ public sealed class CompositionMappedMemberTests
         Assert.Equal(0, commandsBeforeMaterialization);
         Assert.Equal(1, boundary.CreatedCommands);
         Assert.Equal(1, boundary.AsyncReaders);
-        Assert.Equal(matches ? [7L] : Array.Empty<long>(), values);
+        Assert.Equal(
+            matches
+                ? [7L]
+                : Array.Empty<long>(),
+            values);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -81,17 +89,23 @@ public sealed class CompositionMappedMemberTests
         string storage
     ) => storage switch
     {
-        "property" => Select(context.Set<PropertyNode>(),
+        "property" => Select(
+            context.Set<PropertyNode>(),
             context.Model.FindEntityType(typeof(PropertyNode))!.FindProperty(nameof(PropertyNode.MappedLeft))!),
-        "field" => Select(context.Set<FieldNode>(),
+        "field" => Select(
+            context.Set<FieldNode>(),
             context.Model.FindEntityType(typeof(FieldNode))!.FindProperty(nameof(FieldNode.StoredLeft))!),
-        "backing-field" => Select(context.Set<BackedNode>(),
+        "backing-field" => Select(
+            context.Set<BackedNode>(),
             context.Model.FindEntityType(typeof(BackedNode))!.FindProperty(nameof(BackedNode.MappedValue))!),
-        "shadow" => Select(context.Set<ShadowNode>(),
+        "shadow" => Select(
+            context.Set<ShadowNode>(),
             context.Model.FindEntityType(typeof(ShadowNode))!.FindProperty("StoredLeft")!),
-        "indexer" => Select(context.Set<Dictionary<string, object>>("BagNodes"),
+        "indexer" => Select(
+            context.Set<Dictionary<string, object>>("BagNodes"),
             context.Model.FindEntityType("BagNodes")!.FindProperty("Left")!),
-        "complex" => Select(context.Set<ComplexNode>(),
+        "complex" => Select(
+            context.Set<ComplexNode>(),
             context.Model.FindEntityType(typeof(ComplexNode))!
                 .FindComplexProperty(nameof(ComplexNode.Coordinates))!.ComplexType
                 .FindProperty(nameof(Coordinates.Left))!),
@@ -143,6 +157,7 @@ public sealed class CompositionMappedMemberTests
             var backed = modelBuilder.Entity<BackedNode>();
             backed.ToTable("BackedNodes");
             backed.Ignore(node => node.Left);
+
             // WHY: This valid property-backed mapping has a differently named backing field. Query
             // binding must retain the mapped PropertyInfo rather than substitute that field's CLR name.
             backed
@@ -156,7 +171,8 @@ public sealed class CompositionMappedMemberTests
             shadow.Ignore(node => node.Left);
             shadow.Property<long>("StoredLeft");
 
-            modelBuilder.SharedTypeEntity<Dictionary<string, object>>("BagNodes",
+            modelBuilder.SharedTypeEntity<Dictionary<string, object>>(
+                "BagNodes",
                 bag =>
                 {
                     bag.ToTable("BagNodes");
@@ -200,6 +216,7 @@ public sealed class CompositionMappedMemberTests
     private sealed class FieldNode
     {
         /// <summary>Stores the mapped boundary without a CLR property.</summary>
+
         // WHY: A different CLR sentinel makes the fixture's SQL values explicit without a default-field
         // initialization that analyzers correctly flag; these scalar queries never construct a CLR row.
         public long StoredLeft = long.MinValue;

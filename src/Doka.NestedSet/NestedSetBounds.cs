@@ -41,11 +41,12 @@ public readonly record struct NestedSetBounds
     /// <summary>Gets the number of descendants in a dense nested-set representation.</summary>
     /// <value>The number of nodes strictly enclosed by the valid interval.</value>
     /// <exception cref="ArgumentOutOfRangeException">This is an invalid default instance.</exception>
-    public long DescendantCount => (Width / 2) - 1;
+    public long DescendantCount => Width / 2 - 1;
 
     /// <summary>Formats stored coordinates without evaluating calculations that reject an invalid default.</summary>
     /// <returns>An invariant diagnostic representation containing the left and right boundaries.</returns>
     public override string ToString() =>
+
         // WHY: Generated record formatting reads every public getter; Width deliberately rejects the default value.
         FormattableString.Invariant($"NestedSetBounds {{ Left = {Left}, Right = {Right} }}");
 
@@ -82,7 +83,7 @@ public readonly record struct NestedSetBounds
         var width = checked(right - left + 1);
 
         // WHY: Every node contributes an entering and an exiting boundary, so a complete interval has even width.
-        return (width % 2) == 0
+        return width % 2 == 0
             ? width
             : throw new ArgumentException("Nested-set bounds must have an even inclusive width.", nameof(right));
     }

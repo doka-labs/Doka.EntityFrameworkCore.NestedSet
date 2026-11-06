@@ -27,6 +27,7 @@ internal sealed class PreparedOwnerContext : NestedSetDbContext
         owner
             .Property(value => value.Payload)
             .HasMaxLength(64);
+
         var node = modelBuilder.Entity<PreparedOwnerNode>();
 
         // WHY: Reuse the shared untimed observer's existing hierarchy-table classification.

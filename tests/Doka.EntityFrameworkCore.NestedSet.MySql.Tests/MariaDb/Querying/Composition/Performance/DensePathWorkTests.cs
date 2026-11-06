@@ -1,7 +1,9 @@
+using Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MariaDb;
 
 /// <summary>Executes the same dense path, fringe and isolated forest contracts on MariaDB.</summary>
-public sealed class DensePathWorkTests : MySql.DensePathWorkTestBase,
+public sealed class DensePathWorkTests : DensePathWorkTestBase,
     IClassFixture<ProviderFixture<RelationalFixture, MariaDbEngine>>
 {
     /// <summary>Uses the concrete MariaDB fixture and its native-work output sink.</summary>

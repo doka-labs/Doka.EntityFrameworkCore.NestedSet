@@ -64,7 +64,10 @@ internal sealed class NestedSetRelationalDatabase : RelationalDatabase
     {
         // WHY: Store-generated identities exist when the relational service returns; EF acceptance and
         // SavedChanges happen afterward. Record only identities and relationships proven at this boundary.
-        var result = await base.SaveChangesAsync(entries, cancellationToken).ConfigureAwait(false);
+        var result = await base
+            .SaveChangesAsync(entries, cancellationToken)
+            .ConfigureAwait(false);
+
         completion.Insertion?.Invoke();
         completion.Save?.Invoke();
 

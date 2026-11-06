@@ -9,18 +9,35 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
-        var up = hierarchy.SelectAncestorsOrSelf(
+        var up = hierarchy
+            .SelectAncestorsOrSelf(
                 node => node.Id == 3 || node.Id == 4,
-                (node, pivot, distance) => new { Source = node, Pivot = pivot, UpDistance = distance })
+                (node, pivot, distance) => new
+                {
+                    Source = node,
+                    Pivot = pivot,
+                    UpDistance = distance,
+                })
             .Where(row => row.Pivot.Id == 2);
 
         var down = hierarchy.SelectSubtrees(
             pivot => up.Any(row => row.Pivot == pivot),
-            (pivot, node, distance) => new { Pivot = pivot, Target = node, DownDistance = distance });
+            (pivot, node, distance) => new
+            {
+                Pivot = pivot,
+                Target = node,
+                DownDistance = distance,
+            });
 
         var rows = up.Join(
             down,
@@ -41,7 +58,8 @@ public abstract partial class HierarchyCompositionTests
             row => row.Source,
             (row, parent, child) => child.EdgeOpen);
 
-        var query = hierarchy.WherePathEdges(
+        var query = hierarchy
+            .WherePathEdges(
                 allowedUp,
                 row => row.Pivot,
                 row => row.Target,
@@ -76,13 +94,25 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe, closed: 2);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            closed: 2,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
-        var up = hierarchy.SelectAncestors(
+        var up = hierarchy
+            .SelectAncestors(
                 source => source.Id == 3,
-                (source, pivot, distance) => new { Source = source, Pivot = pivot })
+                (source, pivot, distance) => new
+                {
+                    Source = source,
+                    Pivot = pivot,
+                })
             .Where(row => row.Pivot.Id == 1);
 
         var allowedUp = hierarchy.WherePathEdges(
@@ -93,16 +123,27 @@ public abstract partial class HierarchyCompositionTests
 
         var down = hierarchy.SelectSubtrees(
             pivot => allowedUp.Any(row => row.Pivot == pivot),
-            (pivot, node, distance) => new { Pivot = pivot, Target = node });
+            (pivot, node, distance) => new
+            {
+                Pivot = pivot,
+                Target = node,
+            });
 
-        var rows = allowedUp.Join(
+        var rows = allowedUp
+            .Join(
                 down,
                 row => row.Pivot,
                 row => row.Pivot,
-                (first, second) => new { first.Source, first.Pivot, second.Target })
+                (first, second) => new
+                {
+                    first.Source,
+                    first.Pivot,
+                    second.Target,
+                })
             .Where(row => row.Target.Id == 6);
 
-        var actual = await hierarchy.WherePathEdges(
+        var actual = await hierarchy
+            .WherePathEdges(
                 rows,
                 row => row.Pivot,
                 row => row.Target,
@@ -127,17 +168,33 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
 
         // Act
         var down = hierarchy.SelectSubtrees(
             origin => origin.Id == 2,
-            (origin, turn, distance) => new { Origin = origin, Turn = turn, DownDistance = distance });
+            (origin, turn, distance) => new
+            {
+                Origin = origin,
+                Turn = turn,
+                DownDistance = distance,
+            });
 
         var up = hierarchy.SelectAncestorsOrSelf(
             turn => down.Any(row => row.Turn == turn),
-            (turn, upper, distance) => new { Turn = turn, Upper = upper, UpDistance = distance });
+            (turn, upper, distance) => new
+            {
+                Turn = turn,
+                Upper = upper,
+                UpDistance = distance,
+            });
 
         var rows = down.Join(
             up,
@@ -157,9 +214,15 @@ public abstract partial class HierarchyCompositionTests
             rows = rows.Where(row => row.UpDistance <= row.DownDistance);
         }
 
-        var actual = await rows.OrderBy(row => row.Turn.Id)
+        var actual = await rows
+            .OrderBy(row => row.Turn.Id)
             .ThenBy(row => row.Upper.Id)
-            .Select(row => new { Turn = row.Turn.Id, Upper = row.Upper.Id, row.UpDistance })
+            .Select(row => new
+            {
+                Turn = row.Turn.Id,
+                Upper = row.Upper.Id,
+                row.UpDistance,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
@@ -183,9 +246,17 @@ public abstract partial class HierarchyCompositionTests
         // Arrange
         var scope = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(scope, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope);
-        var occurrence = context.Set<CompositionNode>()
+        await using var context = await CreateContextAsync(
+            scope,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope);
+
+        var occurrence = context
+            .Set<CompositionNode>()
             .Where(node => node.Scope == scope && node.Id == 3)
             .Select(node => new { Node = node });
 
@@ -200,7 +271,9 @@ public abstract partial class HierarchyCompositionTests
                 (row, owner) => true)
             : hierarchy.WhereAnyAncestorOrSelf(source, row => row.Node, (row, owner) => owner.Candidate);
 
-        var actual = await query.Select(row => row.Node.Id).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .Select(row => row.Node.Id)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal([3, 3], actual);

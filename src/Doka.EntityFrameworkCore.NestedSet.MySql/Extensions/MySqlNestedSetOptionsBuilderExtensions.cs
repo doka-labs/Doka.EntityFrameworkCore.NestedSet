@@ -1,4 +1,5 @@
 using Doka.EntityFrameworkCore.MySql;
+using Doka.EntityFrameworkCore.NestedSet.MySql;
 
 namespace Doka.EntityFrameworkCore.NestedSet;
 
@@ -18,7 +19,7 @@ public static class MySqlNestedSetOptionsBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
         var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
-        NestedSetProviderRegistration.Register(core, MySql.MySqlNestedSetProvider.Instance);
+        NestedSetProviderRegistration.Register(core, MySqlNestedSetProvider.Instance);
 
         return optionsBuilder;
     }

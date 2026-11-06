@@ -67,7 +67,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 (pair, source) => new
                 {
                     Source = source,
-                    RelatedKey = pair.Related
+                    RelatedKey = pair.Related,
                 });
 
             pairs = sourceNodes.Join(
@@ -77,7 +77,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 (pair, related) => new AncestorIndexMappedPair
                 {
                     Source = pair.Source,
-                    Related = related
+                    Related = related,
                 });
 
             // WHY: Structural containment already rejects nonmatching candidates before hydration.
@@ -105,7 +105,10 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var projections = AncestorIndexCoordinateProjections.For(_entityType);
 
-        return nodes.Select(includeNonLeaf ? projections.Candidate : projections.Source);
+        return nodes.Select(
+            includeNonLeaf
+                ? projections.Candidate
+                : projections.Source);
     }
 
     /// <summary>Prefilters independent owner intervals by a necessary envelope before matching any source.</summary>
@@ -135,7 +138,7 @@ internal sealed partial class NestedSetQuery<TEntity>
                 .GroupBy(source => new
                 {
                     source.Scope,
-                    source.Tree
+                    source.Tree,
                 })
                 .Select(group => new AncestorIndexEnvelope
                 {
@@ -146,10 +149,8 @@ internal sealed partial class NestedSetQuery<TEntity>
                     HasSources = group.LongCount() > 0,
                 });
 
-        Expression<Func<AncestorIndexEnvelope, IndexedAncestorCoordinates, bool>> prefix = (
-                envelope,
-                owner
-            ) => NestedSetNativePointRange<object>.Contains(owner.Tree, envelope.Tree)
+        Expression<Func<AncestorIndexEnvelope, IndexedAncestorCoordinates, bool>> prefix = (envelope,
+                owner) => NestedSetNativePointRange<object>.Contains(owner.Tree, envelope.Tree)
             && NestedSetNativePointRange<bool>.Contains(owner.NonLeaf, envelope.HasSources);
 
         Expression<Func<AncestorIndexEnvelope, IndexedAncestorCoordinates, bool>> bounds = includeSelf
@@ -164,10 +165,8 @@ internal sealed partial class NestedSetQuery<TEntity>
 
         if (_descriptor.Scope is not null)
         {
-            Expression<Func<AncestorIndexEnvelope, IndexedAncestorCoordinates, bool>> scope = (
-                selected,
-                candidate
-            ) => NestedSetNativePointRange<object?>.Contains(candidate.Scope, selected.Scope);
+            Expression<Func<AncestorIndexEnvelope, IndexedAncestorCoordinates, bool>> scope = (selected,
+                candidate) => NestedSetNativePointRange<object?>.Contains(candidate.Scope, selected.Scope);
 
             predicate = Expression.AndAlso(NestedSetQueryExpressions.Inline(scope, envelope, owner), predicate);
         }
@@ -217,7 +216,7 @@ internal sealed partial class NestedSetQuery<TEntity>
             (source, related) => new AncestorIndexStrictCoordinatePair
             {
                 Source = source,
-                Related = related
+                Related = related,
             });
 
         var pair = Expression.Parameter(typeof(AncestorIndexStrictCoordinatePair), "pair");

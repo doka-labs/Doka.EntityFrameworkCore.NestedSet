@@ -99,7 +99,9 @@ internal static partial class SignalReportBuilder
             var allowed = Expression.Lambda<Func<TagValue, bool>>(Expression.AndAlso(matchesOwner, fields), value);
 
             var exists = Expression.Call(s_metadataAny, metadata, Expression.Quote(allowed));
-            predicate = predicate is null ? exists : Expression.AndAlso(predicate, exists);
+            predicate = predicate is null
+                ? exists
+                : Expression.AndAlso(predicate, exists);
         }
 
         return Expression.Lambda<Func<TRow, SignalNode, bool>>(predicate ?? Expression.Constant(true), row, owner);

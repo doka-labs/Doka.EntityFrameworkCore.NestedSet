@@ -9,6 +9,9 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool SupportsStatementAtomicSelfReferentialDelete => true;
 
     /// <inheritdoc />
+    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.Serializable;
+
+    /// <inheritdoc />
     internal override bool IsSafeReadSnapshot(
         IsolationLevel? isolation
     ) => isolation is IsolationLevel.Serializable or IsolationLevel.Snapshot;
@@ -17,9 +20,6 @@ internal sealed partial class SqlServerNestedSetProvider
     internal override bool HasStatementReadSnapshot(
         IsolationLevel? isolation
     ) => false;
-
-    /// <inheritdoc />
-    internal override IsolationLevel ReadSnapshotIsolation => IsolationLevel.Serializable;
 
     /// <inheritdoc />
     internal override async Task<bool> ReserveTreeAsync(

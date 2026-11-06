@@ -7,8 +7,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 /// </remarks>
 public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
 {
-    private BenchmarkNode? _node;
     private SaveOperation _completed;
+    private BenchmarkNode? _node;
 
     /// <inheritdoc />
     protected override bool Ordered => true;
@@ -34,7 +34,10 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
     public async Task MarkedParent()
     {
         var node = PreparedNode();
-        node.ParentId = Shape == BenchmarkShape.Deep ? 1 : 2;
+        node.ParentId = Shape == BenchmarkShape.Deep
+            ? 1
+            : 2;
+
         Fixture
             .Context
             .Entry(node)
@@ -46,21 +49,28 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
     }
 
     /// <inheritdoc />
-    public override async Task PrepareAsync()
+    public override async Task PrepareAsync(
+        CancellationToken cancellationToken
+    )
     {
         _completed = SaveOperation.None;
 
         // WHY: Setup must not inherit the previous measured iteration's setting while rebuilding the catalog.
         Fixture.Context.ChangeTracker.AutoDetectChangesEnabled = true;
-        await base.PrepareAsync();
+        await base.PrepareAsync(cancellationToken);
 
-        var key = Shape == BenchmarkShape.Deep ? Fixture.LeafKey : 3;
-        _node = await Fixture.Context.Nodes.SingleAsync(value => value.Id == key, CancellationToken.None);
+        var key = Shape == BenchmarkShape.Deep
+            ? Fixture.LeafKey
+            : 3;
+
+        _node = await Fixture.Context.Nodes.SingleAsync(value => value.Id == key, cancellationToken);
         Fixture.Context.ChangeTracker.AutoDetectChangesEnabled = false;
     }
 
     /// <inheritdoc />
-    public override async Task VerifyAsync()
+    public override async Task VerifyAsync(
+        CancellationToken cancellationToken
+    )
     {
         BenchmarkFixture.Require(_completed != SaveOperation.None, "The measured save did not execute.");
         BenchmarkFixture.Require(
@@ -68,24 +78,28 @@ public class ManualDetectionSaveBenchmarks : DatabaseBenchmark
             "The measured save changed the caller's manual-detection setting.");
 
         BenchmarkFixture.Require(
-            await Fixture.Context.Nodes.CountAsync(CancellationToken.None) == Nodes,
+            await Fixture.Context.Nodes.CountAsync(cancellationToken) == Nodes,
             "The measured save persisted an unexpected node count.");
 
         var key = PreparedNode()
             .Id;
+
         var saved = await Fixture
             .Context
             .Nodes
             .AsNoTracking()
-            .SingleAsync(value => value.Id == key, CancellationToken.None);
+            .SingleAsync(value => value.Id == key, cancellationToken);
 
         BenchmarkFixture.Require(
             _completed == SaveOperation.Parent
-                ? saved.ParentId == (Shape == BenchmarkShape.Deep ? 1 : 2)
+                ? saved.ParentId
+                == (Shape == BenchmarkShape.Deep
+                    ? 1
+                    : 2)
                 : saved is { Name: "000-first", Position: 0 },
             "The explicitly marked hierarchy change did not persist.");
 
-        await base.VerifyAsync();
+        await base.VerifyAsync(cancellationToken);
     }
 
     /// <summary>Requires the unchanged tracked node prepared outside the observation window.</summary>

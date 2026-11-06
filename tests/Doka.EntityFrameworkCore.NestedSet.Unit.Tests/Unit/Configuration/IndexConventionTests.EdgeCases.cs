@@ -13,7 +13,8 @@ public sealed partial class IndexConventionTests
     {
         // Arrange
         IMutableIndex? existing = null;
-        using var context = new ConventionContext("Sqlite",
+        using var context = new ConventionContext(
+            "Sqlite",
             model =>
             {
                 var entity = model.Entity<IndexNode>();
@@ -25,7 +26,8 @@ public sealed partial class IndexConventionTests
                 }
 
                 existing = entity
-                    .HasIndex(node => new
+                    .HasIndex(
+                        node => new
                         {
                             node.Scope,
                             node.Key,
@@ -50,18 +52,22 @@ public sealed partial class IndexConventionTests
             .Model
             .FindEntityType(typeof(IndexNode))!;
 
-        var nodes = service.InTree(Guid.Empty).Nodes;
+        var nodes = service.InTree(Guid.Empty)
+            .Nodes;
 
         // Assert
-        var maintenance = Assert.Single(entity.GetIndexes(),
+        var maintenance = Assert.Single(
+            entity.GetIndexes(),
             index => index.Properties[1].Name == nameof(IndexNode.Key));
 
         Assert.Same(existing, maintenance);
         Assert.True(maintenance.IsUnique);
-        Assert.Equal(5,
+        Assert.Equal(
+            5,
             entity
                 .GetIndexes()
                 .Count());
+
         Assert.NotNull(nodes);
     }
 
@@ -82,7 +88,8 @@ public sealed partial class IndexConventionTests
     )
     {
         // Arrange
-        using var context = new ConventionContext("Sqlite",
+        using var context = new ConventionContext(
+            "Sqlite",
             model =>
             {
                 var entity = model.Entity<IndexNode>();
@@ -126,7 +133,8 @@ public sealed partial class IndexConventionTests
     )
     {
         // Arrange
-        using var context = new ConventionContext("PostgreSql",
+        using var context = new ConventionContext(
+            "PostgreSql",
             model =>
             {
                 var entity = model.Entity<IndexNode>();
@@ -137,7 +145,8 @@ public sealed partial class IndexConventionTests
                     Configure(entity);
                 }
 
-                var index = entity.HasIndex(node => new
+                var index = entity.HasIndex(
+                    node => new
                     {
                         node.Scope,
                         node.TreeId,
@@ -160,13 +169,15 @@ public sealed partial class IndexConventionTests
             .FindEntityType(typeof(IndexNode))!;
 
         // Assert
-        var left = Assert.Single(entity.GetIndexes(),
+        var left = Assert.Single(
+            entity.GetIndexes(),
             index => index.Properties.Count > 2
                 && index.Properties[2].Name == nameof(IndexNode.Left));
 
         Assert.Equal("UsefulLeft", left.Name);
         Assert.Null(left.GetFilter());
-        Assert.Equal(5,
+        Assert.Equal(
+            5,
             entity
                 .GetIndexes()
                 .Count());
@@ -177,7 +188,8 @@ public sealed partial class IndexConventionTests
     public void ConventionDatabaseNameDoesNotPreventDeduplication()
     {
         // Arrange
-        using var context = new ConventionContext("Sqlite",
+        using var context = new ConventionContext(
+            "Sqlite",
             model =>
             {
                 var entity = model.Entity<IndexNode>();
@@ -189,7 +201,8 @@ public sealed partial class IndexConventionTests
                     .Single(index => index.Properties[2].Name == nameof(IndexNode.Left));
 
                 ((IConventionIndex)owned).SetDatabaseName("ConventionLeft");
-                entity.HasIndex(node => new
+                entity.HasIndex(
+                    node => new
                     {
                         node.Scope,
                         node.TreeId,
@@ -205,12 +218,14 @@ public sealed partial class IndexConventionTests
             .FindEntityType(typeof(IndexNode))!;
 
         // Assert
-        var left = Assert.Single(entity.GetIndexes(),
+        var left = Assert.Single(
+            entity.GetIndexes(),
             index => index.Properties.Count > 2
                 && index.Properties[2].Name == nameof(IndexNode.Left));
 
         Assert.Equal("UserLeft", left.Name);
-        Assert.Equal(4,
+        Assert.Equal(
+            4,
             entity
                 .GetIndexes()
                 .Count());
@@ -248,7 +263,8 @@ public sealed partial class IndexConventionTests
     {
         // Arrange
         using var baseline = new ConventionContext("Sqlite", model => ConfigureSpecializedTable(model, "Folders"));
-        using var renamed = new ConventionContext("Sqlite",
+        using var renamed = new ConventionContext(
+            "Sqlite",
             model =>
             {
                 var entity = model.Entity<IndexNode>();
@@ -321,6 +337,7 @@ public sealed partial class IndexConventionTests
                 node.Left,
             })
             .HasFilter("\"Left\" > 0");
+
         Configure(entity);
         entity.ToTable(table);
     }

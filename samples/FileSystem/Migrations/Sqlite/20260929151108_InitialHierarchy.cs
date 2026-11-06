@@ -16,7 +16,7 @@ public partial class InitialHierarchy : Migration
             {
                 TreeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Lifecycle = table.Column<byte>(type: "INTEGER", nullable: false),
-                Revision = table.Column<long>(type: "INTEGER", nullable: false)
+                Revision = table.Column<long>(type: "INTEGER", nullable: false),
             },
             constraints: table =>
             {
@@ -27,7 +27,8 @@ public partial class InitialHierarchy : Migration
             name: "Folders",
             columns: table => new
             {
-                Id = table.Column<int>(type: "INTEGER", nullable: false)
+                Id = table
+                    .Column<int>(type: "INTEGER", nullable: false)
                     .Annotation("Sqlite:Autoincrement", true),
                 TreeId = table.Column<Guid>(type: "TEXT", nullable: false),
                 Name = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
@@ -36,7 +37,7 @@ public partial class InitialHierarchy : Migration
                 Left = table.Column<long>(type: "INTEGER", nullable: false),
                 Right = table.Column<long>(type: "INTEGER", nullable: false),
                 Depth = table.Column<int>(type: "INTEGER", nullable: false),
-                Position = table.Column<long>(type: "INTEGER", nullable: false)
+                Position = table.Column<long>(type: "INTEGER", nullable: false),
             },
             constraints: table =>
             {

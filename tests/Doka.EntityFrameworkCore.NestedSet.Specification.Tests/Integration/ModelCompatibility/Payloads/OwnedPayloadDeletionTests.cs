@@ -21,7 +21,8 @@ public abstract class OwnedPayloadDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PayloadContext>(
             Engine,
-            static options => new PayloadContext(options));
+            static options => new PayloadContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<OwnedPayloadNode>();
         var treeId = Guid.NewGuid();

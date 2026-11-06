@@ -20,7 +20,11 @@ internal sealed class CompositionContext : DbContext
             entity.Scope,
             entity.Id,
         });
-        node.Property(entity => entity.Id).ValueGeneratedNever();
+
+        node
+            .Property(entity => entity.Id)
+            .ValueGeneratedNever();
+
         node.Property(entity => entity.Visible);
         node.Property(entity => entity.EdgeOpen);
         node.Property(entity => entity.Candidate);
@@ -45,6 +49,7 @@ internal sealed class CompositionContext : DbContext
             entity.NodeId,
             entity.Date,
         });
+
         firstInput.Property(entity => entity.Amount);
 
         var secondInput = modelBuilder.Entity<CompositionInputTwo>();
@@ -55,6 +60,7 @@ internal sealed class CompositionContext : DbContext
             entity.NodeId,
             entity.Date,
         });
+
         secondInput.Property(entity => entity.Amount);
 
         var thirdInput = modelBuilder.Entity<CompositionInputThree>();
@@ -65,6 +71,7 @@ internal sealed class CompositionContext : DbContext
             entity.NodeId,
             entity.Date,
         });
+
         thirdInput.Property(entity => entity.Amount);
     }
 }

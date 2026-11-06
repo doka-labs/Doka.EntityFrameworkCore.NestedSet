@@ -4,6 +4,62 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class ManagedSharingCaptureTests
 {
+    /// <summary>Creates an independent physical row with both shared and deliberately non-shared payload.</summary>
+    internal static SharingRoot CreateRoot(
+        int id,
+        bool derived = false
+    )
+    {
+        var root = derived
+            ? new DerivedSharingRoot()
+            : new SharingRoot();
+
+        root.Id = id;
+        root.Payload = "Root payload";
+        root.Details = new SharingDetails
+        {
+            Payload = "Owned payload",
+            Nested = new NestedSharingDetails { Payload = "Nested payload" },
+        };
+
+        root.Shared = new SharingPart
+        {
+            Id = id,
+            Root = root,
+            Payload = "Split payload",
+        };
+
+        root.Separate = new SeparatePayload { Payload = "Separate payload" };
+        root.Related.Add(
+            new RelatedPayload
+            {
+                Id = id,
+                RootId = id,
+                Root = root,
+                Payload = "Related payload",
+            });
+
+        return root;
+    }
+
+    /// <summary>Returns the exact four native entries that share this one physical relational row.</summary>
+    internal static IUpdateEntry[] SharedEntries(
+        SharingContext context,
+        SharingRoot root
+    )
+        =>
+        [
+            Entry(context, root), Entry(context, root.Details), Entry(context, root.Details.Nested),
+            Entry(context, root.Shared),
+        ];
+
+    /// <summary>Reads an existing native identity without detecting changes or creating a new entity state.</summary>
+    internal static IUpdateEntry Entry(
+        DbContext context,
+        object entity
+    )
+        => NestedSetInsertionContract.Instance.Entry(context.Entry(entity));
+
     /// <summary>Maps ordinary payload entities through real relational sharing and non-sharing shapes.</summary>
     internal sealed class SharingContext : DbContext
     {
@@ -29,12 +85,14 @@ public sealed partial class ManagedSharingCaptureTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             root
                 .HasDiscriminator<string>("Kind")
                 .HasValue<SharingRoot>("Root")
                 .HasValue<DerivedSharingRoot>("Derived");
 
-            root.OwnsOne(value => value.Details,
+            root.OwnsOne(
+                value => value.Details,
                 details =>
                 {
                     details.OwnsOne(value => value.Nested);
@@ -46,6 +104,7 @@ public sealed partial class ManagedSharingCaptureTests
             root
                 .Navigation(value => value.Details)
                 .IsRequired();
+
             root.OwnsOne(value => value.Separate, separate => separate.ToTable("SeparatePayloads"));
             root
                 .HasOne(value => value.Shared)
@@ -58,14 +117,17 @@ public sealed partial class ManagedSharingCaptureTests
             shared
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             shared
                 .Property(value => value.Payload)
                 .HasColumnName("SplitPayload");
+
             var related = modelBuilder.Entity<RelatedPayload>();
             related.ToTable("RelatedPayloads");
             related
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             related
                 .HasOne(value => value.Root)
                 .WithMany(value => value.Related)
@@ -77,62 +139,12 @@ public sealed partial class ManagedSharingCaptureTests
             json
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             // WHY: EF forbids table splitting for a JSON owner. Keep this negative control on a valid,
             // independent row instead of combining unsupported mapping shapes in the sharing fixture.
             json.OwnsOne(value => value.Document, document => document.ToJson("Document"));
         }
     }
-
-    /// <summary>Creates an independent physical row with both shared and deliberately non-shared payload.</summary>
-    internal static SharingRoot CreateRoot(
-        int id,
-        bool derived = false
-    )
-    {
-        var root = derived ? new DerivedSharingRoot() : new SharingRoot();
-        root.Id = id;
-        root.Payload = "Root payload";
-        root.Details = new SharingDetails
-        {
-            Payload = "Owned payload",
-            Nested = new NestedSharingDetails { Payload = "Nested payload" },
-        };
-
-        root.Shared = new SharingPart
-        {
-            Id = id,
-            Root = root,
-            Payload = "Split payload",
-        };
-        root.Separate = new SeparatePayload { Payload = "Separate payload" };
-        root.Related.Add(new RelatedPayload
-        {
-            Id = id,
-            RootId = id,
-            Root = root,
-            Payload = "Related payload",
-        });
-
-        return root;
-    }
-
-    /// <summary>Returns the exact four native entries that share this one physical relational row.</summary>
-    internal static IUpdateEntry[] SharedEntries(
-        SharingContext context,
-        SharingRoot root
-    )
-        =>
-        [
-            Entry(context, root), Entry(context, root.Details), Entry(context, root.Details.Nested),
-            Entry(context, root.Shared),
-        ];
-
-    /// <summary>Reads an existing native identity without detecting changes or creating a new entity state.</summary>
-    internal static IUpdateEntry Entry(
-        DbContext context,
-        object entity
-    )
-        => NestedSetInsertionContract.Instance.Entry(context.Entry(entity));
 
     /// <summary>Owns the main table row and unrelated relational payload through distinct mappings.</summary>
     internal class SharingRoot

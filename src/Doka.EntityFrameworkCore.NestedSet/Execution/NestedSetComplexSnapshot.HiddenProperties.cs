@@ -2,6 +2,76 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
 internal sealed partial class NestedSetComplexSnapshot
 {
+    /// <summary>Lists the reference containers between a scalar and its collection element, outermost first.</summary>
+    private static List<IComplexProperty> ElementContainers(
+        IProperty metadata
+    )
+    {
+        var containers = new List<IComplexProperty>();
+        var type = metadata.DeclaringType;
+
+        while (type is IComplexType { ComplexProperty.IsCollection: false } complex)
+        {
+            containers.Insert(0, complex.ComplexProperty);
+            type = complex.ComplexProperty.DeclaringType;
+        }
+
+        return containers;
+    }
+
+    /// <summary>Resolves the object declaring a scalar, or null below a missing reference.</summary>
+    private static object? ReadElementContainer(
+        object? element,
+        IProperty metadata
+    )
+    {
+        var instance = element;
+
+        foreach (var container in ElementContainers(metadata))
+        {
+            if (instance is null)
+            {
+                return null;
+            }
+
+            instance = container
+                .GetGetter()
+                .GetClrValue(instance);
+        }
+
+        return instance;
+    }
+
+    /// <summary>Writes a scalar through its element, copying back through containing structs.</summary>
+    private static void WriteElementScalar(
+        object element,
+        IProperty metadata,
+        object? value
+    )
+    {
+        var containers = ElementContainers(metadata);
+
+        // WHY: The element is the independent authority; a hidden element has no reliable current path, and
+        // EF's containing-entity setter cannot be built through Nullable<T>. A boxed struct needs copyback,
+        // so each changed container returns to its mapped member, innermost container first.
+        var instances = new object[containers.Count + 1];
+        instances[0] = element;
+
+        for (var index = 0; index < containers.Count; index++)
+        {
+            instances[index + 1] = containers[index]
+                .GetGetter()
+                .GetClrValue(instances[index])!;
+        }
+
+        NestedSetTrackerSnapshot.SetMappedClrValue(instances[^1], metadata, value);
+
+        for (var index = containers.Count - 1; index >= 0; index--)
+        {
+            NestedSetTrackerSnapshot.SetMappedClrValue(instances[index], containers[index], instances[index + 1]);
+        }
+    }
+
     /// <summary>Retains scalar intent on native entries hidden by raw-null or shortened complex containers.</summary>
     private readonly struct HiddenPropertySnapshot
     {
@@ -33,7 +103,10 @@ internal sealed partial class NestedSetComplexSnapshot
             _hasOriginalValue = NestedSetTrackedProperty.HasOriginalValue(metadata)
                 && NestedSetComplexEntryAccess.State(native) != EntityState.Added;
 
-            _originalValue = _hasOriginalValue ? _comparer.Snapshot(_entry.OriginalValue) : null;
+            _originalValue = _hasOriginalValue
+                ? _comparer.Snapshot(_entry.OriginalValue)
+                : null;
+
             _isModified = _entry.IsModified;
             _elementInstance = elementInstance;
             var declaringInstance = ReadDeclaringInstance();
@@ -57,6 +130,7 @@ internal sealed partial class NestedSetComplexSnapshot
         {
             RestoreOriginal();
             RestoreFlag();
+
             // WHY: A public flag transition can update original storage as part of EF's normal state change.
             // Retain the independent preimage after that transition without invoking another detection pass.
             RestoreOriginal();
@@ -171,7 +245,7 @@ internal sealed partial class NestedSetComplexSnapshot
         }
 
         /// <summary>Journals every mapped scalar below one unregistered element.</summary>
-        /// <param name="type">The complex type of <paramref name="instance"/>.</param>
+        /// <param name="type">The complex type of <paramref name="instance" />.</param>
         /// <param name="element">The nearest collection element, which anchors struct copyback.</param>
         /// <param name="instance">The CLR object declaring the visited members.</param>
         /// <param name="target">The frame's journal.</param>
@@ -247,75 +321,5 @@ internal sealed partial class NestedSetComplexSnapshot
                     .GetGetter()
                     .GetClrValue(instance),
                 _value);
-    }
-
-    /// <summary>Lists the reference containers between a scalar and its collection element, outermost first.</summary>
-    private static List<IComplexProperty> ElementContainers(
-        IProperty metadata
-    )
-    {
-        var containers = new List<IComplexProperty>();
-        var type = metadata.DeclaringType;
-
-        while (type is IComplexType { ComplexProperty.IsCollection: false } complex)
-        {
-            containers.Insert(0, complex.ComplexProperty);
-            type = complex.ComplexProperty.DeclaringType;
-        }
-
-        return containers;
-    }
-
-    /// <summary>Resolves the object declaring a scalar, or null below a missing reference.</summary>
-    private static object? ReadElementContainer(
-        object? element,
-        IProperty metadata
-    )
-    {
-        var instance = element;
-
-        foreach (var container in ElementContainers(metadata))
-        {
-            if (instance is null)
-            {
-                return null;
-            }
-
-            instance = container
-                .GetGetter()
-                .GetClrValue(instance);
-        }
-
-        return instance;
-    }
-
-    /// <summary>Writes a scalar through its element, copying back through containing structs.</summary>
-    private static void WriteElementScalar(
-        object element,
-        IProperty metadata,
-        object? value
-    )
-    {
-        var containers = ElementContainers(metadata);
-
-        // WHY: The element is the independent authority; a hidden element has no reliable current path, and
-        // EF's containing-entity setter cannot be built through Nullable<T>. A boxed struct needs copyback,
-        // so each changed container returns to its mapped member, innermost container first.
-        var instances = new object[containers.Count + 1];
-        instances[0] = element;
-
-        for (var index = 0; index < containers.Count; index++)
-        {
-            instances[index + 1] = containers[index]
-                .GetGetter()
-                .GetClrValue(instances[index])!;
-        }
-
-        NestedSetTrackerSnapshot.SetMappedClrValue(instances[^1], metadata, value);
-
-        for (var index = containers.Count - 1; index >= 0; index--)
-        {
-            NestedSetTrackerSnapshot.SetMappedClrValue(instances[index], containers[index], instances[index + 1]);
-        }
     }
 }

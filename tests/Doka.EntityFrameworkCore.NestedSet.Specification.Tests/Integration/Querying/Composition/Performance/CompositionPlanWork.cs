@@ -92,7 +92,9 @@ internal readonly record struct CompositionPlanWork(
     /// <summary>Reads executed PostgreSQL JSON operators, including work rejected by join predicates.</summary>
     /// <param name="plan">The native EXPLAIN ANALYZE FORMAT JSON array for one statement.</param>
     /// <returns>The largest cumulative emitted and rejected-join tuple observations.</returns>
-    internal static CompositionPostgreSqlPlanWork ReadPostgreSqlJson(string plan)
+    internal static CompositionPostgreSqlPlanWork ReadPostgreSqlJson(
+        string plan
+    )
     {
         try
         {
@@ -100,8 +102,11 @@ internal readonly record struct CompositionPlanWork(
             // diagnostic parsing; it neither limits nor changes the query or its native work allowance.
             using var document = JsonDocument.Parse(plan, new JsonDocumentOptions { MaxDepth = 1_024 });
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() != 1
-                || root[0].ValueKind != JsonValueKind.Object || !root[0].TryGetProperty("Plan", out var first)
+            if (root.ValueKind != JsonValueKind.Array
+                || root.GetArrayLength() != 1
+                || root[0].ValueKind != JsonValueKind.Object
+                || !root[0]
+                    .TryGetProperty("Plan", out var first)
                 || first.ValueKind != JsonValueKind.Object)
             {
                 throw new FormatException("The plan must contain one executed PostgreSQL statement.");
@@ -125,14 +130,18 @@ internal readonly record struct CompositionPlanWork(
                 var loops = ReadPostgreSqlNumber(node, "Actual Loops", required: true);
                 var output = ReadPostgreSqlNumber(node, "Actual Rows", required: true) * loops;
                 var rejected = ReadPostgreSqlNumber(node, "Rows Removed by Join Filter", required: false) * loops;
-                if (!double.IsFinite(output) || !double.IsFinite(rejected))
+                if (!double.IsFinite(output)
+                    || !double.IsFinite(rejected))
                 {
                     throw new FormatException("A PostgreSQL operator's cumulative tuple count is not finite.");
                 }
 
                 maximumOutput = Math.Max(maximumOutput, output);
                 maximumRejected = Math.Max(maximumRejected, rejected);
-                executed += loops > 0 ? 1 : 0;
+                executed += loops > 0
+                    ? 1
+                    : 0;
+
                 if (node.TryGetProperty("Plans", out var children))
                 {
                     if (children.ValueKind != JsonValueKind.Array)
@@ -161,15 +170,23 @@ internal readonly record struct CompositionPlanWork(
     }
 
     /// <summary>Requires finite nonnegative native observations and distinguishes absent optional counters.</summary>
-    private static double ReadPostgreSqlNumber(JsonElement node, string field, bool required)
+    private static double ReadPostgreSqlNumber(
+        JsonElement node,
+        string field,
+        bool required
+    )
     {
         if (!node.TryGetProperty(field, out var value))
         {
-            return required ? throw new FormatException("The PostgreSQL operator is missing " + field + ".") : 0D;
+            return required
+                ? throw new FormatException("The PostgreSQL operator is missing " + field + ".")
+                : 0D;
         }
 
-        if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out var number)
-            || !double.IsFinite(number) || number < 0)
+        if (value.ValueKind != JsonValueKind.Number
+            || !value.TryGetDouble(out var number)
+            || !double.IsFinite(number)
+            || number < 0)
         {
             throw new FormatException("The PostgreSQL operator has an invalid " + field + ".");
         }
@@ -198,7 +215,9 @@ internal readonly record struct CompositionPlanWork(
             var lookup = line.Contains("index lookup on", StringComparison.OrdinalIgnoreCase);
             var range = line.Contains("index range scan on", StringComparison.OrdinalIgnoreCase);
 
-            if (actual < 0 || index < 0 || (!lookup && !range))
+            if (actual < 0
+                || index < 0
+                || (!lookup && !range))
             {
                 continue;
             }
@@ -219,12 +238,18 @@ internal readonly record struct CompositionPlanWork(
 
             var keys = line.AsSpan(start + 1, end - start - 1);
             const string rangePrefix = "Tree = 1 AND TreeId = ";
-            var scopeOnlyLookup = lookup && keys.StartsWith("Tree=1, TreeId=", StringComparison.Ordinal)
-                && keys[(keys.IndexOf(',') + 1)..].IndexOf(',') < 0;
+            var scopeOnlyLookup = lookup
+                && keys.StartsWith("Tree=1, TreeId=", StringComparison.Ordinal)
+                && keys[(keys.IndexOf(',') + 1)..]
+                    .IndexOf(',')
+                < 0;
 
-            var scopeOnlyRange = range && keys.StartsWith(rangePrefix, StringComparison.Ordinal)
-                && !keys[rangePrefix.Length..].Contains(" AND ", StringComparison.Ordinal)
-                && !keys[rangePrefix.Length..].Contains(" OR ", StringComparison.Ordinal);
+            var scopeOnlyRange = range
+                && keys.StartsWith(rangePrefix, StringComparison.Ordinal)
+                && !keys[rangePrefix.Length..]
+                    .Contains(" AND ", StringComparison.Ordinal)
+                && !keys[rangePrefix.Length..]
+                    .Contains(" OR ", StringComparison.Ordinal);
 
             // WHY: These tests own one complete Tree=1/TreeId=Empty population. A third lookup key or an
             // actual coordinate range narrows its search domain. Equality-only range scans still cover the
@@ -260,7 +285,8 @@ internal readonly record struct CompositionPlanWork(
         }
 
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
-            || !double.IsFinite(number) || number < 0)
+            || !double.IsFinite(number)
+            || number < 0)
         {
             throw new FormatException("The executed TREE iterator has an invalid " + field.Trim() + ".");
         }
@@ -284,7 +310,10 @@ internal readonly record struct CompositionPostgreSqlPlanWork(
 /// <summary>Derives conservative tuple-work limits from independent fixture cardinalities.</summary>
 /// <param name="OperatorTuples">The maximum emitted tuples permitted at any executed iterator.</param>
 /// <param name="MaterializedTuples">The maximum materialized tuples permitted at any iterator.</param>
-internal readonly record struct CompositionPlanWorkBudget(long OperatorTuples, long MaterializedTuples)
+internal readonly record struct CompositionPlanWorkBudget(
+    long OperatorTuples,
+    long MaterializedTuples
+)
 {
     /// <summary>Allows either selective candidate work or one population scan plus the requested pair bag.</summary>
     internal static CompositionPlanWorkBudget ForPairs(

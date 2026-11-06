@@ -20,48 +20,111 @@ internal static partial class CompositionConsumerCapacityProfiles
     /// sample-model tests separately qualify physical constraints, indexes, catalogs and migrations.
     /// </remarks>
     internal static async Task<IReadOnlyList<CompositionConsumerCapacityObservation>> MeasureAsync(
-        TestDatabase database, string engine, int nodes, bool balanced = false, bool deep = false)
+        TestDatabase database,
+        string engine,
+        int nodes,
+        CancellationToken cancellationToken,
+        bool balanced = false,
+        bool deep = false
+    )
     {
-        var pending = s_data.GetValue(database, owned => new Lazy<Task<CompositionConsumerDataset>>(
-            () => CompositionConsumerDataset.CreateAsync(owned, engine, nodes, deep)));
+        cancellationToken.ThrowIfCancellationRequested();
 
+        var pending = s_data.GetValue(
+            database,
+            owned => new Lazy<Task<CompositionConsumerDataset>>(() => CompositionConsumerDataset.CreateAsync(
+                owned,
+                engine,
+                nodes,
+                deep,
+                cancellationToken: cancellationToken)));
+
+        // WHY: Shared initialization must reach its terminal state before callers can release the database.
+        // A separately canceled wait could leave its seeding commands running during fixture disposal.
         var data = await pending.Value;
+        cancellationToken.ThrowIfCancellationRequested();
 
-        if (data.Nodes != nodes || data.Deep != deep)
+        if (data.Nodes != nodes
+            || data.Deep != deep)
         {
             throw new ArgumentException(
-                "One capacity database must retain its original structural population.", nameof(nodes));
+                "One capacity database must retain its original structural population.",
+                nameof(nodes));
         }
 
         var observations = new List<CompositionConsumerCapacityObservation>();
 
-        foreach (var profile in new[] { (Anchors: 1, Metrics: 1, Sources: 1, Days: 1, Nearest: false),
-                     (Anchors: 4, Metrics: 2, Sources: 3, Days: 2, Nearest: false),
-                     (Anchors: 16, Metrics: 2, Sources: 3, Days: 2, Nearest: true) })
+        foreach (var profile in new[]
+            {
+                (Anchors: 1, Metrics: 1, Sources: 1, Days: 1, Nearest: false),
+                (Anchors: 4, Metrics: 2, Sources: 3, Days: 2, Nearest: false),
+                (Anchors: 16, Metrics: 2, Sources: 3, Days: 2, Nearest: true),
+            })
         {
-            observations.Add(await MeasureSignalsAsync(database, engine, data,
-                data.Report(profile.Anchors, profile.Metrics, profile.Sources, profile.Days, profile.Nearest),
-                balanced, deep));
+            observations.Add(
+                await MeasureSignalsAsync(
+                    database,
+                    engine,
+                    data,
+                    data.Report(profile.Anchors, profile.Metrics, profile.Sources, profile.Days, profile.Nearest),
+                    balanced,
+                    deep,
+                    cancellationToken: cancellationToken));
         }
 
-        var originCounts = deep ? CompositionConsumerDataset.OriginCounts.Take(1)
+        var originCounts = deep
+            ? CompositionConsumerDataset.OriginCounts.Take(1)
             : CompositionConsumerDataset.OriginCounts;
 
         foreach (var origins in originCounts)
         {
-            var fields = origins == 1 ? 1 : origins == 16 ? 4 : 16;
-            observations.Add(await MeasureGroupsAsync(database, engine, data, origins, fields, balanced, deep));
+            var fields = origins == 1
+                ? 1
+                : origins == 16
+                    ? 4
+                    : 16;
+
+            observations.Add(
+                await MeasureGroupsAsync(
+                    database,
+                    engine,
+                    data,
+                    origins,
+                    fields,
+                    balanced,
+                    deep,
+                    cancellationToken: cancellationToken));
         }
 
         if (deep)
         {
             foreach (var hops in new[] { 2, 4, 8 })
             {
-                observations.Add(await MeasureChainAsync(database, engine, data, hops, false));
-                observations.Add(await MeasureChainAsync(database, engine, data, hops, true));
+                observations.Add(
+                    await MeasureChainAsync(
+                        database,
+                        engine,
+                        data,
+                        hops,
+                        false,
+                        cancellationToken: cancellationToken));
+
+                observations.Add(
+                    await MeasureChainAsync(
+                        database,
+                        engine,
+                        data,
+                        hops,
+                        true,
+                        cancellationToken: cancellationToken));
             }
 
-            observations.AddRange(await MeasureGroupRanksAsync(database, engine, data));
+            observations.AddRange(
+                await MeasureGroupRanksAsync(
+                    database,
+                    engine,
+                    data,
+                    cancellationToken: cancellationToken));
         }
 
         return observations;
@@ -69,7 +132,9 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Applies deterministic consumer budgets after all operations have completed.</summary>
     internal static void AssertAll(
-        IReadOnlyList<CompositionConsumerCapacityObservation> observations, ITestOutputHelper output)
+        IReadOnlyList<CompositionConsumerCapacityObservation> observations,
+        ITestOutputHelper output
+    )
     {
         Assert.NotEmpty(observations);
 
@@ -94,16 +159,24 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Measures complete owner/path/UNION/SUM construction and the real two-reader report.</summary>
     internal static async Task<CompositionConsumerCapacityObservation> MeasureSignalsAsync(
-        TestDatabase database, string engine, CompositionConsumerDataset data,
-        SignalApp.SignalReportRequest request, bool balanced, bool deep)
+        TestDatabase database,
+        string engine,
+        CompositionConsumerDataset data,
+        SignalApp.SignalReportRequest request,
+        bool balanced,
+        bool deep,
+        CancellationToken cancellationToken
+    )
     {
         await using var source = database.CreateContext();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
         var commands = new CompositionCommandProbe();
         var options = new DbContextOptionsBuilder<CompositionCapacitySignalLabContext>(
-                ModelCompatibilityDatabase.Options<CompositionCapacitySignalLabContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionCapacitySignalLabContext>(
+                    engine,
                     source.Database.GetConnectionString()!))
-            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance).Options;
+            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance)
+            .Options;
 
         await using var context = new CompositionCapacitySignalLabContext(options);
         var materialized = 0;
@@ -111,7 +184,12 @@ internal static partial class CompositionConsumerCapacityProfiles
         var validated = SignalApp.SignalReportValidation.Snapshot(request);
         var buildBytes = Construction(() => SignalApp.SignalReportBuilder.Build(context, validated));
         var constructionCommands = commands.CommandCount;
-        var topology = deep ? "chain" : balanced ? "balanced" : "wide";
+        var topology = deep
+            ? "chain"
+            : balanced
+                ? "balanced"
+                : "wide";
+
         var profile = $"signal-{topology}-{data.Nodes}-anchors-{request.AnchorIds.Count}-"
             + $"channels-{request.ChannelIds.Count}-sources-{request.Sources.Count}-"
             + $"{request.Criteria[0].OwnerMode}";
@@ -121,11 +199,18 @@ internal static partial class CompositionConsumerCapacityProfiles
 
         try
         {
-            rows = await SignalApp.SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
+            rows = await SignalApp.SignalReportBuilder.ReadAsync(context, request, cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainReadFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainReadFailureAsync(
+                context,
+                engine,
+                profile,
+                planProbe,
+                error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -133,37 +218,77 @@ internal static partial class CompositionConsumerCapacityProfiles
         var elapsed = Stopwatch.GetElapsedTime(started);
         var commandCount = commands.CommandCount;
         var maximumParameters = planProbe.ParameterBindings.Max(bindings => bindings.Length);
-        var tracked = context.ChangeTracker.Entries().Count();
-        var actual = rows.Select(SignalKey).Order(StringComparer.Ordinal).ToArray();
-        var expected = ExpectedSignals(data, request, balanced, deep);
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 1, engine);
-        var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
-            2, maximumParameters, constructionCommands, materialized, tracked, buildBytes, 256 * 1_024, elapsed, plan);
+        var tracked = context
+            .ChangeTracker
+            .Entries()
+            .Count();
 
-        await WriteAsync(engine, observation, planProbe.Commands[1]);
+        var actual = rows
+            .Select(SignalKey)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        var expected = ExpectedSignals(data, request, balanced, deep);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            1,
+            engine,
+            cancellationToken: cancellationToken);
+
+        var observation = new CompositionConsumerCapacityObservation(
+            profile,
+            actual,
+            expected,
+            commandCount,
+            2,
+            maximumParameters,
+            constructionCommands,
+            materialized,
+            tracked,
+            buildBytes,
+            256 * 1_024,
+            elapsed,
+            plan);
+
+        await WriteAsync(engine, observation, planProbe.Commands[1], cancellationToken: cancellationToken);
 
         return observation;
     }
 
     /// <summary>Measures one-reader person selection with increasing origins and routing fields.</summary>
     private static async Task<CompositionConsumerCapacityObservation> MeasureGroupsAsync(
-        TestDatabase database, string engine, CompositionConsumerDataset data,
-        int origins, int fields, bool balanced, bool deep)
+        TestDatabase database,
+        string engine,
+        CompositionConsumerDataset data,
+        int origins,
+        int fields,
+        bool balanced,
+        bool deep,
+        CancellationToken cancellationToken
+    )
     {
         await using var source = database.CreateContext();
         var planProbe = new EnterpriseProbe(captureParameterBindings: true);
         var commands = new CompositionCommandProbe();
         var options = new DbContextOptionsBuilder<CompositionCapacityGroupContext>(
-                ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionCapacityGroupContext>(
+                    engine,
                     source.Database.GetConnectionString()!))
-            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance).Options;
+            .AddInterceptors(planProbe, commands, TestMaterializationObserver.Instance)
+            .Options;
 
         await using var context = new CompositionCapacityGroupContext(options);
         var materialized = 0;
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var request = CompositionConsumerDataset.Supervisors(origins, fields);
         var tenant = CompositionConsumerModel.Tenant;
-        var topology = deep ? "chain" : balanced ? "balanced" : "wide";
+        var topology = deep
+            ? "chain"
+            : balanced
+                ? "balanced"
+                : "wide";
+
         var profile = $"groups-{topology}-{data.Nodes}-origins-{origins}-matches-{fields}-unique";
         var buildBytes = Construction(() => GroupApp.SupervisorQueries.Candidates(context, tenant, request));
         var constructionCommands = commands.CommandCount;
@@ -172,12 +297,23 @@ internal static partial class CompositionConsumerCapacityProfiles
 
         try
         {
-            batch = await GroupApp.SupervisorQueries.ResolveAsync(context, tenant, request,
-                GroupApp.SupervisorSelection.RequireUnique, CancellationToken.None);
+            batch = await GroupApp.SupervisorQueries.ResolveAsync(
+                context,
+                tenant,
+                request,
+                GroupApp.SupervisorSelection.RequireUnique,
+                cancellationToken);
         }
         catch (Exception error)
         {
-            await RetainReadFailureAsync(context, engine, profile, planProbe, error);
+            // WHY: Failure evidence completes independently of the canceled workload and preserves its error.
+            await RetainReadFailureAsync(
+                context,
+                engine,
+                profile,
+                planProbe,
+                error,
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
@@ -185,46 +321,83 @@ internal static partial class CompositionConsumerCapacityProfiles
         var elapsed = Stopwatch.GetElapsedTime(started);
         var commandCount = commands.CommandCount;
         var maximumParameters = planProbe.ParameterBindings.Max(bindings => bindings.Length);
-        var tracked = context.ChangeTracker.Entries().Count();
-        var actual = batch.Origins.Select(origin =>
-        {
-            var evidence = origin.Evidence.SingleOrDefault();
+        var tracked = context
+            .ChangeTracker
+            .Entries()
+            .Count();
 
-            return $"{origin.StartGroupId}:{origin.Status}:{evidence?.CandidateUserId}:"
-                + $"{evidence?.FoundGroupId}:{evidence?.Distance}:{origin.Evidence.Count}:"
-                + $"{evidence?.SourceUserId}:{evidence?.StartTreeId:N}:{evidence?.TenantId:N}:"
-                + $"{evidence?.LeadershipPriority}";
-        }).Order(StringComparer.Ordinal).Prepend($"{batch.Status}:{batch.Complete}").ToArray();
+        var actual = batch
+            .Origins
+            .Select(origin =>
+            {
+                var evidence = origin.Evidence.SingleOrDefault();
 
-        var expected = Enumerable.Range(data.Nodes - origins + 1, origins)
+                return $"{origin.StartGroupId}:{origin.Status}:{evidence?.CandidateUserId}:"
+                    + $"{evidence?.FoundGroupId}:{evidence?.Distance}:{origin.Evidence.Count}:"
+                    + $"{evidence?.SourceUserId}:{evidence?.StartTreeId:N}:{evidence?.TenantId:N}:"
+                    + $"{evidence?.LeadershipPriority}";
+            })
+            .Order(StringComparer.Ordinal)
+            .Prepend($"{batch.Status}:{batch.Complete}")
+            .ToArray();
+
+        var expected = Enumerable
+            .Range(data.Nodes - origins + 1, origins)
             .Select(key => $"{key}:Found:2:1:{Depth(key, balanced, deep)}:1:"
                 + $"{CompositionConsumerDataset.SourceUser(origins)}:{CompositionConsumerModel.Tree:N}:"
                 + $"{CompositionConsumerModel.Tenant:N}:1")
-            .Order(StringComparer.Ordinal).Prepend("Completed:True").ToArray();
+            .Order(StringComparer.Ordinal)
+            .Prepend("Completed:True")
+            .ToArray();
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, planProbe, 0, engine);
-        var budget = (256 * 1_024) + (Math.Max(0, fields - 4) * 4_096);
-        var observation = new CompositionConsumerCapacityObservation(profile, actual, expected, commandCount,
-            1, maximumParameters, constructionCommands, materialized, tracked, buildBytes, budget, elapsed, plan);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            planProbe,
+            0,
+            engine,
+            cancellationToken: cancellationToken);
 
-        await WriteAsync(engine, observation, planProbe.Commands[0]);
+        var budget = 256 * 1_024 + Math.Max(0, fields - 4) * 4_096;
+        var observation = new CompositionConsumerCapacityObservation(
+            profile,
+            actual,
+            expected,
+            commandCount,
+            1,
+            maximumParameters,
+            constructionCommands,
+            materialized,
+            tracked,
+            buildBytes,
+            budget,
+            elapsed,
+            plan);
+
+        await WriteAsync(engine, observation, planProbe.Commands[0], cancellationToken: cancellationToken);
 
         if (engine == "SqlServer")
         {
             // WHY: The fixture has one eligible root manager. Its complete evidence needs these exact
             // adjacency lengths; recomposing every other origin inside each origin is accidental work.
-            var requiredEdges = Enumerable.Range(data.Nodes - origins + 1, origins)
+            var requiredEdges = Enumerable
+                .Range(data.Nodes - origins + 1, origins)
                 .Sum(key => (long)Depth(key, balanced, deep));
 
-            CompositionSqlServerPlanWork.AssertWithinBudget(plan,
-                CompositionPlanWorkBudget.ForPaths(data.Nodes, origins, requiredEdges), profile);
+            CompositionSqlServerPlanWork.AssertWithinBudget(
+                plan,
+                CompositionPlanWorkBudget.ForPaths(data.Nodes, origins, requiredEdges),
+                profile);
         }
 
         return observation;
     }
 
     /// <summary>Walks only the known adjacency for independent expected root distances.</summary>
-    private static int Depth(int key, bool balanced, bool deep)
+    private static int Depth(
+        int key,
+        bool balanced,
+        bool deep
+    )
     {
         var depth = 0;
 
@@ -239,7 +412,11 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Calculates independent sums with per-day pruning and nearest-owner rejection.</summary>
     private static string[] ExpectedSignals(
-        CompositionConsumerDataset data, SignalApp.SignalReportRequest request, bool balanced, bool deep)
+        CompositionConsumerDataset data,
+        SignalApp.SignalReportRequest request,
+        bool balanced,
+        bool deep
+    )
     {
         var rows = new List<string>();
         var days = request.UntilExclusive.DayNumber - request.FromInclusive.DayNumber;
@@ -261,14 +438,15 @@ internal static partial class CompositionConsumerCapacityProfiles
                     foreach (var fact in data.Facts)
                     {
                         if (!CompositionConsumerDataset.Contains(anchor, fact, balanced, deep)
-                            || nearest && fact % 2 != 0)
+                            || (nearest && fact % 2 != 0))
                         {
                             continue;
                         }
 
                         for (var day = 0; day < days; day++)
                         {
-                            if (day > 0 && anchor != 2
+                            if (day > 0
+                                && anchor != 2
                                 && CompositionConsumerDataset.Contains(anchor, 2, balanced, deep)
                                 && CompositionConsumerDataset.Contains(2, fact, balanced, deep))
                             {
@@ -285,16 +463,23 @@ internal static partial class CompositionConsumerCapacityProfiles
             }
         }
 
-        return rows.Order(StringComparer.Ordinal).ToArray();
+        return rows
+            .Order(StringComparer.Ordinal)
+            .ToArray();
     }
 
     /// <summary>Canonicalizes only the small aggregate output, with exact integer-valued sample sums.</summary>
-    private static string SignalKey(SignalApp.SignalReportCell row) =>
+    private static string SignalKey(
+        SignalApp.SignalReportCell row
+    ) =>
         $"{CompositionConsumerModel.Integer(row.AnchorId)}:{CompositionConsumerModel.Integer(row.ChannelId)}:"
-        + $"{(int)row.Source}:{row.HasData}:" + row.Value.ToString("R", CultureInfo.InvariantCulture);
+        + $"{(int)row.Source}:{row.HasData}:"
+        + row.Value.ToString("R", CultureInfo.InvariantCulture);
 
     /// <summary>Measures warmed construction separately from request arrays, compilation and execution.</summary>
-    private static long Construction(Func<IQueryable> build)
+    private static long Construction(
+        Func<IQueryable> build
+    )
     {
         for (var iteration = 0; iteration < 8; iteration++)
         {
@@ -314,9 +499,21 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Retains the failed reader and a nonexecuting estimate without replaying its report.</summary>
     private static async Task RetainReadFailureAsync(
-        DbContext context, string engine, string profile, EnterpriseProbe probe, Exception failure)
+        DbContext context,
+        string engine,
+        string profile,
+        EnterpriseProbe probe,
+        Exception failure,
+        CancellationToken cancellationToken
+    )
     {
-        var evidence = new List<string> { profile, ModelBoundary, failure.ToString() };
+        var evidence = new List<string>
+        {
+            profile,
+            ModelBoundary,
+            failure.ToString(),
+        };
+
         var index = probe.Commands.Count - 1;
 
         if (index >= 0)
@@ -328,16 +525,26 @@ internal static partial class CompositionConsumerCapacityProfiles
         {
             if (index >= 0)
             {
-                evidence.AddRange(probe.ParameterBindings[index].Select(parameter =>
-                    $"{parameter.ParameterName}; type={parameter.GetType().Name}; dbType={parameter.DbType}; "
-                    + $"size={parameter.Size}; value={JsonSerializer.Serialize(parameter.Value)}"));
+                evidence.AddRange(
+                    probe
+                        .ParameterBindings[index]
+                        .Select(parameter =>
+                            $"{parameter.ParameterName}; type={parameter.GetType().Name}; dbType={parameter.DbType}; "
+                            + $"size={parameter.Size}; value={JsonSerializer.Serialize(parameter.Value)}"));
             }
 
-            if (index >= 0 && (engine is "PostgreSql" or "MySql" or "MariaDb"))
+            if (index >= 0
+                && engine is "PostgreSql" or "MySql" or "MariaDb")
             {
-                await context.Database.OpenConnectionAsync(CancellationToken.None);
-                await using var command = context.Database.GetDbConnection().CreateCommand();
-                command.CommandText = (engine == "PostgreSql" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN FORMAT=JSON ")
+                await context.Database.OpenConnectionAsync(cancellationToken);
+                await using var command = context
+                    .Database
+                    .GetDbConnection()
+                    .CreateCommand();
+
+                command.CommandText = (engine == "PostgreSql"
+                        ? "EXPLAIN (FORMAT JSON) "
+                        : "EXPLAIN FORMAT=JSON ")
                     + probe.Commands[index];
 
                 // WHY: The original report failed. EXPLAIN without ANALYZE plans that exact command without
@@ -347,9 +554,9 @@ internal static partial class CompositionConsumerCapacityProfiles
                     command.Parameters.Add(((ICloneable)parameter).Clone());
                 }
 
-                await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-                while (await reader.ReadAsync(CancellationToken.None))
+                while (await reader.ReadAsync(cancellationToken))
                 {
                     evidence.Add(reader.GetString(0));
                 }
@@ -364,7 +571,9 @@ internal static partial class CompositionConsumerCapacityProfiles
         try
         {
             await QueryPlanTestSupport.WriteEvidenceAsync(
-                engine + "-composition-consumer-failed-" + profile, evidence);
+                engine + "-composition-consumer-failed-" + profile,
+                evidence,
+                cancellationToken: cancellationToken);
         }
         catch (Exception diagnosticFailure)
         {
@@ -375,15 +584,21 @@ internal static partial class CompositionConsumerCapacityProfiles
 
     /// <summary>Retains plans and diagnostic duration without introducing a hardware-dependent release gate.</summary>
     private static Task WriteAsync(
-        string engine, CompositionConsumerCapacityObservation observation, string command)
-        => QueryPlanTestSupport.WriteEvidenceAsync(engine + "-composition-consumer-" + observation.Profile,
-        [
-            $"{observation.Profile}; commands={observation.Commands}; rows={observation.Actual.Length}; "
+        string engine,
+        CompositionConsumerCapacityObservation observation,
+        string command,
+        CancellationToken cancellationToken
+    )
+        => QueryPlanTestSupport.WriteEvidenceAsync(
+            engine + "-composition-consumer-" + observation.Profile,
+            [
+                $"{observation.Profile}; commands={observation.Commands}; rows={observation.Actual.Length}; "
                 + $"parameters={observation.MaximumParameters}; "
                 + $"entities={observation.Materialized}; construction={observation.BuildBytes} B; "
                 + FormattableString.Invariant($"elapsed={observation.Elapsed.TotalMilliseconds:F3} ms"),
-            ModelBoundary,
-            command,
-            observation.Plan,
-        ]);
+                ModelBoundary,
+                command,
+                observation.Plan,
+            ],
+            cancellationToken: cancellationToken);
 }

@@ -41,10 +41,12 @@ public sealed partial class IndexConventionTests
             switch (engine)
             {
                 case "Sqlite":
-                    options.UseSqlite("Data Source=:memory:",
+                    options.UseSqlite(
+                        "Data Source=:memory:",
                         provider => provider
                             .UseNestedSets()
                             .UseNestedSets());
+
                     break;
                 case "MySql":
                     options.UseMySql(
@@ -53,6 +55,7 @@ public sealed partial class IndexConventionTests
                         provider => provider
                             .UseNestedSets()
                             .UseNestedSets());
+
                     break;
                 case "MariaDb":
                     options.UseMySql(
@@ -61,6 +64,7 @@ public sealed partial class IndexConventionTests
                         provider => provider
                             .UseNestedSets()
                             .UseNestedSets());
+
                     break;
                 case "SqlServer":
                     options.UseSqlServer(
@@ -68,6 +72,7 @@ public sealed partial class IndexConventionTests
                         provider => provider
                             .UseNestedSets()
                             .UseNestedSets());
+
                     break;
                 case "PostgreSql":
                     options.UseNpgsql(
@@ -75,6 +80,7 @@ public sealed partial class IndexConventionTests
                         provider => provider
                             .UseNestedSets()
                             .UseNestedSets());
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(engine));

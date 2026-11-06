@@ -10,8 +10,14 @@ public abstract partial class OrderingTests
     public async Task ParentMovesDoNotReacquireRegistryLocksAfterPayload()
     {
         // Arrange
-        await using var setup = await _fixture.ResetAsync(Engine);
-        var hierarchy = setup.NestedSet<OrderingNode>().ForScope(1);
+        await using var setup = await _fixture.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = setup
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
         await hierarchy.InsertRootAsync(Node(1, "Root"), firstTree, CancellationToken.None);
@@ -21,8 +27,15 @@ public abstract partial class OrderingTests
         await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, CancellationToken.None);
         var commands = new OrderingSaveProbe();
         var savepoints = new SavepointProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, "Strict", commands, savepoints);
-        var changed = await context.Set<OrderingNode>()
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "Strict",
+            commands,
+            savepoints);
+
+        var changed = await context
+            .Set<OrderingNode>()
             .Where(node => node.Id == 2 || node.Id == 4)
             .OrderBy(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
@@ -45,16 +58,29 @@ public abstract partial class OrderingTests
         Assert.Contains(commands.Commands.Take(payloadIndex), IsRegistryLock);
         Assert.DoesNotContain(commands.Commands.Skip(payloadIndex + 1), IsRegistryLock);
         Assert.InRange(savepoints.Created, 0, 1);
-        await using var verification = await _fixture.CreateContextAsync(Engine);
-        var scope = verification.NestedSet<OrderingNode>().ForScope(1);
-        Assert.True((await scope.InTree(firstTree)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
-        Assert.True((await scope.InTree(secondTree)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+        await using var verification = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var scope = verification
+            .NestedSet<OrderingNode>()
+            .ForScope(1);
+
+        Assert.True(
+            (await scope
+                .InTree(firstTree)
+                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+
+        Assert.True(
+            (await scope
+                .InTree(secondTree)
+                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
     }
 
     /// <summary>Identifies server-side registry lock reads without counting registry revision writes.</summary>
-    private static bool IsRegistryLock(string command) =>
+    private static bool IsRegistryLock(
+        string command
+    ) =>
         command.Contains("DokaNestedSetTrees_", StringComparison.Ordinal)
         && (command.Contains("UPDLOCK", StringComparison.Ordinal)
             || command.Contains("FOR UPDATE", StringComparison.Ordinal)
@@ -70,7 +96,8 @@ public abstract partial class OrderingTests
             DbTransaction transaction,
             TransactionEventData eventData,
             InterceptionResult result,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             Created++;
 

@@ -34,14 +34,15 @@ internal sealed class SignalMaterializationRows<T>(
         cancellationToken.ThrowIfCancellationRequested();
         Enumerations++;
 
-        return new Reader(rows, this, suspendFirstRead);
+        return new Reader(rows, this, suspendFirstRead, cancellationToken);
     }
 
     /// <summary>Retains only its current position and contributes lifecycle totals at disposal.</summary>
     private sealed class Reader(
         T[] values,
         SignalMaterializationRows<T> owner,
-        bool suspend
+        bool suspend,
+        CancellationToken cancellationToken
     ) : IAsyncEnumerator<T>
     {
         private int _index = -1;
@@ -53,9 +54,12 @@ internal sealed class SignalMaterializationRows<T>(
         /// <returns>Whether a prepared scalar is available.</returns>
         public ValueTask<bool> MoveNextAsync()
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _index++;
 
-            return _index == 0 && suspend ? FirstAsync() : ValueTask.FromResult(_index < values.Length);
+            return _index == 0 && suspend
+                ? FirstAsync(cancellationToken)
+                : ValueTask.FromResult(_index < values.Length);
         }
 
         /// <summary>Records reader completion without retaining any result or row history.</summary>
@@ -75,10 +79,14 @@ internal sealed class SignalMaterializationRows<T>(
         }
 
         /// <summary>Creates the comparison's deliberate one-off asynchronous boundary for each reader.</summary>
-        private async ValueTask<bool> FirstAsync()
+        /// <param name="cancellationToken">Cancellation for the operation's preparation or verification work.</param>
+        private async ValueTask<bool> FirstAsync(
+            CancellationToken cancellationToken
+        )
         {
             owner.Suspensions++;
             await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
 
             return values.Length != 0;
         }

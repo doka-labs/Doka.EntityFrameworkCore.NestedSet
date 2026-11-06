@@ -4,10 +4,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal sealed class DiagnosticsCapture : IDisposable
 {
     private static readonly AsyncLocal<object?> s_owner = new();
-    private readonly object _owner = new();
-    private readonly object? _previous;
     private readonly ActivityListener _activities;
     private readonly MeterListener _metrics;
+    private readonly object _owner = new();
+    private readonly object? _previous;
 
     /// <summary>Starts capture for the current asynchronous test flow.</summary>
     internal DiagnosticsCapture()
@@ -39,19 +39,16 @@ internal sealed class DiagnosticsCapture : IDisposable
             },
         };
 
-        _metrics.SetMeasurementEventCallback<double>((
-            instrument,
+        _metrics.SetMeasurementEventCallback<double>((instrument,
             value,
             tags,
-            _
-        ) => Record(instrument, value, tags));
+            _) => Record(instrument, value, tags));
 
-        _metrics.SetMeasurementEventCallback<long>((
-            instrument,
+        _metrics.SetMeasurementEventCallback<long>((instrument,
             value,
             tags,
-            _
-        ) => Record(instrument, value, tags));
+            _) => Record(instrument, value, tags));
+
         _metrics.Start();
     }
 

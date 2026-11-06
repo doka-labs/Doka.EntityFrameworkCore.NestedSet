@@ -60,9 +60,13 @@ internal static class SafeMigrationTestServices
     }
 
     /// <summary>Executes actual scaffolded operations independently of the migration-history short circuit.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="operations">The scaffolded operations to execute.</param>
     internal static async Task ExecuteOperationsAsync(
         DbContext context,
-        IReadOnlyList<MigrationOperation> operations
+        IReadOnlyList<MigrationOperation> operations,
+        CancellationToken cancellationToken
     )
     {
         // WHY: Calling Migrate again would only test history; replay must reach the provider's runtime guards.
@@ -74,15 +78,20 @@ internal static class SafeMigrationTestServices
 
         foreach (var command in commands)
         {
-            await command.ExecuteNonQueryAsync(connection, cancellationToken: CancellationToken.None);
+            await command.ExecuteNonQueryAsync(connection, cancellationToken: cancellationToken);
         }
     }
 
     /// <summary>Replaces a generated index with an incompatible definition to test fail-closed execution.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="definition">The expected physical index definition.</param>
+    /// <param name="wrongColumn">The incompatible index column used to introduce drift.</param>
     internal static async Task IntroduceIndexDriftAsync(
         DbContext context,
         ExpectedIndexDefinition definition,
-        string wrongColumn
+        string wrongColumn,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
@@ -98,15 +107,20 @@ internal static class SafeMigrationTestServices
             _ => throw new InvalidOperationException("No index drift syntax is configured for this provider."),
         };
 
-        await context.Database.ExecuteSqlRawAsync(drop, CancellationToken.None);
-        await CreateConflictingIndexAsync(context, definition, wrongColumn);
+        await context.Database.ExecuteSqlRawAsync(drop, cancellationToken);
+        await CreateConflictingIndexAsync(context, definition, wrongColumn, cancellationToken: cancellationToken);
     }
 
     /// <summary>Creates a conflicting index before its expected generated operation has been applied.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="definition">The expected physical index definition.</param>
+    /// <param name="wrongColumn">The incompatible index column used to introduce drift.</param>
     internal static async Task CreateConflictingIndexAsync(
         DbContext context,
         ExpectedIndexDefinition definition,
-        string wrongColumn
+        string wrongColumn,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();
@@ -117,6 +131,6 @@ internal static class SafeMigrationTestServices
         // WHY: Identifiers are provider-delimited; they cannot be SQL parameters. Raw DDL deliberately bypasses
         // SafeMigrations safeguards so the test can represent independently introduced schema drift.
         var create = "CREATE INDEX " + index + " ON " + table + " (" + column + ")";
-        await context.Database.ExecuteSqlRawAsync(create, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(create, cancellationToken);
     }
 }

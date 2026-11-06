@@ -60,8 +60,10 @@ public sealed partial class PersistedRelationshipProofTests
 
         if (originalOnlyProcedure)
         {
-            Assert.True(Assert.Single(ownerProperty.Metadata.GetUpdateStoredProcedureParameterMappings())
-                .Parameter.ForOriginalValue);
+            Assert.True(
+                Assert.Single(ownerProperty.Metadata.GetUpdateStoredProcedureParameterMappings())
+                    .Parameter.ForOriginalValue);
+
             Assert.Null(completion);
             Assert.DoesNotContain(node, snapshot);
         }
@@ -73,8 +75,10 @@ public sealed partial class PersistedRelationshipProofTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A complete procedure FK result is trusted only after the provider actually returns it.</summary>
@@ -136,8 +140,10 @@ public sealed partial class PersistedRelationshipProofTests
         Assert.NotEmpty(relationalModel.Tables);
         Assert.Single(key.Properties);
         Assert.Single(ownerProperty.Metadata.GetUpdateStoredProcedureResultColumnMappings());
-        Assert.True(Assert.Single(ownerProperty.Metadata.GetUpdateStoredProcedureParameterMappings())
-            .Parameter.ForOriginalValue);
+        Assert.True(
+            Assert.Single(ownerProperty.Metadata.GetUpdateStoredProcedureParameterMappings())
+                .Parameter.ForOriginalValue);
+
         Assert.Equal(PropertySaveBehavior.Ignore, ownerProperty.Metadata.GetAfterSaveBehavior());
         Assert.True(generatedBefore);
         Assert.False(returnedBefore);
@@ -157,8 +163,10 @@ public sealed partial class PersistedRelationshipProofTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Only a written temporary FK may await its principal's authoritative provider-generated key.</summary>
@@ -184,11 +192,15 @@ public sealed partial class PersistedRelationshipProofTests
 
         var entry = context.Attach(node);
         node.Name = "After";
-        entry.Property(value => value.Name).IsModified = true;
+        entry.Property(value => value.Name)
+            .IsModified = true;
+
         var generatedOwner = new ProofOwner();
         var generatedEntry = await context.AddAsync(generatedOwner, CancellationToken.None);
         generatedOwner.Nodes.Add(node);
-        entry.Reference(value => value.Owner).CurrentValue = generatedOwner;
+        entry.Reference(value => value.Owner)
+            .CurrentValue = generatedOwner;
+
         var ownerProperty = entry.Property(value => value.OwnerId);
         ownerProperty.IsModified = written;
         ownerProperty.IsTemporary = true;
@@ -221,6 +233,7 @@ public sealed partial class PersistedRelationshipProofTests
 
         // Act
         var completion = NestedSetCollectionBaseline.CapturePersisted([generatedUpdate, update]);
+
         // WHY: The public provider interface changes the principal's real generated-key sidecar. EF's own
         // native fixup must propagate that value; the test never assigns a generated value to the FK itself.
         generatedUpdate.SetStoreGeneratedValue(generatedKey, 42, setModified: false);
@@ -240,7 +253,10 @@ public sealed partial class PersistedRelationshipProofTests
         Assert.False(snapshotContainedBefore);
         Assert.False(snapshotBeforeCompletion);
         Assert.Equal(42, generatedUpdate.GetCurrentValue<int>(generatedKey));
-        Assert.True(entry.Property(value => value.Name).IsModified);
+        Assert.True(
+            entry.Property(value => value.Name)
+                .IsModified);
+
         var snapshot = generatedUpdate.GetRelationshipSnapshotValue(navigation) as IEnumerable<object> ?? [];
 
         if (written)
@@ -257,7 +273,9 @@ public sealed partial class PersistedRelationshipProofTests
         }
 
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 }

@@ -5,23 +5,25 @@ internal static class WriteAmplificationTestSupport
 {
     /// <summary>Seeds a local branching subtree, a long unchanged tail, and an overlapping isolated scope.</summary>
     internal static async Task SeedAsync(
-        TestDatabase database
+        TestDatabase database,
+        CancellationToken cancellationToken
     )
     {
         await using var context = database.CreateContext();
         await context.AddRangeAsync(
-        [
-            Node(1, 1, 12, null, 0, 0),
-            Node(2, 2, 5, 1, 1, 0),
-            Node(3, 3, 4, 2, 2, 0),
-            Node(4, 6, 9, 1, 1, 1),
-            Node(5, 7, 8, 4, 2, 0),
-            Node(6, 10, 11, 1, 1, 2),
-        ], CancellationToken.None);
+            [
+                Node(1, 1, 12, null, 0, 0),
+                Node(2, 2, 5, 1, 1, 0),
+                Node(3, 3, 4, 2, 2, 0),
+                Node(4, 6, 9, 1, 1, 1),
+                Node(5, 7, 8, 4, 2, 0),
+                Node(6, 10, 11, 1, 1, 2),
+            ],
+            cancellationToken);
 
         for (var key = 7; key <= 107; key++)
         {
-            await context.AddAsync(Node(key, (key * 2) - 1, key * 2, null, 0, key - 6), CancellationToken.None);
+            await context.AddAsync(Node(key, key * 2 - 1, key * 2, null, 0, key - 6), cancellationToken);
         }
 
         // WHY: Independent TreeIds have one root. A permanent enclosing root preserves the original local
@@ -35,7 +37,7 @@ internal static class WriteAmplificationTestSupport
             node.Parent ??= 900000;
         }
 
-        await context.AddAsync(Node(900000, 1, 216, null, 0, 0), CancellationToken.None);
+        await context.AddAsync(Node(900000, 1, 216, null, 0, 0), cancellationToken);
         await context.AddAsync(
             new TreeNode
             {
@@ -44,9 +46,9 @@ internal static class WriteAmplificationTestSupport
                 Start = 1,
                 End = 2,
             },
-            CancellationToken.None);
+            cancellationToken);
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
     }
 
     /// <summary>Creates a node with deterministic coordinates for row-count measurements.</summary>

@@ -24,7 +24,9 @@ internal static class SupervisorScenarioData
     {
         var index = Array.IndexOf(fixture.Users, userId);
 
-        return index >= 0 && index < s_userNames.Length ? s_userNames[index] : $"User {userId}";
+        return index >= 0 && index < s_userNames.Length
+            ? s_userNames[index]
+            : $"User {userId}";
     }
 
     /// <summary>Resolves the fixture's structural group label without a database lookup.</summary>
@@ -136,7 +138,7 @@ internal static class SupervisorScenarioData
                 Name = $"G{index}",
                 TypeId = index switch
                 {
-                    3 => 2, 4 => 3, 5 => 4, _ => 1
+                    3 => 2, 4 => 3, 5 => 4, _ => 1,
                 },
             };
 
@@ -160,7 +162,17 @@ internal static class SupervisorScenarioData
 
         await hierarchy.InsertChildAsync(groups[6], groups[1].Id, cancellationToken);
         var people = new User[7];
-        var groupIndexes = new[] { 5, 4, 4, 2, 1, 0, 6 };
+        var groupIndexes = new[]
+        {
+            5,
+            4,
+            4,
+            2,
+            1,
+            0,
+            6,
+        };
+
         var routes = new[]
         {
             "lane-blue",
@@ -180,7 +192,9 @@ internal static class SupervisorScenarioData
             var user = new User
             {
                 Name = s_userNames[index],
-                Position = index == 0 ? "Contributor" : "Team lead",
+                Position = index == 0
+                    ? "Contributor"
+                    : "Team lead",
             };
 
             await context
@@ -205,7 +219,9 @@ internal static class SupervisorScenarioData
                     TenantId = tenantId,
                     UserId = user.Id,
                     UserGroupId = group.Id,
-                    LeadershipPriority = index == 2 ? 20 : 10,
+                    LeadershipPriority = index == 2
+                        ? 20
+                        : 10,
                 },
                 cancellationToken);
 
@@ -215,7 +231,9 @@ internal static class SupervisorScenarioData
                     TenantId = tenantId,
                     UserId = user.Id,
                     FieldCode = "Route",
-                    Value = index == 1 ? "lane-red" : routes[index],
+                    Value = index == 1
+                        ? "lane-red"
+                        : routes[index],
                 },
                 cancellationToken);
 
@@ -299,8 +317,12 @@ internal static class SupervisorScenarioData
             tenantId,
             tree,
             role,
-            groups.Select(group => group.Id).ToArray(),
-            people.Select(user => user.Id).ToArray());
+            groups
+                .Select(group => group.Id)
+                .ToArray(),
+            people
+                .Select(user => user.Id)
+                .ToArray());
     }
 }
 

@@ -55,7 +55,10 @@ internal static class CompiledModelTestSupport
         // WHY: A real compilation catches unsupported annotation serialization and missing generated metadata;
         // reusing a hand-built runtime model would only test the fixture's own reconstruction.
         var compilation = CSharpCompilation.Create(
-            "AncestorCompiled_" + Guid.NewGuid().ToString("N"),
+            "AncestorCompiled_"
+            + Guid
+                .NewGuid()
+                .ToString("N"),
             files.Select(x => CSharpSyntaxTree.ParseText(x.Code, cancellationToken: CancellationToken.None)),
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
@@ -76,7 +79,8 @@ internal static class CompiledModelTestSupport
         var assembly = AssemblyLoadContext.Default.LoadFromStream(stream);
         var generated = assembly.GetType(
             "Doka.Generated.AncestorCompiled."
-            + context.GetType().Name
+            + context.GetType()
+                .Name
             + "Model",
             throwOnError: true)!;
 

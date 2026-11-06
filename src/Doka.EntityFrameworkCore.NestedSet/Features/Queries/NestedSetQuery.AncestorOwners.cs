@@ -17,7 +17,9 @@ internal sealed partial class NestedSetQuery<TEntity>
         var source = Expression.Parameter(typeof(TEntity), "source");
         var nonLeaf = Expression.Lambda<Func<TEntity, bool>>(NonLeafBounds(owner), owner);
         var contained = Expression.Lambda<Func<TEntity, bool>>(Contains(owner, source, includeSelf: false), source);
-        var sources = _nodes.Where(selected).Where(contained);
+        var sources = _nodes
+            .Where(selected)
+            .Where(contained);
 
         // WHY: Strict ancestors have no bounded range in any coordinate index, while each owner's
         // descendants form one Left range. A cached plan compiled for one source let SQL Server scan
@@ -25,12 +27,21 @@ internal sealed partial class NestedSetQuery<TEntity>
         // of a source-first ancestor scan, and Left order exposed the owner's range. The optimizer still
         // chooses the physical access path.
         var order = Expression.Lambda<Func<TEntity, long>>(Bound(source, _descriptor.Left), source);
-        var fenced = Expression.Call(s_skipFencedSources,
-            Expression.Call(s_orderByLeft, sources.Expression, Expression.Quote(order)), Expression.Constant(0));
+        var fenced = Expression.Call(
+            s_skipFencedSources,
+            Expression.Call(s_orderByLeft, sources.Expression, Expression.Quote(order)),
+            Expression.Constant(0));
 
         var collection = Expression.Lambda<Func<TEntity, IEnumerable<TEntity>>>(fenced, owner);
-        var pairs = _nodes.Where(nonLeaf).SelectMany(collection,
-            (related, selectedSource) => new { Related = related, Source = selectedSource });
+        var pairs = _nodes
+            .Where(nonLeaf)
+            .SelectMany(
+                collection,
+                (related, selectedSource) => new
+                {
+                    Related = related,
+                    Source = selectedSource,
+                });
 
         return ProjectPairs(pairs, pair => pair.Related, pair => pair.Source, projection, ancestors: true);
     }
@@ -63,10 +74,14 @@ internal sealed partial class NestedSetQuery<TEntity>
     {
         var source = Expression.Parameter(typeof(TEntity), "source");
         var key = NestedSetExpressions.QueryProperty(source, _descriptor.NodeKey.Resolve(_entityType));
-        var orderByKey = s_orderByKeyMethods.GetValue(key.Type,
-            static type => s_orderByLeft.GetGenericMethodDefinition().MakeGenericMethod(typeof(TEntity), type));
+        var orderByKey = s_orderByKeyMethods.GetValue(
+            key.Type,
+            static type => s_orderByLeft
+                .GetGenericMethodDefinition()
+                .MakeGenericMethod(typeof(TEntity), type));
 
-        return Expression.Call(s_skipFencedSources,
+        return Expression.Call(
+            s_skipFencedSources,
             Expression.Call(orderByKey, sources, Expression.Quote(Expression.Lambda(key, source))),
             Expression.Constant(0));
     }

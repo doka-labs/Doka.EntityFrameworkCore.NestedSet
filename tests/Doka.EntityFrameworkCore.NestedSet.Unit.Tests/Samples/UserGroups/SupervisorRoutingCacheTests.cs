@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using App = Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.UserGroups;
 
@@ -13,7 +12,7 @@ public sealed class SupervisorRoutingCacheTests
     public void CachedRoutingShapesContainNoScopedQueryState()
     {
         // Arrange
-        var field = typeof(App.SupervisorQueries)
+        var field = typeof(SupervisorQueries)
             .GetField("s_routingTemplates", BindingFlags.Static | BindingFlags.NonPublic)!;
 
         var templates = (Array)field.GetValue(null)!;

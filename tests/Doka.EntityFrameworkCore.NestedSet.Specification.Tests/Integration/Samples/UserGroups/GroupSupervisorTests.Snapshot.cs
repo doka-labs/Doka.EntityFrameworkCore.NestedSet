@@ -11,16 +11,19 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var writerProbe = new SupervisorWriterProbe(entered);
         var options = ModelCompatibilityDatabase.Options<App.UserGroupContext>(
-            Engine, context.Database.GetConnectionString()!);
+            Engine,
+            context.Database.GetConnectionString()!);
 
-        await using var writer = new App.UserGroupContext(new DbContextOptionsBuilder<App.UserGroupContext>(options)
-            .AddInterceptors(writerProbe).Options);
+        await using var writer = new App.UserGroupContext(
+            new DbContextOptionsBuilder<App.UserGroupContext>(options)
+                .AddInterceptors(writerProbe)
+                .Options);
 
         Task? mutation = null;
         var writerBlocked = false;
@@ -33,20 +36,35 @@ public abstract partial class GroupSupervisorTests
 
             // WHY: SQLite's async driver may wait synchronously for its writer lock; isolate that wait from the
             // reader continuation.
-            mutation = Task.Run(async () =>
-            {
-                await writer.UserMetadatas.Where(value => value.TenantId == data.TenantId
-                        && value.UserId == data.Users[1] && value.FieldCode == "Route")
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, "lane-blue"), token);
-                await writer.MembershipRoles
-                    .Where(role => role.TenantId == data.TenantId && role.UserId == data.Users[4])
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(role => role.Visible, false), token);
-                await writer.UserGroupMemberships.Where(member => member.TenantId == data.TenantId
-                        && member.UserId == data.Users[4] && member.UserGroupId == data.Groups[1])
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.Visible, false), token);
-                await writer.NestedSet<App.UserGroup>().ForScope(data.TenantId)
-                    .MoveToAsync(data.Groups[4], data.Groups[6], token);
-            }, CancellationToken.None);
+            mutation = Task.Run(
+                async () =>
+                {
+                    await writer
+                        .UserMetadatas
+                        .Where(value => value.TenantId == data.TenantId
+                            && value.UserId == data.Users[1]
+                            && value.FieldCode == "Route")
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(value => value.Value, "lane-blue"), token);
+
+                    await writer
+                        .MembershipRoles
+                        .Where(role => role.TenantId == data.TenantId && role.UserId == data.Users[4])
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(role => role.Visible, false), token);
+
+                    await writer
+                        .UserGroupMemberships
+                        .Where(member => member.TenantId == data.TenantId
+                            && member.UserId == data.Users[4]
+                            && member.UserGroupId == data.Groups[1])
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(member => member.Visible, false), token);
+
+                    await writer
+                        .NestedSet<App.UserGroup>()
+                        .ForScope(data.TenantId)
+                        .MoveToAsync(data.Groups[4], data.Groups[6], token);
+                },
+                CancellationToken.None);
+
             await entered.Task.WaitAsync(token);
             if (Engine == "Sqlite")
             {
@@ -63,7 +81,10 @@ public abstract partial class GroupSupervisorTests
 
         // Act
         var result = await App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         await mutation!;
 
@@ -84,11 +105,13 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SupervisorReaderPropagatesCancellation(bool duringRead)
+    public async Task SupervisorReaderPropagatesCancellation(
+        bool duringRead
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         using var cancellation = new CancellationTokenSource();
         if (duringRead)
@@ -107,12 +130,22 @@ public abstract partial class GroupSupervisorTests
         probe.Enabled = true;
 
         // Act
-        var error = await Record.ExceptionAsync(() => App.SupervisorQueries.ResolveAsync(context, data.TenantId,
-            request, App.SupervisorSelection.RequireUnique, cancellation.Token));
+        var error = await Record.ExceptionAsync(() => App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            cancellation.Token));
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(error);
-        Assert.InRange(probe.Commands.Count, 0, duringRead ? 1 : 0);
+        Assert.InRange(
+            probe.Commands.Count,
+            0,
+            duringRead
+                ? 1
+                : 0);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 

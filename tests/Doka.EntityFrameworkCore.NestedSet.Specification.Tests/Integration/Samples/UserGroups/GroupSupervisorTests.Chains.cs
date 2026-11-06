@@ -20,15 +20,18 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, currentSubject);
         probe.Enabled = true;
 
         // Act
         var result = await App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         // Assert
         var branch = Assert.Single(result.Branches);
@@ -37,6 +40,7 @@ public abstract partial class GroupSupervisorTests
         Assert.Equal(
             new[] { data.Users[1], data.Users[expectedIndex] },
             branch.Hops.Select(hop => hop.Evidence.CandidateUserId));
+
         Assert.Equal(new[] { data.Groups[5], data.Groups[4] }, branch.Hops.Select(hop => hop.Evidence.StartGroupId));
         Assert.All(branch.Hops, hop => Assert.Equal(data.Groups[5], hop.InitialGroupId));
         Assert.Equal(2, probe.Commands.Count);
@@ -59,45 +63,65 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.UserGroupMemberships.AddAsync(new App.UserGroupMembership
-        {
-            TenantId = data.TenantId,
-            UserId = data.Users[1],
-            UserGroupId = data.Groups[6],
-            LeadershipPriority = 15,
-        }, CancellationToken.None);
+        await context.UserGroupMemberships.AddAsync(
+            new App.UserGroupMembership
+            {
+                TenantId = data.TenantId,
+                UserId = data.Users[1],
+                UserGroupId = data.Groups[6],
+                LeadershipPriority = 15,
+            },
+            CancellationToken.None);
+
         await context.SaveChangesAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, true);
         probe.Enabled = true;
 
         // Act
         var result = expanded
             ? await App.SupervisorQueries.FollowAllMembershipsAsync(
-                context, data.TenantId, request, CancellationToken.None)
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None)
             : await App.SupervisorQueries.FollowOriginalPathAsync(
-                context, data.TenantId, request, CancellationToken.None);
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None);
 
         // Assert
         Assert.Equal(expectedBranches, result.Branches.Count);
-        Assert.All(result.Branches, branch =>
-        {
-            Assert.Equal(App.SupervisorChainStatus.ReachedRequestedHop, branch.Status);
-            Assert.Equal(data.Users[4], branch.Hops[1].Evidence.CandidateUserId);
-            Assert.Equal(data.Groups[5], branch.InitialGroupId);
-        });
+        Assert.All(
+            result.Branches,
+            branch =>
+            {
+                Assert.Equal(App.SupervisorChainStatus.ReachedRequestedHop, branch.Status);
+                Assert.Equal(data.Users[4], branch.Hops[1].Evidence.CandidateUserId);
+                Assert.Equal(data.Groups[5], branch.InitialGroupId);
+            });
 
         Assert.Equal(2, probe.Commands.Count);
-        Assert.Equal(expanded ? new[] { data.Groups[4], data.Groups[6] }.Order() : new[] { data.Groups[4] },
-            result.Branches.Select(branch => branch.Hops[1].Evidence.StartGroupId).Order());
-        Assert.All(result.Branches.SelectMany(branch => branch.Hops), hop =>
-        {
-            Assert.Equal(data.TreeId, hop.InitialTreeId);
-            Assert.Equal(data.TreeId, hop.Evidence.StartTreeId);
-        });
+        Assert.Equal(
+            expanded
+                ? new[] { data.Groups[4], data.Groups[6] }.Order()
+                : new[] { data.Groups[4] },
+            result
+                .Branches
+                .Select(branch => branch.Hops[1].Evidence.StartGroupId)
+                .Order());
+
+        Assert.All(
+            result.Branches.SelectMany(branch => branch.Hops),
+            hop =>
+            {
+                Assert.Equal(data.TreeId, hop.InitialTreeId);
+                Assert.Equal(data.TreeId, hop.Evidence.StartTreeId);
+            });
 
         Assert.True(result.Complete);
     }
@@ -107,24 +131,35 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HiddenInitialSourceCannotProduceAChain(bool expanded)
+    public async Task HiddenInitialSourceCannotProduceAChain(
+        bool expanded
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await context.Users.Where(user => user.TenantId == data.TenantId && user.Id == data.Users[0])
+        await context
+            .Users
+            .Where(user => user.TenantId == data.TenantId && user.Id == data.Users[0])
             .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.Visible, false), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, false);
         probe.Enabled = true;
 
         // Act
         var result = expanded
             ? await App.SupervisorQueries.FollowAllMembershipsAsync(
-                context, data.TenantId, request, CancellationToken.None)
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None)
             : await App.SupervisorQueries.FollowOriginalPathAsync(
-                context, data.TenantId, request, CancellationToken.None);
+                context,
+                data.TenantId,
+                request,
+                CancellationToken.None);
 
         // Assert
         Assert.Equal(App.SupervisorBatchStatus.SourceNotFound, result.Status);
@@ -139,19 +174,26 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await EnableSnapshotAsync(context);
+        await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, false) with { MaxResultRows = 1 };
         probe.Enabled = true;
 
         // Act
         var result = await App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None);
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None);
 
         // Assert
         Assert.False(result.Complete);
-        Assert.Equal(App.SupervisorChainStatus.LimitExceeded, Assert.Single(result.Branches).Status);
+        Assert.Equal(
+            App.SupervisorChainStatus.LimitExceeded,
+            Assert.Single(result.Branches)
+                .Status);
+
         Assert.Single(probe.Commands);
         Assert.InRange(probe.ReaderAdvances, 0, 2);
         Assert.Equal(0, probe.Entities);
@@ -166,16 +208,22 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        var isolation = Engine == "Sqlite" ? IsolationLevel.ReadUncommitted : IsolationLevel.ReadCommitted;
+        var isolation = Engine == "Sqlite"
+            ? IsolationLevel.ReadUncommitted
+            : IsolationLevel.ReadCommitted;
+
         await using var transaction = await context.Database.BeginTransactionAsync(isolation, CancellationToken.None);
         var request = ChainRequest(data, false);
         probe.Enabled = true;
 
         // Act
         var error = await Record.ExceptionAsync(() => App.SupervisorQueries.FollowOriginalPathAsync(
-            context, data.TenantId, request, CancellationToken.None));
+            context,
+            data.TenantId,
+            request,
+            CancellationToken.None));
 
         // Assert
         Assert.IsType<InvalidOperationException>(error);
@@ -191,15 +239,22 @@ public abstract partial class GroupSupervisorTests
     )
     {
         var request = data.Request(group: data.Groups[5]);
-        var step = new App.SupervisorStep(request.SearchStart, request.Roles, request.Groups,
-            request.Matches, request.OnDay, App.SupervisorSelection.HighestBusinessPriority);
+        var step = new App.SupervisorStep(
+            request.SearchStart,
+            request.Roles,
+            request.Groups,
+            request.Matches,
+            request.OnDay,
+            App.SupervisorSelection.HighestBusinessPriority);
 
         return new App.SupervisorChainRequest
         {
             SourceUserId = request.SourceUserId,
             StartGroupId = request.StartGroupId,
             Steps = [step, step],
-            RoutingOrigin = current ? App.RoutingOrigin.CurrentSubject : App.RoutingOrigin.InitialSubject,
+            RoutingOrigin = current
+                ? App.RoutingOrigin.CurrentSubject
+                : App.RoutingOrigin.InitialSubject,
             MaxFrontierStates = 32,
             MaxVisitedStates = 128,
             MaxResultRows = 256,
@@ -207,10 +262,15 @@ public abstract partial class GroupSupervisorTests
     }
 
     /// <summary>Enables the explicit SQL Server snapshot feature only in the test-owned database.</summary>
+    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The context for the test-owned database.</param>
-    private Task EnableSnapshotAsync(App.UserGroupContext context)
+    private Task EnableSnapshotAsync(
+        App.UserGroupContext context,
+        CancellationToken cancellationToken
+    )
         => Engine == "SqlServer"
             ? context.Database.ExecuteSqlRawAsync(
-                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON", CancellationToken.None)
+                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
+                cancellationToken)
             : Task.CompletedTask;
 }

@@ -15,7 +15,8 @@ internal static partial class SqlAssignments
     )
     {
         // WHY: An unquoted substring such as End also matches CASE END; only assignment targets prove a write.
-        foreach (Match match in AssignmentTargets().Matches(commandText))
+        foreach (Match match in AssignmentTargets()
+            .Matches(commandText))
         {
             if (string.Equals(match.Groups["column"].Value, columnName, StringComparison.OrdinalIgnoreCase))
             {

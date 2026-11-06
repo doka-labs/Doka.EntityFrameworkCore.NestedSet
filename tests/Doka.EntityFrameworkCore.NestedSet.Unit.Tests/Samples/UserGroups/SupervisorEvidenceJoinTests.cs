@@ -41,8 +41,11 @@ public sealed partial class SupervisorEvidenceJoinTests
         Assert.Equal(nameof(Queryable.Join), evidence.Method.Name);
         Assert.Contains("UNION ALL", sql, StringComparison.Ordinal);
         Assert.Contains("INNER JOIN", sql, StringComparison.Ordinal);
-        Assert.NotEqual(ConnectionState.Open,
-            context.Database.GetDbConnection().State);
+        Assert.NotEqual(
+            ConnectionState.Open,
+            context.Database.GetDbConnection()
+                .State);
+
         Assert.Empty(context.ChangeTracker.Entries());
         TestContext.Current.TestOutputHelper?.WriteLine(sql);
     }
@@ -72,12 +75,15 @@ public sealed partial class SupervisorEvidenceJoinTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await PrepareMixedOriginsAsync(context, data, closed);
+        await PrepareMixedOriginsAsync(context, data, closed, cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(SearchStart.IncludeSelf) with
         {
             Groups = new AllEligibleGroups(),
             Roles = new EitherRole(data.ManagerRoleId),
-            Matches = [new(MetadataOwner.SourceMembership, "Route", MetadataOwner.CandidateMembership, "Route")],
+            Matches =
+            [
+                new MetadataMatch(MetadataOwner.SourceMembership, "Route", MetadataOwner.CandidateMembership, "Route"),
+            ],
         };
 
         var selection = Selection(mode);
@@ -94,25 +100,44 @@ public sealed partial class SupervisorEvidenceJoinTests
         Assert.Equal(SupervisorBatchStatus.Completed, result.Status);
         Assert.Equal(3, result.Origins.Count);
         Assert.Single(rows, row => row.Kind == 0);
-        Assert.Equal(closed ? 4 : 5, rows.Length);
+        Assert.Equal(
+            closed
+                ? 4
+                : 5,
+            rows.Length);
+
         var unique = Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[5]);
         Assert.Equal(SupervisorResolutionStatus.Found, unique.Status);
-        Assert.Equal(closed ? 1 : 2, unique.Evidence.Count);
-        Assert.All(unique.Evidence,
+        Assert.Equal(
+            closed
+                ? 1
+                : 2,
+            unique.Evidence.Count);
+
+        Assert.All(
+            unique.Evidence,
             row =>
             {
                 Assert.Equal(data.Users[1], row.CandidateUserId);
                 Assert.Equal(data.TreeId, row.StartTreeId);
             });
 
-        Assert.Equal(closed ? new[] { data.Groups[4] } : new[] { data.Groups[2], data.Groups[4] },
+        Assert.Equal(
+            closed
+                ? new[] { data.Groups[4] }
+                : new[] { data.Groups[2], data.Groups[4] },
             unique
                 .Evidence
                 .Select(row => row.FoundGroupId)
                 .Order()
                 .ToArray());
-        Assert.Equal(mode == "priority" && !closed ? data.Groups[2] : data.Groups[4],
+
+        Assert.Equal(
+            mode == "priority" && !closed
+                ? data.Groups[2]
+                : data.Groups[4],
             unique.Continuation!.FoundGroupId);
+
         var ambiguous = Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[6]);
         Assert.Equal(SupervisorResolutionStatus.Ambiguous, ambiguous.Status);
         Assert.Empty(ambiguous.Evidence);
@@ -139,19 +164,29 @@ public sealed partial class SupervisorEvidenceJoinTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await PrepareMixedOriginsAsync(context, data, closed: false, sharedWinner: true);
+        await PrepareMixedOriginsAsync(
+            context,
+            data,
+            closed: false,
+            sharedWinner: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var request = data.Request(SearchStart.IncludeSelf) with
         {
             Groups = new AllEligibleGroups(),
             Roles = new EitherRole(data.ManagerRoleId),
-            Matches = [new(MetadataOwner.SourceMembership, "Route", MetadataOwner.CandidateMembership, "Route")],
+            Matches =
+            [
+                new MetadataMatch(MetadataOwner.SourceMembership, "Route", MetadataOwner.CandidateMembership, "Route"),
+            ],
         };
 
         probe.Enabled = true;
 
         // Act
         var rows = await SupervisorQueries
-            .ResolutionRows(context,
+            .ResolutionRows(
+                context,
                 data.TenantId,
                 request,
                 SupervisorSelection.RequireUnique)
@@ -172,8 +207,11 @@ public sealed partial class SupervisorEvidenceJoinTests
         Assert.Equal(data.Users[1], occurrence.CandidateUserId);
         Assert.Equal(data.Groups[6], occurrence.FoundGroupId);
         Assert.Equal(data.Groups[6], second.Continuation!.FoundGroupId);
-        Assert.Equal(SupervisorResolutionStatus.NotFound,
-            Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[0]).Status);
+        Assert.Equal(
+            SupervisorResolutionStatus.NotFound,
+            Assert.Single(result.Origins, origin => origin.StartGroupId == data.Groups[0])
+                .Status);
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());

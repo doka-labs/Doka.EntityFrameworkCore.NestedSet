@@ -1,4 +1,5 @@
 // WHY: Actual adapter registration and native behavior are verified without exposing implementation APIs.
+
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Unit.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Specification.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.MySql.Tests")]

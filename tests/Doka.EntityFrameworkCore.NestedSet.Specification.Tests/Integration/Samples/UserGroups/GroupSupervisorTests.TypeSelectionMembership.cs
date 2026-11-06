@@ -16,11 +16,14 @@ public abstract partial class GroupSupervisorTests
     [InlineData("grant-hidden", false)]
     [InlineData("grant-expired", true)]
     [InlineData("grant-expired", false)]
-    public async Task TypeFirstKeepsRejectedMembershipGroupInsteadOfFallingBack(string failure, bool typeFirst)
+    public async Task TypeFirstKeepsRejectedMembershipGroupInsteadOfFallingBack(
+        string failure,
+        bool typeFirst
+    )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe);
+        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var day = new DateOnly(2026, 10, 16);
         var expired = day.AddDays(-1);
@@ -28,24 +31,31 @@ public abstract partial class GroupSupervisorTests
             && row.UserGroupId == data.Groups[2]);
 
         var grants = context.MembershipRoles.Where(row => row.TenantId == data.TenantId
-            && row.UserGroupId == data.Groups[2] && row.RoleId == data.ManagerRoleId);
+            && row.UserGroupId == data.Groups[2]
+            && row.RoleId == data.ManagerRoleId);
 
         var changed = failure switch
         {
             "membership-hidden" => await memberships.ExecuteUpdateAsync(
-                setters => setters.SetProperty(row => row.Visible, false), CancellationToken.None),
+                setters => setters.SetProperty(row => row.Visible, false),
+                CancellationToken.None),
             "membership-expired" => await memberships.ExecuteUpdateAsync(
-                setters => setters.SetProperty(row => row.ToDate, expired), CancellationToken.None),
+                setters => setters.SetProperty(row => row.ToDate, expired),
+                CancellationToken.None),
             "grant-hidden" => await grants.ExecuteUpdateAsync(
-                setters => setters.SetProperty(row => row.Visible, false), CancellationToken.None),
+                setters => setters.SetProperty(row => row.Visible, false),
+                CancellationToken.None),
             "grant-expired" => await grants.ExecuteUpdateAsync(
-                setters => setters.SetProperty(row => row.ToDate, expired), CancellationToken.None),
+                setters => setters.SetProperty(row => row.ToDate, expired),
+                CancellationToken.None),
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),
         };
 
         var request = data.Request(group: data.Groups[5]) with
         {
-            Groups = typeFirst ? new App.NthTypeGroupThenValidate(1, 1) : new App.NthEligibleGroup([1], 1),
+            Groups = typeFirst
+                ? new App.NthTypeGroupThenValidate(1, 1)
+                : new App.NthEligibleGroup([1], 1),
             OnDay = day,
         };
 
@@ -54,8 +64,12 @@ public abstract partial class GroupSupervisorTests
         // Act
         // WHY: The nearest Type1 group remains structurally present after all its people lose eligibility.
         // Only the explicitly eligible-first alternative may skip that group and reach Carla farther above.
-        var result = await App.SupervisorQueries.ResolveAsync(context, data.TenantId, request,
-            App.SupervisorSelection.RequireUnique, CancellationToken.None);
+        var result = await App.SupervisorQueries.ResolveAsync(
+            context,
+            data.TenantId,
+            request,
+            App.SupervisorSelection.RequireUnique,
+            CancellationToken.None);
 
         // Assert
         Assert.Equal(1, changed);
@@ -64,11 +78,27 @@ public abstract partial class GroupSupervisorTests
         var origin = Assert.Single(result.Origins);
 
         Assert.Equal(data.Groups[5], origin.StartGroupId);
-        Assert.Equal(typeFirst ? App.SupervisorResolutionStatus.NotFound : App.SupervisorResolutionStatus.Found,
+        Assert.Equal(
+            typeFirst
+                ? App.SupervisorResolutionStatus.NotFound
+                : App.SupervisorResolutionStatus.Found,
             origin.Status);
-        Assert.Equal(typeFirst ? [] : new[] { data.Users[5] },
-            origin.Evidence.Select(row => row.CandidateUserId).ToArray());
-        Assert.Equal(typeFirst ? null : (int?)data.Groups[0], origin.Continuation?.FoundGroupId);
+
+        Assert.Equal(
+            typeFirst
+                ? []
+                : new[] { data.Users[5] },
+            origin
+                .Evidence
+                .Select(row => row.CandidateUserId)
+                .ToArray());
+
+        Assert.Equal(
+            typeFirst
+                ? null
+                : data.Groups[0],
+            origin.Continuation?.FoundGroupId);
+
         Assert.Single(probe.Commands);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());

@@ -20,11 +20,22 @@ internal static partial class SignalReportValidation
         private (Guid AnchorId, Guid ChannelId, CapturePort Source)? _duplicate;
 
         /// <summary>Checks complete tuple identity without retaining materialized aggregate DTOs.</summary>
-        internal bool Add(SignalReportTotal total)
+        internal bool Add(
+            SignalReportTotal total
+        )
         {
-            var anchor = _canIndex ? FindIndex(request.AnchorIds, ref _anchors, total.AnchorId) : -1;
-            var channel = anchor >= 0 ? FindIndex(request.ChannelIds, ref _channels, total.ChannelId) : -1;
-            var source = channel >= 0 ? FindIndex(request.Sources, ref _sources, total.Source) : -1;
+            var anchor = _canIndex
+                ? FindIndex(request.AnchorIds, ref _anchors, total.AnchorId)
+                : -1;
+
+            var channel = anchor >= 0
+                ? FindIndex(request.ChannelIds, ref _channels, total.ChannelId)
+                : -1;
+
+            var source = channel >= 0
+                ? FindIndex(request.Sources, ref _sources, total.Source)
+                : -1;
+
             var selected = anchor >= 0 && channel >= 0 && source >= 0;
             var added = selected
                 ? AddSelected(Offset(anchor, channel, source), total.Value)
@@ -94,12 +105,14 @@ internal static partial class SignalReportValidation
             // are resolved once; bounded stack storage avoids small arrays without risking a large stack frame.
             var channels = repeatChannels
                 ? request.ChannelIds.Length <= StackOrdinalLimit
-                    ? stackalloc int[request.ChannelIds.Length] : new int[request.ChannelIds.Length]
+                    ? stackalloc int[request.ChannelIds.Length]
+                    : new int[request.ChannelIds.Length]
                 : [];
 
             var sources = repeatSources
                 ? request.Sources.Length <= StackOrdinalLimit
-                    ? stackalloc int[request.Sources.Length] : new int[request.Sources.Length]
+                    ? stackalloc int[request.Sources.Length]
+                    : new int[request.Sources.Length]
                 : [];
 
             FillRepeatedOrdinals(request.ChannelIds, _channels, channels);
@@ -113,16 +126,21 @@ internal static partial class SignalReportValidation
             {
                 // WHY: This outer loop resolves each anchor position only once. Its repeated first ordinal
                 // needs no buffer; larger selections already have the membership map populated by Add.
-                var anchorIndex = !repeatAnchors ? anchor : _anchors is null
-                    ? Array.IndexOf(request.AnchorIds, request.AnchorIds[anchor], 0, anchor + 1)
-                    : _anchors[request.AnchorIds[anchor]];
+                var anchorIndex = !repeatAnchors
+                    ? anchor
+                    : _anchors is null
+                        ? Array.IndexOf(request.AnchorIds, request.AnchorIds[anchor], 0, anchor + 1)
+                        : _anchors[request.AnchorIds[anchor]];
 
                 // WHY: Reuse precomputed channel ordinals while preserving requested output order.
                 // ReSharper disable once ForCanBeConvertedToForeach
                 // ReSharper disable once LoopCanBeConvertedToQuery
                 for (var channel = 0; channel < request.ChannelIds.Length; channel++)
                 {
-                    var channelIndex = channels.IsEmpty ? channel : channels[channel];
+                    var channelIndex = channels.IsEmpty
+                        ? channel
+                        : channels[channel];
+
                     var prefix = (anchorIndex * request.ChannelIds.Length + channelIndex) * request.Sources.Length;
 
                     // WHY: Fill the flat output grid using the matching anchor, channel and source ordinals.
@@ -130,10 +148,17 @@ internal static partial class SignalReportValidation
                     // ReSharper disable once LoopCanBeConvertedToQuery
                     for (var source = 0; source < request.Sources.Length; source++)
                     {
-                        var sourceIndex = sources.IsEmpty ? source : sources[source];
+                        var sourceIndex = sources.IsEmpty
+                            ? source
+                            : sources[source];
+
                         var exists = _values.TryGetValue(prefix + sourceIndex, out var value);
-                        result[index++] = new SignalReportCell(request.AnchorIds[anchor], request.ChannelIds[channel],
-                            request.Sources[source], exists, value);
+                        result[index++] = new SignalReportCell(
+                            request.AnchorIds[anchor],
+                            request.ChannelIds[channel],
+                            request.Sources[source],
+                            exists,
+                            value);
                     }
                 }
             }
@@ -149,13 +174,16 @@ internal static partial class SignalReportValidation
             double value
         )
         {
-            if (_values.Count > 0 && _values.Count == _values.Capacity)
+            if (_values.Count > 0
+                && _values.Count == _values.Capacity)
             {
                 // WHY: A stored total passed _canIndex and every axis membership. The complete grain is
                 // therefore positive and fits Int32; deriving it only at a full boundary cannot move overflow
                 // rejection ahead of EOF. Reading actual BCL capacity avoids duplicated capacity-tracking state.
                 var maximum = request.AnchorIds.Length * request.ChannelIds.Length * request.Sources.Length;
-                if (maximum > _values.Count && maximum < (long)_values.Count * 2 && !_values.ContainsKey(offset))
+                if (maximum > _values.Count
+                    && maximum < (long)_values.Count * 2
+                    && !_values.ContainsKey(offset))
                 {
                     // WHY: Only a new identity at a near-full terminal boundary justifies reserving the grain.
                     // An otherwise sparse report still grows solely from observed rows; duplicates do not resize.
@@ -171,17 +199,20 @@ internal static partial class SignalReportValidation
             int anchor,
             int channel,
             int source
-        ) => (((anchor * request.ChannelIds.Length) + channel) * request.Sources.Length) + source;
+        ) => (anchor * request.ChannelIds.Length + channel) * request.Sources.Length + source;
 
         /// <summary>Checks offset representability without moving overflow rejection ahead of reader EOF.</summary>
-        private static bool CanIndexSelectedCells(ValidatedSignalReport selection)
+        private static bool CanIndexSelectedCells(
+            ValidatedSignalReport selection
+        )
         {
             // WHY: The first product fits in Int64 for every possible array length. Division bounds the
             // second product without throwing; empty or oversized layouts keep only full duplicate identities.
             // Complete still evaluates the original checked products, including prefix overflow with no sources.
             var cardMetrics = (long)selection.AnchorIds.Length * selection.ChannelIds.Length;
 
-            return cardMetrics is > 0 and <= int.MaxValue && selection.Sources.Length > 0
+            return cardMetrics is > 0 and <= int.MaxValue
+                && selection.Sources.Length > 0
                 && cardMetrics <= int.MaxValue / selection.Sources.Length;
         }
 
@@ -190,7 +221,8 @@ internal static partial class SignalReportValidation
             T[] selection,
             ref Dictionary<T, int>? indexes,
             T value
-        ) where T : notnull
+        )
+            where T : notnull
         {
             // WHY: The ordinary four-anchor/two-SignalLab/three-source sample needs no lookup-map allocations.
             // Capping linear work at eight keeps larger selections at expected O(rows + selection) cost;
@@ -203,6 +235,7 @@ internal static partial class SignalReportValidation
             if (indexes is null)
             {
                 indexes = new Dictionary<T, int>(selection.Length);
+
                 // WHY: Store the first position of repeated selections for exact grid lookup.
                 // ReSharper disable once ForCanBeConvertedToForeach
                 // ReSharper disable once LoopCanBeConvertedToQuery
@@ -214,7 +247,9 @@ internal static partial class SignalReportValidation
                 }
             }
 
-            return indexes.TryGetValue(value, out var found) ? found : -1;
+            return indexes.TryGetValue(value, out var found)
+                ? found
+                : -1;
         }
 
         /// <summary>
@@ -223,7 +258,8 @@ internal static partial class SignalReportValidation
         private static bool HasRepeatedSelections<T>(
             T[] selection,
             Dictionary<T, int>? indexes
-        ) where T : notnull
+        )
+            where T : notnull
         {
             if (indexes is not null)
             {
@@ -252,7 +288,8 @@ internal static partial class SignalReportValidation
             T[] selection,
             Dictionary<T, int>? indexes,
             Span<int> ordinals
-        ) where T : notnull
+        )
+            where T : notnull
         {
             // WHY: Fill the caller-owned ordinal span with the first matching selection positions.
             // ReSharper disable once ForCanBeConvertedToForeach

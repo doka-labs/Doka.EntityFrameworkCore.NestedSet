@@ -34,8 +34,11 @@ public sealed class CompositionSourceTests
 
         // Assert
         Assert.IsAssignableFrom<EnumerableQuery<CompositionGuardRow>>(source);
-        Assert.Equal("source",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            "source",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -72,8 +75,11 @@ public sealed class CompositionSourceTests
 
         // Assert
         Assert.IsAssignableFrom<EnumerableQuery<CompositionGuardRow>>(source);
-        Assert.Equal("source",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            "source",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         Assert.Equal(0, input.EnumerationStarts);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
@@ -106,8 +112,11 @@ public sealed class CompositionSourceTests
         var error = Record.Exception(() => CompositionEndpointTests.Filter(hierarchy, source, operation));
 
         // Assert
-        Assert.Equal("source",
-            Assert.IsType<ArgumentException>(error).ParamName);
+        Assert.Equal(
+            "source",
+            Assert.IsType<ArgumentException>(error)
+                .ParamName);
+
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

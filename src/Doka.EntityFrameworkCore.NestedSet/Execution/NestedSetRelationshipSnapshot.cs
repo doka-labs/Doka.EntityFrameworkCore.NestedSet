@@ -4,12 +4,12 @@ namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 internal sealed class NestedSetRelationshipSnapshot
 {
     private static readonly ConditionalWeakTable<IEntityType, IForeignKey[]> s_keys = new();
-    private readonly IUpdateAdapter _updates;
     private readonly List<ForeignKeyState> _foreignKeys = [];
-    private List<ForeignKeyState>? _pendingBuckets;
     private readonly Dictionary<(IUpdateEntry, INavigation), NavigationState> _navigations = new();
-    private readonly Dictionary<IEntityType, List<ParentDomain>> _parentDomains = new();
     private readonly Dictionary<IForeignKey, HashSet<object>> _parentDependents = new();
+    private readonly Dictionary<IEntityType, List<ParentDomain>> _parentDomains = new();
+    private readonly IUpdateAdapter _updates;
+    private List<ForeignKeyState>? _pendingBuckets;
 
     /// <summary>Shares the current context's native entries without creating another tracker.</summary>
     private NestedSetRelationshipSnapshot(
@@ -170,7 +170,9 @@ internal sealed class NestedSetRelationshipSnapshot
             }
         }
 
-        dependents.Add(entry.ToEntityEntry().Entity);
+        dependents.Add(
+            entry.ToEntityEntry()
+                .Entity);
     }
 
     /// <summary>Includes a tracked principal referenced by the caller's pending CLR graph.</summary>
@@ -249,10 +251,10 @@ internal sealed class NestedSetRelationshipSnapshot
                 : entry.GetCurrentValue(property);
 
             if (!key
-                    .PrincipalKey
-                    .Properties[index]
-                    .GetKeyValueComparer()
-                    .Equals(value, installed[index]))
+                .PrincipalKey
+                .Properties[index]
+                .GetKeyValueComparer()
+                .Equals(value, installed[index]))
             {
                 current ??= (object?[])installed.Clone();
                 current[index] = NestedSetStructuralValue.Snapshot(property, value);
@@ -294,6 +296,7 @@ internal sealed class NestedSetRelationshipSnapshot
         IForeignKey key,
         object?[] values
     ) =>
+
         // WHY: EF returns its indexed HashSet (or an empty sequence). Enumerable.Contains dispatches to
         // ICollection.Contains, so capturing one dependent does not enumerate its wide owner's bucket.
         DependentBucket(entry, key, values) is { } bucket && bucket.Contains(entry);
@@ -400,8 +403,8 @@ internal sealed class NestedSetRelationshipSnapshot
                     var property = state.Key.Properties[index];
 
                     if (!property
-                            .GetKeyValueComparer()
-                            .Equals(state.Entry.GetCurrentValue(property), state.Values[index]))
+                        .GetKeyValueComparer()
+                        .Equals(state.Entry.GetCurrentValue(property), state.Values[index]))
                     {
                         sameIdentity = false;
 
@@ -423,7 +426,9 @@ internal sealed class NestedSetRelationshipSnapshot
                 changed.Add(state.Key, dependents);
             }
 
-            dependents.Add(state.Entry.ToEntityEntry().Entity);
+            dependents.Add(
+                state.Entry.ToEntityEntry()
+                    .Entity);
         }
 
         foreach (var state in _navigations.Values)
@@ -644,9 +649,9 @@ internal sealed class NestedSetRelationshipSnapshot
                 else if (current is IEnumerable values)
                 {
                     foreach (var member in values
-                                 .Cast<object>()
-                                 .Where(domain.Dependents.Contains)
-                                 .ToArray())
+                        .Cast<object>()
+                        .Where(domain.Dependents.Contains)
+                        .ToArray())
                     {
                         navigation.GetCollectionAccessor()!.RemoveStandalone(current, member);
                     }
@@ -656,8 +661,8 @@ internal sealed class NestedSetRelationshipSnapshot
                     && entry.GetRelationshipSnapshotValue(navigation) is IEnumerable<object> original)
                 {
                     foreach (var member in original
-                                 .Where(domain.Dependents.Contains)
-                                 .ToArray())
+                        .Where(domain.Dependents.Contains)
+                        .ToArray())
                     {
                         NestedSetInsertionContract.Instance.RemoveCollectionSnapshot(entry, navigation, member);
                     }
@@ -715,7 +720,9 @@ internal sealed class NestedSetRelationshipSnapshot
                 captured.Add(state.Key, members);
             }
 
-            members.Add(state.Entry.ToEntityEntry().Entity);
+            members.Add(
+                state.Entry.ToEntityEntry()
+                    .Entity);
         }
 
         return captured;
@@ -751,8 +758,8 @@ internal sealed class NestedSetRelationshipSnapshot
                 var property = state.Key.Properties[index];
 
                 if (!property
-                        .GetKeyValueComparer()
-                        .Equals(state.Entry.GetRelationshipSnapshotValue(property), state.Values[index]))
+                    .GetKeyValueComparer()
+                    .Equals(state.Entry.GetRelationshipSnapshotValue(property), state.Values[index]))
                 {
                     throw new InvalidOperationException("The coordinated save could not restore an FK snapshot.");
                 }
@@ -782,21 +789,20 @@ internal sealed class NestedSetRelationshipSnapshot
     /// <summary>Retains current graph storage independently of EF's installed navigation snapshot.</summary>
     private sealed class NavigationState
     {
-        private readonly IUpdateEntry _entry;
-        private readonly INavigation _navigation;
-        private readonly object _entity;
         private readonly object? _current;
-        private readonly object? _snapshot;
-        private readonly object[] _members;
-        private readonly object[] _snapshotMembers;
+        private readonly object _entity;
+        private readonly IUpdateEntry _entry;
         private readonly bool _hasSnapshot;
+        private readonly object[] _members;
+        private readonly INavigation _navigation;
+        private readonly object? _snapshot;
+        private readonly object[] _snapshotMembers;
         private readonly bool _unordered;
-        private bool _authoritative;
+        private HashSet<object>? _affected;
         private bool _restore;
         private bool _restoreNative;
-        private HashSet<object>? _affected;
-        private object[]? _restoredMembers;
         private object? _restoredCurrent;
+        private object[]? _restoredMembers;
 
         /// <summary>Copies mutable membership without cloning any caller-owned entity.</summary>
         internal NavigationState(
@@ -807,14 +813,24 @@ internal sealed class NestedSetRelationshipSnapshot
         {
             _entry = entry;
             _navigation = navigation;
-            _entity = entry.ToEntityEntry().Entity;
+            _entity = entry.ToEntityEntry()
+                .Entity;
+
             _current = entry.GetCurrentValue(navigation);
             _hasSnapshot = !navigation.IsCollection
                 || entry.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot;
 
-            _snapshot = _hasSnapshot ? entry.GetRelationshipSnapshotValue(navigation) : null;
-            _members = navigation.IsCollection ? Members(_current) : [];
-            _snapshotMembers = navigation.IsCollection ? Members(_snapshot) : [];
+            _snapshot = _hasSnapshot
+                ? entry.GetRelationshipSnapshotValue(navigation)
+                : null;
+
+            _members = navigation.IsCollection
+                ? Members(_current)
+                : [];
+
+            _snapshotMembers = navigation.IsCollection
+                ? Members(_snapshot)
+                : [];
 
             // WHY: Reference navigation values are entities; only collection storage can have set ordering semantics.
             _unordered = navigation.IsCollection
@@ -824,16 +840,11 @@ internal sealed class NestedSetRelationshipSnapshot
                     .Any(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ISet<>))
                 == true;
 
-            _authoritative = authoritative;
+            IsAuthoritative = authoritative;
         }
 
-        /// <summary>Keeps existing pending-relationship authority independent of endpoint capture order.</summary>
-        internal void Promote(
-            bool authoritative
-        ) => _authoritative |= authoritative;
-
         /// <summary>Gets whether an existing pending relationship owns the complete captured navigation.</summary>
-        internal bool IsAuthoritative => _authoritative;
+        internal bool IsAuthoritative { get; private set; }
 
         /// <summary>Gets the exact metadata identity shared with the captured dependent index.</summary>
         internal IForeignKey ForeignKey => _navigation.ForeignKey;
@@ -843,7 +854,7 @@ internal sealed class NestedSetRelationshipSnapshot
         {
             get
             {
-                if (_authoritative
+                if (IsAuthoritative
                     || !_navigation.IsCollection
                     || !_hasSnapshot)
                 {
@@ -877,6 +888,11 @@ internal sealed class NestedSetRelationshipSnapshot
         internal bool HasNativeReferenceChange =>
             !_navigation.IsCollection && !ReferenceEquals(_entry.GetRelationshipSnapshotValue(_navigation), _snapshot);
 
+        /// <summary>Keeps existing pending-relationship authority independent of endpoint capture order.</summary>
+        internal void Promote(
+            bool authoritative
+        ) => IsAuthoritative |= authoritative;
+
         /// <summary>
         ///     Limits supplemental recovery to the exact dependents with native changes or identity writes.
         /// </summary>
@@ -887,10 +903,10 @@ internal sealed class NestedSetRelationshipSnapshot
             _affected = null;
             _restoredMembers = null;
             _restoredCurrent = _current;
-            _restore = _authoritative;
+            _restore = IsAuthoritative;
             _restoreNative = false;
 
-            if (_authoritative
+            if (IsAuthoritative
                 || changed is null
                 || !changed.TryGetValue(_navigation.ForeignKey, out var affected))
             {
@@ -919,20 +935,24 @@ internal sealed class NestedSetRelationshipSnapshot
 
             // WHY: An unchanged owner's EF-moved member needs its original position, while unrelated raw
             // callback additions/removals remain pending. Existing changed-FK snapshots retain full authority.
-            var expected = _authoritative || !_navigation.IsCollection ? _members : ProjectMembers(_affected!);
+            var expected = IsAuthoritative || !_navigation.IsCollection
+                ? _members
+                : ProjectMembers(_affected!);
 
             _restoredMembers = expected;
 
             // WHY: Supplemental recovery owns selected members, not unrelated raw additions. A formerly
             // null collection must retain the caller's new container when those pending members need it.
-            _restoredCurrent = !_authoritative && _navigation.IsCollection && _current is null && expected.Length > 0
+            _restoredCurrent = !IsAuthoritative && _navigation.IsCollection && _current is null && expected.Length > 0
                 ? _entry.GetCurrentValue(_navigation)
                 : _current;
 
             using var pause = NestedSetNotificationPause.Begin(
                 _entry,
                 _navigation,
-                _navigation.IsCollection ? _restoredCurrent : null);
+                _navigation.IsCollection
+                    ? _restoredCurrent
+                    : null);
 
             if (!ReferenceEquals(_entry.GetCurrentValue(_navigation), _restoredCurrent))
             {
@@ -1058,7 +1078,7 @@ internal sealed class NestedSetRelationshipSnapshot
 
             foreach (var member in Members(_entry.GetRelationshipSnapshotValue(_navigation)))
             {
-                if (_authoritative || _affected!.Contains(member))
+                if (IsAuthoritative || _affected!.Contains(member))
                 {
                     contract.RemoveCollectionSnapshot(_entry, _navigation, member);
                 }
@@ -1066,7 +1086,7 @@ internal sealed class NestedSetRelationshipSnapshot
 
             foreach (var member in _snapshotMembers)
             {
-                if (_authoritative || _affected!.Contains(member))
+                if (IsAuthoritative || _affected!.Contains(member))
                 {
                     contract.AddCollectionSnapshot(_entry, _navigation, member);
                 }
@@ -1102,7 +1122,7 @@ internal sealed class NestedSetRelationshipSnapshot
                     var snapshot = Members(_entry.GetRelationshipSnapshotValue(_navigation))
                         .ToHashSet(ReferenceEqualityComparer.Instance);
 
-                    valid &= _authoritative
+                    valid &= IsAuthoritative
                         ? snapshot.SetEquals(_snapshotMembers)
                         : snapshot
                             .Where(_affected!.Contains)

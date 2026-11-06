@@ -18,7 +18,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task GuidAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<GuidNode>()
@@ -30,7 +30,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<GuidNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<GuidNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -41,6 +41,7 @@ public abstract class BulkKeyTests : ProviderTest
                 .TreeContaining(child.Id)
                 .Select(node => node.Id)
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
@@ -52,7 +53,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task StringAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<TextNode>()
@@ -64,7 +65,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<TextNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<TextNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert
@@ -81,7 +82,7 @@ public abstract class BulkKeyTests : ProviderTest
     public async Task BinaryAdjacencySurvivesImport()
     {
         // Arrange
-        var database = await _fixture.ResetAsync(Engine);
+        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         var tree = context
             .NestedSet<BinaryNode>()
@@ -93,7 +94,7 @@ public abstract class BulkKeyTests : ProviderTest
 
         // Act
         await tree.InsertForestAsync(
-            [new NestedSetTreeImport<BinaryNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BinaryNode, Guid>(Guid.Empty, branch)],
             CancellationToken.None);
 
         // Assert

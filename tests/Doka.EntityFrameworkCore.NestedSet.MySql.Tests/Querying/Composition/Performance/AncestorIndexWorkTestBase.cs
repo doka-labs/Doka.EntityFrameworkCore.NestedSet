@@ -41,7 +41,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     [InlineData(1, false, false, true)]
     [InlineData(1, true, false, true)]
     [Trait("Category", "Capacity")]
-    public async Task SelectedAncestorsRetainBoundedNativeWork(int sources, bool inclusive, bool forest, bool chain)
+    public async Task SelectedAncestorsRetainBoundedNativeWork(
+        int sources,
+        bool inclusive,
+        bool forest,
+        bool chain
+    )
     {
         // Arrange
         // WHY: MariaDB's native plan embeds binary GUID bytes without consistently valid JSON escaping.
@@ -53,10 +58,18 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest, dense: chain);
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest,
+            dense: chain,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = chain
             ? [1_001]
@@ -113,7 +126,9 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                     .Select(owner => new Pair(1_000, owner, 1_000 - owner))
                 : selected.Select(key => new Pair(key, 1, 1));
 
-        var expected = (inclusive ? ancestorPairs.Concat(selected.Select(key => new Pair(key, key, 0))) : ancestorPairs)
+        var expected = (inclusive
+                ? ancestorPairs.Concat(selected.Select(key => new Pair(key, key, 0)))
+                : ancestorPairs)
             .OrderBy(pair => pair.Source)
             .ThenBy(pair => pair.Owner)
             .ToArray();
@@ -129,8 +144,15 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             .Single(index => index.Properties.Any(property => property.Name == flag))
             .GetDatabaseName()!;
 
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(context, "Handler_icp_attempts");
+        var traversalsBefore = await NativeTraversalCounterAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var indexAttemptsBefore = await MariaSessionCounterAsync(
+            context,
+            "Handler_icp_attempts",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -147,7 +169,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         }
         catch (Exception exception)
         {
-            // WHY: A native timeout must retain its actual statement even when no executed plan can complete.
+            // WHY: Failure evidence must finish independently of caller cancellation and retain the native statement.
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 Engine
                 + $"-ancestor-index-failure-forest-{forest}-chain-{chain}-sources-{sources}-inclusive-{inclusive}",
@@ -157,21 +179,38 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                     ?? exception.GetType()
                         .Name,
                     .. capture.Commands,
-                    await FailurePlanAsync(context, capture),
-                ]);
+                    await FailurePlanAsync(context, capture, cancellationToken: CancellationToken.None),
+                ],
+                cancellationToken: CancellationToken.None);
 
             throw;
         }
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var indexAttempts = await MariaSessionCounterAsync(context, "Handler_icp_attempts") - indexAttemptsBefore;
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var indexAttempts = await MariaSessionCounterAsync(
+                context,
+                "Handler_icp_attempts",
+                cancellationToken: TestContext.Current.CancellationToken)
+            - indexAttemptsBefore;
+
+        var traversals = await NativeTraversalCounterAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            - traversalsBefore;
+
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            capture,
+            0,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // WHY: Optimized ancestor work is bounded by selected nodes and their actual outputs.
         // A provider without the optional public binding retains its separately labeled legacy scan budget.
-        var budget = hasOptimizedPath ? 64L * (sources + expected.Length + 1) : 4L * Nodes * sources;
+        var budget = hasOptimizedPath
+            ? 64L * (sources + expected.Length + 1)
+            : 4L * Nodes * sources;
 
         // WHY: Keep the native statement and plan even if the native-work reader rejects its diagnostics.
         await QueryPlanTestSupport.WriteEvidenceAsync(
@@ -182,19 +221,29 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"budget={budget}; resultRows={actual.Length}; indexAttempts={indexAttempts}; traversals={traversals}",
                 sql,
                 plan,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var work = Engine == "MySql" ? DensePathNativeWork.MySql(plan) : DensePathNativeWork.MariaDb(plan);
+        var work = Engine == "MySql"
+            ? DensePathNativeWork.MySql(plan)
+            : DensePathNativeWork.MariaDb(plan);
 
         // WHY: ICP can hide a full index scan behind a small post-filter row count in ANALYZE.
         var nativeWork = Math.Max(work.OperatorTuples, Math.Max(indexAttempts, traversals));
 
         // Assert
-        _output.WriteLine($"Forest={forest}; chain={chain}; sources={sources}; inclusive={inclusive}; "
+        _output.WriteLine(
+            $"Forest={forest}; chain={chain}; sources={sources}; inclusive={inclusive}; "
             + $"binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
             + $"operatorTuples={work.OperatorTuples}; indexAttempts={indexAttempts}; traversals={traversals}; budget={budget}.");
+
         Assert.True(hasOptimizedPath);
-        Assert.Equal(expected, actual.OrderBy(pair => pair.Source).ThenBy(pair => pair.Owner));
+        Assert.Equal(
+            expected,
+            actual
+                .OrderBy(pair => pair.Source)
+                .ThenBy(pair => pair.Owner));
+
         Assert.Equal(0, constructionCommands);
         Assert.Equal(1, commandCount);
         Assert.Empty(context.ChangeTracker.Entries());
@@ -212,7 +261,8 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             // Native work and the explicit generated-column predicate qualify the opt-in together.
             Assert.Contains(flag, sql, StringComparison.Ordinal);
 
-            if (!forest && !chain)
+            if (!forest
+                && !chain)
             {
                 Assert.Contains(ancestorIndex, plan, StringComparison.Ordinal);
             }
@@ -225,7 +275,9 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task DenseInclusiveAncestorsBoundNativeTemporaryWork(bool consumerJoin)
+    public async Task DenseInclusiveAncestorsBoundNativeTemporaryWork(
+        bool consumerJoin
+    )
     {
         // Arrange
         const int sources = 1_000;
@@ -237,10 +289,18 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
             Engine,
             static options => new AncestorIndexQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, dense: true);
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest: false,
+            dense: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
             .Range(1_001, sources)
@@ -263,7 +323,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 {
                     Source = node.Id,
                     Owner = owner.Id,
-                    Distance = distance
+                    Distance = distance,
                 });
 
         if (consumerJoin)
@@ -279,6 +339,7 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
 
             await context.SaveChangesAsync(CancellationToken.None);
             context.ChangeTracker.Clear();
+
             // WHY: An ordinary consumer join can become the SQL driver after late entity
             // hydration. It must not turn one source lookup into a scan of every source lane.
             query = query.Join(
@@ -294,8 +355,15 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         // WHY: One bit per expected source/owner pair detects duplicates and omissions while the
         // independent chain formula checks identity and distance without retaining result objects.
         var seen = new BitArray(checked((int)expected));
-        var traversalsBefore = await NativeTraversalCounterAsync(context);
-        var temporaryBefore = await MariaSessionCounterAsync(context, "Handler_tmp_write");
+        var traversalsBefore = await NativeTraversalCounterAsync(
+            context,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var temporaryBefore = await MariaSessionCounterAsync(
+            context,
+            "Handler_tmp_write",
+            cancellationToken: TestContext.Current.CancellationToken);
+
         commands.Reset();
         capture.Commands.Clear();
         capture.ParameterValues.Clear();
@@ -305,8 +373,8 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
 
         // Act
         await foreach (var pair in query
-                           .AsAsyncEnumerable()
-                           .WithCancellation(CancellationToken.None))
+            .AsAsyncEnumerable()
+            .WithCancellation(CancellationToken.None))
         {
             var sourceIndex = pair.Source - 1_001;
             var offset = (long)sourceIndex * 1_001 + (long)sourceIndex * (sourceIndex - 1) / 2;
@@ -330,8 +398,15 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
 
         var commandCount = commands.CommandCount;
         var sql = capture.Commands.Single();
-        var temporaryAfter = await MariaSessionCounterAsync(context, "Handler_tmp_write");
-        var traversals = await NativeTraversalCounterAsync(context) - traversalsBefore;
+        var temporaryAfter = await MariaSessionCounterAsync(
+            context,
+            "Handler_tmp_write",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var traversals = await NativeTraversalCounterAsync(
+                context,
+                cancellationToken: TestContext.Current.CancellationToken)
+            - traversalsBefore;
 
         // WHY: Executed-plan collection is an independent query. Its timeout must not erase
         // the complete streamed oracle result or the original session-work observations.
@@ -343,9 +418,16 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"expected={expected}; actual={count}; commands={commandCount}; traversals={traversals}; "
                 + $"temporaryWrites={temporaryAfter - temporaryBefore}",
                 sql,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        var plan = await QueryPlanTestSupport.ExplainAsync(context, capture, 0, Engine);
+        var plan = await QueryPlanTestSupport.ExplainAsync(
+            context,
+            capture,
+            0,
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var temporaryWork = Engine == "MariaDb"
             ? temporaryAfter - temporaryBefore
             : hasOptimizedPath
@@ -363,11 +445,14 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 + $"actual={count}; temporaryWork={temporaryWork}; budget={budget}; traversals={traversals}",
                 sql,
                 plan,
-            ]);
+            ],
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _output.WriteLine($"Binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
+        _output.WriteLine(
+            $"Binding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
             + $"rows={count}; temporaryWork={temporaryWork}; budget={budget}.");
+
         // WHY: Exact cardinality plus the no-duplicate/range oracle proves every expected bit was visited.
         Assert.True(hasOptimizedPath);
         Assert.Equal(expected, count);
@@ -382,30 +467,47 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Counts supported native handler-row traversals, including repeated reads of derived and physical rows.</summary>
-    private static async Task<long> NativeTraversalCounterAsync(DbContext context)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    private static async Task<long> NativeTraversalCounterAsync(
+        DbContext context,
+        CancellationToken cancellationToken
+    )
     {
-        await using var command = context.Database.GetDbConnection().CreateCommand();
+        await using var command = context
+            .Database
+            .GetDbConnection()
+            .CreateCommand();
+
         command.CommandText = "SHOW SESSION STATUS WHERE Variable_name IN "
             + "('Handler_read_first','Handler_read_key','Handler_read_last','Handler_read_next',"
             + "'Handler_read_prev','Handler_read_rnd','Handler_read_rnd_next')";
 
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         long total = 0;
         var counters = 0;
 
-        while (await reader.ReadAsync(CancellationToken.None))
+        while (await reader.ReadAsync(cancellationToken))
         {
             total = checked(total + Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture));
             counters++;
         }
 
         return counters != 7
-            ? throw new InvalidOperationException("The native engine did not expose every required handler-row traversal counter.")
+            ? throw new InvalidOperationException(
+                "The native engine did not expose every required handler-row traversal counter.")
             : total;
     }
 
     /// <summary>Retains a planning-only diagnostic without repeating a timed-out native statement.</summary>
-    private static async Task<string> FailurePlanAsync(DbContext context, EnterpriseProbe capture)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="capture">The command and materialization capture.</param>
+    private static async Task<string> FailurePlanAsync(
+        DbContext context,
+        EnterpriseProbe capture,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -421,8 +523,8 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 command.Parameters.Add(parameter);
             }
 
-            await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
-            await reader.ReadAsync(CancellationToken.None);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            await reader.ReadAsync(cancellationToken);
 
             return reader.GetString(0);
         }
@@ -430,12 +532,20 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         {
             // WHY: A secondary diagnostic failure must preserve the original native failure reported by the test.
             return "Static native plan unavailable: "
-                + exception.GetType().FullName;
+                + exception.GetType()
+                    .FullName;
         }
     }
 
     /// <summary>Reads a native session-work counter on the same open measured connection.</summary>
-    private async Task<long> MariaSessionCounterAsync(DbContext context, string name)
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="name">The synthetic object or scenario name.</param>
+    private async Task<long> MariaSessionCounterAsync(
+        DbContext context,
+        string name,
+        CancellationToken cancellationToken
+    )
     {
         if (Engine != "MariaDb")
         {
@@ -452,9 +562,9 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         parameter.ParameterName = "name";
         parameter.Value = name;
         command.Parameters.Add(parameter);
-        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-        if (!await reader.ReadAsync(CancellationToken.None))
+        if (!await reader.ReadAsync(cancellationToken))
         {
             throw new InvalidOperationException("MariaDB did not expose the requested native work counter.");
         }
@@ -463,13 +573,17 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Counts executed MySQL materialization rows, independently of legitimate streamed output size.</summary>
-    private static long MaterializedTuples(string plan)
+    private static long MaterializedTuples(
+        string plan
+    )
     {
-        var matches = MaterializedTuplesRegex().Matches(plan);
+        var matches = MaterializedTuplesRegex()
+            .Matches(plan);
 
         if (matches.Count == 0)
         {
-            throw new InvalidOperationException("The executed MySQL plan did not expose its materialization operators.");
+            throw new InvalidOperationException(
+                "The executed MySQL plan did not expose its materialization operators.");
         }
 
         return checked((long)matches.Sum(match =>
@@ -478,11 +592,21 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
     }
 
     /// <summary>Seeds independently derived stars or chains without tracking a population of CLR entities.</summary>
+    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
+    /// <param name="context">The context used for provider operations.</param>
+    /// <param name="scope">The hierarchy scope used by the scenario.</param>
+    /// <param name="tree">The complete tree identity used by the scenario.</param>
+    /// <param name="forest">Whether the input spans multiple independent trees.</param>
+    /// <param name="dense">Whether the requested anchors cover the dense path.</param>
+    /// <param name="branching">The deterministic branch factor.</param>
+    /// <param name="balanced">Whether the synthetic hierarchy branches instead of forming a chain.</param>
+    /// <param name="nodes">The number of synthetic hierarchy nodes.</param>
     private static async Task SeedAsync(
         AncestorIndexQueryContext context,
         Guid scope,
         Guid tree,
         bool forest,
+        CancellationToken cancellationToken,
         bool dense = false,
         bool branching = false,
         bool balanced = false,
@@ -520,8 +644,13 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             .GetDbConnection()
             .CreateCommand();
 
-        nodes = branching || balanced ? 100_001 : nodes;
-        var balancedCoordinates = balanced ? BalancedCoordinates(nodes) : default;
+        nodes = branching || balanced
+            ? 100_001
+            : nodes;
+
+        var balancedCoordinates = balanced
+            ? BalancedCoordinates(nodes)
+            : default;
 
         for (var start = 1; start <= nodes; start += 1_000)
         {
@@ -543,9 +672,13 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                             : 1;
 
                 var parent = dense
-                    ? id == 1 ? "NULL" : (id - 1).ToString(CultureInfo.InvariantCulture)
+                    ? id == 1
+                        ? "NULL"
+                        : (id - 1).ToString(CultureInfo.InvariantCulture)
                     : forest
-                        ? id == start ? "NULL" : (id - 1).ToString(CultureInfo.InvariantCulture)
+                        ? id == start
+                            ? "NULL"
+                            : (id - 1).ToString(CultureInfo.InvariantCulture)
                         : id == 1
                             ? "NULL"
                             : "1";
@@ -556,41 +689,65 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                         ? depth + 1L
                         : id == 1
                             ? 1
-                            : (2L * id) - 2;
+                            : 2L * id - 2;
 
                 var right = dense
-                    ? (2L * nodes) - depth
+                    ? 2L * nodes - depth
                     : forest
                         ? 2_000L - depth
                         : id == 1
                             ? 2L * nodes
                             : left + 1;
 
-                var position = dense || forest ? 0 : Math.Max(0, id - 2);
+                var position = dense || forest
+                    ? 0
+                    : Math.Max(0, id - 2);
 
                 if (branching)
                 {
-                    var offset = id == 1 ? 0 : (id - 2) % 1_000;
-                    var branch = id == 1 ? 0 : (id - 2) / 1_000;
-                    depth = id == 1 ? 0 : offset + 1;
+                    var offset = id == 1
+                        ? 0
+                        : (id - 2) % 1_000;
+
+                    var branch = id == 1
+                        ? 0
+                        : (id - 2) / 1_000;
+
+                    depth = id == 1
+                        ? 0
+                        : offset + 1;
+
                     parent = id == 1
                         ? "NULL"
                         : offset == 0
                             ? "1"
                             : (id - 1).ToString(CultureInfo.InvariantCulture);
 
-                    left = id == 1 ? 1 : 2L + (2_000L * branch) + offset;
-                    right = id == 1 ? 200_002 : 2_001L + (2_000L * branch) - offset;
-                    position = offset == 0 ? branch : 0;
+                    left = id == 1
+                        ? 1
+                        : 2L + 2_000L * branch + offset;
+
+                    right = id == 1
+                        ? 200_002
+                        : 2_001L + 2_000L * branch - offset;
+
+                    position = offset == 0
+                        ? branch
+                        : 0;
                 }
 
                 if (balanced)
                 {
                     depth = balancedCoordinates.Depths![id];
-                    parent = id == 1 ? "NULL" : (id / 2).ToString(CultureInfo.InvariantCulture);
+                    parent = id == 1
+                        ? "NULL"
+                        : (id / 2).ToString(CultureInfo.InvariantCulture);
+
                     left = balancedCoordinates.Lefts![id];
                     right = balancedCoordinates.Rights![id];
-                    position = id == 1 ? 0 : id % 2;
+                    position = id == 1
+                        ? 0
+                        : id % 2;
                 }
 
                 sql.Append(
@@ -607,7 +764,9 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
                 .CreateParameter(
                     parameterCommand,
                     "tree",
-                    forest && start > 1 ? PrintableGuid() : tree,
+                    forest && start > 1
+                        ? PrintableGuid()
+                        : tree,
                     nullable: false);
 
             // WHY: Typed mappings retain the provider's GUID transport and only fixture cardinalities
@@ -615,12 +774,12 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
             await context.Database.ExecuteSqlRawAsync(
                 sql.ToString(),
                 [scopeParameter, treeParameter],
-                CancellationToken.None);
+                cancellationToken);
         }
 
         var analyze = "ANALYZE TABLE " + table;
 
-        await context.Database.ExecuteSqlRawAsync(analyze, CancellationToken.None);
+        await context.Database.ExecuteSqlRawAsync(analyze, cancellationToken);
 
         return;
 
@@ -631,7 +790,16 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
 
     /// <summary>Keeps provider-bound GUID plan diagnostics valid on both native JSON writers.</summary>
     private static Guid PrintableGuid() => new(
-        Encoding.ASCII.GetBytes(Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture)[..16]));
+        Encoding.ASCII.GetBytes(
+            Guid
+                .NewGuid()
+                .ToString("N", CultureInfo.InvariantCulture)[..16]));
+
+    [GeneratedRegex(
+        @"(?im)^.*(?:materializ|temporary table).*\(actual time=[^)]*rows=(?<rows>[0-9.]+) loops=(?<loops>[0-9.]+)",
+        RegexOptions.None,
+        "en-DE")]
+    private static partial Regex MaterializedTuplesRegex();
 
     /// <summary>Retains scalar identities and distance without materializing hierarchy payload.</summary>
     private sealed record Pair(
@@ -639,10 +807,4 @@ public abstract partial class AncestorIndexWorkTestBase : ProviderTest
         int Owner,
         int Distance
     );
-
-    [GeneratedRegex(
-        @"(?im)^.*(?:materializ|temporary table).*\(actual time=[^)]*rows=(?<rows>[0-9.]+) loops=(?<loops>[0-9.]+)",
-        RegexOptions.None,
-        "en-DE")]
-    private static partial Regex MaterializedTuplesRegex();
 }

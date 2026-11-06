@@ -28,9 +28,17 @@ public sealed class TreeRegistryCompiledModelTests
     )
     {
         // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(engine, qualifySchema: false);
+        await using var database = await _fixture.CreateDatabaseAsync(
+            engine,
+            qualifySchema: false,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         await using var design = CreateContext(database, engine);
-        var designName = Registry(design.GetService<IDesignTimeModel>().Model).GetTableName();
+        var designName = Registry(
+                design.GetService<IDesignTimeModel>()
+                    .Model)
+            .GetTableName();
+
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = CreateContext(database, engine, model);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
@@ -79,7 +87,9 @@ public sealed class TreeRegistryCompiledModelTests
         {
             options.UseMySql(
                 connection,
-                engine == "MariaDb" ? DatabaseTestTargets.MariaDb : DatabaseTestTargets.MySql,
+                engine == "MariaDb"
+                    ? DatabaseTestTargets.MariaDb
+                    : DatabaseTestTargets.MySql,
                 provider => provider.UseNestedSets());
         }
 

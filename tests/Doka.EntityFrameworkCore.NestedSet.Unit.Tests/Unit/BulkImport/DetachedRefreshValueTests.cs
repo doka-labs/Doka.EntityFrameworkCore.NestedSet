@@ -39,6 +39,9 @@ public sealed class DetachedRefreshValueTests
         setter.SetClrValueUsingContainingEntity(node, 29);
 
         // Assert
+        Assert.Equal("_fieldRevision", property.FieldInfo?.Name);
+        Assert.Equal(PropertyAccessMode.Field, property.GetPropertyAccessMode());
+        Assert.Null(property.PropertyInfo!.SetMethod);
         Assert.Equal(29, node.FieldRevision);
         Assert.Empty(context.ChangeTracker.Entries());
     }
@@ -248,6 +251,8 @@ public sealed class DetachedRefreshValueTests
         public int Id { get; set; }
 
         /// <summary>Gets the configured field-backed generated value.</summary>
+        // WHY: EF explicitly binds _fieldRevision; compiler-generated storage cannot replace that field.
+        // ReSharper disable once ConvertToAutoProperty
         public int FieldRevision => _fieldRevision;
 
         /// <summary>Gets or sets the binary representation tested with an intentionally broad comparer.</summary>

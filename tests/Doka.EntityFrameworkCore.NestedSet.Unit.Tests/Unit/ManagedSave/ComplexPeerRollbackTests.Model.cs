@@ -6,7 +6,10 @@ public sealed partial class ComplexPeerRollbackTests
     private class PeerContext : DbContext
     {
         /// <summary>Keeps raw CLR edits independent of EF's original values and modification flags.</summary>
-        internal PeerContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal PeerContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <summary>Gets whether the peer shares its principal's physical table.</summary>
         protected virtual bool Sharing => true;
@@ -30,10 +33,13 @@ public sealed partial class ComplexPeerRollbackTests
             peer
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             peer
                 .ComplexProperty(value => value.Optional)
                 .IsRequired(false);
-            peer.ComplexCollection(value => value.Items,
+
+            peer.ComplexCollection(
+                value => value.Items,
                 items =>
                 {
                     items.ToJson("Items");
@@ -54,11 +60,13 @@ public sealed partial class ComplexPeerRollbackTests
                 root
                     .Property(value => value.Id)
                     .ValueGeneratedNever();
+
                 root
                     .HasOne(value => value.Peer)
                     .WithOne(value => value.Root)
                     .HasForeignKey<ComplexPeer>(value => value.Id)
                     .OnDelete(DeleteBehavior.Cascade);
+
                 root
                     .Navigation(value => value.Peer)
                     .IsRequired();
@@ -89,7 +97,10 @@ public sealed partial class ComplexPeerRollbackTests
     private sealed class KeyOnlyContext : DbContext
     {
         /// <summary>Retains explicit caller-controlled detection for the provider promotion control.</summary>
-        internal KeyOnlyContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal KeyOnlyContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -109,16 +120,19 @@ public sealed partial class ComplexPeerRollbackTests
             root
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             var peer = modelBuilder.Entity<KeyOnlyPeer>();
             peer.ToTable("KeyPeerRows");
             peer
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             root
                 .HasOne(value => value.KeyPeer)
                 .WithOne(value => value.Root)
                 .HasForeignKey<KeyOnlyPeer>(value => value.Id)
                 .OnDelete(DeleteBehavior.Cascade);
+
             root
                 .Navigation(value => value.KeyPeer)
                 .IsRequired();

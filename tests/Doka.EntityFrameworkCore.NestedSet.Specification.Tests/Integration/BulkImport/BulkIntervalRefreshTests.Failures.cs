@@ -26,10 +26,10 @@ public abstract partial class BulkIntervalRefreshTests
     )
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkIntervalRefreshProbe(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
-        await SeedAssignedAsync(context);
+        await SeedAssignedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var nodes = AssignedNodes();
         var mutation = MutationSql(context, failure);
         probe.BeforeRefresh = (command, token) => MutateAsync(command, mutation, nodes[^1].NodeId, token);
@@ -55,21 +55,25 @@ public abstract partial class BulkIntervalRefreshTests
         Assert.All(
             nodes,
             node => Assert.Equal((17, 71, 72, "Retained"), (node.Tree, node.Start, node.End, node.Payload)));
+
         Assert.Equal(
             2,
             await tree
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.Equal(
             4,
             await context
                 .Set<TreeNode>()
                 .CountAsync(CancellationToken.None));
+
         Assert.Empty(
             (await tree
                 .InTree(Guid.Empty)
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).Issues);
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -78,12 +82,14 @@ public abstract partial class BulkIntervalRefreshTests
     public async Task CallerTransactionRetainsEarlierWorkWhenRefreshFindsAnUnexpectedRow()
     {
         // Arrange
-        var database = await _assigned.ResetAsync(Engine);
+        var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new BulkIntervalRefreshProbe(nameof(TreeNode));
         await using var context = database.CreateContext(probe);
-        await SeedAssignedAsync(context);
+        await SeedAssignedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(
-            context.Database.IsSqlite() ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted,
+            context.Database.IsSqlite()
+                ? IsolationLevel.Serializable
+                : IsolationLevel.ReadCommitted,
             CancellationToken.None);
 
         await context.AddAsync(
@@ -124,12 +130,14 @@ public abstract partial class BulkIntervalRefreshTests
                 .Set<UnrelatedRow>()
                 .Select(row => row.Value)
                 .SingleAsync(CancellationToken.None));
+
         Assert.Equal(
             2,
             await tree
                 .InTree(Guid.Empty)
                 .Nodes
                 .CountAsync(CancellationToken.None));
+
         Assert.All(nodes, node => Assert.Equal((17, 71, 72), (node.Tree, node.Start, node.End)));
         Assert.Empty(
             (await tree
@@ -152,7 +160,11 @@ public abstract partial class BulkIntervalRefreshTests
             },
         };
 
-        await using var context = await _generated.ResetAsync(Engine, probe);
+        await using var context = await _generated.ResetAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
+
         context.SavedChanges += (_, _) => probe.Inserted = true;
         var tree = context
             .NestedSet<BulkIntervalNode>()
@@ -178,7 +190,7 @@ public abstract partial class BulkIntervalRefreshTests
 
         // Act
         var error = await Record.ExceptionAsync(() => tree.InsertForestAsync(
-            [new NestedSetTreeImport<BulkIntervalNode, Guid>(Guid.Empty, branch),],
+            [new NestedSetTreeImport<BulkIntervalNode, Guid>(Guid.Empty, branch)],
             cancellation.Token));
 
         probe.Inserted = false;
@@ -193,15 +205,18 @@ public abstract partial class BulkIntervalRefreshTests
                 Assert.Equal(
                     (0, 17, 71, 72, 0, 0),
                     (node.Id, node.Scope, node.Left, node.Right, node.Version, node.Details.Revision));
+
                 Assert.Null(node.Name);
                 Assert.Null(node.Details.Label);
                 Assert.Equal("Retained", node.Payload);
             });
+
         Assert.Empty(
             await tree
                 .InTree(Guid.Empty)
                 .Nodes
                 .ToArrayAsync(CancellationToken.None));
+
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
@@ -237,7 +252,9 @@ public abstract partial class BulkIntervalRefreshTests
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),
         };
 
-        string Column(string property) => sql.DelimitIdentifier(entity.FindProperty(property)!.GetColumnName(table)!);
+        string Column(
+            string property
+        ) => sql.DelimitIdentifier(entity.FindProperty(property)!.GetColumnName(table)!);
     }
 
     /// <summary>Changes a physical row in the operation's transaction without altering tracked inputs.</summary>

@@ -99,11 +99,17 @@ internal static class BroadNodeKeyModel
         }
 
         var collation = context.Database.IsSqlite()
-            ? ordered ? "NOCASE" : "BINARY"
+            ? ordered
+                ? "NOCASE"
+                : "BINARY"
             : context.Database.IsSqlServer()
-                ? ordered ? "Latin1_General_100_CI_AS" : "Latin1_General_100_BIN2"
+                ? ordered
+                    ? "Latin1_General_100_CI_AS"
+                    : "Latin1_General_100_BIN2"
                 : context.Database.IsNpgsql()
-                    ? ordered ? "broad_node_key_ci" : "C"
+                    ? ordered
+                        ? "broad_node_key_ci"
+                        : "C"
                     : ordered
                         ? "utf8mb4_general_ci"
                         : "utf8mb4_bin";
@@ -121,8 +127,12 @@ internal static class BroadNodeKeyModel
         var parent = node
             .Property(entity => entity.ParentId)
             .HasConversion(
-                value => value == null ? null : value.Value,
-                value => value == null ? null : new BroadNodeKey(value))
+                value => value == null
+                    ? null
+                    : value.Value,
+                value => value == null
+                    ? null
+                    : new BroadNodeKey(value))
             .HasMaxLength(40)
             .UseCollation(collation);
 
@@ -133,10 +143,8 @@ internal static class BroadNodeKeyModel
         // WHY: EF relationship fixup follows each database collation, while the sorted refresh must still
         // reject changes to the actual stored representation even when the database equates the spellings.
         var comparer = new ValueComparer<BroadNodeKey>(
-            (
-                first,
-                second
-            ) => ordered
+            (first,
+                second) => ordered
                 ? StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value)
                 : StringComparer.Ordinal.Equals(first!.Value, second!.Value),
             value => ordered

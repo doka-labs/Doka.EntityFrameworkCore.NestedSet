@@ -23,23 +23,26 @@ public sealed class CompositionPathTranslationTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_translation;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
         // WHY: Dialect-specific translation cases own their service graphs instead of adding them to EF's
         // process-wide cache. Apply the actual options extensions so provider and NestedSet services stay complete.
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var scope = Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237");
         var hierarchy = context
             .NestedSet<CompositionNode>()
             .ForScope(scope);
 
-        var rows = hierarchy.SelectSubtrees(node => node.Id <= 2,
+        var rows = hierarchy.SelectSubtrees(
+            node => node.Id <= 2,
             (upper, lower, distance) => new
             {
                 Upper = upper,
@@ -48,15 +51,18 @@ public sealed class CompositionPathTranslationTests
 
         var filtered = shape switch
         {
-            "Path" => hierarchy.WherePathEdges(rows,
+            "Path" => hierarchy.WherePathEdges(
+                rows,
                 row => row.Upper,
                 row => row.Lower,
                 (row, parent, child) => child.EdgeOpen),
-            "Nearest" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "Nearest" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Lower,
                 (row, owner) => owner.Candidate,
                 (row, owner) => owner.Matches),
-            "Correlated" => hierarchy.WherePathEdges(rows,
+            "Correlated" => hierarchy.WherePathEdges(
+                rows,
                 row => row.Upper,
                 row => row.Lower,
                 (row, parent, child) => child.EdgeOpen && child.Id <= row.Upper.Id + 100),
@@ -120,14 +126,16 @@ public sealed class CompositionPathTranslationTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_translation;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var scope = Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237");
         var hierarchy = context
@@ -141,15 +149,18 @@ public sealed class CompositionPathTranslationTests
 
         var filtered = shape switch
         {
-            "Independent" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "Independent" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate,
                 (row, owner) => owner.Matches),
-            "RowAware" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "RowAware" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate && owner.Id < row.Node.Id + 100,
                 (row, owner) => owner.Matches),
-            "QueryBearing" => hierarchy.WhereNearestAncestorOrSelf(rows,
+            "QueryBearing" => hierarchy.WhereNearestAncestorOrSelf(
+                rows,
                 row => row.Node,
                 (row, owner) => owner.Candidate
                     && context
@@ -197,20 +208,23 @@ public sealed class CompositionPathTranslationTests
         // Arrange
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<CompositionContext>(
-                ModelCompatibilityDatabase.Options<CompositionContext>(engine,
+                ModelCompatibilityDatabase.Options<CompositionContext>(
+                    engine,
                     "Server=127.0.0.1;Database=composition_translation;User ID=unused;Pooling=false"))
             .AddInterceptors(boundary);
 
         await using var provider = BuildServices(options.Options);
-        await using var context = new CompositionContext(options
-            .UseInternalServiceProvider(provider)
-            .Options);
+        await using var context = new CompositionContext(
+            options
+                .UseInternalServiceProvider(provider)
+                .Options);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
             .ForScope(Guid.Parse("820bc0eb-7a3c-4dd9-9cbb-87d758889237"));
 
-        var upward = hierarchy.SelectAncestors(node => node.Id >= 100,
+        var upward = hierarchy.SelectAncestors(
+            node => node.Id >= 100,
             (node, ancestor, distance) => new
             {
                 Node = node,
@@ -218,13 +232,15 @@ public sealed class CompositionPathTranslationTests
             });
 
         var downward = queryBearing
-            ? hierarchy.SelectSubtrees(anchor => upward.Any(row => row.Ancestor == anchor),
+            ? hierarchy.SelectSubtrees(
+                anchor => upward.Any(row => row.Ancestor == anchor),
                 (anchor, node, distance) => new
                 {
                     Anchor = anchor,
                     Node = node,
                 })
-            : hierarchy.SelectSubtrees(anchor => anchor.Id <= 2,
+            : hierarchy.SelectSubtrees(
+                anchor => anchor.Id <= 2,
                 (anchor, node, distance) => new
                 {
                     Anchor = anchor,
@@ -245,10 +261,30 @@ public sealed class CompositionPathTranslationTests
         // Assert
         // WHY: The inner upward source may gain a provider-owned recursive UNION during SQL translation.
         // Count the actual downward LINQ boundary instead: a relational pivot must retain zero pair UNIONs.
-        Assert.Equal(queryBearing ? 0 : 1, boundaryCounter.Occurrences);
+        Assert.Equal(
+            queryBearing
+                ? 0
+                : 1,
+            boundaryCounter.Occurrences);
+
         Assert.Contains("SELECT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    /// <summary>Owns a complete isolated EF service graph for each explicit dialect translation.</summary>
+    private static ServiceProvider BuildServices(
+        DbContextOptions options
+    )
+    {
+        var services = new ServiceCollection();
+
+        foreach (var extension in options.Extensions)
+        {
+            extension.ApplyServices(services);
+        }
+
+        return services.BuildServiceProvider();
     }
 
     /// <summary>Counts actual LINQ pair unions without conflating provider-generated source transport SQL.</summary>
@@ -270,20 +306,5 @@ public sealed class CompositionPathTranslationTests
 
             return base.VisitMethodCall(node);
         }
-    }
-
-    /// <summary>Owns a complete isolated EF service graph for each explicit dialect translation.</summary>
-    private static ServiceProvider BuildServices(
-        DbContextOptions options
-    )
-    {
-        var services = new ServiceCollection();
-
-        foreach (var extension in options.Extensions)
-        {
-            extension.ApplyServices(services);
-        }
-
-        return services.BuildServiceProvider();
     }
 }

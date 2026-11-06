@@ -6,7 +6,10 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     private class RollbackContext : DbContext
     {
         /// <summary>Keeps raw callback edits distinct from the native identities installed by public setters.</summary>
-        internal RollbackContext() => ChangeTracker.AutoDetectChangesEnabled = false;
+        internal RollbackContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
 
         /// <summary>Gets whether two ordinary FKs share a non-key scope member on the dependent.</summary>
         protected virtual bool CompositeOwner => false;
@@ -56,10 +59,12 @@ public sealed partial class UnchangedForeignKeyRollbackTests
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasParent(value => value.ParentId)
                 .OrderBy(value => value.Name));
+
             var reference = node.HasOne(value => value.Owner);
 
             if (UniqueOwner)
@@ -91,6 +96,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
                             value.OwnerId,
                         })
                         .OnDelete(DeleteBehavior.Restrict);
+
                     // WHY: The shared scope is ordinary non-key payload on this hierarchy node. Repairing one
                     // FK component must also preserve the other installed tuple and its independent reference.
                     node
@@ -164,26 +170,8 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     /// <summary>Provides unchanged ordinary FK payload beside a marked hierarchy ordering candidate.</summary>
     private sealed class RollbackNode : INestedSetNode<int, Guid>
     {
-        /// <inheritdoc />
-        public int Id { get; set; }
-
-        /// <inheritdoc />
-        public Guid TreeId { get; set; } = Guid.NewGuid();
-
         /// <summary>Gets or sets the independent hierarchy parent key.</summary>
         public int? ParentId { get; set; }
-
-        /// <inheritdoc />
-        public long Left { get; set; } = 1;
-
-        /// <inheritdoc />
-        public long Right { get; set; } = 2;
-
-        /// <inheritdoc />
-        public int Depth { get; set; }
-
-        /// <inheritdoc />
-        public long Position { get; set; }
 
         /// <summary>Gets or sets the ordinary domain ordering criterion marked before snapshot capture.</summary>
         public string Name { get; set; } = "Before";
@@ -202,5 +190,23 @@ public sealed partial class UnchangedForeignKeyRollbackTests
 
         /// <summary>Gets or sets the independent second ordinary principal reference.</summary>
         public RollbackOwner? Reviewer { get; set; }
+
+        /// <inheritdoc />
+        public int Id { get; set; }
+
+        /// <inheritdoc />
+        public Guid TreeId { get; set; } = Guid.NewGuid();
+
+        /// <inheritdoc />
+        public long Left { get; set; } = 1;
+
+        /// <inheritdoc />
+        public long Right { get; set; } = 2;
+
+        /// <inheritdoc />
+        public int Depth { get; set; }
+
+        /// <inheritdoc />
+        public long Position { get; set; }
     }
 }

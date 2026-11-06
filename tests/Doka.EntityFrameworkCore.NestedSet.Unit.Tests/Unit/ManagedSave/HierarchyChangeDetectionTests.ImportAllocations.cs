@@ -59,11 +59,13 @@ public sealed class HierarchyImportCollectionAllocationTests
                 TrackWave(context, prepared.Nodes, offset, count);
             }
 
-            maximumTracked = Math.Max(maximumTracked,
+            maximumTracked = Math.Max(
+                maximumTracked,
                 context
                     .ChangeTracker
                     .Entries()
                     .Count());
+
             var observation = Observe(context, 1);
             allocated += observation.Allocated;
             changes += observation.Changes;
@@ -77,8 +79,10 @@ public sealed class HierarchyImportCollectionAllocationTests
         var snapshot = Assert.IsAssignableFrom<ISet<object>>(
             prepared.OwnerEntry.GetRelationshipSnapshotValue(prepared.Navigation));
 
-        _output.WriteLine($"Prepared import guard: nodes={nodes}; waves={waves}; allocated={allocated} B; "
+        _output.WriteLine(
+            $"Prepared import guard: nodes={nodes}; waves={waves}; allocated={allocated} B; "
             + $"maximum={maximum} B; maximum tracked={maximumTracked}.");
+
         Assert.InRange(allocated, 0, maximum);
         Assert.Equal(0, changes);
         Assert.Equal(BatchSize + 1, maximumTracked);
@@ -86,8 +90,10 @@ public sealed class HierarchyImportCollectionAllocationTests
         Assert.Equal(nodes, prepared.Owner.ScopeNodes.Count);
         Assert.Single(context.ChangeTracker.Entries());
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>A large detached snapshot prefix does not add a per-call set-comparison bitmap.</summary>
@@ -115,27 +121,38 @@ public sealed class HierarchyImportCollectionAllocationTests
         // Assert
         // WHY: Both contexts have the same 64 tracked dependents and equal current/snapshot reference sets.
         // A full-snapshot bitmap grows at 8,000 members; bounded tracked-removal scratch does not.
-        _output.WriteLine($"Completed snapshot guard: passes=100; small={smallObservation.Allocated} B; "
+        _output.WriteLine(
+            $"Completed snapshot guard: passes=100; small={smallObservation.Allocated} B; "
             + $"large={largeObservation.Allocated} B.");
+
         Assert.InRange(largeObservation.Allocated, 0, smallObservation.Allocated + 4_096);
         Assert.Equal(0, smallObservation.Changes);
         Assert.Equal(0, largeObservation.Changes);
-        Assert.Equal(BatchSize + 1,
+        Assert.Equal(
+            BatchSize + 1,
             smallContext
                 .ChangeTracker
                 .Entries()
                 .Count());
-        Assert.Equal(BatchSize + 1,
+
+        Assert.Equal(
+            BatchSize + 1,
             largeContext
                 .ChangeTracker
                 .Entries()
                 .Count());
+
         Assert.False(smallContext.ChangeTracker.AutoDetectChangesEnabled);
         Assert.False(largeContext.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            smallContext.Database.GetDbConnection().State);
-        Assert.Equal(ConnectionState.Closed,
-            largeContext.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            smallContext.Database.GetDbConnection()
+                .State);
+
+        Assert.Equal(
+            ConnectionState.Closed,
+            largeContext.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Whole-import authorization does not admit a foreign reference between callback boundaries.</summary>
@@ -171,9 +188,17 @@ public sealed class HierarchyImportCollectionAllocationTests
         // Assert
         Assert.False(initial);
         Assert.True(changed);
-        Assert.Equal(replace ? 130 : 131, members.Count);
-        Assert.Equal(EntityState.Detached,
-            context.Entry(foreign).State);
+        Assert.Equal(
+            replace
+                ? 130
+                : 131,
+            members.Count);
+
+        Assert.Equal(
+            EntityState.Detached,
+            context.Entry(foreign)
+                .State);
+
         Assert.Single(context.ChangeTracker.Entries());
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
@@ -214,6 +239,7 @@ public sealed class HierarchyImportCollectionAllocationTests
             prepared.OwnerEntry,
             prepared.Navigation,
             prepared.Nodes[0]);
+
         var entry = context.Entry(prepared.Nodes[0]);
         var removed = prepared.Owner.ScopeNodes.Remove(prepared.Nodes[0]);
 
@@ -226,7 +252,10 @@ public sealed class HierarchyImportCollectionAllocationTests
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.Equal(prepared.Owner.Id, prepared.Nodes[0].Scope);
         Assert.Same(prepared.Owner, prepared.Nodes[0].ScopeOwner);
-        Assert.False(entry.Property(value => value.Scope).IsModified);
+        Assert.False(
+            entry.Property(value => value.Scope)
+                .IsModified);
+
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
@@ -246,13 +275,15 @@ public sealed class HierarchyImportCollectionAllocationTests
 
         var metadata = context.Model.FindEntityType(typeof(ProbeNode))!;
         var store = new NestedSetStore<ProbeNode, int, Guid, int>(context, metadata, owner.Id, nodes[0].TreeId);
-        var root = new NestedSetBranch<ProbeNode>(nodes[0],
+        var root = new NestedSetBranch<ProbeNode>(
+            nodes[0],
             nodes
                 .Skip(1)
                 .Select(node => new NestedSetBranch<ProbeNode>(node))
                 .ToArray());
 
-        var plan = new NestedSetBulkPlan<ProbeNode, int, Guid, int>(store,
+        var plan = new NestedSetBulkPlan<ProbeNode, int, Guid, int>(
+            store,
             [root],
             new HashSet<ProbeNode>(ReferenceEqualityComparer.Instance),
             CancellationToken.None);
@@ -269,7 +300,8 @@ public sealed class HierarchyImportCollectionAllocationTests
 
         var navigation = metadata.FindNavigation(nameof(ProbeNode.ScopeOwner))!.Inverse!;
 
-        return new PreparedImport(owner,
+        return new PreparedImport(
+            owner,
             NestedSetInsertionContract.Instance.Entry(ownerEntry),
             nodes,
             navigation,
@@ -289,7 +321,8 @@ public sealed class HierarchyImportCollectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = offset; index < offset + count; index++)
         {
-            context.Entry(nodes[index]).State = EntityState.Unchanged;
+            context.Entry(nodes[index])
+                .State = EntityState.Unchanged;
         }
     }
 
@@ -308,7 +341,8 @@ public sealed class HierarchyImportCollectionAllocationTests
         {
             var node = prepared.Nodes[index];
             NestedSetInsertionContract.Instance.AddCollectionSnapshot(prepared.OwnerEntry, prepared.Navigation, node);
-            context.Entry(node).State = EntityState.Detached;
+            context.Entry(node)
+                .State = EntityState.Detached;
         }
     }
 
@@ -340,7 +374,9 @@ public sealed class HierarchyImportCollectionAllocationTests
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < repetitions; index++)
         {
-            changes += NestedSetSaveChanges.HasHierarchyChanges(context) ? 1 : 0;
+            changes += NestedSetSaveChanges.HasHierarchyChanges(context)
+                ? 1
+                : 0;
         }
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

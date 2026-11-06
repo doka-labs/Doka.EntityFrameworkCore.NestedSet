@@ -28,6 +28,7 @@ internal static partial class SignalReportValidation
                     _channels.Add(row.Id);
                     _invalidUnit |= string.IsNullOrEmpty(row.UnitCode)
                         || (_unit is not null && !StringComparer.Ordinal.Equals(_unit, row.UnitCode));
+
                     _unit ??= row.UnitCode;
                     break;
                 case 2:

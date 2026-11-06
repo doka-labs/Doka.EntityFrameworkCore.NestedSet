@@ -14,45 +14,57 @@ internal static class SupervisorModel
         model
             .Entity<UserGroup>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<User>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<Role>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<UserGroupMembership>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<MembershipRole>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<UserRole>()
             .HasQueryFilter(row => row.Visible);
+
         model
             .Entity<UserGroup>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<User>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<Role>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<UserGroupMembership>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<MembershipRole>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<UserRole>()
             .Property(row => row.Visible)
             .HasDefaultValue(true);
+
         model
             .Entity<GroupType>()
             .HasKey(row => new
@@ -60,14 +72,17 @@ internal static class SupervisorModel
                 row.TenantId,
                 row.Id,
             });
+
         model
             .Entity<GroupType>()
             .Property(row => row.Id)
             .ValueGeneratedNever();
+
         model
             .Entity<GroupType>()
             .Property(row => row.Name)
             .HasMaxLength(80);
+
         model
             .Entity<UserGroup>()
             .HasOne<GroupType>()
@@ -92,6 +107,7 @@ internal static class SupervisorModel
             row.UserGroupId,
             row.RoleId,
         });
+
         local
             .HasOne<UserGroupMembership>()
             .WithMany()
@@ -99,16 +115,17 @@ internal static class SupervisorModel
             {
                 row.TenantId,
                 row.UserId,
-                row.UserGroupId
+                row.UserGroupId,
             })
             .OnDelete(DeleteBehavior.Cascade);
+
         local
             .HasOne<Role>()
             .WithMany()
             .HasForeignKey(row => new
             {
                 row.TenantId,
-                row.RoleId
+                row.RoleId,
             })
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -117,20 +134,21 @@ internal static class SupervisorModel
         {
             row.TenantId,
             row.UserId,
-            row.RoleId
+            row.RoleId,
         });
+
         global
             .HasOne<User>()
             .WithMany()
             .HasForeignKey(row => new
             {
                 row.TenantId,
-                row.UserId
+                row.UserId,
             })
             .HasPrincipalKey(row => new
             {
                 row.TenantId,
-                row.Id
+                row.Id,
             })
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -140,7 +158,7 @@ internal static class SupervisorModel
             .HasForeignKey(row => new
             {
                 row.TenantId,
-                row.RoleId
+                row.RoleId,
             })
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -152,13 +170,14 @@ internal static class SupervisorModel
             row.ChildId,
             row.FromDate,
         });
+
         periods
             .HasOne<UserGroup>()
             .WithMany()
             .HasForeignKey(row => new
             {
                 row.TenantId,
-                Id = row.ParentId
+                Id = row.ParentId,
             })
             .HasPrincipalKey(row => new
             {
@@ -173,7 +192,7 @@ internal static class SupervisorModel
             .HasForeignKey(row => new
             {
                 row.TenantId,
-                Id = row.ChildId
+                Id = row.ChildId,
             })
             .HasPrincipalKey(row => new
             {
@@ -208,10 +227,14 @@ internal static class SupervisorModel
         // WHY: Three concrete tables retain real owner foreign keys instead of an unchecked polymorphic object key.
         var value = model.Entity<TValue>();
         var definition = model.Entity<TDefinition>();
-        string[] definitionKey = group ? ["TenantId", "GroupTypeId", "FieldCode"] : ["TenantId", "FieldCode"];
+        string[] definitionKey = group
+            ? ["TenantId", "GroupTypeId", "FieldCode"]
+            : ["TenantId", "FieldCode"];
 
         string[] ownerKey = group
-            ? membership ? ["TenantId", "UserId", "UserGroupId", "FieldCode"] : ["TenantId", "UserGroupId", "FieldCode"]
+            ? membership
+                ? ["TenantId", "UserId", "UserGroupId", "FieldCode"]
+                : ["TenantId", "UserGroupId", "FieldCode"]
             : ["TenantId", "UserId", "FieldCode"];
 
         definition.HasKey(definitionKey);
@@ -219,18 +242,22 @@ internal static class SupervisorModel
             .Property<string>("FieldCode")
             .HasMaxLength(64)
             .UseCollation(collation);
+
         definition
             .Property<string>("ValueKind")
             .HasMaxLength(16);
+
         value.HasKey(ownerKey);
         value
             .Property<string>("FieldCode")
             .HasMaxLength(64)
             .UseCollation(collation);
+
         value
             .Property<string?>("Value")
             .HasMaxLength(120)
             .UseCollation(collation);
+
         value
             .HasOne<TDefinition>()
             .WithMany()

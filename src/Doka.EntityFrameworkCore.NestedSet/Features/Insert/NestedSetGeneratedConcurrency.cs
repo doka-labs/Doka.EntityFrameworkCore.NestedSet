@@ -9,8 +9,9 @@ internal sealed class NestedSetGeneratedConcurrency<TEntity>
     private static readonly ConditionalWeakTable<IEntityType, NestedSetGeneratedConcurrency<TEntity>>
         s_entities = new();
 
-    private readonly IProperty[] _properties;
     private readonly Expression<Func<TEntity, object[]>>? _projection;
+
+    private readonly IProperty[] _properties;
 
     /// <summary>Resolves the generated concurrency properties for one finalized entity mapping.</summary>
     /// <param name="entityType">The metadata whose lifetime bounds the cached selector.</param>
@@ -53,7 +54,9 @@ internal sealed class NestedSetGeneratedConcurrency<TEntity>
         CancellationToken cancellationToken
     )
     {
-        var metadata = s_entities.GetValue(entry.Metadata, static entityType => new(entityType));
+        var metadata = s_entities.GetValue(
+            entry.Metadata,
+            static entityType => new NestedSetGeneratedConcurrency<TEntity>(entityType));
 
         if (metadata._projection is not { } projection)
         {
@@ -71,7 +74,8 @@ internal sealed class NestedSetGeneratedConcurrency<TEntity>
         for (var index = 0; index < metadata._properties.Length; index++)
         {
             // WHY: CurrentValue writes the mapped CLR member; generated sidecars would be lost on detachment.
-            NestedSetTrackedProperty.Property(entry, metadata._properties[index]).CurrentValue = values[index];
+            NestedSetTrackedProperty.Property(entry, metadata._properties[index])
+                .CurrentValue = values[index];
         }
     }
 }

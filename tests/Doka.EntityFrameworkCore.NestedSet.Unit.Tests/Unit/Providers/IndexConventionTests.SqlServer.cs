@@ -54,7 +54,8 @@ public sealed partial class IndexConventionTests
             });
 
         // Act
-        var model = context.GetService<IDesignTimeModel>().Model;
+        var model = context.GetService<IDesignTimeModel>()
+            .Model;
 
         // Assert
         var indexes = model.FindEntityType(typeof(IndexNode))!
@@ -67,7 +68,8 @@ public sealed partial class IndexConventionTests
             index => index
                 .Properties
                 .Select(property => property.Name)
-                .SequenceEqual(new[] { nameof(IndexNode.Scope), nameof(IndexNode.TreeId), nameof(IndexNode.Left), }));
+                .SequenceEqual(new[] { nameof(IndexNode.Scope), nameof(IndexNode.TreeId), nameof(IndexNode.Left) }));
+
         Assert.Contains(
             indexes,
             index => index

@@ -468,7 +468,9 @@ public sealed partial class NestedSetBuilder<TEntity>
             entity.SetAnnotation(
                 NestedSetAnnotationNames.OrderNullSort,
                 order
-                    .Select(criterion => criterion.NullSortOrder is { } value ? (int)value : -1)
+                    .Select(criterion => criterion.NullSortOrder is { } value
+                        ? (int)value
+                        : -1)
                     .ToArray());
 
             entity.SetAnnotation(NestedSetAnnotationNames.OrderMode, (int)orderMode);
@@ -506,7 +508,9 @@ public sealed partial class NestedSetBuilder<TEntity>
         }
 
         var selected = Select(property);
-        var order = append ? _order ?? ExistingOrder() : [];
+        var order = append
+            ? _order ?? ExistingOrder()
+            : [];
 
         if (append && order.Count == 0)
         {
@@ -558,11 +562,11 @@ public sealed partial class NestedSetBuilder<TEntity>
         }
 
         return names
-            .Select((
-                name,
-                index
-            ) => (name, descending[index],
-                nullSort[index] == -1 ? (NullSortOrder?)null : (NullSortOrder)nullSort[index]))
+            .Select((name,
+                index) => (name, descending[index],
+                nullSort[index] == -1
+                    ? (NullSortOrder?)null
+                    : (NullSortOrder)nullSort[index]))
             .ToList();
     }
 

@@ -32,7 +32,8 @@ public abstract class MappingDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
             Engine,
-            static options => new TptContext(options));
+            static options => new TptContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var scenario = await MappingDeleteTestSupport.SeedAsync(
             context,
@@ -42,13 +43,24 @@ public abstract class MappingDeletionTests : ProviderTest
                 Name = name,
                 FolderKind = "Folder",
             },
-            null);
+            null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await DeleteAsync<InheritanceNode>(context, scenario, operation);
+        await DeleteAsync<InheritanceNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        await VerifyAsync<TptFolderNode>(context, scenario, operation, "TptNodes", "TptFolders");
+        await VerifyAsync<TptFolderNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "TptNodes",
+            "TptFolders");
     }
 
     /// <summary>Deletes only the matching derived row when one TPT tree mixes concrete node types.</summary>
@@ -58,11 +70,12 @@ public abstract class MappingDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
             Engine,
-            static options => new TptContext(options));
+            static options => new TptContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<InheritanceNode>();
         var treeId = Guid.NewGuid();
-        var seed = 100_000 + (MappingDeleteTestSupport.NextSequence() * 10);
+        var seed = 100_000 + MappingDeleteTestSupport.NextSequence() * 10;
         await hierarchy.InsertRootAsync(
             new TptFolderNode
             {
@@ -103,9 +116,30 @@ public abstract class MappingDeletionTests : ProviderTest
         await hierarchy.DeleteAsync(seed + 1, CancellationToken.None);
 
         // Assert
-        Assert.Equal(3, await MappingDeleteTestSupport.CountRowsAsync(context, "TptNodes", seed));
-        Assert.Equal(2, await MappingDeleteTestSupport.CountRowsAsync(context, "TptFolders", seed));
-        Assert.Equal(1, await MappingDeleteTestSupport.CountRowsAsync(context, "TptMetrics", seed));
+        Assert.Equal(
+            3,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "TptNodes",
+                seed,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            2,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "TptFolders",
+                seed,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            1,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "TptMetrics",
+                seed,
+                cancellationToken: TestContext.Current.CancellationToken));
+
         Assert.True(
             (await hierarchy
                 .InTree(treeId)
@@ -122,7 +156,8 @@ public abstract class MappingDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TableSplitContext>(
             Engine,
-            static options => new TableSplitContext(options));
+            static options => new TableSplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var scenario = await MappingDeleteTestSupport.SeedAsync(
             context,
@@ -152,13 +187,24 @@ public abstract class MappingDeletionTests : ProviderTest
                         });
 
                 await database.SaveChangesAsync(CancellationToken.None);
-            });
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await DeleteAsync<TableSplitNode>(context, scenario, operation);
+        await DeleteAsync<TableSplitNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        await VerifyAsync<TableSplitNode>(context, scenario, operation, "TableSplitNodes");
+        await VerifyAsync<TableSplitNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "TableSplitNodes");
+
         var payload = await context
             .Set<TableSplitPayload>()
             .AsNoTracking()
@@ -166,7 +212,11 @@ public abstract class MappingDeletionTests : ProviderTest
             .Select(value => value.Id)
             .ToArrayAsync(CancellationToken.None);
 
-        Assert.Equal(operation == MappingDeleteOperation.Tree ? [] : [scenario.Seed + 3], payload);
+        Assert.Equal(
+            operation == MappingDeleteOperation.Tree
+                ? []
+                : [scenario.Seed + 3],
+            payload);
     }
 
     /// <summary>Deletes both entity-splitting fragments in foreign-key-safe order.</summary>
@@ -179,7 +229,8 @@ public abstract class MappingDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
             Engine,
-            static options => new EntitySplitContext(options));
+            static options => new EntitySplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var scenario = await MappingDeleteTestSupport.SeedAsync(
             context,
@@ -188,13 +239,24 @@ public abstract class MappingDeletionTests : ProviderTest
                 Id = id,
                 Name = name,
             },
-            null);
+            null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
-        await DeleteAsync<EntitySplitNode>(context, scenario, operation);
+        await DeleteAsync<EntitySplitNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        await VerifyAsync<EntitySplitNode>(context, scenario, operation, "EntitySplitPayload", "EntitySplitStructure");
+        await VerifyAsync<EntitySplitNode>(
+            context,
+            scenario,
+            operation,
+            cancellationToken: TestContext.Current.CancellationToken,
+            "EntitySplitPayload",
+            "EntitySplitStructure");
     }
 
     /// <summary>Processes more than one key batch without leaving entity-splitting fragments behind.</summary>
@@ -204,7 +266,8 @@ public abstract class MappingDeletionTests : ProviderTest
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
             Engine,
-            static options => new EntitySplitContext(options));
+            static options => new EntitySplitContext(options),
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var hierarchy = context.NestedSet<EntitySplitNode>();
         var treeId = Guid.NewGuid();
@@ -243,14 +306,30 @@ public abstract class MappingDeletionTests : ProviderTest
         await hierarchy.DeleteTreeAsync(treeId, CancellationToken.None);
 
         // Assert
-        Assert.Equal(0, await MappingDeleteTestSupport.CountRowsAsync(context, "EntitySplitPayload", seed, 131));
-        Assert.Equal(0, await MappingDeleteTestSupport.CountRowsAsync(context, "EntitySplitStructure", seed, 131));
+        Assert.Equal(
+            0,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "EntitySplitPayload",
+                seed,
+                cancellationToken: TestContext.Current.CancellationToken,
+                131));
+
+        Assert.Equal(
+            0,
+            await MappingDeleteTestSupport.CountRowsAsync(
+                context,
+                "EntitySplitStructure",
+                seed,
+                cancellationToken: TestContext.Current.CancellationToken,
+                131));
     }
 
     private static async Task DeleteAsync<TNode>(
         DbContext context,
         MappingDeleteScenario scenario,
-        MappingDeleteOperation operation
+        MappingDeleteOperation operation,
+        CancellationToken cancellationToken
     )
         where TNode : class
     {
@@ -259,13 +338,13 @@ public abstract class MappingDeletionTests : ProviderTest
         switch (operation)
         {
             case MappingDeleteOperation.Node:
-                await hierarchy.DeleteAsync(scenario.Seed + 1, CancellationToken.None);
+                await hierarchy.DeleteAsync(scenario.Seed + 1, cancellationToken);
                 break;
             case MappingDeleteOperation.Subtree:
-                await hierarchy.DeleteSubtreeAsync(scenario.Seed + 1, CancellationToken.None);
+                await hierarchy.DeleteSubtreeAsync(scenario.Seed + 1, cancellationToken);
                 break;
             case MappingDeleteOperation.Tree:
-                await hierarchy.DeleteTreeAsync(scenario.TargetTree, CancellationToken.None);
+                await hierarchy.DeleteTreeAsync(scenario.TargetTree, cancellationToken);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(operation));
@@ -276,6 +355,7 @@ public abstract class MappingDeletionTests : ProviderTest
         DbContext context,
         MappingDeleteScenario scenario,
         MappingDeleteOperation operation,
+        CancellationToken cancellationToken,
         params string[] tables
     )
         where TNode : class
@@ -289,7 +369,7 @@ public abstract class MappingDeletionTests : ProviderTest
             .Where(node => EF.Property<int>(node, "Id") >= seed && EF.Property<int>(node, "Id") <= seed + 4)
             .Select(node => EF.Property<int>(node, "Id"))
             .OrderBy(id => id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(cancellationToken);
 
         int[] expected = operation switch
         {
@@ -303,19 +383,25 @@ public abstract class MappingDeletionTests : ProviderTest
         Assert.True(
             (await hierarchy
                 .InTree(scenario.OtherTree)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
 
         if (operation != MappingDeleteOperation.Tree)
         {
             Assert.True(
                 (await hierarchy
                     .InTree(scenario.TargetTree)
-                    .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
+                    .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
         }
 
         foreach (var table in tables)
         {
-            Assert.Equal(expected.Length, await MappingDeleteTestSupport.CountRowsAsync(context, table, seed));
+            Assert.Equal(
+                expected.Length,
+                await MappingDeleteTestSupport.CountRowsAsync(
+                    context,
+                    table,
+                    seed,
+                    cancellationToken: cancellationToken));
         }
     }
 }

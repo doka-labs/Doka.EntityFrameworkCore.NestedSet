@@ -26,10 +26,18 @@ public abstract class MalformedSubtreeTestBase : ProviderTest
         await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(
             Engine,
             static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
             probe);
 
         var bounds = MalformedIntervalTestSupport.Bounds();
-        var nodes = await MalformedIntervalTestSupport.SeedAsync(context, first, tree, foreignTree, bounds);
+        var nodes = await MalformedIntervalTestSupport.SeedAsync(
+            context,
+            first,
+            tree,
+            foreignTree,
+            bounds,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var query = context
             .NestedSet<EntitySplitNode>()
             .SelectSubtrees(

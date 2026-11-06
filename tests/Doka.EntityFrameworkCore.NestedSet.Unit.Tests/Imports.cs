@@ -32,6 +32,7 @@ global using MySqlConnector;
 global using Xunit;
 global using Xunit.Sdk;
 global using Xunit.v3;
+
 // WHY: Each standalone sample links the same internal setup source. Select one actual sample assembly
 // explicitly so tests exercise its binary without copying setup code or introducing ambiguous types.
 global using SampleCommand = UserGroupsSample::Doka.EntityFrameworkCore.NestedSet.Samples.SampleCommand;

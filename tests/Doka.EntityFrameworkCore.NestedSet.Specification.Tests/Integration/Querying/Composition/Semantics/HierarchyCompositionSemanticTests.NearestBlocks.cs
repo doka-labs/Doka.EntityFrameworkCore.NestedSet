@@ -25,7 +25,8 @@ public abstract partial class HierarchyCompositionSemanticTests
         var treeId = Guid.NewGuid();
         var local = NearestSectionNodes(scope, treeId, mode);
         var foreign = DensePathDecoys(local, Guid.NewGuid(), treeId, 0)
-            .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 10_000)).ToArray();
+            .Concat(DensePathDecoys(local, scope, Guid.NewGuid(), 10_000))
+            .ToArray();
 
         foreach (var node in foreign)
         {
@@ -33,21 +34,37 @@ public abstract partial class HierarchyCompositionSemanticTests
             node.Matches = true;
         }
 
-        var all = local.Concat(foreign).ToArray();
+        var all = local
+            .Concat(foreign)
+            .ToArray();
+
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, all, probe);
-        await context.AddRangeAsync(LongDays().Select(day => new CompositionInputOne
-        {
-            Scope = scope,
-            NodeId = 80,
-            Date = day,
-            Amount = 1,
-        }), CancellationToken.None);
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            40,
+            all,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await context.AddRangeAsync(
+            LongDays()
+                .Select(day => new CompositionInputOne
+                {
+                    Scope = scope,
+                    NodeId = 80,
+                    Date = day,
+                    Amount = 1,
+                }),
+            CancellationToken.None);
 
         await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
         context.ChangeTracker.Clear();
         probe.Reset();
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(treeId);
+
         var original = LongRows(context, scope, 900, 900, 40)
             .Concat(LongRows(context, scope, 0, 0, 40))
             .Concat(LongRows(context, scope, 900, 900, 80))
@@ -59,15 +76,28 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Act
         // WHY: Both criteria deliberately ignore the original row. Row-correlated candidate tests
         // cannot exercise the independent candidate relation qualified by these cases.
-        var query = hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-            (row, owner) => owner.Candidate, (row, owner) => owner.Matches);
+        var query = hierarchy.WhereNearestAncestorOrSelf(
+            rows,
+            row => row.Node,
+            (row, owner) => owner.Candidate,
+            (row, owner) => owner.Matches);
 
-        var actualRows = await ReadLongRowsAsync(query);
-        var actual = actualRows.OrderBy(row => row.Origin).ThenBy(row => row.Node).ThenBy(row => row.Day).ToArray();
+        var actualRows = await ReadLongRowsAsync(query, cancellationToken: TestContext.Current.CancellationToken);
+        var actual = actualRows
+            .OrderBy(row => row.Origin)
+            .ThenBy(row => row.Node)
+            .ThenBy(row => row.Day)
+            .ToArray();
 
         // Assert
-        Assert.False(local.Single(node => node.Id == 40).Candidate);
-        Assert.False(local.Single(node => node.Id == 80).Candidate);
+        Assert.False(
+            local.Single(node => node.Id == 40)
+                .Candidate);
+
+        Assert.False(
+            local.Single(node => node.Id == 80)
+                .Candidate);
+
         Assert.Equal((1L, 400L), (local[0].Left, local[0].Right));
         Assert.Equal(expectedCount, expected.Length);
         Assert.Equal(expected, actual);
@@ -92,15 +122,32 @@ public abstract partial class HierarchyCompositionSemanticTests
         }
 
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
-        var source = hierarchy.Nodes.OrderBy(_ => EF.Functions.Random()).Take(10);
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            40,
+            local,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(treeId);
+
+        var source = hierarchy
+            .Nodes
+            .OrderBy(_ => EF.Functions.Random())
+            .Take(10);
 
         // Act
         // WHY: Every sampled node, including the root itself, has the same matching owner. Reusing the
         // source for owner selection must not independently resample it and drop original occurrences.
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(source, node => node,
-                (node, owner) => owner.Id == 900, (node, owner) => true)
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
+                source,
+                node => node,
+                (node, owner) => owner.Id == 900,
+                (node, owner) => true)
             .Select(node => node.Id)
             .ToArrayAsync(CancellationToken.None);
 
@@ -123,17 +170,40 @@ public abstract partial class HierarchyCompositionSemanticTests
         var treeId = Guid.NewGuid();
         var local = NearestSectionNodes(scope, treeId, "zero-owner");
         var probe = new CompositionCommandProbe();
-        await using var context = await CreateLongPathContextAsync(scope, 40, local, probe);
-        var hierarchy = context.NestedSet<CompositionNode>().ForScope(scope).InTree(treeId);
-        var nodes = context.Set<CompositionNode>().Where(node => node.Scope == scope && node.Id == 40);
+        await using var context = await CreateLongPathContextAsync(
+            scope,
+            40,
+            local,
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var hierarchy = context
+            .NestedSet<CompositionNode>()
+            .ForScope(scope)
+            .InTree(treeId);
+
+        var nodes = context
+            .Set<CompositionNode>()
+            .Where(node => node.Scope == scope && node.Id == 40);
+
         var firstDay = LongDays()[0];
-        var original = context.Set<CompositionInputOne>().Where(fact => fact.Scope == scope && fact.NodeId == 40)
-            .Join(nodes, fact => fact.NodeId, node => node.Id, (fact, node) => new
-            {
-                Node = node,
-                Origin = fact.Date == firstDay ? 101 : 202,
-                AcceptedOwnerId = fact.Date == firstDay ? 0 : 7,
-            });
+        var original = context
+            .Set<CompositionInputOne>()
+            .Where(fact => fact.Scope == scope && fact.NodeId == 40)
+            .Join(
+                nodes,
+                fact => fact.NodeId,
+                node => node.Id,
+                (fact, node) => new
+                {
+                    Node = node,
+                    Origin = fact.Date == firstDay
+                        ? 101
+                        : 202,
+                    AcceptedOwnerId = fact.Date == firstDay
+                        ? 0
+                        : 7,
+                });
 
         var rows = original.Concat(original);
 
@@ -141,10 +211,28 @@ public abstract partial class HierarchyCompositionSemanticTests
         {
             // WHY: Every marker would pass the owner decision. The input filter and window, rather than
             // nearest rejection, must remove them before the original occurrences reach the owner filter.
-            rows = nodes.Select(node => new { Node = node, Origin = 1, AcceptedOwnerId = 0 })
-                .Concat(nodes.Select(node => new { Node = node, Origin = 999, AcceptedOwnerId = 0 }))
+            rows = nodes
+                .Select(node => new
+                {
+                    Node = node,
+                    Origin = 1,
+                    AcceptedOwnerId = 0,
+                })
+                .Concat(
+                    nodes.Select(node => new
+                    {
+                        Node = node,
+                        Origin = 999,
+                        AcceptedOwnerId = 0,
+                    }))
                 .Concat(rows)
-                .Concat(nodes.Select(node => new { Node = node, Origin = 150, AcceptedOwnerId = 0 }))
+                .Concat(
+                    nodes.Select(node => new
+                    {
+                        Node = node,
+                        Origin = 150,
+                        AcceptedOwnerId = 0,
+                    }))
                 .Where(row => row.Origin != 150)
                 .OrderBy(row => row.Origin)
                 .Skip(1)
@@ -154,10 +242,19 @@ public abstract partial class HierarchyCompositionSemanticTests
         // Act
         // WHY: Only candidate selection may be shared for the same lower. The value predicate still
         // belongs to each original occurrence, including the row that asks for a farther eligible owner.
-        var actual = await hierarchy.WhereNearestAncestorOrSelf(rows, row => row.Node,
-                (row, owner) => owner.Candidate, (row, owner) => owner.Id == row.AcceptedOwnerId)
+        var actual = await hierarchy
+            .WhereNearestAncestorOrSelf(
+                rows,
+                row => row.Node,
+                (row, owner) => owner.Candidate,
+                (row, owner) => owner.Id == row.AcceptedOwnerId)
             .OrderBy(row => row.Origin)
-            .Select(row => new { row.Origin, Lower = row.Node.Id, row.AcceptedOwnerId })
+            .Select(row => new
+            {
+                row.Origin,
+                Lower = row.Node.Id,
+                row.AcceptedOwnerId,
+            })
             .ToArrayAsync(CancellationToken.None);
 
         // Assert
@@ -167,7 +264,11 @@ public abstract partial class HierarchyCompositionSemanticTests
     }
 
     /// <summary>Creates several ancestor sections with nonmonotonic keys and intervening off-path candidates.</summary>
-    private static CompositionNode[] NearestSectionNodes(Guid scope, Guid treeId, string mode)
+    private static CompositionNode[] NearestSectionNodes(
+        Guid scope,
+        Guid treeId,
+        string mode
+    )
     {
         var nodes = new List<CompositionNode>();
         Add(900, null);
@@ -229,7 +330,14 @@ public abstract partial class HierarchyCompositionSemanticTests
 
                 break;
             case "only-off-path":
-                foreach (var key in new[] { 900, 7, 0, 70, 30 })
+                foreach (var key in new[]
+                    {
+                        900,
+                        7,
+                        0,
+                        70,
+                        30,
+                    })
                 {
                     indexed[key].Candidate = false;
                 }
@@ -247,9 +355,11 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         return nodes.ToArray();
 
-        void Add(int id, int? parent)
-        {
-            nodes.Add(new CompositionNode
+        void Add(
+            int id,
+            int? parent
+        ) => nodes.Add(
+            new CompositionNode
             {
                 Scope = scope,
                 TreeId = treeId,
@@ -258,9 +368,12 @@ public abstract partial class HierarchyCompositionSemanticTests
                 Candidate = id is not (40 or 70 or 80),
                 Matches = id >= 1_000 || id == 200,
             });
-        }
 
-        void Visit(CompositionNode node, int depth, long position)
+        void Visit(
+            CompositionNode node,
+            int depth,
+            long position
+        )
         {
             node.Left = next++;
             node.Depth = depth;
@@ -277,7 +390,9 @@ public abstract partial class HierarchyCompositionSemanticTests
     }
 
     /// <summary>Chooses the first visible Parent-walk candidate before checking its value and visible suffix.</summary>
-    private static LongPathOccurrence[] NearestSectionOracle(CompositionNode[] nodes)
+    private static LongPathOccurrence[] NearestSectionOracle(
+        CompositionNode[] nodes
+    )
     {
         var indexed = nodes.ToDictionary(node => node.Id);
         var parents = nodes.ToDictionary(node => node.Id, node => node.ParentId);
@@ -287,10 +402,13 @@ public abstract partial class HierarchyCompositionSemanticTests
         {
             var owner = Ancestors(parents, lower, includeSelf: true)
                 .Where(key => indexed[key].Visible && indexed[key].Candidate)
-                .Select(key => (int?)key).FirstOrDefault();
+                .Select(key => (int?)key)
+                .FirstOrDefault();
 
-            if (owner is not { } selected || !indexed[selected].Matches
-                || Ancestors(parents, lower, includeSelf: true).TakeWhile(key => key != selected)
+            if (owner is not { } selected
+                || !indexed[selected].Matches
+                || Ancestors(parents, lower, includeSelf: true)
+                    .TakeWhile(key => key != selected)
                     .Any(key => !indexed[key].Visible))
             {
                 continue;
@@ -305,7 +423,11 @@ public abstract partial class HierarchyCompositionSemanticTests
             }
         }
 
-        return result.SelectMany(row => new[] { row, row })
-            .OrderBy(row => row.Origin).ThenBy(row => row.Node).ThenBy(row => row.Day).ToArray();
+        return result
+            .SelectMany(row => new[] { row, row })
+            .OrderBy(row => row.Origin)
+            .ThenBy(row => row.Node)
+            .ThenBy(row => row.Day)
+            .ToArray();
     }
 }

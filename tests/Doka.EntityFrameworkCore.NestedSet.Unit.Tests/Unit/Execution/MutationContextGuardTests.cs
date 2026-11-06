@@ -37,13 +37,18 @@ public sealed class MutationContextGuardTests
             NestedSetMutationExecutor<TreeNode, int, Guid, int>.RequireNoPendingWrites(context));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(0, detections);
         Assert.Equal(automaticDetection, context.ChangeTracker.AutoDetectChangesEnabled);
         Assert.Equal(state, entry.State);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>Cheap preflight leaves ordinary CLR edits for the detecting boundary after identity lookup.</summary>
@@ -71,8 +76,11 @@ public sealed class MutationContextGuardTests
         Assert.Null(error);
         Assert.Equal(0, detections);
         Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal("original",
-            entry.Property(value => value.Value).OriginalValue);
+        Assert.Equal(
+            "original",
+            entry.Property(value => value.Value)
+                .OriginalValue);
+
         Assert.Equal("edited", row.Value);
         Assert.True(context.ChangeTracker.AutoDetectChangesEnabled);
     }
@@ -99,14 +107,22 @@ public sealed class MutationContextGuardTests
             NestedSetMutationExecutor<TreeNode, int, Guid, int>.RequireMutationContext(context));
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(error).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(error)
+                .Code);
+
         Assert.Equal(1, detections);
         Assert.Equal(EntityState.Modified, entry.State);
-        Assert.True(entry.Property(value => value.Value).IsModified);
+        Assert.True(
+            entry.Property(value => value.Value)
+                .IsModified);
+
         Assert.True(context.ChangeTracker.AutoDetectChangesEnabled);
-        Assert.Equal(ConnectionState.Closed,
-            context.Database.GetDbConnection().State);
+        Assert.Equal(
+            ConnectionState.Closed,
+            context.Database.GetDbConnection()
+                .State);
     }
 
     /// <summary>The detecting boundary respects applications that explicitly disable automatic detection.</summary>

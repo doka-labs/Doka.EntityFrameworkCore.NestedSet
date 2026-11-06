@@ -19,7 +19,11 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new SourceResolutionBarrier();
-        await using var context = await _fixture.CreateContextAsync(Engine, barrier);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier);
+
         var hierarchy = context
             .NestedSet<BinaryTreeNode>()
             .ForScope(7);
@@ -74,6 +78,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             child => Assert.Equal(
                 (3, (int?)2, 2L, 3L, 1),
                 (child.Id, child.ParentId, child.Left, child.Right, child.Depth)));
+
         Assert.All(detached, node => Assert.Equal(expectedTarget, node.TreeId));
         Assert.False(redirectedRows);
         Assert.Equal(2, registryIds.Length);
@@ -86,7 +91,10 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     public async Task BinaryStoresIsolateOverlappingTreeBounds()
     {
         // Arrange
-        await using var context = await _fixture.CreateContextAsync(Engine);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken);
+
         var hierarchy = context
             .NestedSet<BinaryTreeNode>()
             .ForScope(7);
@@ -138,6 +146,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             otherTree,
             root => Assert.Equal((10, 1L, 4L, 0), (root.Id, root.Left, root.Right, root.Depth)),
             child => Assert.Equal((20, 2L, 3L, 1), (child.Id, child.Left, child.Right, child.Depth)));
+
         Assert.Equal((100, 1L, 2L, 0), (otherScope.Id, otherScope.Left, otherScope.Right, otherScope.Depth));
     }
 
@@ -148,7 +157,12 @@ public abstract class MutableTreeIdentityTests : ProviderTest
         // Arrange
         var barrier = new SourceResolutionBarrier();
         var commands = new CommandProbe();
-        await using var context = await _fixture.CreateContextAsync(Engine, barrier, commands);
+        await using var context = await _fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier,
+            commands);
+
         var hierarchy = context
             .NestedSet<BinaryTreeNode>()
             .ForScope(7);
@@ -193,11 +207,19 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             .ToArrayAsync(timeout.Token);
 
         // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, Assert.IsType<NestedSetException>(failure).Code);
+        Assert.Equal(
+            NestedSetErrorCode.InvalidContext,
+            Assert.IsType<NestedSetException>(failure)
+                .Code);
+
         Assert.Equal(1, commandCount);
         Assert.Equal(0, updates);
         Assert.Null(context.Database.CurrentTransaction);
-        Assert.Equal(EntityState.Modified, context.Entry(tracked).State);
+        Assert.Equal(
+            EntityState.Modified,
+            context.Entry(tracked)
+                .State);
+
         Assert.Equal("changed during lookup", tracked.Payload);
         Assert.Collection(
             rows,
@@ -213,12 +235,16 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine, barrier);
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier);
+
         var hierarchy = context
             .NestedSet<BinaryNode>()
             .ForScope(7);
 
-        await SeedBinarySiblingsAsync(hierarchy);
+        await SeedBinarySiblingsAsync(hierarchy, cancellationToken: TestContext.Current.CancellationToken);
         byte[] source = [2, 2];
         byte[] destination = [4, 4];
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -264,12 +290,16 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine, barrier);
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier);
+
         var hierarchy = context
             .NestedSet<BinaryNode>()
             .ForScope(7);
 
-        await SeedBinarySiblingsAsync(hierarchy);
+        await SeedBinarySiblingsAsync(hierarchy, cancellationToken: TestContext.Current.CancellationToken);
         byte[] parent = [2, 2];
         var inserted = new BinaryNode { Id = [5, 5] };
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -309,12 +339,16 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     {
         // Arrange
         var barrier = new BinaryKeyResolutionBarrier();
-        await using var context = await _fixture.CreateKeyContextAsync(Engine, barrier);
+        await using var context = await _fixture.CreateKeyContextAsync(
+            Engine,
+            cancellationToken: TestContext.Current.CancellationToken,
+            barrier);
+
         var hierarchy = context
             .NestedSet<BinaryNode>()
             .ForScope(7);
 
-        await SeedBinarySiblingsAsync(hierarchy);
+        await SeedBinarySiblingsAsync(hierarchy, cancellationToken: TestContext.Current.CancellationToken);
         byte[] source = [2, 2];
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         barrier.Arm();
@@ -347,40 +381,57 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     }
 
     /// <summary>Creates three independently addressable siblings beneath one binary-key root.</summary>
+    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private static async Task SeedBinarySiblingsAsync(
-        ScopedNestedSet<BinaryNode, int> hierarchy
+        ScopedNestedSet<BinaryNode, int> hierarchy,
+        CancellationToken cancellationToken
     )
     {
-        await hierarchy.InsertRootAsync(new BinaryNode { Id = [1, 1] }, Guid.Empty, CancellationToken.None);
-        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [2, 2] }, [1, 1], CancellationToken.None);
-        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [3, 3] }, [1, 1], CancellationToken.None);
-        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [4, 4] }, [1, 1], CancellationToken.None);
+        await hierarchy.InsertRootAsync(new BinaryNode { Id = [1, 1] }, Guid.Empty, cancellationToken);
+        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [2, 2] }, [1, 1], cancellationToken);
+        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [3, 3] }, [1, 1], cancellationToken);
+        await hierarchy.InsertChildAsync<byte[]>(new BinaryNode { Id = [4, 4] }, [1, 1], cancellationToken);
     }
 
     /// <summary>Owns additional binary-identity tables in independently allocated test databases.</summary>
     public sealed class BinaryIdentityFixture : IAsyncLifetime
     {
         private readonly Dictionary<string, TestDatabase> _databases = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, DbContextOptions> _options = new(StringComparer.Ordinal);
         private readonly RelationalFixture _keyFixture = new();
+        private readonly Dictionary<string, DbContextOptions> _options = new(StringComparer.Ordinal);
 
         /// <inheritdoc />
         public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
+        /// <inheritdoc />
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var database in _databases.Values)
+            {
+                await database.DisposeAsync();
+            }
+
+            await _keyFixture.DisposeAsync();
+        }
+
         /// <summary>Uses the existing binary-node model in a separate fixture-owned database.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         internal async Task<TreeContext> CreateKeyContextAsync(
             string engine,
+            CancellationToken cancellationToken,
             params IInterceptor[] interceptors
         )
         {
-            var database = await _keyFixture.ResetAsync(engine);
+            var database = await _keyFixture.ResetAsync(engine, cancellationToken: cancellationToken);
 
             return database.CreateContext(interceptors);
         }
 
         /// <summary>Returns a reset binary model using the existing provider configuration and lifecycle.</summary>
+        /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
         internal async Task<DbContext> CreateContextAsync(
             string engine,
+            CancellationToken cancellationToken,
             params IInterceptor[] interceptors
         )
         {
@@ -390,7 +441,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
                 // Only our tables are created; the assembly-owned container and other classes stay untouched.
                 database = await TestDatabase.CreateAsync(
                     engine,
-                    async source =>
+                    async (source, token) =>
                     {
                         var extensions = source
                             .GetService<IDbContextOptions>()
@@ -403,8 +454,9 @@ public abstract class MutableTreeIdentityTests : ProviderTest
 
                         _options[engine] = options;
                         await using var schema = new BinaryIdentityContext(options);
-                        await schema.Database.EnsureCreatedAsync(CancellationToken.None);
-                    });
+                        await schema.Database.EnsureCreatedAsync(token);
+                    },
+                    cancellationToken: cancellationToken);
 
                 _databases.Add(engine, database);
             }
@@ -425,11 +477,11 @@ public abstract class MutableTreeIdentityTests : ProviderTest
                     .Set<BinaryTreeNode>()
                     .ExecuteUpdateAsync(
                         setters => setters.SetProperty(node => node.ParentId, (int?)null),
-                        CancellationToken.None);
+                        cancellationToken);
 
                 await context
                     .Set<BinaryTreeNode>()
-                    .ExecuteDeleteAsync(CancellationToken.None);
+                    .ExecuteDeleteAsync(cancellationToken);
 
                 var registry = context
                     .Model
@@ -438,7 +490,7 @@ public abstract class MutableTreeIdentityTests : ProviderTest
 
                 await context
                     .Set<NestedSetTreeRegistry>(registry.Name)
-                    .ExecuteDeleteAsync(CancellationToken.None);
+                    .ExecuteDeleteAsync(cancellationToken);
 
                 return context;
             }
@@ -447,17 +499,6 @@ public abstract class MutableTreeIdentityTests : ProviderTest
                 await context.DisposeAsync();
                 throw;
             }
-        }
-
-        /// <inheritdoc />
-        public async ValueTask DisposeAsync()
-        {
-            foreach (var database in _databases.Values)
-            {
-                await database.DisposeAsync();
-            }
-
-            await _keyFixture.DisposeAsync();
         }
     }
 
@@ -479,12 +520,15 @@ public abstract class MutableTreeIdentityTests : ProviderTest
             node
                 .Property(value => value.Id)
                 .ValueGeneratedNever();
+
             node
                 .Property(value => value.TreeId)
                 .HasMaxLength(8);
+
             node
                 .Property(value => value.Payload)
                 .HasMaxLength(80);
+
             node.HasNestedSet(builder => builder
                 .HasTreeId(value => value.TreeId)
                 .HasScope(value => value.Scope)
@@ -495,6 +539,12 @@ public abstract class MutableTreeIdentityTests : ProviderTest
     /// <summary>Uses a mutable binary tree identity with an ordinary integer node key and optional scope.</summary>
     private sealed class BinaryTreeNode : IScopedNestedSetNode<int, byte[], int>
     {
+        /// <summary>Gets or sets the optional direct parent identity.</summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>Gets or sets application payload independent of structural coordinates.</summary>
+        public string Payload { get; set; } = "original";
+
         /// <inheritdoc />
         public int Id { get; set; }
 
@@ -503,12 +553,6 @@ public abstract class MutableTreeIdentityTests : ProviderTest
 
         /// <inheritdoc />
         public int Scope { get; set; }
-
-        /// <summary>Gets or sets the optional direct parent identity.</summary>
-        public int? ParentId { get; set; }
-
-        /// <summary>Gets or sets application payload independent of structural coordinates.</summary>
-        public string Payload { get; set; } = "original";
 
         /// <inheritdoc />
         public long Left { get; set; }
@@ -642,9 +686,9 @@ public abstract class MutableTreeIdentityTests : ProviderTest
         )
         {
             if (!command
-                    .CommandText
-                    .TrimStart()
-                    .StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                .CommandText
+                .TrimStart()
+                .StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }

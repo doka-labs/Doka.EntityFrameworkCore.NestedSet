@@ -30,45 +30,118 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData("table-split", true)]
     [InlineData("entity-split", false)]
     [InlineData("entity-split", true)]
-    public async Task IndexedAncestorsExecuteAgainstExactMappedRoles(string shape, bool includeSelf)
+    public async Task IndexedAncestorsExecuteAgainstExactMappedRoles(
+        string shape,
+        bool includeSelf
+    )
     {
         // Arrange
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(Engine,
-            static options => new AncestorIndexMappedContext(options), probe);
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexMappedContext>(
+            Engine,
+            static options => new AncestorIndexMappedContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
         var query = shape switch
         {
-            "shadow" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new CompositionShadowNode()),
-            "converted" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new CompositionConvertedNode()),
-            "binary" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new BinaryNode()),
-            "alternate" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                depth => new CompositeKeyNode { RowId = first + 100 + depth }),
-            "fields" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new FieldNode()),
-            "named" => await SeedNamedQueriesAsync(context, tree, scope, first, includeSelf),
-            "tph" => await SeedMappedQueryAsync<InheritanceNode>(context, tree, scope, first, includeSelf,
-                static depth => depth == 1 ? new TphMetricNode() : new TphFolderNode()),
-            "tpc" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new TpcFolderNode()),
-            "table-split" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new TableSplitNode()),
-            "entity-split" => await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-                static _ => new EntitySplitNode()),
+            "shadow" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new CompositionShadowNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "converted" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new CompositionConvertedNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "binary" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new BinaryNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "alternate" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                depth => new CompositeKeyNode { RowId = first + 100 + depth },
+                cancellationToken: TestContext.Current.CancellationToken),
+            "fields" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new FieldNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "named" => await SeedNamedQueriesAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                cancellationToken: TestContext.Current.CancellationToken),
+            "tph" => await SeedMappedQueryAsync<InheritanceNode>(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static depth => depth == 1
+                    ? new TphMetricNode()
+                    : new TphFolderNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "tpc" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new TpcFolderNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "table-split" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new TableSplitNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
+            "entity-split" => await SeedMappedQueryAsync(
+                context,
+                tree,
+                scope,
+                first,
+                includeSelf,
+                static _ => new EntitySplitNode(),
+                cancellationToken: TestContext.Current.CancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
-        int[] expected = includeSelf ? [0, 1, 2] : [0, 1];
+        int[] expected = includeSelf
+            ? [0, 1, 2]
+            : [0, 1];
+
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);
@@ -82,24 +155,42 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsExecuteAgainstTptBaseOwner(bool includeSelf)
+    public async Task IndexedAncestorsExecuteAgainstTptBaseOwner(
+        bool includeSelf
+    )
     {
         // Arrange
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
         var scope = Guid.NewGuid();
         var tree = Guid.NewGuid();
         var probe = new CompositionCommandProbe();
-        await using var context = await _fixture.CreateContextAsync<AncestorIndexTptQueryContext>(Engine,
-            static options => new AncestorIndexTptQueryContext(options), probe);
+        await using var context = await _fixture.CreateContextAsync<AncestorIndexTptQueryContext>(
+            Engine,
+            static options => new AncestorIndexTptQueryContext(options),
+            cancellationToken: TestContext.Current.CancellationToken,
+            probe);
 
-        var query = await SeedMappedQueryAsync<InheritanceNode>(context, tree, scope, first, includeSelf,
-            static depth => depth == 1 ? new TptMetricNode() : new TptFolderNode());
+        var query = await SeedMappedQueryAsync<InheritanceNode>(
+            context,
+            tree,
+            scope,
+            first,
+            includeSelf,
+            static depth => depth == 1
+                ? new TptMetricNode()
+                : new TptFolderNode(),
+            cancellationToken: TestContext.Current.CancellationToken);
 
-        int[] expected = includeSelf ? [0, 1, 2] : [0, 1];
+        int[] expected = includeSelf
+            ? [0, 1, 2]
+            : [0, 1];
+
         probe.Reset();
 
         // Act
-        var actual = await query.OrderBy(depth => depth).ToArrayAsync(CancellationToken.None);
+        var actual = await query
+            .OrderBy(depth => depth)
+            .ToArrayAsync(CancellationToken.None);
 
         // Assert
         AssertOptionalSourceStrategy(context, query, includeSelf);
@@ -114,22 +205,40 @@ public abstract partial class AncestorIndexQueryTests
         Guid tree,
         Guid scope,
         int first,
-        bool includeSelf
+        bool includeSelf,
+        CancellationToken cancellationToken
     )
     {
-        await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-            static _ => new Dictionary<string, object?>(), AncestorIndexMappedContext.Second);
+        await SeedMappedQueryAsync(
+            context,
+            tree,
+            scope,
+            first,
+            includeSelf,
+            static _ => new Dictionary<string, object?>(),
+            cancellationToken: cancellationToken,
+            AncestorIndexMappedContext.Second);
 
         // WHY: Equal keys, TreeId and coordinates challenge exact named mapping identity. Different
         // stored depths make accidentally reading the other physical table observable in the result.
-        await context.Set<Dictionary<string, object?>>(AncestorIndexMappedContext.Second)
+        await context
+            .Set<Dictionary<string, object?>>(AncestorIndexMappedContext.Second)
             .Where(node => EF.Property<Guid>(node, NestedSetPropertyRoles.TreeId) == tree)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(
-                node => EF.Property<int>(node, NestedSetPropertyRoles.Depth),
-                node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) + 10), CancellationToken.None);
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    node => EF.Property<int>(node, NestedSetPropertyRoles.Depth),
+                    node => EF.Property<int>(node, NestedSetPropertyRoles.Depth) + 10),
+                cancellationToken);
 
-        return await SeedMappedQueryAsync(context, tree, scope, first, includeSelf,
-            static _ => new Dictionary<string, object?>(), AncestorIndexMappedContext.First);
+        return await SeedMappedQueryAsync(
+            context,
+            tree,
+            scope,
+            first,
+            includeSelf,
+            static _ => new Dictionary<string, object?>(),
+            cancellationToken: cancellationToken,
+            AncestorIndexMappedContext.First);
     }
 
     /// <summary>Assigns exact finalized mapped roles, including shadow and converter-backed values, before tracking.</summary>
@@ -140,63 +249,110 @@ public abstract partial class AncestorIndexQueryTests
         int first,
         bool includeSelf,
         Func<int, TEntity> create,
+        CancellationToken cancellationToken,
         string? name = null
     )
         where TEntity : class
     {
-        var entityType = name is null ? context.Model.FindEntityType(typeof(TEntity))! : context.Model.FindEntityType(name)!;
-        var descriptor = NestedSetModelMapping.For(context.Model).Descriptor(entityType);
-        var set = name is null ? context.Set<TEntity>() : context.Set<TEntity>(name);
+        var entityType = name is null
+            ? context.Model.FindEntityType(typeof(TEntity))!
+            : context.Model.FindEntityType(name)!;
+
+        var descriptor = NestedSetModelMapping
+            .For(context.Model)
+            .Descriptor(entityType);
+
+        var set = name is null
+            ? context.Set<TEntity>()
+            : context.Set<TEntity>(name);
 
         for (var depth = 0; depth < 3; depth++)
         {
             var entity = create(depth);
 
-            var entry = name is null ? context.Entry(entity) : set.Entry(entity);
+            var entry = name is null
+                ? context.Entry(entity)
+                : set.Entry(entity);
+
             var key = MappedKey(descriptor.NodeKey.ClrType, first, depth);
-            var parent = depth == 0 ? null : MappedKey(descriptor.NodeKey.ClrType, first, depth - 1);
+            var parent = depth == 0
+                ? null
+                : MappedKey(descriptor.NodeKey.ClrType, first, depth - 1);
 
-            entry.Property(descriptor.NodeKey.Name).CurrentValue = key;
-            entry.Property(descriptor.TreeId.Name).CurrentValue = tree;
-            entry.Property(descriptor.Parent.Name).CurrentValue = parent;
-            entry.Property(descriptor.Left.Name).CurrentValue = depth + 1L;
-            entry.Property(descriptor.Right.Name).CurrentValue = 6L - depth;
-            entry.Property(descriptor.Depth.Name).CurrentValue = depth;
-            entry.Property(descriptor.Position.Name).CurrentValue = 0L;
+            entry.Property(descriptor.NodeKey.Name)
+                .CurrentValue = key;
 
-            if (entityType.FindProperty("Name") is { ClrType: var nameType } && nameType == typeof(string))
+            entry.Property(descriptor.TreeId.Name)
+                .CurrentValue = tree;
+
+            entry.Property(descriptor.Parent.Name)
+                .CurrentValue = parent;
+
+            entry.Property(descriptor.Left.Name)
+                .CurrentValue = depth + 1L;
+
+            entry.Property(descriptor.Right.Name)
+                .CurrentValue = 6L - depth;
+
+            entry.Property(descriptor.Depth.Name)
+                .CurrentValue = depth;
+
+            entry.Property(descriptor.Position.Name)
+                .CurrentValue = 0L;
+
+            if (entityType.FindProperty("Name") is { ClrType: var nameType }
+                && nameType == typeof(string))
             {
-                entry.Property("Name").CurrentValue = $"mapped-{depth}";
+                entry.Property("Name")
+                        .CurrentValue = $"mapped-{depth}";
             }
 
             if (descriptor.Scope is { } scopeProperty)
             {
-                entry.Property(scopeProperty.Name).CurrentValue = scopeProperty.ClrType == typeof(Guid) ? scope : first;
+                entry.Property(scopeProperty.Name)
+                    .CurrentValue = scopeProperty.ClrType == typeof(Guid)
+                    ? scope
+                    : first;
             }
 
-            await set.AddAsync(entity, CancellationToken.None);
+            await set.AddAsync(entity, cancellationToken);
         }
 
-        await context.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await context.SavePrecomputedHierarchyAsync(cancellationToken);
         context.ChangeTracker.Clear();
-        var hierarchy = name is null ? context.NestedSet<TEntity>() : context.NestedSet<TEntity>(name);
+        var hierarchy = name is null
+            ? context.NestedSet<TEntity>()
+            : context.NestedSet<TEntity>(name);
 
         var depthName = descriptor.Depth.Name;
         var bound = descriptor.Scope is { } configuredScope
             ? configuredScope.ClrType == typeof(Guid)
-                ? hierarchy.ForScope(scope).InTree(tree)
-                : hierarchy.ForScope(first).InTree(tree)
+                ? hierarchy
+                    .ForScope(scope)
+                    .InTree(tree)
+                : hierarchy
+                    .ForScope(first)
+                    .InTree(tree)
             : hierarchy.InTree(tree);
 
         return includeSelf
-            ? bound.SelectAncestorsOrSelf(node => EF.Property<int>(node, depthName) == 2,
+            ? bound.SelectAncestorsOrSelf(
+                node => EF.Property<int>(node, depthName) == 2,
                 (source, owner, distance) => EF.Property<int>(owner, depthName))
-            : bound.SelectAncestors(node => EF.Property<int>(node, depthName) == 2,
+            : bound.SelectAncestors(
+                node => EF.Property<int>(node, depthName) == 2,
                 (source, owner, distance) => EF.Property<int>(owner, depthName));
     }
 
     /// <summary>Creates independent but database-equal parent/principal arrays and an actual converted key zero.</summary>
-    private static object MappedKey(Type type, int first, int depth)
-        => type == typeof(CompositionNodeKey) ? new CompositionNodeKey(depth)
-            : type == typeof(byte[]) ? BitConverter.GetBytes(first + depth) : first + depth;
+    private static object MappedKey(
+        Type type,
+        int first,
+        int depth
+    )
+        => type == typeof(CompositionNodeKey)
+            ? new CompositionNodeKey(depth)
+            : type == typeof(byte[])
+                ? BitConverter.GetBytes(first + depth)
+                : first + depth;
 }

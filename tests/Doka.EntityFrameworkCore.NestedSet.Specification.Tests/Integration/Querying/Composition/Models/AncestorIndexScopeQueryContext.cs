@@ -6,11 +6,14 @@ internal sealed class AncestorIndexScopeQueryContext(DbContextOptions<AncestorIn
     : BroadScopeContext(options)
 {
     /// <inheritdoc />
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder
+    )
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<BroadScopeNode>()
+        modelBuilder
+            .Entity<BroadScopeNode>()
             .ToTable("AncestorIndexScopeNodes")
             .HasNestedSet(mapping => mapping.HasAncestorIndex());
     }

@@ -5,9 +5,7 @@ public sealed partial class EngineTestDiscoveryTests
     /// <summary>Supplies two registrations while the concrete constructor selects its own engine.</summary>
     public sealed class MultiEngineCollectionDefinition :
         ICollectionFixture<ProviderFixture<HarmlessResource, MySqlEngine>>,
-        ICollectionFixture<ProviderFixture<HarmlessResource, MariaDbEngine>>
-    {
-    }
+        ICollectionFixture<ProviderFixture<HarmlessResource, MariaDbEngine>> { }
 
     /// <summary>Exercises resource lifetimes without creating a database or container.</summary>
     public sealed class HarmlessResource : IAsyncLifetime
