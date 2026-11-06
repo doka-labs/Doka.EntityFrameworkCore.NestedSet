@@ -11,6 +11,9 @@ This exception does not authorize other breaking minor releases.
 
 ### Changed
 
+- Refresh the published dependency graph to Doka 10.6.4 and SafeMigrations
+  Core/all four adapters 10.7.0. Raise the MySql adapter's Doka floor to
+  `[10.6.4,10.7.0)` while preserving the EF and database LTS lines.
 - Require an explicit `CancellationToken` on NestedSet-owned asynchronous
   operations and benchmark helpers. This is source-breaking for callers that
   omitted the argument; pass the caller's token or explicit

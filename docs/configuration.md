@@ -202,7 +202,7 @@ and ADR history describe their own frozen source and provider builds.
 The MySql adapter directly calls the required public
 `DatabaseFacade.IsMariaDb()` API to identify the configured Doka engine without
 database I/O. It selects MySQL/MariaDB-specific physical strategies; it does
-not activate the ancestor index. Its declared Doka minimum is 10.6.3, which
+not activate the ancestor index. Its declared Doka minimum is 10.6.4, which
 supplies engine identification, source binding, and ordered joins. Older
 missing-feature discovery and legacy API-availability paths are not part of
 this adapter contract. Historical package comparisons remain in the
@@ -312,8 +312,8 @@ The [provider qualification](qualification/provider-migrations.md#doka-mapping-c
 distinguishes the published Doka 10.6.1 entity-split GUID failure from the
 corrected local source. That dated local graph passed the recorded ordinary
 MySQL/MariaDB regressions, including the formerly failing split mappings.
-Repository qualification now declares published Doka 10.6.3 and SafeMigrations
-10.6.1; the optional MySQL adapter requires Doka [10.6.3,10.7.0). Only the new
+Repository qualification now declares published Doka 10.6.4 and SafeMigrations
+10.7.0; the optional MySQL adapter requires Doka [10.6.4,10.7.0). Only the new
 adapter contract is retained in tests. The earlier pending pin update is
 complete. The earlier Doka 10.6.2 [2026-10-25 public-binary run](qualification/provider-migrations.md#published-runtime-qualification-2026-10-25)
 passed all 4,289 MySQL/MariaDB and 2,649 Unit cases, with ordinary and optional
@@ -338,7 +338,7 @@ explicit configuration error rather than an optional feature notification.
 Historical published Doka 10.5.0 also had a separately reproduced implicit-string
 index-budgeting defect for this schema. The corrected private provider passed
 the actual implicit-length model on both engines; those recorded results are
-not relabeled as qualification of the current published 10.6.3 pin. Neither provider
+not relabeled as qualification of the current published 10.6.4 pin. Neither provider
 version selection nor an index option authorizes arbitrary identity truncation; see
 [physical mapping and provider budgeting](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
 and the [combined-provider acceptance](qualification/query-composition.md#optional-ancestor-access)

@@ -12,7 +12,7 @@ dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.2.0
 ```
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
-and `Doka.EntityFrameworkCore.MySql` `[10.6.3,10.7.0)` transitively. Use one qualified
+and `Doka.EntityFrameworkCore.MySql` `[10.6.4,10.7.0)` transitively. Use one qualified
 NestedSet version across the application's NestedSet packages. Version `10.2.0`
 is the stable six-package contract.
 
@@ -24,7 +24,7 @@ manual-detection/save-recovery behavior. Registration remains in the native
 provider callback; the default registry schema is unchanged.
 
 The adapter binds Doka's public engine, source-binding, and ordered-join APIs
-directly. Doka 10.6.3 also requires EF Relational below `10.1.0`; intersect
+directly. Doka 10.6.4 also requires EF Relational below `10.1.0`; intersect
 that bound with the common kernel's `[10.0.12,11.0.0)` range. MySQL and MariaDB
 share this package; Pomelo is outside the supported contract.
 

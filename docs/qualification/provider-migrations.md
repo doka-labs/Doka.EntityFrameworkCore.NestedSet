@@ -14,38 +14,87 @@ source-build results do not establish behavior of another published version.
 
 ## Current published inputs
 
-The 2026-10-29 maintenance update selects Doka 10.6.3 and, after the owner's
-publication notice, SafeMigrations 10.6.1. Their published nuspecs identify Doka commit
-`0372df8dd0c77b6f04e72fa94adae837e4deba7a` and SafeMigrations commit
-`3bd737b8958a5086d89d7c5234510413a84919dd`:
+The 2026-11-06 maintenance update selects Doka 10.6.4 and SafeMigrations Core
+and all four adapters 10.7.0, verified against NuGet's stable version indexes.
+Their published nuspecs identify Doka commit
+`581047a524d25163818fd144146440ea4440a838` and SafeMigrations commit
+`22cf3685b77857978ecd8e9e533c9ddabceb28f6`:
 
 | Component | Published version | Primary package metadata |
 | --- | --- | --- |
-| Doka MySQL/MariaDB | 10.6.3 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.mysql/10.6.3/doka.entityframeworkcore.mysql.nuspec) |
-| SafeMigrations Core | 10.6.1 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations/10.6.1/doka.entityframeworkcore.safemigrations.nuspec) |
-| SafeMigrations MySQL/MariaDB | 10.6.1 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.mysql/10.6.1/doka.entityframeworkcore.safemigrations.mysql.nuspec) |
-| SafeMigrations PostgreSQL | 10.6.1 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.postgresql/10.6.1/doka.entityframeworkcore.safemigrations.postgresql.nuspec) |
-| SafeMigrations SQL Server | 10.6.1 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlserver/10.6.1/doka.entityframeworkcore.safemigrations.sqlserver.nuspec) |
-| SafeMigrations SQLite | 10.6.1 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlite/10.6.1/doka.entityframeworkcore.safemigrations.sqlite.nuspec) |
+| Doka MySQL/MariaDB | 10.6.4 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.mysql/10.6.4/doka.entityframeworkcore.mysql.nuspec) |
+| SafeMigrations Core | 10.7.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations/10.7.0/doka.entityframeworkcore.safemigrations.nuspec) |
+| SafeMigrations MySQL/MariaDB | 10.7.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.mysql/10.7.0/doka.entityframeworkcore.safemigrations.mysql.nuspec) |
+| SafeMigrations PostgreSQL | 10.7.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.postgresql/10.7.0/doka.entityframeworkcore.safemigrations.postgresql.nuspec) |
+| SafeMigrations SQL Server | 10.7.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlserver/10.7.0/doka.entityframeworkcore.safemigrations.sqlserver.nuspec) |
+| SafeMigrations SQLite | 10.7.0 | [NuGet nuspec](https://api.nuget.org/v3-flatcontainer/doka.entityframeworkcore.safemigrations.sqlite/10.7.0/doka.entityframeworkcore.safemigrations.sqlite.nuspec) |
 
-The SafeMigrations MySQL adapter requires Doka `[10.6.3,10.7.0)`; its Core dependency is
-10.6.1. SafeMigrations requires EF Relational `[10.0.14,10.1.0)`, compatible
+The SafeMigrations MySQL adapter requires Doka `[10.6.4,10.7.0)`; its Core dependency is
+10.7.0. SafeMigrations requires EF Relational `[10.0.14,10.1.0)`, compatible
 with the declared EF 10.0.14. The NestedSet MySql adapter now requires Doka
-`[10.6.3,10.7.0)`. Doka 10.6.3 brings MySqlConnector `[2.6.1,3.0.0)` and
+`[10.6.4,10.7.0)`. Doka 10.6.4 brings MySqlConnector `[2.6.1,3.0.0)` and
 System.IO.Hashing 10.0.14 transitively. The optional MySQL adapter raises its
 MySqlConnector floor to 2.6.2; the optional SQL Server adapter requires
 SqlClient 6.1.8 and PKCS 9.0.22. The repository's qualification-only PKCS pin
 remains 10.0.14. No shipping NestedSet package acquires SafeMigrations.
 
+[SafeMigrations 10.7.0](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/releases/tag/v10.7.0)
+requires explicit cancellation tokens on its own asynchronous APIs. Calls that
+previously omitted the optional argument must now supply the caller's token or
+explicit `CancellationToken.None`; binary signatures and migration policies
+remain unchanged.
+
+[Doka 10.6.4](https://github.com/doka-labs/Doka.EntityFrameworkCore.MySql/releases/tag/v10.6.4)
+corrects readback for explicit `byte[]` `binary(16)` mappings. Regenerate a
+compiled model that embeds the prior byte-array type mapping. The checked-in
+MySQL/MariaDB compiled fixtures use `Guid` mappings rather than that explicit
+byte-array mapping, so this correction does not require regenerating those
+fixtures. Native execution against the selected provider remains a separate
+qualification requirement.
+
 The dated runtime results below retain Doka 10.6.2/SafeMigrations 10.6.0 or
 their explicitly named private package. They do not establish a runtime pass
-for the Doka 10.6.3/SafeMigrations 10.6.1 refresh.
-No test run, image pull or container execution is part of this maintenance
-check; restore/build evidence is separate from runtime qualification.
+for the Doka 10.6.4/SafeMigrations 10.7.0 refresh.
+
+### Targeted published-package verification: 2026-11-06
+
 The complete 21-project solution restored in locked mode and built in Release
-with SDK 10.0.403, zero warnings and zero errors. Outputs were isolated under
-`/tmp`; the source shipping lock was regenerated by NuGet. These checks include
-compiling the optional adapters, samples and benchmarks, not executing them.
+with SDK 10.0.403, zero warnings and zero errors. NuGet regenerated only the
+MySql shipping lock. Cached archives for Doka and SafeMigrations Core/all four
+adapters matched the published NuGet archives byte-for-byte; 17 copied runtime
+DLLs also matched their published package contents after a clean rebuild.
+The initial incremental output had retained older DLL copies and was not used
+as successful runtime evidence.
+
+The native migration run also exposed a pre-existing cleanup regression:
+`MigrationContext.EntityTypeName` recursively read itself. Restoring its original
+field access and testing the baseline, current and specialized model identities
+removed that fixture failure without changing a provider or migration contract.
+
+| Targeted check | Passed | Failed | Native SQL Server cases excluded on ARM |
+| --- | ---: | ---: | ---: |
+| Optional SafeMigrations integration | 96 | 0 | 54 |
+| Generated ancestor models and generated-value readback | 15 | 0 | 1 |
+| Checked-in MySQL/MariaDB compiled-model fixtures | 18 | 0 | 0 |
+| Stable migration-fixture metadata | 3 | 0 | 0 |
+
+All six primary/symbol package pairs passed inspection, all seven isolated
+package consumers passed, and the 43 existing package-archive contract tests
+passed with the updated MySql dependency range. The tests retained their
+positive, rejection, rollback, schema, data, history and replay assertions.
+These targeted results do not replace the full provider/capacity matrix or
+native SQL Server and hosted release qualification.
+
+### Historical maintenance verification: 2026-10-29
+
+The preceding maintenance update selected Doka 10.6.3 (source
+`0372df8dd0c77b6f04e72fa94adae837e4deba7a`) and SafeMigrations 10.6.1
+(source `3bd737b8958a5086d89d7c5234510413a84919dd`). No test run, image pull
+or container execution was part of that maintenance check. The complete 21-project solution restored in locked mode
+and built in Release with SDK 10.0.403, zero warnings and zero errors. Outputs
+were isolated under `/tmp`; the source shipping lock was regenerated by NuGet.
+Those checks included compiling the optional adapters, samples and benchmarks,
+not executing them, and do not qualify the current 2026-11-06 package graph.
 
 ## Published runtime qualification: 2026-10-25
 
@@ -177,8 +226,8 @@ work/result oracles; they do not replace the complete capacity matrix.
 
 ## Publication and native SQL Server boundary
 
-Repository qualification now declares published Doka 10.6.3 and SafeMigrations
-10.6.1. The updated tests retain only the new adapter contract. There is no
+Repository qualification now declares published Doka 10.6.4 and SafeMigrations
+10.7.0. The updated tests retain only the new adapter contract. There is no
 legacy test mode, capability skip or relaxed assertion to make that contract
 pass against the historical 10.5.0 graph. The earlier pending pin update is
 complete; the earlier Doka 10.6.2 local public-binary runtime scope is recorded above.

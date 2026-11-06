@@ -1666,7 +1666,7 @@ provider prerequisite is listed in
 independent selected-key sets back to mapped entities so EF retains identifiers
 for both endpoints' collections. The boundary contains selected keys, not all
 structural pairs. Dated qualification distinguishes the portable-provider
-results from that feature-enabled strategy. The current published Doka 10.6.3
+results from that feature-enabled strategy. The current published Doka 10.6.4
 declaration does not transfer an earlier private build's performance to the
 shipping package; fresh public-binary qualification remains separate.
 
