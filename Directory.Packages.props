@@ -27,8 +27,8 @@
   <!-- Native adapters declare bounded production compatibility below; qualification uses these fixed baselines. -->
   <ItemGroup Label="Database provider baselines">
     <PackageVersion Include="Doka.EntityFrameworkCore.MySql" Version="10.6.4" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
@@ -41,7 +41,7 @@
 
   <ItemGroup Label="Test tooling">
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.6.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
