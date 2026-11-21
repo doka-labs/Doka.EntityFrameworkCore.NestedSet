@@ -773,7 +773,7 @@
       "doka.entityframeworkcore.nestedset": {
         "type": "Project",
         "dependencies": {
-          "Doka.NestedSet": "[10.3.0, )",
+          "Doka.NestedSet": "[10.4.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.12, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, 11.0.0)"
         }
@@ -782,27 +782,27 @@
         "type": "Project",
         "dependencies": {
           "Doka.EntityFrameworkCore.MySql": "[10.7.0, 10.8.0)",
-          "Doka.EntityFrameworkCore.NestedSet": "[10.3.0, )"
+          "Doka.EntityFrameworkCore.NestedSet": "[10.4.0, )"
         }
       },
       "doka.entityframeworkcore.nestedset.postgres": {
         "type": "Project",
         "dependencies": {
-          "Doka.EntityFrameworkCore.NestedSet": "[10.3.0, )",
+          "Doka.EntityFrameworkCore.NestedSet": "[10.4.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, 11.0.0)"
         }
       },
       "doka.entityframeworkcore.nestedset.sqlite": {
         "type": "Project",
         "dependencies": {
-          "Doka.EntityFrameworkCore.NestedSet": "[10.3.0, )",
+          "Doka.EntityFrameworkCore.NestedSet": "[10.4.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.13, 11.0.0)"
         }
       },
       "doka.entityframeworkcore.nestedset.sqlserver": {
         "type": "Project",
         "dependencies": {
-          "Doka.EntityFrameworkCore.NestedSet": "[10.3.0, )",
+          "Doka.EntityFrameworkCore.NestedSet": "[10.4.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.13, 11.0.0)",
           "System.Security.Cryptography.Pkcs": "[9.0.21, )"
         }

@@ -8,7 +8,7 @@ defines what this repository has exercised.
 
 | Component | Repository baseline |
 | --- | --- |
-| Stable package source contract | `10.3.0` across all six packages |
+| Stable package source contract | `10.4.0` across all six packages |
 | Target framework | .NET 10 |
 | SDK | `10.0.404`, pinned by `global.json`; includes runtime `10.0.15` |
 | Common EF Core declared range | `10.0.12` through, but excluding, `11.0.0`; adapter dependencies may narrow it |
@@ -78,7 +78,7 @@ recorded by a narrowly scoped compatibility suppression. This deliberately
 retains the original two-package baseline scope; the adapters introduced in
 `10.1.0` retain their own shipped API records and package/consumer qualification.
 
-Stable `10.3.0` requires explicit cancellation arguments on owned asynchronous
+Stable `10.4.0` requires explicit cancellation arguments on owned asynchronous
 APIs. See the [cancellation upgrade](upgrading-provider-packages.md#upgrade-from-1020-to-1030).
 Earlier `10.2.0` added optional registry naming and detection/recovery fixes;
 its [compatible upgrade](upgrading-provider-packages.md#upgrade-from-1010-to-1020)
@@ -107,7 +107,7 @@ This statement does not assert the same limitation for the separate
 ## Framework release lines
 
 The current source and qualified graph remain .NET/EF Core 10 at package version
-`10.3.0`. [Release lines](operations/release-lines.md) defines future independent
+`10.4.0`. [Release lines](operations/release-lines.md) defines future independent
 framework servicing: main/10 starts active; maintenance/10.x and optional
 preview/11.x are registered inactive. The capability does not qualify .NET 11,
 create a branch or enable publication. Each later activated line needs its own

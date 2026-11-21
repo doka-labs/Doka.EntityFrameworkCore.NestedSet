@@ -5,7 +5,10 @@ All notable changes to this project are documented here. The format follows
 including documented exceptions to Semantic Versioning, is defined in
 [Release governance](docs/release-governance.md#version-policy).
 
-## Unreleased
+## 10.4.0 (2026-11-21)
+
+Stable maintenance update for all six packages on .NET 10 and EF Core 10.
+See the [compatible upgrade](docs/upgrading-provider-packages.md#upgrade-from-1030-to-1040).
 
 ### Changed
 
@@ -14,6 +17,8 @@ including documented exceptions to Semantic Versioning, is defined in
   and current stable test tooling and database images. Keep .NET/EF Core 10
   and the supported database LTS lines; the MySql adapter requires Doka
   `[10.7.0,10.8.0)` without adding a direct shipping driver dependency.
+- Record C# 14 extension-block views in the stable API baselines while
+  retaining existing static-method contracts and operations.
 - Align code and test organization, explicit constructors, cancellation
   contracts, and reproducible build/editor configuration with the repository's
   documented engineering decisions. Review every solution project's lockfile.

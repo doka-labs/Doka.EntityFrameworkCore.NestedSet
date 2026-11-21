@@ -13,7 +13,7 @@ proposed answer, not the saved badge state. `Confirm` needs maintainer knowledge
 or private history. `Pending` needs the exact proposed release's hosted
 evidence. `N/A` is used only where the definition allows it. The first RC was
 published on 2026-10-02; `10.0.0` is the first stable contract. The current
-stable `10.3.0` source contract requires explicit cancellation arguments while
+stable `10.4.0` source contract requires explicit cancellation arguments while
 retaining registry naming and detection/recovery corrections.
 The earlier `10.1.0` contract introduced four provider packages and the explicitly
 breaking registration transition. This source preparation does not update the saved badge
@@ -51,8 +51,8 @@ the assessment. Do not select N/A merely because this is a new project.
 | `repo_distributed` | SUGGESTED | Met: Git is distributed version control |
 | `version_unique` | MUST | Met: [Release governance](release-governance.md) assigns all six shipping packages one immutable unique version per release |
 | `version_semver` | SUGGESTED | Not met for `10.1.0` and `10.3.0`: see the exceptions in the [version policy](release-governance.md#version-policy). This does not alter the historically achieved Passing result or the saved hosted answer |
-| `version_tags` | SUGGESTED | Met for the dated published RC: immutable [v10.0.0-rc.1 release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1) identifies that version. Each stable version, including `10.3.0`, requires its own reviewed signed tag and exact source verification |
-| `release_notes` | MUST | The dated [10.3.0 notes](../CHANGELOG.md#1030-2026-11-06) document the stable source contract and upgrade; the 10.2.0 and 10.1.0 notes retain their historical upgrade contracts. The qualifier extracts this exact section as release-notes.md; hosted release evidence remains specific to each version. The published RC's release notes remain historical evidence |
+| `version_tags` | SUGGESTED | Met for the dated published RC: immutable [v10.0.0-rc.1 release](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/releases/tag/v10.0.0-rc.1) identifies that version. Each stable version, including `10.4.0`, requires its own reviewed signed tag and exact source verification |
+| `release_notes` | MUST | The dated [10.4.0 notes](../CHANGELOG.md#1040-2026-11-21) document the stable maintenance contract and upgrade; earlier notes retain their historical upgrade contracts. The qualifier extracts this exact section as release-notes.md; hosted release evidence remains specific to each version. The published RC's release notes remain historical evidence |
 | `release_notes_vulns` | MUST | N/A while no publicly known project vulnerability has been fixed; recheck [advisories](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/security/advisories) for the release |
 
 ## Reporting
@@ -101,7 +101,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `crypto_pfs` | SHOULD | N/A: no key agreement protocol |
 | `crypto_password_storage` | MUST | N/A: no external-user password authentication/storage; ordinary database connection credentials belong to the application/provider |
 | `crypto_random` | MUST | N/A: no cryptographic key/nonce generation; tree identifiers are not secrets |
-| `delivery_mitm` | MUST | Met for HTTPS source and dated published RC package delivery; each stable release, including `10.3.0`, requires its own authenticated package delivery, signature, and public-content readback |
+| `delivery_mitm` | MUST | Met for HTTPS source and dated published RC package delivery; each stable release, including `10.4.0`, requires its own authenticated package delivery, signature, and public-content readback |
 | `delivery_unsigned` | MUST | Met: no unauthenticated HTTP hash delivery; [verification](security/release-verification.md) uses authenticated HTTPS and release signatures |
 | `vulnerabilities_fixed_60_days` | MUST | Met at dated check: no project advisory was present; recheck public advisories and private confirmed findings before release |
 | `vulnerabilities_critical_fixed` | SHOULD | Met at dated check: no known open critical project advisory; [Security Policy](../SECURITY.md#response-and-coordinated-disclosure) prioritizes critical/actively exploited defects |
