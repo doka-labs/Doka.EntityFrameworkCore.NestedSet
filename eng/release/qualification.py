@@ -89,7 +89,7 @@ def solution_projects(repo):
     return paths
 
 
-def rebased_lock(value, version):
+def rebased_lock(value, version, project_names=PACKAGES):
     """Rebase only release-dependent internal project edges, preserving all external package records."""
     result = copy.deepcopy(value)
     for framework in result["dependencies"].values():
@@ -98,25 +98,31 @@ def rebased_lock(value, version):
                 continue
 
             for name in dependency.get("dependencies", {}):
-                if name in PACKAGES:
+                if name in project_names:
                     dependency["dependencies"][name] = f"[{version}, )"
 
     return result
 
 
 def prepare_locks(repo, output, version):
-    """Copy every shipping-package lock without requiring locks for nonshipping solution projects."""
+    """Copy every reviewed solution lock into the candidate's isolated restore tree."""
     records = {}
-    projects = set(solution_projects(repo))
-    # WHY: Only the published package graphs are reviewed locks; tests, samples, and tools restore their own graphs.
+    projects = solution_projects(repo)
     for package in PACKAGES:
         project = repo / "src" / package / f"{package}.csproj"
         require(project in projects, "package_project_missing",
                 f"Shipping project is absent from the solution: {project}.")
+
+    project_names = {project.stem for project in projects}
+    require(len(project_names) == len(projects), "lock_project_identity",
+            "Solution project names must uniquely identify their isolated locks.")
+    # WHY: The selected version applies to all project references, including samples and specification libraries.
+    # External package records stay untouched; restore verifies the entire reviewed solution graph.
+    for project in projects:
         original = project.parent / "packages.lock.json"
         require(original.is_file(), "lock_missing", f"Missing reviewed lockfile: {original}.")
         target = output / "locks" / project.stem / "packages.lock.json"
-        value = rebased_lock(read_json(original), version)
+        value = rebased_lock(read_json(original), version, project_names)
         write_json(target, value)
         records[project.stem] = {"source": original.relative_to(repo).as_posix(), "value": value}
 
@@ -344,7 +350,7 @@ class Qualification:
             verify_locks(self.output)
 
     def restore(self):
-        """Restore the reviewed shipping locks and the complete selected solution graph."""
+        """Restore the complete reviewed solution graph using isolated candidate-version locks."""
         prepare_locks(self.repo, self.output, self.version)
         self.command("quality", "restore", ["dotnet", "restore", SOLUTION, "--locked-mode", *self.properties()])
         verify_locks(self.output)

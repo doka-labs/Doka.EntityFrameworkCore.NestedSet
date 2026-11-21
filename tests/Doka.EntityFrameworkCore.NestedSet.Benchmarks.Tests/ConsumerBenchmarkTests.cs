@@ -13,7 +13,7 @@ public sealed class ConsumerBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ConsumerVerificationRejectsUnexecutedOperation(
+    public async Task VerifyAsync_ConsumerVerification_RejectsUnexecutedOperation(
         bool groups
     )
     {
@@ -58,7 +58,7 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(1, true)]
     [InlineData(16, true)]
     [InlineData(100, false)]
-    public void NativePreflightValidatesConsumerOriginPopulation(
+    public void Discover_NativePreflight_ValidatesConsumerOriginPopulation(
         int origins,
         bool valid
     )
@@ -119,7 +119,7 @@ public sealed class ConsumerBenchmarkTests
     [Theory]
     [InlineData(typeof(SignalReportingBenchmarks))]
     [InlineData(typeof(UserGroupSelectionBenchmarks))]
-    public void ConsumerSelectionRequiresTheActualDatabaseLifecycle(
+    public void Discover_ConsumerSelection_RequiresTheActualDatabaseLifecycle(
         Type type
     )
     {
@@ -142,7 +142,7 @@ public sealed class ConsumerBenchmarkTests
     [Theory]
     [InlineData(typeof(SignalReportingBenchmarks))]
     [InlineData(typeof(UserGroupSelectionBenchmarks))]
-    public void NativeValidationAcceptsActualConsumerFamilies(
+    public void StructuralErrors_NativeValidation_AcceptsActualConsumerFamilies(
         Type type
     )
     {
@@ -167,7 +167,7 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task ActualSignalReportMatchesItsCompleteReference(
+    public async Task Reference_ActualSignalReport_MatchesItsCompleteReference(
         bool reference,
         bool nearest
     )
@@ -216,7 +216,7 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(true, BenchmarkPersonSelection.HighestBusinessPriority)]
     [InlineData(false, BenchmarkPersonSelection.SecondPerson)]
     [InlineData(true, BenchmarkPersonSelection.SecondPerson)]
-    public async Task ActualGroupSelectionMatchesItsCompleteReference(
+    public async Task Reference_ActualGroupSelection_MatchesItsCompleteReference(
         bool reference,
         BenchmarkPersonSelection selection
     )
@@ -258,7 +258,7 @@ public sealed class ConsumerBenchmarkTests
     [InlineData(BenchmarkPersonSelection.RequireUnique)]
     [InlineData(BenchmarkPersonSelection.HighestBusinessPriority)]
     [InlineData(BenchmarkPersonSelection.SecondPerson)]
-    public async Task PreparedGroupExecutionMatchesItsCompleteReference(
+    public async Task Prepared_PreparedGroupExecution_MatchesItsCompleteReference(
         BenchmarkPersonSelection selection
     )
     {
@@ -308,7 +308,7 @@ public sealed class ConsumerBenchmarkTests
 
     /// <summary>Prepared execution cannot silently build an unprepared query inside its measured operation.</summary>
     [Fact]
-    public async Task PreparedGroupExecutionRejectsMissingPreparation()
+    public async Task Prepared_PreparedGroupExecution_RejectsMissingPreparation()
     {
         // Arrange
         await using var benchmark = new UserGroupSelectionBenchmarks();
@@ -322,7 +322,7 @@ public sealed class ConsumerBenchmarkTests
 
     /// <summary>The origin population includes a root whose explicit supervisor outcome is NotFound.</summary>
     [Fact]
-    public async Task EveryVisibleGroupCanBeAnOriginIncludingRoot()
+    public async Task Api_EveryVisibleGroup_CanBeAnOriginIncludingRoot()
     {
         // Arrange
         await using var benchmark = new UserGroupSelectionBenchmarks

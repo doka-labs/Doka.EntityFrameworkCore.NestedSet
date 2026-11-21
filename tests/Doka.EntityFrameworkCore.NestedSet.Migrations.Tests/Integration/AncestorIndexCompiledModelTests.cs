@@ -26,7 +26,7 @@ public sealed class AncestorIndexCompiledModelTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task GeneratedModelRetainsAncestorMetadataAndExecutesQueriesAndWrites(
+    public async Task InsertChildAsync_GeneratedModel_RetainsAncestorMetadataAndExecutesQueriesAndWrites(
         string engine
     )
     {
@@ -34,10 +34,19 @@ public sealed class AncestorIndexCompiledModelTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorCompiledInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(
+            chain,
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false);
         await using var design = database.CreateContext();
         var model = CompiledModelTestSupport.Generate(design);
         await using var context = database.CreateContext(model: model);
@@ -300,8 +309,19 @@ public sealed class AncestorIndexCompiledModelTests
     }
 
     /// <summary>Recognizes only the exact configured provider's generic public capability.</summary>
-    private sealed class CapabilityProbe(MethodInfo method) : ExpressionVisitor
+    private sealed class CapabilityProbe : ExpressionVisitor
     {
+        private readonly MethodInfo _method;
+
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="method">The exact expression marker recognized by the probe.</param>
+        public CapabilityProbe(
+            MethodInfo method
+        )
+        {
+            _method = method;
+        }
+
         /// <summary>Gets whether the deferred query contains the exact public capability method.</summary>
         internal bool Found { get; private set; }
 
@@ -311,7 +331,7 @@ public sealed class AncestorIndexCompiledModelTests
         )
         {
             if (node.Method.IsGenericMethod
-                && node.Method.GetGenericMethodDefinition() == method)
+                && node.Method.GetGenericMethodDefinition() == _method)
             {
                 Found = true;
             }

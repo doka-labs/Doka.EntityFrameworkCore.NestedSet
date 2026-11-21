@@ -9,7 +9,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MixedQueryReadsOneQualifiedSnapshotAcrossAtomicStructureAndPayloadChanges(
+    public async Task SelectSubtrees_ConcurrentStructureAndPayload_ReadOneQualifiedSnapshot(
         bool rebuild
     )
     {

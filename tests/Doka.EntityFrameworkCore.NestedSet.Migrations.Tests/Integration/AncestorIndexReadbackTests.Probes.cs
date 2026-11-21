@@ -56,8 +56,19 @@ public sealed partial class AncestorIndexReadbackTests
     }
 
     /// <summary>Observes actual insert statements without rewriting SQL or consuming generated results.</summary>
-    private sealed class ReadbackCommandProbe(ReadbackObservation observation) : DbCommandInterceptor
+    private sealed class ReadbackCommandProbe : DbCommandInterceptor
     {
+        private readonly ReadbackObservation _observation;
+
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="observation">The shared observation state for this fixture operation.</param>
+        public ReadbackCommandProbe(
+            ReadbackObservation observation
+        )
+        {
+            _observation = observation;
+        }
+
         /// <inheritdoc />
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
             DbCommand command,
@@ -66,11 +77,11 @@ public sealed partial class AncestorIndexReadbackTests
             CancellationToken cancellationToken = default
         )
         {
-            if (observation.Enabled
+            if (_observation.Enabled
                 && command.CommandText.Contains("INSERT INTO", StringComparison.Ordinal)
                 && command.CommandText.Contains(AncestorIndexReadbackContext.TableName, StringComparison.Ordinal))
             {
-                observation.Commands.Add(command.CommandText);
+                _observation.Commands.Add(command.CommandText);
             }
 
             return ValueTask.FromResult(result);
@@ -78,8 +89,19 @@ public sealed partial class AncestorIndexReadbackTests
     }
 
     /// <summary>Captures actual EF-generated outputs and interrupts a later already executed payload save.</summary>
-    private sealed class ReadbackSaveProbe(ReadbackObservation observation) : SaveChangesInterceptor
+    private sealed class ReadbackSaveProbe : SaveChangesInterceptor
     {
+        private ReadbackObservation _observation;
+
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="observation">The shared observation state for this fixture operation.</param>
+        public ReadbackSaveProbe(
+            ReadbackObservation observation
+        )
+        {
+            _observation = observation;
+        }
+
         /// <inheritdoc />
         public override async ValueTask<int> SavedChangesAsync(
             SaveChangesCompletedEventData eventData,
@@ -87,7 +109,7 @@ public sealed partial class AncestorIndexReadbackTests
             CancellationToken cancellationToken = default
         )
         {
-            if (!observation.Enabled)
+            if (!_observation.Enabled)
             {
                 return result;
             }
@@ -102,13 +124,13 @@ public sealed partial class AncestorIndexReadbackTests
                 return result;
             }
 
-            observation.PayloadSaves++;
+            _observation.PayloadSaves++;
 
             foreach (var entry in entries)
             {
                 // WHY: The coordinated context saves with acceptance disabled. Generated CLR values still live
                 // in EF's store-generated sidecar at this callback; the entity retains its original field value.
-                observation.SavedRows.Add(
+                _observation.SavedRows.Add(
                     Capture(
                             entry.Entity,
                             entry.Property<bool>(AncestorIndexReadbackContext.FlagProperty)
@@ -121,11 +143,11 @@ public sealed partial class AncestorIndexReadbackTests
 
             // WHY: Waiting for a later completed save proves both an earlier batch and this batch reached the
             // server. Rollback must restore values already propagated by EF, not merely reject untouched input.
-            if (observation is { FailLaterSave: true, PayloadSaves: >= 2 })
+            if (_observation is { FailLaterSave: true, PayloadSaves: >= 2 })
             {
-                if (observation.Cancellation is not null)
+                if (_observation.Cancellation is not null)
                 {
-                    await observation.Cancellation.CancelAsync();
+                    await _observation.Cancellation.CancelAsync();
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 

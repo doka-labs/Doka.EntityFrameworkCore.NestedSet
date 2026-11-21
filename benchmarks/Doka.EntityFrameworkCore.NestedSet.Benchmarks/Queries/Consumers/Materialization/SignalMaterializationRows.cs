@@ -2,13 +2,23 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Supplies owned scalar rows with bounded lifecycle counters and an optional first-read suspension.</summary>
 /// <typeparam name="T">The actual sample scalar projection.</typeparam>
-/// <param name="rows">The stable prepared rows reused by serial benchmark invocations.</param>
-/// <param name="suspendFirstRead">Whether each enumeration yields once, including an empty enumeration.</param>
-internal sealed class SignalMaterializationRows<T>(
-    T[] rows,
-    bool suspendFirstRead
-) : IAsyncEnumerable<T>
+internal sealed class SignalMaterializationRows<T> : IAsyncEnumerable<T>
 {
+    private readonly T[] _rows;
+    private readonly bool _suspendFirstRead;
+
+    /// <summary>Retains the stable prepared projections without copying the materialization workload.</summary>
+    /// <param name="rows">The stable prepared rows reused by serial benchmark invocations.</param>
+    /// <param name="suspendFirstRead">Whether each enumeration yields once, including an empty enumeration.</param>
+    internal SignalMaterializationRows(
+        T[] rows,
+        bool suspendFirstRead
+    )
+    {
+        _rows = rows;
+        _suspendFirstRead = suspendFirstRead;
+    }
+
     /// <summary>Gets how many complete invocations acquired a reader, including setup validation.</summary>
     internal long Enumerations { get; private set; }
 
@@ -34,32 +44,46 @@ internal sealed class SignalMaterializationRows<T>(
         cancellationToken.ThrowIfCancellationRequested();
         Enumerations++;
 
-        return new Reader(rows, this, suspendFirstRead, cancellationToken);
+        return new Reader(_rows, this, _suspendFirstRead, cancellationToken);
     }
 
     /// <summary>Retains only its current position and contributes lifecycle totals at disposal.</summary>
-    private sealed class Reader(
-        T[] values,
-        SignalMaterializationRows<T> owner,
-        bool suspend,
-        CancellationToken cancellationToken
-    ) : IAsyncEnumerator<T>
+    private sealed class Reader : IAsyncEnumerator<T>
     {
-        private int _index = -1;
+        private readonly T[] _values;
+        private readonly SignalMaterializationRows<T> _owner;
+        private readonly bool _suspend;
+        private readonly CancellationToken _cancellationToken;
+        private int _index;
+
+        /// <summary>Owns one position while borrowing the enclosing source's stable row array.</summary>
+        internal Reader(
+            T[] values,
+            SignalMaterializationRows<T> owner,
+            bool suspend,
+            CancellationToken cancellationToken
+        )
+        {
+            _values = values;
+            _owner = owner;
+            _suspend = suspend;
+            _cancellationToken = cancellationToken;
+            _index = -1;
+        }
 
         /// <summary>Gets the current prepared scalar projection.</summary>
-        public T Current => values[_index];
+        public T Current => _values[_index];
 
         /// <summary>Offers one scalar or EOF, optionally suspending exactly the first read.</summary>
         /// <returns>Whether a prepared scalar is available.</returns>
         public ValueTask<bool> MoveNextAsync()
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            _cancellationToken.ThrowIfCancellationRequested();
             _index++;
 
-            return _index == 0 && suspend
-                ? FirstAsync(cancellationToken)
-                : ValueTask.FromResult(_index < values.Length);
+            return _index == 0 && _suspend
+                ? FirstAsync(_cancellationToken)
+                : ValueTask.FromResult(_index < _values.Length);
         }
 
         /// <summary>Records reader completion without retaining any result or row history.</summary>
@@ -68,11 +92,11 @@ internal sealed class SignalMaterializationRows<T>(
         {
             // WHY: BenchmarkDotNet awaits invocations serially. Contributing the offered-row count once
             // avoids per-row shared-counter writes while still exposing incomplete or undisposed readers.
-            owner.Disposals++;
-            owner.RowsRead += Math.Min(_index + 1, values.Length);
-            if (_index >= values.Length)
+            _owner.Disposals++;
+            _owner.RowsRead += Math.Min(_index + 1, _values.Length);
+            if (_index >= _values.Length)
             {
-                owner.EndOfStreams++;
+                _owner.EndOfStreams++;
             }
 
             return ValueTask.CompletedTask;
@@ -84,11 +108,11 @@ internal sealed class SignalMaterializationRows<T>(
             CancellationToken cancellationToken
         )
         {
-            owner.Suspensions++;
+            _owner.Suspensions++;
             await Task.Yield();
             cancellationToken.ThrowIfCancellationRequested();
 
-            return values.Length != 0;
+            return _values.Length != 0;
         }
     }
 }

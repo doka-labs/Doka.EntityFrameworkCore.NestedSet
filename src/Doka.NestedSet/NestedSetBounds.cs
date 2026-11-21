@@ -2,6 +2,7 @@ namespace Doka.NestedSet;
 
 /// <summary>Represents positive, ordered nested-set boundaries with an even inclusive width.</summary>
 /// <remarks>The default value is invalid and throws when used in calculations or containment checks.</remarks>
+[PublicAPI]
 public readonly record struct NestedSetBounds
 {
     /// <summary>Creates validated nested-set bounds.</summary>

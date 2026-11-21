@@ -2,12 +2,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Public insertion paths compute and refresh required generated indexer values omitted by the caller.</summary>
+    /// <summary>
+    /// Public insertion paths compute and refresh required generated indexer values omitted by the caller.
+    /// </summary>
     /// <param name="bulk">Whether one detached branch is inserted through the bulk API.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedPropertyBagInsertionDoesNotRequireCallerGeneratedFlag(
+    public async Task InsertSubtreeAsync_IndexedPropertyBagInsertion_DoesNotRequireCallerGeneratedFlag(
         bool bulk
     )
     {
@@ -77,9 +79,11 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Ordinary payload saving regenerates the ignored indexer even when an application omitted its prior value.</summary>
+    /// <summary>
+    /// Ordinary payload saving regenerates the ignored indexer even when an application omitted its prior value.
+    /// </summary>
     [Fact]
-    public async Task IndexedPropertyBagPayloadSaveRegeneratesOmittedFlag()
+    public async Task SaveChangesAsync_IndexedPropertyBagPayloadSave_RegeneratesOmittedFlag()
     {
         // Arrange
         var first = Interlocked.Add(ref s_mappingIdentity, 10);
@@ -114,12 +118,14 @@ public abstract partial class AncestorIndexQueryTests
         Assert.All(context.ChangeTracker.Entries(), entry => Assert.Equal(EntityState.Unchanged, entry.State));
     }
 
-    /// <summary>Late insertion failures restore generated flag values and preserve originally absent dictionary entries.</summary>
+    /// <summary>
+    /// Late insertion failures restore generated flag values and preserve originally absent dictionary entries.
+    /// </summary>
     /// <param name="bulk">Whether the failed public operation imports a detached branch.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedPropertyBagRollbackRestoresCallerValuesAndMissingFlag(
+    public async Task InsertSubtreeAsync_IndexedPropertyBagRollback_RestoresCallerValuesAndMissingFlag(
         bool bulk
     )
     {
@@ -195,7 +201,9 @@ public abstract partial class AncestorIndexQueryTests
                 ?.Name
             ?? throw new InvalidOperationException("The generated property is missing.");
 
-    /// <summary>Fails after EF accepts saved values so rollback must restore both tracker and dictionary shape.</summary>
+    /// <summary>
+    /// Fails after EF accepts saved values so rollback must restore both tracker and dictionary shape.
+    /// </summary>
     private sealed class BagSaveFailure : SaveChangesInterceptor
     {
         internal const string Message = "Injected indexed property-bag save failure.";

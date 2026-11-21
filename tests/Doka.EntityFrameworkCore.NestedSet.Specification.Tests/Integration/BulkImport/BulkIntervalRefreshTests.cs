@@ -25,7 +25,7 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
 
     /// <summary>Assigned imports read one interval and exclude enclosing, adjacent and other-scope rows.</summary>
     [Fact]
-    public async Task AssignedSubtreeUsesOneScopedScalarRefresh()
+    public async Task InsertSubtreeAsync_AssignedSubtree_UsesOneScopedScalarRefresh()
     {
         // Arrange
         var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -89,7 +89,7 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
 
     /// <summary>Generated keys and computed scalar/complex values survive the single final interval stream.</summary>
     [Fact]
-    public async Task GeneratedSubtreeRefreshesComputedValuesInOneStream()
+    public async Task InsertSubtreeAsync_GeneratedSubtree_RefreshesComputedValuesInOneStream()
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe(nameof(BulkIntervalNode));
@@ -192,7 +192,7 @@ public abstract partial class BulkIntervalRefreshTests : ProviderTest
 
     /// <summary>Configured sibling sorting retains bounded keyed refresh after noncontiguous input placement.</summary>
     [Fact]
-    public async Task OrderedBranchKeepsKeyedRefreshAfterConfiguredSiblingSorting()
+    public async Task InsertSubtreeAsync_OrderedBranch_KeepsKeyedRefreshAfterConfiguredSiblingSorting()
     {
         // Arrange
         var probe = new BulkIntervalRefreshProbe("BulkGeneratedNodes");

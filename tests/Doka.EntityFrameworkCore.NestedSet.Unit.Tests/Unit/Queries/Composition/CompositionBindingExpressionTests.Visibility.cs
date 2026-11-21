@@ -4,7 +4,7 @@ public sealed partial class CompositionBindingExpressionTests
 {
     /// <summary>Global visibility filters remain active while explicit EF overrides retain owned identities.</summary>
     [Fact]
-    public async Task VisibilityOverrideCannotRemoveScopeAndTreeBindings()
+    public async Task IgnoreQueryFilters_VisibilityOverride_CannotRemoveScopeAndTreeBindings()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");

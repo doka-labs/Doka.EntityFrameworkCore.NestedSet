@@ -65,7 +65,9 @@ internal static class Program
         return $"net{version.Major}.0";
     }
 
-    /// <summary>Validates assembly release identity, CodeView GUID, and the deterministic Portable PDB checksum.</summary>
+    /// <summary>
+    /// Validates assembly release identity, CodeView GUID, and the deterministic Portable PDB checksum.
+    /// </summary>
     private static object Verify(
         byte[] assembly,
         byte[] pdb,
@@ -88,7 +90,29 @@ internal static class Program
         }
 
         ValidateInformationalVersion(reader, packageVersion);
+        var (codeView, checksum) = ReadSymbolIdentity(peReader, pdbName);
+        ValidateAssociatedSymbols(peReader, assemblyName, pdb, codeView, checksum);
 
+        // WHY: SSQP uses UInt32.MaxValue as the Portable PDB age; the raw file hash is a separate readback check.
+        var key = $"{codeView.Guid:N}FFFFFFFF";
+
+        return new
+        {
+            pdbName,
+            url = $"https://symbols.nuget.org/download/symbols/{pdbName}/{key}/{pdbName}",
+            checksum = $"SHA256:{Convert.ToHexString(checksum.Checksum.AsSpan()).ToLowerInvariant()}",
+            sha256 = Convert
+                .ToHexString(SHA256.HashData(pdb))
+                .ToLowerInvariant(),
+        };
+    }
+
+    /// <summary>Requires the candidate's exact portable symbol identity and checksum algorithm.</summary>
+    private static (CodeViewDebugDirectoryData CodeView, PdbChecksumDebugDirectoryData Checksum) ReadSymbolIdentity(
+        PEReader peReader,
+        string pdbName
+    )
+    {
         var entries = peReader.ReadDebugDirectory();
         var codeViews = entries
             .Where(entry => entry is { Type: DebugDirectoryEntryType.CodeView, IsPortableCodeView: true })
@@ -113,6 +137,18 @@ internal static class Program
             throw new InvalidDataException("Assembly identifies unexpected symbols or checksum algorithm.");
         }
 
+        return (codeView, checksum);
+    }
+
+    /// <summary>Validates associated symbol bytes while retaining ownership of the metadata provider.</summary>
+    private static void ValidateAssociatedSymbols(
+        PEReader peReader,
+        string assemblyName,
+        byte[] pdb,
+        CodeViewDebugDirectoryData codeView,
+        PdbChecksumDebugDirectoryData checksum
+    )
+    {
         if (!peReader.TryOpenAssociatedPortablePdb(
                 assemblyName,
                 _ => new MemoryStream(pdb, writable: false),
@@ -137,34 +173,31 @@ internal static class Program
                 throw new InvalidDataException("Portable PDB metadata identity is invalid.");
             }
 
-            // WHY: The deterministic checksum zeros the 20-byte content ID to avoid hashing its own hash.
-            // Hash segments directly so verification does not allocate a second full PDB buffer.
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            hash.AppendData(pdb.AsSpan(0, header.IdStartOffset));
-            hash.AppendData(new byte[20]);
-            hash.AppendData(pdb.AsSpan(header.IdStartOffset + header.Id.Length));
+            ValidatePdbChecksum(pdb, header, checksum);
+        }
+    }
 
-            if (!hash
+    /// <summary>Hashes the original byte segments with the self-referential content identity cleared.</summary>
+    private static void ValidatePdbChecksum(
+        byte[] pdb,
+        DebugMetadataHeader header,
+        PdbChecksumDebugDirectoryData checksum
+    )
+    {
+        // WHY: The deterministic checksum zeros the 20-byte content ID to avoid hashing its own hash.
+        // Hash segments directly so verification does not allocate a second full PDB buffer.
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(pdb.AsSpan(0, header.IdStartOffset));
+        hash.AppendData(new byte[20]);
+        hash.AppendData(pdb.AsSpan(header.IdStartOffset + header.Id.Length));
+
+        if (!hash
                 .GetHashAndReset()
                 .AsSpan()
                 .SequenceEqual(checksum.Checksum.AsSpan()))
-            {
-                throw new InvalidDataException("Portable PDB checksum does not match the candidate assembly.");
-            }
-        }
-
-        // WHY: SSQP uses UInt32.MaxValue as the Portable PDB age; the raw file hash is a separate readback check.
-        var key = $"{codeView.Guid:N}FFFFFFFF";
-
-        return new
         {
-            pdbName,
-            url = $"https://symbols.nuget.org/download/symbols/{pdbName}/{key}/{pdbName}",
-            checksum = $"SHA256:{Convert.ToHexString(checksum.Checksum.AsSpan()).ToLowerInvariant()}",
-            sha256 = Convert
-                .ToHexString(SHA256.HashData(pdb))
-                .ToLowerInvariant(),
-        };
+            throw new InvalidDataException("Portable PDB checksum does not match the candidate assembly.");
+        }
     }
 
     /// <summary>Checks the release identity in metadata without loading or executing the candidate assembly.</summary>

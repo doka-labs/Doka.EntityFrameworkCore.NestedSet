@@ -19,7 +19,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData(true, "unused-distance")]
     [InlineData(false, "nested-collection")]
     [InlineData(true, "nested-collection")]
-    public void DirectProjectionKeepsSourceRelatedAndPositiveDistance(
+    public void ProjectPairs_DirectProjection_KeepsBothEndpointsAndPositiveDistance(
         bool ancestors,
         string shape
     )
@@ -126,7 +126,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ShadowStructurePreservesDeferredCollectionProjection(
+    public async Task SelectAncestorsOrSelf_ShadowStructure_PreservesDeferredCollectionProjection(
         bool includeSelf
     )
     {

@@ -194,6 +194,11 @@ complete ten-million-node nor native SQL Server/hosted RC qualification. No
 wall-clock gate, relaxed assertion, timeout increase or new library mechanism
 is introduced by these observations.
 
+The [performance guide](../performance.md#query-composition-and-actual-consumer-profiles)
+owns the workload/resource contract. The observations here retain their actual
+source, package, reader, and host boundaries; they are not a duplicate current
+test inventory or a speed promise for a later implementation.
+
 ## Construction and warm-read allocation
 
 Separate construction and execution. A warmed query cache avoids compilation;

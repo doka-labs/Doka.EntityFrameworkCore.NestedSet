@@ -6,14 +6,15 @@ public abstract partial class SiblingReorderWriteTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CancellationAfterMarkingRestoresEveryCoordinate(
+    public async Task ReorderAsync_CancellationAfterMarking_RestoresEveryCoordinate(
         bool callerTransaction
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var sizes = Enumerable
             .Repeat(1, 70)
@@ -34,8 +35,8 @@ public abstract partial class SiblingReorderWriteTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         await using var transaction = callerTransaction

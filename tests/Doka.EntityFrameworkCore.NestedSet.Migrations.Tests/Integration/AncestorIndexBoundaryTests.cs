@@ -49,7 +49,7 @@ public sealed class AncestorIndexBoundaryTests
     /// <param name="expected">Whether the interval has room for another boundary.</param>
     [Theory]
     [MemberData(nameof(SignedBounds))]
-    public async Task GeneratedFlagPreservesSignedBoundsOnInsert(
+    public async Task InsertSplitRowAsync_GeneratedFlag_PreservesSignedBoundsOnInsert(
         string engine,
         long left,
         long right,
@@ -60,13 +60,19 @@ public sealed class AncestorIndexBoundaryTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorSignedInitial", splitStructure: true);
         await database.MigrateAsync(
             chain,
             splitStructure: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true);
 
         await using var context = database.CreateContext(assembly: chain.Assembly, splitStructure: true);
 
@@ -103,7 +109,7 @@ public sealed class AncestorIndexBoundaryTests
     /// <param name="expected">Whether the interval has room for another boundary.</param>
     [Theory]
     [MemberData(nameof(SignedBounds))]
-    public async Task PopulatedUpgradePreservesSignedBounds(
+    public async Task MigrateAsync_PopulatedUpgrade_PreservesSignedBounds(
         string engine,
         long left,
         long right,
@@ -114,14 +120,19 @@ public sealed class AncestorIndexBoundaryTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var initial = database.Scaffold(false, "AOrdinarySignedInitial", splitStructure: true);
         await database.MigrateAsync(
             initial,
             cancellationToken: TestContext.Current.CancellationToken,
-            false,
-            splitStructure: true);
+            enabled: false,
+            splitStructure: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true);
 
         await using (var ordinary = database.CreateContext(false, initial.Assembly, splitStructure: true))
         {
@@ -139,7 +150,11 @@ public sealed class AncestorIndexBoundaryTests
         await database.MigrateAsync(
             upgrade,
             splitStructure: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true);
 
         // Assert
         await using var context = database.CreateContext(assembly: upgrade.Assembly, splitStructure: true);

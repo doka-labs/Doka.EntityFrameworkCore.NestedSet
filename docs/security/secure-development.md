@@ -21,7 +21,7 @@ Review changes against [Security Policy](../../SECURITY.md), the
 | Queries and diagnostics | Preserve query-filter contracts; avoid leaking keys, scopes, payloads, SQL parameters, or credentials through telemetry |
 | Package and dependency updates | Review upstream advisories, actual API changes, locked graphs, native key behavior, and supported provider regressions |
 
-The [regression matrix](../regression-coverage.md) links positive, negative, and
+The [test-selection guide](../testing.md#choose-the-right-check) links positive, negative, and
 adversarial tests to these mechanisms. Keep one Arrange/Act/Assert sequence per
 test. A security fix needs a reproducer that fails before the fix and a positive
 control for legitimate use. Correct the owning implementation; do not bypass a
@@ -105,7 +105,7 @@ instrumentation.
 
 The existing unit projects also run FsCheck properties for bounds, complete
 tree identity, generated bulk geometry, native sibling ordering, and rejected
-imports. [Generated coverage](../regression-coverage.md#generated-invariant-coverage)
+imports. [Generated coverage](../testing.md#property-based-regressions)
 names the positive and negative cases. FsCheck reports a replay seed and shrinks
 failures to smaller inputs. The pinned Scorecard version recognizes the actual
 `FsCheck.Xunit` imports; detection alone does not establish a successful test run

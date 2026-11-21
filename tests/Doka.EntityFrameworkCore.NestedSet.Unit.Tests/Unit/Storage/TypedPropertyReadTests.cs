@@ -11,7 +11,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IntegerParentReadsLiveNullablePresence(
+    public void Read_IntegerParent_ReadsLiveNullablePresence(
         bool present
     )
     {
@@ -49,7 +49,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GuidParentReadsLiveNullablePresence(
+    public void Read_GuidParent_ReadsLiveNullablePresence(
         bool present
     )
     {
@@ -87,7 +87,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ReferenceParentReadsLivePresence(
+    public void Read_ReferenceParent_ReadsLivePresence(
         bool present
     )
     {
@@ -125,7 +125,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ConvertedReferencePresenceIgnoresDomainOperators(
+    public void Read_ConvertedReferencePresence_IgnoresDomainOperators(
         bool present
     )
     {
@@ -167,7 +167,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void OperatorFreeStructReadsLiveNullablePresence(
+    public void Read_OperatorFreeStruct_ReadsLiveNullablePresence(
         bool present
     )
     {
@@ -209,7 +209,7 @@ public sealed partial class TypedPropertyReadTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void RequiredNullableClrKeyDoesNotNestNullableStorage(
+    public void Read_RequiredNullableClrKey_DoesNotNestNullableStorage(
         bool present
     )
     {
@@ -256,123 +256,9 @@ public sealed partial class TypedPropertyReadTests
                 .State);
     }
 
-    /// <summary>Typed optional reads observe shadow values through the same live wrapper.</summary>
-    /// <param name="present">Whether the updated shadow parent contains zero.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ShadowParentReadsLiveSidecarChanges(
-        bool present
-    )
-    {
-        // Arrange
-        using var context = new ReadContext();
-        var entry = context.Attach(new ReadNode { Id = 1 });
-        entry.Property<int?>(ReadContext.ShadowParent)
-            .CurrentValue = 7;
-
-        var values = entry.CurrentValues;
-        var property = entry.Metadata.FindProperty(ReadContext.ShadowParent)!;
-
-        // Act
-        entry.Property<int?>(ReadContext.ShadowParent)
-            .CurrentValue = present
-            ? 0
-            : null;
-
-        var parent = NestedSetParent<int>.Read(values, property);
-
-        // Assert
-        Assert.Equal(present, parent.HasValue);
-        Assert.Equal(0, parent.Value);
-        Assert.True(property.IsShadowProperty());
-        Assert.Single(context.ChangeTracker.Entries<ReadNode>());
-        Assert.Equal(
-            ConnectionState.Closed,
-            context.Database.GetDbConnection()
-                .State);
-    }
-
-    /// <summary>Named dictionary mappings read updated optional indexer values without another entry wrapper.</summary>
-    /// <param name="present">Whether the updated indexer parent contains zero.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NamedSharedParentReadsLiveIndexerChanges(
-        bool present
-    )
-    {
-        // Arrange
-        using var context = new ReadContext();
-        var row = new Dictionary<string, object?>
-        {
-            [ReadContext.SharedKey] = 1,
-            [ReadContext.SharedParent] = 7,
-        };
-
-        var entry = context
-            .Set<Dictionary<string, object?>>(ReadContext.SharedEntity)
-            .Attach(row);
-
-        var values = entry.CurrentValues;
-        var property = entry.Metadata.FindProperty(ReadContext.SharedParent)!;
-
-        // Act
-        row[ReadContext.SharedParent] = present
-            ? 0
-            : null;
-
-        var parent = NestedSetParent<int>.Read(values, property);
-
-        // Assert
-        Assert.Equal(present, parent.HasValue);
-        Assert.Equal(0, parent.Value);
-        Assert.Equal(ReadContext.SharedEntity, entry.Metadata.Name);
-        Assert.True(property.IsIndexerProperty());
-        Assert.Equal(EntityState.Unchanged, entry.State);
-        Assert.Equal(
-            ConnectionState.Closed,
-            context.Database.GetDbConnection()
-                .State);
-    }
-
-    /// <summary>Live reads observe generated temporary sidecars while the CLR identity stays zero.</summary>
-    [Fact]
-    public void TemporaryIdentityRemainsLiveOutsideClrStorage()
-    {
-        // Arrange
-        using var context = new ReadContext();
-        var node = new TemporaryKeyNode();
-        var entry = context.Entry(node);
-        var values = entry.CurrentValues;
-        var property = entry.Metadata.FindProperty(nameof(TemporaryKeyNode.Id))!;
-
-        // Act
-        entry.State = EntityState.Added;
-        var key = NestedSetTypedValue<int>.Read(values, property);
-
-        // Assert
-        Assert.True(
-            entry.Property(value => value.Id)
-                .IsTemporary);
-
-        Assert.NotEqual(0, key);
-        Assert.Equal(0, node.Id);
-        Assert.Equal(
-            key,
-            entry.Property(value => value.Id)
-                .CurrentValue);
-
-        Assert.Equal(EntityState.Added, entry.State);
-        Assert.Equal(
-            ConnectionState.Closed,
-            context.Database.GetDbConnection()
-                .State);
-    }
-
     /// <summary>Warm multi-role reads have a fixed allocation budget instead of boxing each parent and bound.</summary>
     [Fact]
-    public void RepeatedParentAndStructuralReadsAvoidPerReadAllocation()
+    public void ReadSum_RepeatedParentAndStructuralReads_AvoidPerReadAllocation()
     {
         // Arrange
         const int iterations = 100_000;

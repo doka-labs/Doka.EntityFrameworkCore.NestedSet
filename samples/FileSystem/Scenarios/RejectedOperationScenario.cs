@@ -30,19 +30,25 @@ internal static class RejectedOperationScenario
         await FolderDisplay.TreeAsync(context, forest.TreeId, "Before rejected operations", details, cancellationToken);
 
         await RequireRejectionAsync(
-            () => folders.MoveToAsync(forest.Projects.Id, forest.Repository.Id, cancellationToken),
+            operationCancellationToken => folders.MoveToAsync(
+                forest.Projects.Id,
+                forest.Repository.Id,
+                operationCancellationToken),
             NestedSetErrorCode.CycleDetected,
             "Move Projects into its own descendant",
             cancellationToken);
 
         await RequireRejectionAsync(
-            () => folders.MoveBeforeAsync(forest.Shared.Id, forest.Documents.Id, cancellationToken),
+            operationCancellationToken => folders.MoveBeforeAsync(
+                forest.Shared.Id,
+                forest.Documents.Id,
+                operationCancellationToken),
             NestedSetErrorCode.ManualPlacementNotAllowed,
             "Override strict alphabetic ordering with MoveBeforeAsync",
             cancellationToken);
 
         await RequireRejectionAsync(
-            () => folders.DeleteAsync(forest.Root.Id, cancellationToken),
+            operationCancellationToken => folders.DeleteAsync(forest.Root.Id, operationCancellationToken),
             NestedSetErrorCode.OperationRejected,
             "Delete a root as a single node",
             cancellationToken);
@@ -75,7 +81,7 @@ internal static class RejectedOperationScenario
     /// <param name="description">The operation description displayed to the reader.</param>
     /// <param name="cancellationToken">The token for output.</param>
     private static async Task RequireRejectionAsync(
-        Func<Task> operation,
+        Func<CancellationToken, Task> operation,
         NestedSetErrorCode expectedCode,
         string description,
         CancellationToken cancellationToken
@@ -83,7 +89,7 @@ internal static class RejectedOperationScenario
     {
         try
         {
-            await operation();
+            await operation(cancellationToken);
         }
         catch (NestedSetException exception) when (exception.Code == expectedCode)
         {

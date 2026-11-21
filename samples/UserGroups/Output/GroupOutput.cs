@@ -9,6 +9,7 @@ internal static class GroupOutput
     /// <param name="treeId">The selected stable tree identity.</param>
     /// <param name="heading">The readable label identifying the displayed state.</param>
     /// <param name="details">Whether to include persisted identity and coordinate columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for reading and output.</param>
     /// <returns>A task that completes after the tree has been displayed.</returns>
     public static async Task TreeAsync(
@@ -17,10 +18,11 @@ internal static class GroupOutput
         Guid treeId,
         string heading,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
-        await SampleConsole.HeadingAsync(heading, cancellationToken);
+        await SampleConsole.HeadingAsync(output, heading, cancellationToken);
 
         var groups = await context
             .NestedSet<UserGroup>()
@@ -31,11 +33,16 @@ internal static class GroupOutput
 
         if (details)
         {
-            await SampleConsole.WriteLineAsync($"TenantId={tenantId}; TreeId={treeId}", cancellationToken);
+            await SampleConsole.WriteLineAsync(output, $"TenantId={tenantId}; TreeId={treeId}", cancellationToken);
         }
 
-        foreach (var group in groups)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
         {
+            var group = groups[groupIndex];
+
             var text = new string(' ', group.Depth * 2) + group.Name;
 
             if (details)
@@ -44,7 +51,7 @@ internal static class GroupOutput
                     + $"Position={group.Position}, Left={group.Left}, Right={group.Right}]";
             }
 
-            await SampleConsole.WriteLineAsync(text, cancellationToken);
+            await SampleConsole.WriteLineAsync(output, text, cancellationToken);
         }
     }
 
@@ -53,6 +60,7 @@ internal static class GroupOutput
     /// <param name="tenantId">The tenant partition.</param>
     /// <param name="groupId">The group receiving the grants.</param>
     /// <param name="label">The name displayed beside the codes.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for querying and output.</param>
     /// <returns>The displayed permission codes for the scenario's precise expectations.</returns>
     public static async Task<List<string>> PrivilegesAsync(
@@ -60,12 +68,13 @@ internal static class GroupOutput
         Guid tenantId,
         int groupId,
         string label,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         var privileges = await PrivilegeQueries.EffectiveAsync(context, tenantId, groupId, cancellationToken);
 
-        await SampleConsole.WriteLineAsync($"{label}: {string.Join(", ", privileges)}", cancellationToken);
+        await SampleConsole.WriteLineAsync(output, $"{label}: {string.Join(", ", privileges)}", cancellationToken);
 
         return privileges;
     }
@@ -73,11 +82,13 @@ internal static class GroupOutput
     /// <summary>Inspects existing trees and direct assignments without migrating or changing the database.</summary>
     /// <param name="context">The context used exclusively for inspection.</param>
     /// <param name="details">Whether tree output includes structural columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for all reads and output.</param>
     /// <returns>A task that completes after stored results have been printed.</returns>
     public static async Task InspectAsync(
         UserGroupContext context,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
@@ -95,14 +106,20 @@ internal static class GroupOutput
             })
             .ToListAsync(cancellationToken);
 
-        foreach (var root in roots)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var rootIndex = 0; rootIndex < roots.Count; rootIndex++)
         {
+            var root = roots[rootIndex];
+
             await TreeAsync(
                 context,
                 root.TenantId,
                 root.TreeId,
                 $"Stored tree: {root.Name}",
                 details,
+                output,
                 cancellationToken);
         }
 
@@ -212,18 +229,27 @@ internal static class GroupOutput
             })
             .ToListAsync(cancellationToken);
 
-        await SampleConsole.HeadingAsync("Stored direct role assignments:", cancellationToken);
+        await SampleConsole.HeadingAsync(output, "Stored direct role assignments:", cancellationToken);
 
-        foreach (var assignment in assignments)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var assignmentIndex = 0; assignmentIndex < assignments.Count; assignmentIndex++)
         {
+            var assignment = assignments[assignmentIndex];
+
             await SampleConsole.WriteLineAsync(
+                output,
                 $"{assignment.Group} -> {assignment.Role} -> {assignment.PrivilegeCode} "
                 + $"(TenantId={assignment.TenantId})",
                 cancellationToken);
         }
 
-        await SupervisorOutput.InspectAsync(context, details, cancellationToken);
+        await SupervisorOutput.InspectAsync(context, details, output, cancellationToken);
 
-        await SampleConsole.WriteLineAsync("Inspection completed without changing stored results.", cancellationToken);
+        await SampleConsole.WriteLineAsync(
+            output,
+            "Inspection completed without changing stored results.",
+            cancellationToken);
     }
 }

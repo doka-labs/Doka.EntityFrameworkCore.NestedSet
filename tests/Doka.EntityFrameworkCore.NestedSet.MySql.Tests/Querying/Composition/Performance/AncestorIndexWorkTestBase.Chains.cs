@@ -9,7 +9,7 @@ public abstract partial class AncestorIndexWorkTestBase
     /// <summary>Streams the exact 501,005 pairs whose broad repeated native ranges previously regressed.</summary>
     [Fact]
     [Trait("Category", "Capacity")]
-    public async Task MultiBranchInclusiveAncestorsRetainBoundedNativeWork()
+    public async Task AsAsyncEnumerable_MultiBranchInclusiveAncestors_RetainBoundedNativeWork()
     {
         // Arrange
         const int sources = 1_000;
@@ -31,7 +31,10 @@ public abstract partial class AncestorIndexWorkTestBase
             tree,
             forest: false,
             branching: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            dense: false,
+            balanced: false,
+            nodes: Nodes);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var selected = Enumerable
@@ -130,8 +133,8 @@ public abstract partial class AncestorIndexWorkTestBase
             - traversalsBefore;
 
         var completedRead = $"CompletedRows={count}; expectedRows={expected}; commands={commandCount}; "
-            + $"sourceBinding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
-            + $"indexAttempts={indexAttempts}; traversals={traversals}.";
+        + $"sourceBinding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
+        + $"indexAttempts={indexAttempts}; traversals={traversals}.";
 
         // WHY: Instrumented EXPLAIN executes the statement again and can fail independently after
         // a fully drained read. Persist that boundary before requesting the separate actual plan.
@@ -188,9 +191,12 @@ public abstract partial class AncestorIndexWorkTestBase
                 $"Nodes=100001; branches=100; branchLength=1000; sources={sources}; rows={count}; "
                 + $"sourceBinding={hasBinding}; orderedJoin={hasOrderedJoin}; optimized={hasOptimizedPath}; "
                 + $"nativeWork={nativeWork}; "
-                + $"indexAttempts={indexAttempts}; traversals={traversals}; baseTableTuples={baseTable.ObservedTuples}; "
-                + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}; budget={budget}; operatorBudget={operatorBudget}; "
-                + $"materializedOutput={work.MaterializedOutput}; unknownMaterializedOutputs={work.UnknownMaterializedOutputs}",
+                + $"indexAttempts={indexAttempts}; traversals={traversals}; baseTableTuples={
+                    baseTable.ObservedTuples}; "
+                + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}; budget={
+                    budget}; operatorBudget={operatorBudget}; "
+                + $"materializedOutput={work.MaterializedOutput}; unknownMaterializedOutputs={
+                    work.UnknownMaterializedOutputs}",
                 sql,
                 plan,
             ],
@@ -201,7 +207,8 @@ public abstract partial class AncestorIndexWorkTestBase
             $"Rows={count}; binding={hasBinding}; orderedJoin={hasOrderedJoin}; "
             + $"optimized={hasOptimizedPath}; nativeWork={nativeWork}; "
             + $"traversals={traversals}; baseTableTuples={baseTable.ObservedTuples}; "
-            + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}; budget={budget}; operatorBudget={operatorBudget}.");
+            + $"unexposedPreIndexAccesses={baseTable.UnexposedPreIndexAccesses}; budget={
+                budget}; operatorBudget={operatorBudget}.");
 
         Assert.True(hasOptimizedPath);
         Assert.Equal(expected, owners.Sum(chain => (long)chain.Length));

@@ -27,7 +27,12 @@ public abstract partial class HierarchyCompositionConsistencyTests : ProviderTes
             Engine,
             scope,
             probe,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         try
         {

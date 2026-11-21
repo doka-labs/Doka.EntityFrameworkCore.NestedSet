@@ -4,12 +4,13 @@ public abstract partial class OrderingRefreshTests
 {
     /// <summary>Groups equal binary scope contents without one membership branch per array instance.</summary>
     [Fact]
-    public async Task EqualBinaryScopesShareOneMembershipBatch()
+    public async Task SaveChangesAsync_EqualBinaryScopes_ShareOneMembershipBatch()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var extensions = setup
             .GetService<IDbContextOptions>()

@@ -8,7 +8,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that application changes before and after a tree write share the caller's commit.</summary>
     /// <returns>A task that completes after verifying the combined persisted unit of work.</returns>
     [Fact]
-    public async Task CallerCommitPersistsTreeAndApplicationChanges()
+    public async Task InsertRootAsync_CallerCommit_PersistsTreeAndApplicationChanges()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -68,7 +68,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that caller rollback removes both tree writes and already saved application changes.</summary>
     /// <returns>A task that completes after checking the rolled-back unit of work.</returns>
     [Fact]
-    public async Task CallerRollbackUndoesTreeAndApplicationChanges()
+    public async Task InsertRootAsync_CallerRollback_UndoesTreeAndApplicationChanges()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -121,7 +121,7 @@ public abstract partial class EnterpriseTests
     /// </summary>
     /// <returns>A task that completes after checking preserved earlier work and a successful later commit.</returns>
     [Fact]
-    public async Task FailedRepairPreservesCallerWorkAndAllowsSubsequentCommit()
+    public async Task RebuildAsync_FailedRepair_PreservesCallerWorkAndAllowsSubsequentCommit()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -130,7 +130,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe { FailSecondNodeUpdate = true };
@@ -190,7 +190,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies savepoint rollback uses a live token after the caller cancels the repair token.</summary>
     /// <returns>A task that completes after proving rollback and caller recovery from cancellation.</returns>
     [Fact]
-    public async Task CanceledRepairPreservesCallerWorkAndAllowsSubsequentCommit()
+    public async Task RebuildAsync_CanceledRepair_PreservesCallerWorkAndAllowsSubsequentCommit()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -199,7 +199,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
@@ -261,7 +261,7 @@ public abstract partial class EnterpriseTests
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite cannot begin the RepeatableRead caller transaction required to exercise this rejection.")]
-    public async Task CallerRepeatableReadIsRejectedBeforeHierarchySql()
+    public async Task InsertRootAsync_CallerRepeatableRead_IsRejectedBeforeHierarchySql()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -290,7 +290,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that implicit ambient ownership is rejected before any hierarchy command.</summary>
     /// <returns>A task that completes after checking the ambient-transaction boundary.</returns>
     [Fact]
-    public async Task AmbientTransactionIsRejectedBeforeHierarchySql()
+    public async Task InsertRootAsync_AmbientTransaction_IsRejectedBeforeHierarchySql()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

@@ -15,7 +15,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task DeferredNamedHierarchyRetainsExactMappingAndRejectsForeignEndpoints(
+    public async Task WhereAnyAncestorOrSelf_DeferredNamedHierarchy_RetainsExactMappingAndRejectsForeignEndpoints(
         bool includeSelf,
         bool scoped
     )
@@ -98,7 +98,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("captured", false)]
     [InlineData("getter", false)]
     [InlineData("modifier", false)]
-    public async Task DeferredEndpointVisibilityDoesNotTrustUnexpandedCaptures(
+    public async Task Require_DeferredEndpointVisibility_DoesNotTrustUnexpandedCaptures(
         string shape,
         bool visible
     )

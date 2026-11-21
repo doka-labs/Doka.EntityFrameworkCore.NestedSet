@@ -11,7 +11,7 @@ public sealed class CompositionConsumerAdapterTests
 {
     /// <summary>A namespaced sample key with ordinal zero cannot alias the unbound empty catalog sentinel.</summary>
     [Fact]
-    public void NamespacedZeroKeyDoesNotAliasTheEmptyCatalogSentinel()
+    public void Integer_NamespacedZeroKey_DoesNotAliasTheEmptyCatalogSentinel()
     {
         // Arrange
         var sampleZero = SignalDataset.Id(0);
@@ -38,7 +38,7 @@ public sealed class CompositionConsumerAdapterTests
     [InlineData(0, true)]
     [InlineData(1, true)]
     [InlineData(int.MaxValue, true)]
-    public void IntegerIdentityCodecDoesNotCollapseForeignGuids(
+    public void Integer_IntegerIdentityCodec_DoesNotCollapseForeignGuids(
         int value,
         bool foreignSuffix
     )
@@ -93,7 +93,7 @@ public sealed class CompositionConsumerAdapterTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ApplicationConvertersPreserveTreeAndForeignKeyIdentity(
+    public void GetValueConverter_ApplicationConverters_PreserveTreeAndForeignKeyIdentity(
         bool signal
     )
     {
@@ -193,7 +193,7 @@ public sealed class CompositionConsumerAdapterTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public void UnboundScalarIdentityMatchesTheMappedUnionBranch(
+    public void FindMapping_UnboundScalarIdentity_MatchesTheMappedUnionBranch(
         string engine,
         bool signal
     )

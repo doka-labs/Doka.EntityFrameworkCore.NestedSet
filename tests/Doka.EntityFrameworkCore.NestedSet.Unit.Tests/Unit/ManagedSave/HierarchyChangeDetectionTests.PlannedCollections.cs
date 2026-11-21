@@ -13,7 +13,7 @@ public sealed partial class HierarchyChangeDetectionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task PlannedParentCollectionRemovalUsesIntentDespiteSuppressedPhysicalForeignKey(
+    public async Task PlanHasChanges_PlannedParentCollectionRemoval_UsesIntentDespiteSuppressedPhysicalForeignKey(
         bool removeInverse,
         bool sourceRoot
     )

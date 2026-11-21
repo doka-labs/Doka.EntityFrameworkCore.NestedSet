@@ -4,10 +4,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Overrides inherited binary table comparison with explicit case-insensitive Scope comparison.</summary>
 /// <param name="options">The provider options for this independently owned compatibility model.</param>
-internal sealed class ExplicitRegistryScopeCollationContext(
-    DbContextOptions<ExplicitRegistryScopeCollationContext> options
-) : InheritedBinaryScopeContext(options)
+internal sealed class ExplicitRegistryScopeCollationContext : InheritedBinaryScopeContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public ExplicitRegistryScopeCollationContext(
+        DbContextOptions<ExplicitRegistryScopeCollationContext> options
+    ) : base(options) { }
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder

@@ -249,6 +249,14 @@ index can still make the expensive FK plan eligible; inspect the application's
 actual plans after adding such an index. No model convention can promise an
 optimal plan for arbitrary application indexes or statistics.
 
+Native regressions verify the root companion's physical column order,
+predicate, validity, readiness, and nonunique definition. They record ordinary
+query plans separately from transaction-local index-eligibility controls;
+missing or incorrectly filtered indexes must not satisfy that proof. Exact
+root identities and row counts remain required, and the control must restore
+the session's planner setting. A controlled eligible plan does not promise
+that PostgreSQL will choose the same plan for an ordinary application query.
+
 When upgrading from a model with unfiltered PostgreSQL indexes, scaffold a
 normal migration. Review its index drop/create operations and filters against
 the model snapshot; hierarchy rows and registry lifecycle data must remain
@@ -530,7 +538,7 @@ narrowing remains refused even when every existing value fits Int32. Ordinary
 EF migrations remain independently supported without enabling SafeMigrations.
 
 See the [10.7.0 SQL Server registration and behavior](https://github.com/doka-labs/Doka.EntityFrameworkCore.SafeMigrations/blob/22cf3685b77857978ecd8e9e533c9ddabceb28f6/docs/sqlserver-behavior.md)
-and the [consumer regression coverage](regression-coverage.md#optional-sql-server-migrations).
+and the [consumer regression coverage](migrations.md#optional-sql-server-safemigrations).
 
 ## MySQL and MariaDB runtime rejection diagnostics
 

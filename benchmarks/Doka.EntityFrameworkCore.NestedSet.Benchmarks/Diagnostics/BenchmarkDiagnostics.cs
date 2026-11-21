@@ -35,8 +35,13 @@ internal static class BenchmarkDiagnostics
             var benchmark = (IDatabaseBenchmark)(Activator.CreateInstance(type)
                 ?? throw new InvalidOperationException("The diagnostic benchmark must have a public constructor."));
 
-            foreach (var parameter in benchmarkCase.Parameters.Items)
+            // WHY: Native case parameters form an indexable snapshot fixed before diagnostic preparation.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var index = 0; index < benchmarkCase.Parameters.Items.Count; index++)
             {
+                var parameter = benchmarkCase.Parameters.Items[index];
+
                 var property = type.GetProperty(parameter.Name)
                     ?? throw new InvalidOperationException(
                         "The diagnostic parameter must map to a public benchmark property.");

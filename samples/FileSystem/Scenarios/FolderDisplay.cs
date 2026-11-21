@@ -31,8 +31,13 @@ internal static class FolderDisplay
             await SampleConsole.WriteLineAsync("  (no folders)", cancellationToken);
         }
 
-        foreach (var folder in nodes)
+        // WHY: The materialized node list is stable while output preserves hierarchy preorder.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
         {
+            var folder = nodes[nodeIndex];
+
             var detail = details
                 ? $" [Id={folder.Id}, ParentId={folder.ParentId?.ToString(CultureInfo.InvariantCulture) ?? "root"}, "
                 + $"Depth={folder.Depth}, Position={folder.Position}, Bounds={folder.Left}..{folder.Right}]"
@@ -68,8 +73,13 @@ internal static class FolderDisplay
             await SampleConsole.WriteLineAsync("No active folder trees are stored.", cancellationToken);
         }
 
-        foreach (var treeId in treeIds)
+        // WHY: The materialized tree list is stable and retains the documented inspection order.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var treeIndex = 0; treeIndex < treeIds.Count; treeIndex++)
         {
+            var treeId = treeIds[treeIndex];
+
             await TreeAsync(context, treeId, "Stored tree", details, cancellationToken);
         }
     }

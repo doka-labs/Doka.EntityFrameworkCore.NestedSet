@@ -18,14 +18,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("slot2", -1)]
     [InlineData("slot3", 3)]
     [InlineData("priority", -1)]
-    public async Task ServerPersonRanksRetainBusinessTies(
+    public async Task ResolveAsync_ServerPersonRanks_RetainBusinessTies(
         string mode,
         int expected
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .UserGroupMemberships
@@ -71,11 +74,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>A type-first ambiguous nearer group cannot be replaced by the unique farther group (U17).</summary>
     [Fact]
-    public async Task TypeFirstAmbiguityCannotFallBackToAUniqueFartherGroup()
+    public async Task ResolveAsync_TypeFirstAmbiguity_CannotFallBackToAUniqueFartherGroup()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .Groups
@@ -118,7 +124,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData("unique", 3, 4)]
     [InlineData("person", 3, 4)]
     [InlineData("priority", 5, 2)]
-    public async Task CanonicalOccurrenceDeterminesTheNextOriginalPathHop(
+    public async Task FollowOriginalPathAsync_CanonicalOccurrence_DeterminesTheNextOriginalPathHop(
         string mode,
         int expectedPerson,
         int expectedCursor
@@ -126,7 +132,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.UserGroupMemberships.AddAsync(
             new App.UserGroupMembership

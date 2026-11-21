@@ -5,7 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks complete scalar witness evidence for a group rule that admits at most one found group.</summary>
 public abstract partial class GroupSupervisorTests
 {
-    /// <summary>Single-group selection preserves missing, tied and unique outcomes without a second evidence bag.</summary>
+    /// <summary>
+    /// Single-group selection preserves missing, tied and unique outcomes without a second evidence bag.
+    /// </summary>
     /// <param name="typeFirst">Whether type ranking precedes candidate qualification.</param>
     /// <param name="profile">The independent person-selection or path-rejection scenario.</param>
     /// <param name="status">The expected explicit origin status.</param>
@@ -27,7 +29,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData(false, "routing-rejects-first", "Found", 2)]
     [InlineData(true, "expired-edge", "NotFound", -1)]
     [InlineData(false, "expired-edge", "NotFound", -1)]
-    public async Task SingleGroupWitnessRetainsExactPersonEvidence(
+    public async Task ResolveAsync_SingleGroupWitness_RetainsExactPersonEvidence(
         bool typeFirst,
         string profile,
         string status,
@@ -36,7 +38,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (profile is "priority-tie" or "rank-tie")
         {
@@ -142,13 +147,15 @@ public abstract partial class GroupSupervisorTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>A thousand distinct people produce one ambiguous origin instead of a client evidence population.</summary>
+    /// <summary>
+    /// A thousand distinct people produce one ambiguous origin instead of a client evidence population.
+    /// </summary>
     /// <param name="typeFirst">Whether type ranking precedes candidate qualification.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task SingleGroupWitnessKeepsNativeCandidateWorkAndTransportBounded(
+    public async Task ResolveAsync_SingleGroupWitness_KeepsNativeCandidateWorkAndTransportBounded(
         bool typeFirst
     )
     {
@@ -159,7 +166,7 @@ public abstract partial class GroupSupervisorTests
         await using var context = await CreateAsync(
             probe,
             cancellationToken: TestContext.Current.CancellationToken,
-            plans);
+            planProbe: plans);
 
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedFanInAsync(context, data, people, cancellationToken: TestContext.Current.CancellationToken);

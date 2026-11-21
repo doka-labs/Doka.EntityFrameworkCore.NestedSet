@@ -38,8 +38,7 @@ internal static partial class CompositionCapacityProfiles
                     engine,
                     profile,
                     planProbe,
-                    error,
-                    cancellationToken: CancellationToken.None);
+                    error);
 
                 throw;
             }
@@ -71,8 +70,7 @@ internal static partial class CompositionCapacityProfiles
                     engine,
                     profile,
                     planProbe,
-                    error,
-                    cancellationToken: CancellationToken.None);
+                    error);
 
                 throw;
             }

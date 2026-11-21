@@ -6,7 +6,7 @@ public abstract partial class AncestorIndexWorkTestBase
 {
     /// <summary>Proves identical independent seeds have the same complete logical row identity.</summary>
     [Fact]
-    public async Task CanonicalLogicalRowsAgreeAcrossIndependentSeeds()
+    public async Task ConsumerPhysicalTablesAsync_CanonicalLogicalRows_AgreeAcrossIndependentSeeds()
     {
         // Arrange
         await using var firstDatabase = new ModelCompatibilityDatabase();
@@ -59,7 +59,7 @@ public abstract partial class AncestorIndexWorkTestBase
 
     /// <summary>Distinguishes scopes even when row counts, schema, node keys and bounds are equal.</summary>
     [Fact]
-    public async Task CanonicalLogicalRowsDistinguishIndependentScopes()
+    public async Task ConsumerPhysicalTablesAsync_CanonicalLogicalRows_DistinguishIndependentScopes()
     {
         // Arrange
         await using var firstDatabase = new ModelCompatibilityDatabase();
@@ -115,7 +115,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData("Caption")]
     [InlineData("FactNode")]
     [InlineData("FactLabel")]
-    public async Task CanonicalLogicalRowsDetectChangedColumn(
+    public async Task ExecuteSqlRawAsync_CanonicalLogicalRows_DetectChangedColumn(
         string column
     )
     {
@@ -166,7 +166,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData("Caption")]
     [InlineData("FactNode")]
     [InlineData("FactLabel")]
-    public async Task CanonicalLogicalRowsReturnAfterColumnIsRestored(
+    public async Task ExecuteSqlRawAsync_CanonicalLogicalRows_ReturnAfterColumnIsRestored(
         string column
     )
     {
@@ -233,7 +233,10 @@ public abstract partial class AncestorIndexWorkTestBase
                 s_consumerTree,
                 forest: false,
                 nodes: 8,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken,
+                dense: false,
+                branching: false,
+                balanced: false);
 
             await SeedConsumerFactsAsync(
                 context,

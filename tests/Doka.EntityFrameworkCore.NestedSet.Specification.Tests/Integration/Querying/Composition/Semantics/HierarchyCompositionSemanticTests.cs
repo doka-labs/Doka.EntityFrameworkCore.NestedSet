@@ -19,10 +19,10 @@ public abstract partial class HierarchyCompositionSemanticTests : ProviderTest
     private Task<CompositionContext> CreateContextAsync(
         Guid scope,
         CompositionCommandProbe probe,
-        CancellationToken cancellationToken,
-        int? hidden = null,
-        EnterpriseProbe? sql = null,
-        int? chainNodes = null
+        int? hidden,
+        EnterpriseProbe? sql,
+        int? chainNodes,
+        CancellationToken cancellationToken
     ) => CompositionTestData.CreateContextAsync(
         _fixture,
         Engine,
@@ -31,7 +31,9 @@ public abstract partial class HierarchyCompositionSemanticTests : ProviderTest
         hidden: hidden,
         planProbe: sql,
         chainNodes: chainNodes,
-        cancellationToken: cancellationToken);
+        cancellationToken: cancellationToken,
+        closed: null,
+        ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
     /// <summary>Evaluates a path independently of the nested-set bounds used by the production query.</summary>
     private static IEnumerable<int> Ancestors(

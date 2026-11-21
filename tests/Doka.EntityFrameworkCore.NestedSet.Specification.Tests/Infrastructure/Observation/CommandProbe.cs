@@ -145,6 +145,3 @@ public sealed class CommandProbe : DbCommandInterceptor
         }
     }
 }
-
-/// <summary>Identifies a deliberately injected database-command failure.</summary>
-public sealed class InjectedCommandException : Exception;

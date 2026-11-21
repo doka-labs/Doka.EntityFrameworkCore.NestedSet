@@ -86,13 +86,13 @@ internal sealed class NestedSetMove<TEntity, TKey, TTreeId, TScope>
         {
             // WHY: Reuse the locked parent snapshot and its canonical database key for ranking.
             destination = await new NestedSetOrderer<TEntity, TKey, TTreeId, TScope>(_store)
-                .ResolveAsync(source.Key, new NestedSetParent<TKey>(true, target.Key), cancellationToken, target)
+                .ResolveAsync(source.Key, new NestedSetParent<TKey>(true, target.Key), target, cancellationToken)
                 .ConfigureAwait(false);
         }
         else
         {
             destination = await _placement
-                .ResolveAsync(anchor, placement, 0, cancellationToken, target)
+                .ResolveAsync(anchor, placement, 0, target, cancellationToken)
                 .ConfigureAwait(false);
         }
 

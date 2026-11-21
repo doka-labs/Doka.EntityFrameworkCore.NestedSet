@@ -4,11 +4,9 @@
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <IncludeProjectNameInArtifactsPaths>true</IncludeProjectNameInArtifactsPaths>
     <UseArtifactsIntermediateOutput>true</UseArtifactsIntermediateOutput>
-  </PropertyGroup>
-
-  <PropertyGroup Label="Default artifacts path" Condition="'$(ArtifactsPath)' == ''">
-    <!-- WHY: Release formatting supplies its isolated output path through an environment property. -->
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <!-- WHY: Artifacts output must not make stale project-local or BenchmarkDotNet sources build inputs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/bin/**;**/obj/**;**/BenchmarkDotNet.Artifacts/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <PropertyGroup Label="Compiler and analysis">
@@ -21,20 +19,24 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
+  <PropertyGroup Label="CI and release isolation">
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
   <PropertyGroup Label="Dependency restore and audit">
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- WHY: Local dependency edits update reviewed locks; CI rejects drift in every platform-neutral graph. -->
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true' and '$(RuntimeIdentifier)' == ''">true</RestoreLockedMode>
+    <!-- WHY: Qualification restores every project against owned lock copies without changing reviewed source locks. -->
+    <NuGetLockFilePath Condition="'$(NestedSetReleaseLockRoot)' != ''">$(NestedSetReleaseLockRoot)/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath>
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>low</NuGetAuditLevel>
-    <!-- WHY: Advisories published upstream (NU1901 low, NU1902 moderate, NU1903 high, NU1904 critical) must not
-         fail every build without a source change. Release-line maintenance and release-candidate consumers still
-         treat them as errors before anything is published. -->
-    <WarningsNotAsErrors>
-      $(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904
-    </WarningsNotAsErrors>
-  </PropertyGroup>
-
-  <PropertyGroup Label="CI and release isolation">
-    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <!-- WHY: New advisories or unavailable audit metadata are warnings during ordinary work. Explicit audit
+         runs still require complete trustworthy evidence before publishing or accepting a security result. -->
+    <DokaNuGetAuditCodes>NU1900;NU1901;NU1902;NU1903;NU1904;NU1905</DokaNuGetAuditCodes>
+    <WarningsNotAsErrors Condition="'$(DokaAuditPipeline)' != 'true'">$(WarningsNotAsErrors);$(DokaNuGetAuditCodes)</WarningsNotAsErrors>
+    <WarningsAsErrors Condition="'$(DokaAuditPipeline)' == 'true'">$(WarningsAsErrors);$(DokaNuGetAuditCodes)</WarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Label="Project defaults">

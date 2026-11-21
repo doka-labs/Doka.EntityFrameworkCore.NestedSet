@@ -5,7 +5,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that validation resolves independently materialized binary parent keys by value.</summary>
     /// <returns>A task that completes when the validation result has been checked.</returns>
     [Fact]
-    public async Task BinaryKeysUseValueEqualityForValidation()
+    public async Task ValidateAsync_BinaryKeys_UseValueEqualityForValidation()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -27,7 +27,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that rebuild follows binary parent keys while repairing all structural values.</summary>
     /// <returns>A task that completes when the rebuilt boundaries have been verified.</returns>
     [Fact]
-    public async Task BinaryKeysUseValueEqualityForRebuild()
+    public async Task RebuildAsync_BinaryKeys_UseValueEqualityForRebuild()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -67,7 +67,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that descendant queries accept a distinct array containing the persisted key bytes.</summary>
     /// <returns>A task that completes when both descendants have been found.</returns>
     [Fact]
-    public async Task BinaryKeysUseValueEqualityForDescendants()
+    public async Task DescendantsOf_BinaryKeys_UseValueEqualityForDescendants()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -92,7 +92,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that a move resolves binary source and destination keys by their stored values.</summary>
     /// <returns>A task that completes when the reparented binary-key node has been verified.</returns>
     [Fact]
-    public async Task BinaryKeysUseValueEqualityForMove()
+    public async Task MoveToAsync_BinaryKeys_UseValueEqualityForMove()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -119,7 +119,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that direct-child queries resolve an independently allocated binary parent key.</summary>
     /// <returns>A task that completes when the moved siblings have been found.</returns>
     [Fact]
-    public async Task BinaryKeysUseValueEqualityForChildren()
+    public async Task ChildrenOf_BinaryKeys_UseValueEqualityForChildren()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

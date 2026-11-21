@@ -59,8 +59,13 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
             names.Add(Scope);
         }
 
-        foreach (var name in names)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int nameIndex = 0, nameCount = names.Count; nameIndex < nameCount; nameIndex++)
         {
+            var name = names[nameIndex];
+
             var property = EntityType.FindProperty(name)
                 ?? throw new InvalidOperationException($"Nested-set property '{name}' is not mapped.");
 
@@ -133,8 +138,13 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
             .GetKeys()
             .Any(key => key.Properties.Count == 1 && key.Properties[0] == keyProperty);
 
-        foreach (var name in names)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int nameIndex2 = 0, nameCount2 = names.Count; nameIndex2 < nameCount2; nameIndex2++)
         {
+            var name = names[nameIndex2];
+
             var parameter = Expression.Parameter(typeof(TEntity), "node");
             var access = NestedSetExpressions.Property(
                 parameter,
@@ -163,8 +173,19 @@ internal sealed class NestedSetMapping<TEntity, TKey, TScope>
         {
             // WHY: Native predecessor SQL reads configured payload columns as well as structural columns.
             // Resolve both sets before publishing this immutable model cache, including converted sort fields.
-            foreach (var property in Order.Properties)
+            var propertyItems = Order.Properties;
+
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (
+                int propertyIndex = 0, propertyCount = propertyItems.Count;
+                propertyIndex < propertyCount;
+                propertyIndex++
+            )
             {
+                var property = propertyItems[propertyIndex];
+
                 if (!_properties.ContainsKey(property.Name))
                 {
                     _properties.Add(property.Name, new NestedSetPropertyMapping(property, Store));

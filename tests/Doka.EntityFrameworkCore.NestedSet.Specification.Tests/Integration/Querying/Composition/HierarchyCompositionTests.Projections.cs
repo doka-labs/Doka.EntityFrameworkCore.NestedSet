@@ -7,7 +7,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LeafSelectionPreservesSelfVisibilityAndEmptyDescendants(
+    public async Task SelectSubtrees_LeafSelection_PreservesSelfVisibilityAndEmptyDescendants(
         bool hidden
     )
     {
@@ -20,7 +20,11 @@ public abstract partial class HierarchyCompositionTests
             hidden: hidden
                 ? 3
                 : null,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -50,9 +54,11 @@ public abstract partial class HierarchyCompositionTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Internal pair partitioning preserves overlapping origins and a legal terminal client projection.</summary>
+    /// <summary>
+    /// Internal pair partitioning preserves overlapping origins and a legal terminal client projection.
+    /// </summary>
     [Fact]
-    public async Task OverlappingRootAndLeafPreserveClientProjectionAndOccurrences()
+    public async Task SelectSubtrees_OverlappingRootAndLeaf_PreserveClientProjectionAndOccurrences()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -60,7 +66,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -83,7 +94,9 @@ public abstract partial class HierarchyCompositionTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Requires legitimate top-level client evaluation after SQL has projected only scalar coordinates.</summary>
+    /// <summary>
+    /// Requires legitimate top-level client evaluation after SQL has projected only scalar coordinates.
+    /// </summary>
     private static string FormatPair(
         int anchor,
         int node,
@@ -92,7 +105,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>Proves the materialization counter observes entities before scalar profiles rely on zero.</summary>
     [Fact]
-    public async Task MaterializationObserverCountsActualEntityResults()
+    public async Task Scope_MaterializationObserver_CountsActualEntityResults()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -100,7 +113,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         // Act
         var actual = await context
@@ -124,7 +142,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(10, 60, 30, 75, 40)]
     [InlineData(11, 50, 40, 55, 45)]
-    public async Task MultipleAnchorsCorrelateThreeSourcesAndDateOnlyEdges(
+    public async Task SelectSubtrees_MultipleAnchors_CorrelateThreeSourcesAndDateOnlyEdges(
         int month,
         int rootFirstInput,
         int branchFirstInput,
@@ -138,7 +156,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         await SeedReadingsAsync(context, scope, cancellationToken: TestContext.Current.CancellationToken);
         probe.Reset();
@@ -252,7 +275,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>Strict ancestors expose source-relative distance without loading a source entity.</summary>
     [Fact]
-    public async Task AncestorDistanceSupportsNearestFirstRank()
+    public async Task SelectAncestors_AncestorDistance_SupportsNearestFirstRank()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -260,7 +283,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -292,7 +320,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>Self remains distance zero while a hidden intermediate does not compress stored distance.</summary>
     [Fact]
-    public async Task AncestorsOrSelfPreserveDistanceAcrossHiddenIntermediate()
+    public async Task SelectAncestorsOrSelf_AncestorsOrSelf_PreserveDistanceAcrossHiddenIntermediate()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -301,7 +329,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

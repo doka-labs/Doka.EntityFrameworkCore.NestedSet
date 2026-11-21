@@ -13,7 +13,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task MappedCoordinateGeometryAvoidsMethodCallsWithoutChangingSql(
+    public async Task CoordinateSelection_MappedCoordinateGeometry_AvoidsMethodCallsWithoutChangingSql(
         bool fields,
         bool includeNonLeaf
     )
@@ -165,10 +165,13 @@ public sealed partial class CompositionCoordinateProjectionTests
     }
 
     /// <summary>Maps exact members and private fields independently on the same CLR type.</summary>
-    private sealed class MappedCoordinateContext(
-        DbContextOptions<MappedCoordinateContext> options
-    ) : DbContext(options)
+    private sealed class MappedCoordinateContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public MappedCoordinateContext(
+            DbContextOptions<MappedCoordinateContext> options
+        ) : base(options) { }
+
         /// <summary>Identifies the throwing-property mapping.</summary>
         internal const string Properties = "PropertyCoordinates";
 

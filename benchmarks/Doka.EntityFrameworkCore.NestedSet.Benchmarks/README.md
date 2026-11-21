@@ -6,6 +6,12 @@ no performance thresholds, CI requirement, release-candidate requirement, or
 merge decision. Invalid inputs, failed operations, and missing measurements
 produce a nonzero exit code.
 
+Observation contexts remove implicit EF and native command/undo timeouts so a
+slow operation or untimed verification remains measurable. Explicit connection
+or provider timeouts and later context overrides are preserved. This policy
+belongs to the benchmark harness; application defaults remain unchanged, and
+an interrupted or failed run is never reported as successful measurement.
+
 Run commands from the repository root. With no arguments, the executable prints
 usage and the benchmark catalog without provisioning a database:
 

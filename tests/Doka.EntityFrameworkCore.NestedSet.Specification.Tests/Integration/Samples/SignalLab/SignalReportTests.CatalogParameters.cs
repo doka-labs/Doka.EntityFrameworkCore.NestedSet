@@ -6,7 +6,7 @@ public abstract partial class SignalReportTests
 {
     /// <summary>Caller buffer changes after the catalog cannot alter the later owner predicates or anchors.</summary>
     [Fact]
-    public async Task CatalogReadCannotChangeDeferredReportSnapshot()
+    public async Task ReadAsync_CatalogRead_CannotChangeDeferredReportSnapshot()
     {
         // Arrange
         const string missing = "Missing-after-catalog-read";
@@ -15,7 +15,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var anchors = data.Anchors.ToArray();
         var criteria = data
             .Request()
@@ -56,7 +61,7 @@ public abstract partial class SignalReportTests
     /// Equal values in different requested fields retain the same parameter slots as distinct values.
     /// </summary>
     [Fact]
-    public async Task WarmedCatalogKeepsDistinctSlotsForEqualFieldValues()
+    public async Task Catalog_WarmedCatalog_KeepsDistinctSlotsForEqualFieldValues()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -64,7 +69,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         context.TagChoices.Add(
             new TagChoice
             {
@@ -134,7 +144,7 @@ public abstract partial class SignalReportTests
     /// A warmed catalog shape binds each request's classification, field and scalar text independently.
     /// </summary>
     [Fact]
-    public async Task WarmedCatalogBindsEachRequestsTypeFieldAndValue()
+    public async Task Catalog_WarmedCatalog_BindsEachRequestsTypeFieldAndValue()
     {
         // Arrange
         const string selected = "x' OR 1=1 --";
@@ -143,7 +153,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var first = SignalReportValidation.Snapshot(
             data.Request() with
             {
@@ -195,7 +210,7 @@ public abstract partial class SignalReportTests
 
     /// <summary>A missing scalar remains rejected after an equivalent valid catalog shape warmed EF's cache.</summary>
     [Fact]
-    public async Task WarmedCatalogDoesNotReusePreviouslyAuthorizedScalar()
+    public async Task ReadAsync_WarmedCatalog_DoesNotReusePreviouslyAuthorizedScalar()
     {
         // Arrange
         const string missing = "Missing-after-warm-catalog";
@@ -204,7 +219,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var valid = data.Request() with
         {
             Criteria = [new TagCriterion(SignalReportDataset.ArrayKind, "Band", "Narrow")],
@@ -241,7 +261,7 @@ public abstract partial class SignalReportTests
     /// Deferred catalog authorization uses private snapshots even when the caller replaces its inputs.
     /// </summary>
     [Fact]
-    public async Task DeferredCatalogKeepsPrivateSnapshotAfterCallerMutation()
+    public async Task Id_DeferredCatalog_KeepsPrivateSnapshotAfterCallerMutation()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -249,7 +269,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         Guid[] anchors = [SignalReportDataset.Id(1)];
         TagCriterion[] criteria = [new(SignalReportDataset.ArrayKind, "Band", "Narrow")];
         var input = data.Request() with

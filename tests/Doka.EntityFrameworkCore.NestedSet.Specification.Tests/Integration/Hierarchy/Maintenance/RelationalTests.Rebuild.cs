@@ -9,7 +9,7 @@ public abstract partial class RelationalTests
     [InlineData("Bounds")]
     [InlineData("NegativeDepth")]
     [InlineData("ExcessiveDepth")]
-    public async Task ValidateReportsCorruptStructure(
+    public async Task ValidateAsync_Validate_ReportsCorruptStructure(
         string corruption
     )
     {
@@ -46,7 +46,7 @@ public abstract partial class RelationalTests
     [InlineData("Bounds")]
     [InlineData("NegativeDepth")]
     [InlineData("ExcessiveDepth")]
-    public async Task RebuildRestoresBoundsAndDepth(
+    public async Task RebuildAsync_Rebuild_RestoresBoundsAndDepth(
         string corruption
     )
     {
@@ -79,7 +79,7 @@ public abstract partial class RelationalTests
     [InlineData("Orphan")]
     [InlineData("DuplicateChildPosition")]
     [InlineData("MultipleRoots")]
-    public async Task RebuildRejectsInvalidAdjacency(
+    public async Task RebuildAsync_Rebuild_RejectsInvalidAdjacency(
         string corruption
     )
     {

@@ -9,7 +9,7 @@ public sealed class CompositionBenchmarkTests
     [Theory]
     [InlineData(typeof(CompositionConstructionBenchmarks))]
     [InlineData(typeof(CompositionExecutionBenchmarks))]
-    public void NativeValidationAcceptsCompositionFamilies(
+    public void StructuralErrors_NativeValidation_AcceptsCompositionFamilies(
         Type type
     )
     {
@@ -34,7 +34,7 @@ public sealed class CompositionBenchmarkTests
     [InlineData(BenchmarkShape.Balanced, true)]
     [InlineData(BenchmarkShape.Deep, false)]
     [InlineData(BenchmarkShape.Deep, true)]
-    public async Task CompositionExecutionHasIndependentAdjacencyResult(
+    public async Task Reference_CompositionExecution_HasIndependentAdjacencyResult(
         BenchmarkShape shape,
         bool reference
     )
@@ -84,7 +84,7 @@ public sealed class CompositionBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task EquivalentReferenceDoesNotReplaceNearestWithAny(
+    public async Task ApiAndReference_BlockedNearest_DoNotFallBackToAnyAncestor(
         bool reference
     )
     {
@@ -126,7 +126,7 @@ public sealed class CompositionBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task EquivalentReferenceRetainsTheCompletePathContract(
+    public async Task ApiAndReference_BlockedIntermediate_PreserveCompletePath(
         bool reference
     )
     {
@@ -168,7 +168,7 @@ public sealed class CompositionBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task EquivalentReferenceRejectsParentDepthSkips(
+    public async Task ApiAndReference_SkippedParentDepth_RejectPath(
         bool reference
     )
     {
@@ -205,7 +205,7 @@ public sealed class CompositionBenchmarkTests
 
     /// <summary>Verification rejects a family whose selected operation never produced an output.</summary>
     [Fact]
-    public async Task CompositionVerificationRejectsUnexecutedOperation()
+    public async Task VerifyAsync_CompositionVerification_RejectsUnexecutedOperation()
     {
         // Arrange
         var benchmark = new CompositionExecutionBenchmarks
@@ -230,7 +230,7 @@ public sealed class CompositionBenchmarkTests
 
     /// <summary>Construction produces deferred SQL expressions over an unopened in-memory provider.</summary>
     [Fact]
-    public async Task ConstructionHasNoPersistedPopulationOrDatabaseAcquisition()
+    public async Task Api_Construction_HasNoPersistedPopulationOrDatabaseAcquisition()
     {
         // Arrange
         var benchmark = new CompositionConstructionBenchmarks

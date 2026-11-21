@@ -406,10 +406,10 @@ class SourceAndLockTests(unittest.TestCase):
 
 
 class PackageLockTests(unittest.TestCase):
-    """Qualification requires reviewed shipping locks without imposing locks on every solution project."""
+    """Qualification verifies every solution project's reviewed dependency graph."""
 
     def setUp(self):
-        """Declare every shipping package and a nonshipping test project without a lockfile."""
+        """Declare shipping and nonshipping projects with independent reviewed locks."""
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.repo = Path(temporary.name) / "repo"
@@ -424,11 +424,12 @@ class PackageLockTests(unittest.TestCase):
 
         test_project = "tests/Example.Tests/Example.Tests.csproj"
         text_file(self.repo / test_project, "<Project />")
+        common.write_json(self.repo / "tests/Example.Tests/packages.lock.json", self.lock)
         ET.SubElement(solution, "Project", Path=test_project)
         ET.ElementTree(solution).write(self.repo / qualification.SOLUTION)
 
-    def test_only_shipping_locks_are_prepared(self):
-        """An ordinary test project without a committed lock must not block RC preparation."""
+    def test_every_solution_lock_is_prepared(self):
+        """Test graphs are isolated and checked together with the shipping package graphs."""
         # Arrange
         source_locks = {package: (self.repo / "src" / package / "packages.lock.json").read_bytes()
                         for package in common.PACKAGES}
@@ -438,12 +439,43 @@ class PackageLockTests(unittest.TestCase):
         records = common.read_json(self.output / "quality/dependencies.json")
 
         # Assert
-        self.assertEqual(set(common.PACKAGES), set(records))
-        self.assertEqual(len(common.PACKAGES), len(list((self.output / "locks").rglob("packages.lock.json"))))
-        self.assertFalse((self.repo / "tests/Example.Tests/packages.lock.json").exists())
+        self.assertEqual(set(common.PACKAGES) | {"Example.Tests"}, set(records))
+        self.assertEqual(len(common.PACKAGES) + 1, len(list((self.output / "locks").rglob("packages.lock.json"))))
+        self.assertEqual(self.lock, common.read_json(self.repo / "tests/Example.Tests/packages.lock.json"))
         for package, original in source_locks.items():
             self.assertEqual(original, (self.repo / "src" / package / "packages.lock.json").read_bytes())
             self.assertEqual(self.lock, records[package]["value"])
+
+    def test_missing_nonshipping_lock_is_rejected(self):
+        """A missing test lock cannot silently turn part of qualification into an unlocked restore."""
+        # Arrange
+        (self.repo / "tests/Example.Tests/packages.lock.json").unlink()
+
+        # Act
+        error = capture(lambda: qualification.prepare_locks(self.repo, self.output, VERSION))
+
+        # Assert
+        self.assertIsInstance(error, common.ReleaseError)
+        self.assertEqual("lock_missing", error.code)
+
+    def test_nonshipping_project_edges_receive_candidate_version(self):
+        """A test-to-sample reference follows the same global Version override as shipping projects."""
+        # Arrange
+        original = {"version": 2, "dependencies": {"net10.0": {
+            "Example.Tests": {"type": "Project", "dependencies": {
+                "Example.Sample": "[1.0.0, )", "ThirdParty": "[2.0.0, )"}},
+            "ThirdParty": {"type": "Direct", "resolved": "2.0.0", "contentHash": "reviewed"}}}}
+
+        # Act
+        result = qualification.rebased_lock(original, VERSION, {"Example.Tests", "Example.Sample"})
+
+        # Assert
+        references = result["dependencies"]["net10.0"]["Example.Tests"]["dependencies"]
+        self.assertEqual(f"[{VERSION}, )", references["Example.Sample"])
+        self.assertEqual("[2.0.0, )", references["ThirdParty"])
+        self.assertEqual(original["dependencies"]["net10.0"]["ThirdParty"],
+                         result["dependencies"]["net10.0"]["ThirdParty"])
+        self.assertEqual("[1.0.0, )", original["dependencies"]["net10.0"]["Example.Tests"]["dependencies"]["Example.Sample"])
 
     def test_missing_shipping_lock_is_rejected(self):
         """Reducing the lock scope must not allow an unlocked published package."""

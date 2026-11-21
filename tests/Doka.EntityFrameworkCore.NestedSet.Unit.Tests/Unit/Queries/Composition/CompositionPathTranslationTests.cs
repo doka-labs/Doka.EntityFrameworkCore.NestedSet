@@ -15,7 +15,7 @@ public sealed class CompositionPathTranslationTests
     [InlineData("MariaDb", "Path")]
     [InlineData("MariaDb", "Nearest")]
     [InlineData("MariaDb", "Correlated")]
-    public async Task PathTranslationRetainsItsQualifiedBoundaryWithoutIo(
+    public async Task ToQueryString_PathTranslation_RetainsItsQualifiedBoundaryWithoutIo(
         string engine,
         string shape
     )
@@ -118,7 +118,7 @@ public sealed class CompositionPathTranslationTests
     [InlineData("MariaDb", "Independent")]
     [InlineData("MariaDb", "RowAware")]
     [InlineData("MariaDb", "QueryBearing")]
-    public async Task NearestCandidateBoundaryPreservesApplicationCorrelationWithoutIo(
+    public async Task ToQueryString_NearestCandidateBoundary_PreservesApplicationCorrelationWithoutIo(
         string engine,
         string shape
     )
@@ -200,7 +200,7 @@ public sealed class CompositionPathTranslationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task DownwardSelectionPreservesRelationalPivotPushdownWithoutIo(
+    public async Task Visit_DownwardSelection_PreservesRelationalPivotPushdownWithoutIo(
         string engine,
         bool queryBearing
     )

@@ -11,7 +11,7 @@ public sealed partial class AncestorIndexTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public void ExplicitStringWidthsRemainWithinProviderIndexBudget(
+    public void FindProperty_ExplicitStringWidths_RemainWithinProviderIndexBudget(
         string engine
     )
     {
@@ -83,7 +83,7 @@ public sealed partial class AncestorIndexTests
     /// NestedSet declares its complete optional index before the provider's key-width finalizer executes.
     /// </summary>
     [Fact]
-    public void AncestorDeclarationPrecedesProviderIndexBudgeting()
+    public void CreateConventionSet_AncestorDeclaration_PrecedesProviderIndexBudgeting()
     {
         // Arrange
         using var context = new AncestorContext("MySql", model => Configure(model));

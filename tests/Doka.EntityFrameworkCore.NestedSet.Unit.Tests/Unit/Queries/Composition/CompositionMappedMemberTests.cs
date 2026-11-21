@@ -26,7 +26,7 @@ public sealed class CompositionMappedMemberTests
     [InlineData("indexer", false)]
     [InlineData("complex", true)]
     [InlineData("complex", false)]
-    public async Task MappedScalarReadsStayDeferredAndNeverInvokeClrGetters(
+    public async Task SelectBoundary_MappedScalarReads_StayDeferredAndNeverInvokeClrGetters(
         string storage,
         bool matches
     )
@@ -128,10 +128,13 @@ public sealed class CompositionMappedMemberTests
     }
 
     /// <summary>Keeps all storage shapes in one model while deliberately separating CLR and mapped names.</summary>
-    private sealed class MappedReadContext(
-        DbContextOptions<MappedReadContext> options
-    ) : DbContext(options)
+    private sealed class MappedReadContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public MappedReadContext(
+            DbContextOptions<MappedReadContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

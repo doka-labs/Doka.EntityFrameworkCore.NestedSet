@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(11, true)]
     [InlineData(null, true)]
     [InlineData(5, true)]
-    public async Task CompletePathRequiresEveryActualDirectParentAtTheNextDepth(
+    public async Task WhereNearestAncestorOrSelf_CompletePath_RequiresEveryActualDirectParentAtTheNextDepth(
         int? parentId,
         bool nearest
     )
@@ -25,7 +25,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var tree = Guid.NewGuid();
         await context.AddRangeAsync(

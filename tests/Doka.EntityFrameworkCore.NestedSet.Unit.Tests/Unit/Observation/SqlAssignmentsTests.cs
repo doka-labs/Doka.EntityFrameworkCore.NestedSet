@@ -18,7 +18,7 @@ public sealed class SqlAssignmentsTests
     [InlineData("UPDATE \"TreeNode\" SET \"Position\" = CASE WHEN \"Start\" = 1 THEN 0 ELSE 1 END", "Start", false)]
     [InlineData("UPDATE \"TreeNode\" SET \"Position\" = 0 WHERE \"End\" = 4", "End", false)]
     [InlineData("UPDATE \"TreeNode\" SET \"Position\" = \"Depth\" + 1", "Depth", false)]
-    public void OnlyAssignmentTargetsCountAsWrites(
+    public void Assigns_OnlyAssignmentTargetsCountAs_Writes(
         string sql,
         string column,
         bool expected

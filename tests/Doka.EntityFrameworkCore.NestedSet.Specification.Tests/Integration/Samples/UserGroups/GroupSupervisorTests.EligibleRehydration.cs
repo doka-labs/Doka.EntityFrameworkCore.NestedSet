@@ -14,13 +14,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("routing")]
     [InlineData("grant")]
     [InlineData("edge")]
-    public async Task EligibleGroupRehydrationKeepsPersonRulesAndCompletePath(
+    public async Task ResolveAsync_EligibleGroupRehydration_KeepsPersonRulesAndCompletePath(
         string shape
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var day = new DateOnly(2026, 10, 16);
         var expired = day.AddDays(-1);

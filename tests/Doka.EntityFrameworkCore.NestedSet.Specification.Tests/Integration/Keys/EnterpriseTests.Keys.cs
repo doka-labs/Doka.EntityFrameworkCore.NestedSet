@@ -5,7 +5,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that binary-key CASE batches compare independently allocated keys by value.</summary>
     /// <returns>A task that completes after checking every repaired coordinate across three batches.</returns>
     [Fact]
-    public async Task BinaryKeysRemainCorrectAcrossRepairBatches()
+    public async Task RebuildAsync_BinaryKeys_RemainCorrectAcrossRepairBatches()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -73,7 +73,7 @@ public abstract partial class EnterpriseTests
     /// </summary>
     /// <returns>A task that completes after checking three batches and all stored parent keys.</returns>
     [Fact]
-    public async Task StringKeysAndParentAliasesRemainCorrectAcrossRepairBatches()
+    public async Task RebuildAsync_StringKeysAndParentAliases_RemainCorrectAcrossRepairBatches()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

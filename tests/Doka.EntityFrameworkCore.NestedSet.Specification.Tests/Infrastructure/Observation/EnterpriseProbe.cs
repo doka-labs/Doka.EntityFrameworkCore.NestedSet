@@ -10,7 +10,9 @@ public sealed class EnterpriseProbe : DbCommandInterceptor
 
     /// <summary>Creates an observer for one hierarchy table without counting lock-table updates.</summary>
     /// <param name="tableName">The mapped hierarchy table name used by the test fixture.</param>
-    /// <param name="captureParameterBindings">Whether plan probes retain complete provider-native parameter metadata.</param>
+    /// <param name="captureParameterBindings">
+    /// Whether plan probes retain complete provider-native parameter metadata.
+    /// </param>
     public EnterpriseProbe(
         string tableName = "TreeNode",
         bool captureParameterBindings = false

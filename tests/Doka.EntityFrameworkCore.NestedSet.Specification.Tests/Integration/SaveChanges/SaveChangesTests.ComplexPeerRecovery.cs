@@ -18,7 +18,7 @@ public abstract partial class SaveChangesTests
     [InlineData("separate", "null", false)]
     [InlineData("owned", "address-edit", false)]
     [InlineData("split", "address-replace", false)]
-    public async Task ComplexPeerRollbackPreservesPendingGraph(
+    public async Task SaveChangesAsync_ComplexPeerRollback_PreservesPendingGraph(
         string shape,
         string mutation,
         bool hierarchyFailure
@@ -73,7 +73,7 @@ public abstract partial class SaveChangesTests
     [InlineData("owned", "add", false)]
     [InlineData("split", "replace", true)]
     [InlineData("owned", "null", true)]
-    public async Task ComplexPeerRollbackAllowsIdenticalRetry(
+    public async Task SaveChangesAsync_ComplexPeerRollback_AllowsIdenticalRetry(
         string shape,
         string mutation,
         bool hierarchyFailure
@@ -153,7 +153,7 @@ public abstract partial class SaveChangesTests
     [InlineData("split", "add")]
     [InlineData("owned", "null")]
     [InlineData("separate", "remove")]
-    public async Task ComplexPeerSuccessPreservesUnmarkedPayload(
+    public async Task SaveChangesAsync_ComplexPeerSuccess_PreservesUnmarkedPayload(
         string shape,
         string mutation
     )

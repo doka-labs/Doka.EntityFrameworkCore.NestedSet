@@ -1,15 +1,5 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
-/// <summary>Serializes tests that temporarily publish the launcher's inherited child-process environment.</summary>
-/// <remarks>
-/// WHY: The environment belongs to the entire process and must not overlap independent database tests.
-/// </remarks>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class BenchmarkEnvironmentOwnership
-{
-    /// <summary>Identifies the collection that exclusively owns inherited benchmark settings.</summary>
-    public const string Name = "Benchmark environment ownership";
-}
 
 /// <summary>Verifies explicit datasets, child-process settings and invalid command-line input.</summary>
 [Collection(BenchmarkEnvironmentOwnership.Name)]
@@ -42,7 +32,7 @@ public sealed class BenchmarkRunOptionsTests
 
     /// <summary>The harness consumes its options and preserves the framework's filter and job arguments.</summary>
     [Fact]
-    public void ParsePreservesFrameworkArgumentsAndExplicitScenarios()
+    public void Parse_FrameworkArgumentsAndExplicitScenarios_PreservesBoth()
     {
         // Arrange
         var artifacts = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "nestedset-options"));
@@ -81,7 +71,7 @@ public sealed class BenchmarkRunOptionsTests
     /// <param name="arguments">The invalid command line.</param>
     [Theory]
     [MemberData(nameof(InvalidArgumentCases))]
-    public void InvalidArgumentsAreRejected(
+    public void Parse_InvalidArguments_AreRejected(
         string[] arguments
     )
     {
@@ -97,7 +87,7 @@ public sealed class BenchmarkRunOptionsTests
 
     /// <summary>The child-process consumer reconstructs all settings from inherited serialized state.</summary>
     [Fact]
-    public void PublishedOptionsAreRehydratedFromEnvironment()
+    public void Current_PublishedOptions_AreRehydratedFromEnvironment()
     {
         // Arrange
         var previous = Environment.GetEnvironmentVariable(OptionsVariable);
@@ -139,7 +129,7 @@ public sealed class BenchmarkRunOptionsTests
 
     /// <summary>Invalid inherited data fails even when it did not pass through the launcher parser.</summary>
     [Fact]
-    public void ChildProcessRejectsInvalidInheritedSettings()
+    public void Current_ChildProcess_RejectsInvalidInheritedSettings()
     {
         // Arrange
         var previous = Environment.GetEnvironmentVariable(OptionsVariable);

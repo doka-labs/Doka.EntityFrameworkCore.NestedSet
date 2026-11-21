@@ -66,7 +66,7 @@ internal static class SignalBenchmarkData
             .ForScope(data.TenantId)
             .InsertSubtreeAsync(branches[0], SignalReportDataset.Id(3), cancellationToken);
 
-        var channels = new[] { SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel };
+        Guid[] channels = [SignalReportDataset.PulseChannel, SignalReportDataset.SweepChannel];
 
         // WHY: Keep each entity aligned with its parent ordinal when creating periods and metadata.
         // ReSharper disable once ForCanBeConvertedToForeach

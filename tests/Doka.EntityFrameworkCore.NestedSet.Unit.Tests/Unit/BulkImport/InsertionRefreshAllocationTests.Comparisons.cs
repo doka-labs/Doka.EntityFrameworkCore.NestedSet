@@ -23,7 +23,7 @@ public sealed partial class InsertionRefreshAllocationTests
     [InlineData("field", true, 2048)]
     [InlineData("indexer", false, 482_048)]
     [InlineData("indexer", true, 722_048)]
-    public void UnchangedIdentityComparisonsAvoidBoxes(
+    public void CompareIdentity_UnchangedIdentityComparisons_AvoidBoxes(
         string shape,
         bool prepare,
         long maximumBytes
@@ -68,7 +68,7 @@ public sealed partial class InsertionRefreshAllocationTests
 
     /// <summary>Identity capture does not allocate empty dependent-bucket storage for each independent root.</summary>
     [Fact]
-    public void IndependentRootCaptureHasABoundedInitialAllocation()
+    public void Capture_IndependentRootCapture_HasABoundedInitialAllocation()
     {
         // Arrange
         using var context = new AllocationContext();

@@ -14,7 +14,7 @@ internal static class MappingDeleteTestSupport
     internal static async Task<MappingDeleteScenario> SeedAsync<TNode>(
         DbContext context,
         Func<int, string, TNode> create,
-        Func<DbContext, int, Task>? seedExtra,
+        Func<DbContext, int, CancellationToken, Task>? seedExtra,
         CancellationToken cancellationToken
     )
         where TNode : class
@@ -31,7 +31,7 @@ internal static class MappingDeleteTestSupport
 
         if (seedExtra is not null)
         {
-            await seedExtra(context, seed);
+            await seedExtra(context, seed, cancellationToken);
         }
 
         return new MappingDeleteScenario(seed, targetTree, otherTree);
@@ -43,8 +43,8 @@ internal static class MappingDeleteTestSupport
         DbContext context,
         string table,
         int seed,
-        CancellationToken cancellationToken,
-        int lastOffset = 4
+        int lastOffset,
+        CancellationToken cancellationToken
     )
     {
         var sql = context.GetService<ISqlGenerationHelper>();

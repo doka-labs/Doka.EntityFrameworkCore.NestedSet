@@ -7,7 +7,7 @@ public sealed class BenchmarkValidationTests
 {
     /// <summary>The real measurement configuration rejects unoptimized assemblies and accepts optimized ones.</summary>
     [Fact]
-    public void MeasurementValidationRequiresOptimizedAssemblies()
+    public void GetValidators_MeasurementValidation_RequiresOptimizedAssemblies()
     {
         // Arrange
         using var discovery = BenchmarkConverter.TypeToBenchmarks(
@@ -41,7 +41,7 @@ public sealed class BenchmarkValidationTests
 
     /// <summary>Functional validation still rejects jobs that reuse mutated state within an iteration.</summary>
     [Fact]
-    public void StructuralValidationRetainsMutationIsolationErrors()
+    public void StructuralErrors_StructuralValidation_RetainsMutationIsolationErrors()
     {
         // Arrange
         var configuration = ManualConfig

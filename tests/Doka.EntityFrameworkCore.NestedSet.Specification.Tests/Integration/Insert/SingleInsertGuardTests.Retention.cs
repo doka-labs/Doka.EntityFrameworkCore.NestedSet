@@ -7,7 +7,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RejectedSingleTrackingReleasesInputReferences(
+    public async Task FailSingleTrackingInputAsync_RejectedSingleTracking_ReleasesInputReferences(
         bool owned
     )
     {

@@ -22,7 +22,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task GeneratedModelUsesCapturedPrincipalCollationForParentAliases(
+    public async Task QueryDepths_GeneratedModel_UsesCapturedPrincipalCollationForParentAliases(
         HierarchyCompositionOperation operation
     )
     {

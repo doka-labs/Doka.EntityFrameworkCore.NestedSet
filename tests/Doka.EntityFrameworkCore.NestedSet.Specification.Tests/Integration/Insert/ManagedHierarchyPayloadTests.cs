@@ -22,7 +22,7 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CallbackPayloadWriteToUnaffectedTreeCommits(
+    public async Task InsertForestAsync_CallbackPayloadWriteToUnaffectedTree_Commits(
         bool bulk
     )
     {
@@ -75,7 +75,7 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LateFailureRestoresUnaffectedTreePayload(
+    public async Task InsertForestAsync_LateFailure_RestoresUnaffectedTreePayload(
         bool bulk
     )
     {
@@ -136,7 +136,7 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
 
     /// <summary>A callback cannot modify another tree's structural columns during insertion.</summary>
     [Fact]
-    public async Task CallbackStructureWriteToUnaffectedTreeIsRejected()
+    public async Task InsertRootAsync_CallbackStructureWriteToUnaffectedTree_IsRejected()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -182,12 +182,13 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
 
     /// <summary>A configured sort-key change in another tree requires coordinated hierarchy saving.</summary>
     [Fact]
-    public async Task CallbackOrderingWriteToUnaffectedTreeIsRejected()
+    public async Task InsertRootAsync_CallbackOrderingWriteToUnaffectedTree_IsRejected()
     {
         // Arrange
         await using (var setup = await _orderingFixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken))
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict"))
         {
             var existing = setup
                 .NestedSet<OrderingNode>()
@@ -207,8 +208,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
         await using var context = await _orderingFixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            callback);
+            mode: "Strict",
+            interceptors: [callback]);
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -237,7 +238,8 @@ public abstract class ManagedHierarchyPayloadTests : ProviderTest
 
         await using var verification = await _orderingFixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         Assert.Equal(
             1,

@@ -7,7 +7,7 @@ public sealed partial class SignalReportValidationTests
 {
     /// <summary>Cancellation is returned through the pending read before exposing any prepared row.</summary>
     [Fact]
-    public async Task PreparedReaderReturnsCancellationWithoutThrowingSynchronously()
+    public async Task MoveNextAsync_PreparedReader_ReturnsCancellationWithoutThrowingSynchronously()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -32,7 +32,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReportReadersForwardTheExactEnumerationToken(
+    public async Task Read_ReportReaders_ForwardTheExactEnumerationToken(
         bool aggregate
     )
     {
@@ -63,7 +63,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData("en-US")]
     [InlineData("de-DE")]
-    public async Task GridDuplicateErrorsMatchTheFrameworkInEachUiCulture(
+    public async Task CreateGrid_DuplicateRows_MatchFrameworkErrorsInEachUiCulture(
         string culture
     )
     {

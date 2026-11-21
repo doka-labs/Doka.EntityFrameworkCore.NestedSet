@@ -2,7 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies deletion across the physical tables of supported EF mapping strategies.</summary>
 [Collection("Model compatibility")]
-public abstract class MappingDeletionTests : ProviderTest
+public abstract partial class MappingDeletionTests : ProviderTest
 {
     private readonly ModelCompatibilityDatabase _fixture;
 
@@ -25,7 +25,7 @@ public abstract class MappingDeletionTests : ProviderTest
     /// <summary>Deletes TPT rows from both derived and base tables without leaving fragments behind.</summary>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task TptDeletesEveryFragment(
+    public async Task DeleteAsync_Tpt_DeletesEveryFragment(
         MappingDeleteOperation operation
     )
     {
@@ -65,7 +65,7 @@ public abstract class MappingDeletionTests : ProviderTest
 
     /// <summary>Deletes only the matching derived row when one TPT tree mixes concrete node types.</summary>
     [Fact]
-    public async Task TptDeletePromotesChildrenAcrossDerivedTypes()
+    public async Task DeleteAsync_TptDelete_PromotesChildrenAcrossDerivedTypes()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
@@ -122,7 +122,8 @@ public abstract class MappingDeletionTests : ProviderTest
                 context,
                 "TptNodes",
                 seed,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                lastOffset: 4));
 
         Assert.Equal(
             2,
@@ -130,7 +131,8 @@ public abstract class MappingDeletionTests : ProviderTest
                 context,
                 "TptFolders",
                 seed,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                lastOffset: 4));
 
         Assert.Equal(
             1,
@@ -138,7 +140,8 @@ public abstract class MappingDeletionTests : ProviderTest
                 context,
                 "TptMetrics",
                 seed,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                lastOffset: 4));
 
         Assert.True(
             (await hierarchy
@@ -149,7 +152,7 @@ public abstract class MappingDeletionTests : ProviderTest
     /// <summary>Deletes a shared table row once and retains unrelated payload rows.</summary>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task TableSplitDeletesSharedRows(
+    public async Task DeleteAsync_TableSplit_DeletesSharedRows(
         MappingDeleteOperation operation
     )
     {
@@ -166,7 +169,7 @@ public abstract class MappingDeletionTests : ProviderTest
                 Id = id,
                 Name = name,
             },
-            static async (database, id) =>
+            static async (database, id, cancellationToken) =>
             {
                 database
                     .Set<TableSplitPayload>()
@@ -186,7 +189,7 @@ public abstract class MappingDeletionTests : ProviderTest
                             Description = "Sibling",
                         });
 
-                await database.SaveChangesAsync(CancellationToken.None);
+                await database.SaveChangesAsync(cancellationToken);
             },
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -222,7 +225,7 @@ public abstract class MappingDeletionTests : ProviderTest
     /// <summary>Deletes both entity-splitting fragments in foreign-key-safe order.</summary>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task EntitySplitDeletesEveryFragment(
+    public async Task DeleteAsync_EntitySplit_DeletesEveryFragment(
         MappingDeleteOperation operation
     )
     {
@@ -261,7 +264,7 @@ public abstract class MappingDeletionTests : ProviderTest
 
     /// <summary>Processes more than one key batch without leaving entity-splitting fragments behind.</summary>
     [Fact]
-    public async Task EntitySplitTreeDeleteCrossesBatchBoundary()
+    public async Task DeleteTreeAsync_EntitySplitTreeDelete_CrossesBatchBoundary()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
@@ -313,7 +316,7 @@ public abstract class MappingDeletionTests : ProviderTest
                 "EntitySplitPayload",
                 seed,
                 cancellationToken: TestContext.Current.CancellationToken,
-                131));
+                lastOffset: 131));
 
         Assert.Equal(
             0,
@@ -322,7 +325,7 @@ public abstract class MappingDeletionTests : ProviderTest
                 "EntitySplitStructure",
                 seed,
                 cancellationToken: TestContext.Current.CancellationToken,
-                131));
+                lastOffset: 131));
     }
 
     private static async Task DeleteAsync<TNode>(
@@ -350,78 +353,4 @@ public abstract class MappingDeletionTests : ProviderTest
                 throw new ArgumentOutOfRangeException(nameof(operation));
         }
     }
-
-    private static async Task VerifyAsync<TNode>(
-        DbContext context,
-        MappingDeleteScenario scenario,
-        MappingDeleteOperation operation,
-        CancellationToken cancellationToken,
-        params string[] tables
-    )
-        where TNode : class
-    {
-        var hierarchy = context.NestedSet<TNode>();
-        var seed = scenario.Seed;
-
-        var actual = await context
-            .Set<TNode>()
-            .AsNoTracking()
-            .Where(node => EF.Property<int>(node, "Id") >= seed && EF.Property<int>(node, "Id") <= seed + 4)
-            .Select(node => EF.Property<int>(node, "Id"))
-            .OrderBy(id => id)
-            .ToArrayAsync(cancellationToken);
-
-        int[] expected = operation switch
-        {
-            MappingDeleteOperation.Node => [seed, seed + 2, seed + 3, seed + 4],
-            MappingDeleteOperation.Subtree => [seed, seed + 3, seed + 4],
-            MappingDeleteOperation.Tree => [seed + 4],
-            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
-        };
-
-        Assert.Equal(expected, actual);
-        Assert.True(
-            (await hierarchy
-                .InTree(scenario.OtherTree)
-                .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
-
-        if (operation != MappingDeleteOperation.Tree)
-        {
-            Assert.True(
-                (await hierarchy
-                    .InTree(scenario.TargetTree)
-                    .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
-        }
-
-        foreach (var table in tables)
-        {
-            Assert.Equal(
-                expected.Length,
-                await MappingDeleteTestSupport.CountRowsAsync(
-                    context,
-                    table,
-                    seed,
-                    cancellationToken: cancellationToken));
-        }
-    }
-}
-
-/// <summary>Isolates the generated keys and tree identities of one deletion case.</summary>
-internal readonly record struct MappingDeleteScenario(
-    int Seed,
-    Guid TargetTree,
-    Guid OtherTree
-);
-
-/// <summary>Names the three public deletion operations covered by mapping tests.</summary>
-public enum MappingDeleteOperation
-{
-    /// <summary>Deletes one node and promotes its children.</summary>
-    Node,
-
-    /// <summary>Deletes one subtree.</summary>
-    Subtree,
-
-    /// <summary>Deletes a complete tree.</summary>
-    Tree,
 }

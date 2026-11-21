@@ -28,7 +28,7 @@ public abstract partial class CapacityTests : ProviderTest
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task NativeSeedAndRepairPreserveMappedIdentity(
+    public async Task RebuildAsync_NativeSeedAndRepair_PreserveMappedIdentity(
         bool deep
     )
     {
@@ -43,7 +43,7 @@ public abstract partial class CapacityTests : ProviderTest
             setup,
             129,
             cancellationToken: TestContext.Current.CancellationToken,
-            deep,
+            deep: deep,
             corrupt: true);
 
         var registry = await CapacitySeed.RegistryAsync(
@@ -62,7 +62,7 @@ public abstract partial class CapacityTests : ProviderTest
         // Act
         try
         {
-            await tree.RebuildAsync(CancellationToken.None);
+            await tree.RebuildAsync(TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -77,7 +77,7 @@ public abstract partial class CapacityTests : ProviderTest
         Assert.Equal(3, probe.RepairCommands);
         Assert.Equal(3, probe.CompletedRepairs);
         Assert.Equal(129, probe.RepairedRows);
-        await AssertCanonicalAsync(database, 129, cancellationToken: TestContext.Current.CancellationToken, deep);
+        await AssertCanonicalAsync(database, 129, cancellationToken: TestContext.Current.CancellationToken, deep: deep);
         Assert.Equal(
             registry with { Revision = registry.Revision + 1 },
             await CapacitySeed.RegistryAsync(
@@ -91,7 +91,7 @@ public abstract partial class CapacityTests : ProviderTest
     /// <returns>A task that completes after streaming readability and full structural validation.</returns>
     [Fact]
     [Trait("Category", "Capacity")]
-    public async Task TenMillionPersistedNodesAreReadableAndFullyValid()
+    public async Task AsAsyncEnumerable_TenMillionPersistedNodes_AreReadableAndFullyValid()
     {
         // Arrange
         const int count = 10 * Million;
@@ -100,7 +100,12 @@ public abstract partial class CapacityTests : ProviderTest
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         await using var context = CreateCapacityContext(database);
         var tree = context
             .NestedSet<TreeNode>()
@@ -116,24 +121,28 @@ public abstract partial class CapacityTests : ProviderTest
             .AsNoTracking()
             .Select(node => node.NodeId)
             .AsAsyncEnumerable()
-            .WithCancellation(CancellationToken.None))
+            .WithCancellation(TestContext.Current.CancellationToken))
         {
             readCount++;
             keySum += key;
         }
 
-        var report = await tree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+        var report = await tree.ValidateAsync(NestedSetValidationLevel.Full, TestContext.Current.CancellationToken);
         var composition = await CompositionCapacityProfiles.MeasureAsync(
             database,
             Engine,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            balanced: false,
+            broad: false);
 
         var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
             database,
             Engine,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            balanced: false,
+            deep: false);
 
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
@@ -149,400 +158,11 @@ public abstract partial class CapacityTests : ProviderTest
             await CapacitySeed.MismatchesAsync(
                 context,
                 count,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                deep: false,
+                corrupt: false));
 
         Assert.Empty(context.ChangeTracker.Entries());
-    }
-
-    /// <summary>Atomically imports one million direct children through the public forest API.</summary>
-    /// <returns>A task that completes after measured import and independent full persisted validation.</returns>
-    [Fact]
-    [Trait("Category", "Capacity")]
-    public async Task MillionDirectChildrenImportWithinAdditionalHeapBudget()
-    {
-        // Arrange
-        const int count = Million + 1;
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        await using var probe = new CapacityProbe();
-        await using var context = CreateCapacityContext(database, probe);
-        context.SavedChanges += (_, _) => probe.Saved();
-        var branch = CreateWide(count);
-        var imports = new[] { new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch) };
-        var hierarchy = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        probe.Start();
-
-        // Act
-        try
-        {
-            await hierarchy.InsertForestAsync(imports, CancellationToken.None);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            GC.KeepAlive(imports);
-            WriteMeasurement("public forest import", count, probe);
-        }
-
-        var composition = await CompositionCapacityProfiles.MeasureAsync(
-            database,
-            Engine,
-            count,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
-            database,
-            Engine,
-            count,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        CompositionCapacityProfiles.AssertAll(composition, _output);
-        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
-        Assert.Equal((count + 63) / 64, probe.CompletedSaves);
-        Assert.Equal(0, probe.RepairCommands);
-        Assert.InRange(probe.MaximumCommandParameters, 1, 999);
-        Assert.Equal(Million, branch.Children.Count);
-        var root = branch.Entity;
-        Assert.Equal(
-            (1L, 2L * count, 0, 0L, (int?)null),
-            (root.Start, root.End, root.Depth, root.Position, root.Parent));
-
-        Assert.Equal(0, CountInputMismatches(branch, restored: false));
-        Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(database, count, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Fully validates and rebuilds a real depth-100000 chain without recursive traversal.</summary>
-    /// <returns>A task that completes after persisted deep-chain validation and measured public rebuild.</returns>
-    [Fact]
-    [Trait("Category", "Capacity")]
-    public async Task DepthOneHundredThousandValidatesAndRebuilds()
-    {
-        // Arrange
-        const int count = 100_001;
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(
-            setup,
-            count,
-            deep: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var tree = setup
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty);
-
-        var before = await tree.ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
-        await setup
-            .Set<TreeNode>()
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(node => node.Start, 1L)
-                    .SetProperty(node => node.End, 2L)
-                    .SetProperty(node => node.Depth, 9),
-                CancellationToken.None);
-
-        await using var probe = new CapacityProbe();
-        await using var context = CreateCapacityContext(database, probe);
-        var selected = context
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty);
-
-        probe.Start();
-
-        // Act
-        try
-        {
-            await selected.RebuildAsync(CancellationToken.None);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            WriteMeasurement("deep public rebuild", count, probe);
-        }
-
-        var composition = await CompositionCapacityProfiles.MeasureDeepAsync(
-            database,
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
-            database,
-            Engine,
-            count,
-            cancellationToken: TestContext.Current.CancellationToken,
-            deep: true);
-
-        // Assert
-        CompositionCapacityProfiles.AssertAll(composition, _output);
-        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
-        Assert.True(before.IsValid);
-        Assert.Equal(count, before.NodeCount);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
-        Assert.Equal((count + 63) / 64, probe.CompletedRepairs);
-        Assert.Equal(count, probe.RepairedRows);
-        Assert.InRange(probe.MaximumRepairParameters, 1, 322);
-        Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(
-            database,
-            count,
-            deep: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.Equal(
-            100_000,
-            await setup
-                .Set<TreeNode>()
-                .MaxAsync(node => node.Depth, CancellationToken.None));
-    }
-
-    /// <summary>Rebuilds one million corrupted nodes within the additional occupied-heap budget.</summary>
-    /// <returns>A task that completes after measured public repair and full persisted validation.</returns>
-    [Fact]
-    [Trait("Category", "Capacity")]
-    public async Task MillionNodeRebuildWithinAdditionalHeapBudget()
-    {
-        // Arrange
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, Million, cancellationToken: TestContext.Current.CancellationToken);
-        await CompositionCapacityProfiles.BalanceAsync(
-            setup,
-            Million,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var registry = await CapacitySeed.RegistryAsync(
-            setup,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await using var probe = new CapacityProbe();
-        await using var context = CreateCapacityContext(database, probe);
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty);
-
-        // Act
-        // WHY: Reuse this existing million-row population for balanced read qualification before the repair
-        // observer starts. Restore the original wide adjacency while corrupting bounds for the existing repair.
-        var composition = await CompositionCapacityProfiles.MeasureAsync(
-            database,
-            Engine,
-            Million,
-            balanced: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var consumers = await CompositionConsumerCapacityProfiles.MeasureAsync(
-            database,
-            Engine,
-            Million,
-            cancellationToken: TestContext.Current.CancellationToken,
-            balanced: true);
-
-        var balancedValidation = await setup
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
-
-        await CompositionCapacityProfiles.CorruptWideForRepairAsync(
-            setup,
-            Million,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        probe.Start();
-
-        try
-        {
-            await tree.RebuildAsync(CancellationToken.None);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            WriteMeasurement("million-node public rebuild", Million, probe);
-        }
-
-        // Assert
-        CompositionCapacityProfiles.AssertAll(composition, _output);
-        CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
-        Assert.True(balancedValidation.IsValid);
-        Assert.Equal(Million, balancedValidation.NodeCount);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
-        Assert.Equal(15_625, probe.RepairCommands);
-        Assert.Equal(15_625, probe.CompletedRepairs);
-        Assert.Equal(Million, probe.RepairedRows);
-        Assert.InRange(probe.MaximumRepairParameters, 1, 322);
-        Assert.InRange(probe.MaximumRepairSqlLength, 1, 20_000);
-        Assert.Empty(context.ChangeTracker.Entries());
-        await AssertCanonicalAsync(database, Million, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(
-            registry with { Revision = registry.Revision + 1 },
-            await CapacitySeed.RegistryAsync(
-                setup,
-                cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>A final-refresh fault restores all million imported inputs and rolls back every payload wave.</summary>
-    /// <param name="count">The manageable observer check or the full million-node capacity workload.</param>
-    /// <param name="cancel">Whether the late fault is cancellation instead of an injected command failure.</param>
-    /// <returns>A task that completes after complete input, database, and registry rollback checks.</returns>
-    [Theory]
-    [InlineData(129, false)]
-    [InlineData(129, true)]
-    [InlineData(Million, false)]
-    [InlineData(Million, true)]
-    [Trait("Category", "Capacity")]
-    public async Task MillionNodeLateImportFailureRestoresInputsAndRegistry(
-        int count,
-        bool cancel
-    )
-    {
-        // Arrange
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        using var cancellation = new CancellationTokenSource();
-        await using var probe = new CapacityProbe();
-        probe.FailBulkRefresh = true;
-        probe.Cancellation = cancel
-            ? cancellation
-            : null;
-
-        await using var context = CreateCapacityContext(database, probe);
-        context.SavedChanges += (_, _) => probe.Saved();
-        var branch = CreateWide(count);
-        var imports = new[] { new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, branch) };
-        var hierarchy = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => hierarchy.InsertForestAsync(imports, cancellation.Token));
-
-        // Assert
-        AssertFailure(error, cancel);
-        Assert.True(probe.ReachedFailure);
-        Assert.Equal((count + 63) / 64, probe.CompletedSaves);
-        Assert.Equal(0, CountInputMismatches(branch, restored: true));
-        Assert.Empty(context.ChangeTracker.Entries());
-        await using var verification = CreateCapacityContext(database);
-        Assert.Equal(
-            0,
-            await verification
-                .Set<TreeNode>()
-                .LongCountAsync(CancellationToken.None));
-
-        Assert.Equal(
-            0,
-            await CapacitySeed.RegistryCountAsync(
-                verification,
-                cancellationToken: TestContext.Current.CancellationToken));
-
-        _output.WriteLine(
-            $"Engine={Engine}; nodes={count}; canceled={cancel}; "
-            + $"payload waves before final refresh failure={probe.CompletedSaves}; inputs and reservation restored");
-    }
-
-    /// <summary>The last of 15625 repair batches can fail without persisting any earlier repair or revision.</summary>
-    /// <param name="count">The manageable observer check or the full million-node capacity workload.</param>
-    /// <param name="cancel">Whether the last repair boundary cancels instead of throwing an injected failure.</param>
-    /// <returns>A task that completes after exact persisted-coordinate and registry rollback checks.</returns>
-    [Theory]
-    [InlineData(129, false)]
-    [InlineData(129, true)]
-    [InlineData(Million, false)]
-    [InlineData(Million, true)]
-    [Trait("Category", "Capacity")]
-    public async Task MillionNodeLastRepairBatchFailureRollsBackEarlierBatches(
-        int count,
-        bool cancel
-    )
-    {
-        // Arrange
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(
-            setup,
-            count,
-            corrupt: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var registry = await CapacitySeed.RegistryAsync(
-            setup,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        using var cancellation = new CancellationTokenSource();
-        await using var probe = new CapacityProbe();
-        probe.FailRepairCommand = (count + 63) / 64;
-        probe.Cancellation = cancel
-            ? cancellation
-            : null;
-
-        await using var context = CreateCapacityContext(database, probe);
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => tree.RebuildAsync(cancellation.Token));
-
-        // Assert
-        AssertFailure(error, cancel);
-        Assert.True(probe.ReachedFailure);
-        Assert.Equal((count + 63) / 64, probe.RepairCommands);
-        Assert.Equal((count + 63) / 64 - 1, probe.CompletedRepairs);
-        Assert.Equal((long)probe.CompletedRepairs * 64, probe.RepairedRows);
-        Assert.InRange(probe.MaximumRepairParameters, 1, 322);
-        Assert.Empty(context.ChangeTracker.Entries());
-        await using var verification = CreateCapacityContext(database);
-        Assert.Equal(
-            count,
-            await verification
-                .Set<TreeNode>()
-                .LongCountAsync(CancellationToken.None));
-
-        Assert.Equal(
-            0,
-            await CapacitySeed.MismatchesAsync(
-                verification,
-                count,
-                corrupt: true,
-                cancellationToken: TestContext.Current.CancellationToken));
-
-        Assert.Equal(
-            registry,
-            await CapacitySeed.RegistryAsync(
-                verification,
-                cancellationToken: TestContext.Current.CancellationToken));
-
-        _output.WriteLine(
-            $"Engine={Engine}; nodes={count}; canceled={cancel}; "
-            + $"completed repair batches before last failure={probe.CompletedRepairs}; rows and revision restored");
     }
 
     /// <summary>Creates a capacity context without imposing a native transaction undo-latency target.</summary>
@@ -554,207 +174,8 @@ public abstract partial class CapacityTests : ProviderTest
         DbCommandInterceptor? probe = null
     )
     {
-        var context = probe is null
+        return probe is null
             ? database.CreateContext()
             : database.CreateContext(probe);
-
-        CapacityContextTimeouts.Configure(context);
-
-        return context;
     }
-
-    /// <summary>Warms the same public import, inspection, and repair paths before measuring capacity work.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private static async Task WarmAsync(
-        TestDatabase database,
-        CancellationToken cancellationToken
-    )
-    {
-        await using var context = CreateCapacityContext(database);
-        await context
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InsertForestAsync(
-                [new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, CreateWide(65))],
-                cancellationToken);
-
-        await context
-            .Set<TreeNode>()
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Start, 1L), cancellationToken);
-
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty);
-
-        await tree.RebuildAsync(cancellationToken);
-        await tree.ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
-        await database.ResetAsync(cancellationToken: cancellationToken);
-    }
-
-    /// <summary>Builds all caller-owned topology and application payload before the measured baseline.</summary>
-    private static NestedSetBranch<TreeNode> CreateWide(
-        int count
-    )
-    {
-        var children = new NestedSetBranch<TreeNode>[count - 1];
-        for (var index = 0; index < children.Length; index++)
-        {
-            children[index] = new NestedSetBranch<TreeNode>(CreateInput(index + 2));
-        }
-
-        return new NestedSetBranch<TreeNode>(CreateInput(1), children);
-    }
-
-    /// <summary>Gives each input original structure so rollback cannot pass through default values.</summary>
-    private static TreeNode CreateInput(
-        int key
-    ) => new()
-    {
-        NodeId = key,
-        TreeId = s_inputTreeId,
-        Tree = 7,
-        Start = 17,
-        End = 18,
-        Depth = 9,
-        Position = 11,
-        Parent = 999,
-        Payload = "caller-owned capacity payload",
-    };
-
-    /// <summary>Verifies every input with aggregate mismatches without allocating another full snapshot.</summary>
-    private static int CountInputMismatches(
-        NestedSetBranch<TreeNode> branch,
-        bool restored
-    )
-    {
-        var count = branch.Children.Count + 1;
-        var mismatches = Matches(branch.Entity, 1)
-            ? 0
-            : 1;
-
-        for (var index = 0; index < branch.Children.Count; index++)
-        {
-            if (!Matches(branch.Children[index].Entity, index + 2))
-            {
-                mismatches++;
-            }
-        }
-
-        return mismatches;
-
-        bool Matches(
-            TreeNode node,
-            int key
-        ) => node.NodeId == key
-            && node.Payload == "caller-owned capacity payload"
-            && node.TreeId
-            == (restored
-                ? s_inputTreeId
-                : Guid.Empty)
-            && node.Tree
-            == (restored
-                ? 7
-                : 1)
-            && node.Start
-            == (restored
-                ? 17
-                : key == 1
-                    ? 1L
-                    : 2L * key - 2)
-            && node.End
-            == (restored
-                ? 18
-                : key == 1
-                    ? 2L * count
-                    : 2L * key - 1)
-            && node.Depth
-            == (restored
-                ? 9
-                : key == 1
-                    ? 0
-                    : 1)
-            && node.Position
-            == (restored
-                ? 11
-                : key == 1
-                    ? 0L
-                    : key - 2L)
-            && node.Parent
-            == (restored
-                ? 999
-                : key == 1
-                    ? null
-                    : 1);
-    }
-
-    /// <summary>Checks the exact persisted result through a fresh context and public Full validation.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private static async Task AssertCanonicalAsync(
-        TestDatabase database,
-        int count,
-        CancellationToken cancellationToken,
-        bool deep = false
-    )
-    {
-        await using var verification = CreateCapacityContext(database);
-        Assert.Equal(
-            count,
-            await verification
-                .Set<TreeNode>()
-                .LongCountAsync(cancellationToken));
-
-        Assert.Equal(
-            0,
-            await CapacitySeed.MismatchesAsync(
-                verification,
-                count,
-                cancellationToken: cancellationToken,
-                deep));
-
-        var report = await verification
-            .NestedSet<TreeNode>()
-            .ForScope(1)
-            .InTree(Guid.Empty)
-            .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken);
-
-        Assert.True(report.IsValid);
-        Assert.Equal(count, report.NodeCount);
-        Assert.Empty(report.Issues);
-    }
-
-    /// <summary>Checks the exact injected failure class independently of the rollback assertions.</summary>
-    private void AssertFailure(
-        Exception? error,
-        bool cancel
-    )
-    {
-        if (error is AggregateException)
-        {
-            // WHY: The exact-type assertion otherwise hides the operation and cleanup errors needed to diagnose failure.
-            _output.WriteLine(error.ToString());
-        }
-
-        if (cancel)
-        {
-            Assert.IsAssignableFrom<OperationCanceledException>(error);
-        }
-        else
-        {
-            Assert.IsType<InjectedCommandException>(error);
-        }
-    }
-
-    /// <summary>Reports sampled occupied heap separately from total allocation without claiming exact peaks.</summary>
-    private void WriteMeasurement(
-        string operation,
-        int count,
-        CapacityProbe probe
-    ) => _output.WriteLine(
-        $"Engine={Engine}; operation={operation}; nodes={count}; "
-        + $"maximum observed additional occupied heap bytes={probe.AdditionalOccupiedBytes}; "
-        + $"total allocated bytes={probe.TotalAllocatedBytes}; samples={probe.Samples}; "
-        + $"completed saves={probe.CompletedSaves}; completed repairs={probe.CompletedRepairs}; "
-        + "baseline excludes pre-existing caller input; provider/framework allocations are included; "
-        + "5ms and command-boundary sampling is not an exact peak");
 }

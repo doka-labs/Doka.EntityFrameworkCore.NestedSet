@@ -5,6 +5,59 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks that functional capacity has no SQL latency gate and ordinary contexts remain unchanged.</summary>
 public sealed class CapacityContextTimeoutTests
 {
+    /// <summary>The migration fixture's retained SQLite connection keeps its schema while limits are removed.</summary>
+    [Fact]
+    public async Task Configure_OpenSqliteConnection_RetainsDatabaseAndRemovesCommandLimit()
+    {
+        // Arrange
+        await using var connection = new SqliteConnection("Data Source=:memory:;Default Timeout=17");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var context = new DbContext(new DbContextOptionsBuilder().UseSqlite(connection).Options);
+        await context.Database.ExecuteSqlRawAsync(
+            "CREATE TABLE RetainedSchema (Id INTEGER PRIMARY KEY)",
+            TestContext.Current.CancellationToken);
+
+        // Act
+        FunctionalTestContextPolicy.Configure(context);
+        var tables = await context.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS Value FROM sqlite_master WHERE name = 'RetainedSchema'")
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(1, tables);
+        Assert.Equal(ConnectionState.Open, connection.State);
+        Assert.Equal(0, connection.DefaultTimeout);
+        Assert.Equal(0, context.Database.GetCommandTimeout());
+    }
+
+    /// <summary>Nested capacity profiles receive the same command policy with or without their own observers.</summary>
+    /// <param name="observed">Whether the nested context has multiple independent command observers.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Create_NestedCapacityProfile_RemovesInheritedTimeouts(
+        bool observed
+    )
+    {
+        // Arrange
+        await using var database = await TestDatabase.CreateAsync(
+            "Sqlite",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Act
+        await using var context = observed
+            ? database.CreateContext(new EnterpriseProbe(), new CompositionCommandProbe())
+            : database.CreateContext();
+
+        using var command = context.Set<TreeNode>().Take(1).CreateDbCommand();
+        using var native = context.Database.GetDbConnection().CreateCommand();
+
+        // Assert
+        Assert.Equal(0, command.CommandTimeout);
+        Assert.Equal(0, native.CommandTimeout);
+        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
+    }
+
     /// <summary>
     /// Capacity commands and native transaction defaults do not impose an implicit performance threshold.
     /// </summary>
@@ -26,7 +79,7 @@ public sealed class CapacityContextTimeoutTests
     [InlineData("Sqlite", null)]
     [InlineData("Sqlite", 7)]
     [InlineData("Sqlite", 0)]
-    public void CapacityCommandsHaveNoImplicitLatencyLimit(
+    public void Configure_CapacityCommands_HaveNoImplicitLatencyLimit(
         string engine,
         int? configured
     )
@@ -36,7 +89,7 @@ public sealed class CapacityContextTimeoutTests
         context.Database.SetCommandTimeout(configured);
 
         // Act
-        CapacityContextTimeouts.Configure(context);
+        FunctionalTestContextPolicy.Configure(context);
         using var command = context
             .Set<TreeNode>()
             .Take(1)
@@ -67,7 +120,7 @@ public sealed class CapacityContextTimeoutTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public void OrdinaryContextRetainsOriginalTimeouts(
+    public void Configure_OrdinaryContext_RetainsOriginalTimeouts(
         string engine
     )
     {
@@ -80,7 +133,7 @@ public sealed class CapacityContextTimeoutTests
             .ConnectionString;
 
         // Act
-        CapacityContextTimeouts.Configure(capacity);
+        FunctionalTestContextPolicy.Configure(capacity);
         using var command = ordinary
             .Set<TreeNode>()
             .Take(1)

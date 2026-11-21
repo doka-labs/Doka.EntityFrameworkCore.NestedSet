@@ -5,7 +5,7 @@ public sealed class StoreObjectEnumerationTests
 {
     /// <summary>Consumes an external property sequence only once while inspecting candidate tables.</summary>
     [Fact]
-    public void PropertySequenceIsSnapshottedOnce()
+    public void Resolve_PropertySequence_IsSnapshottedOnce()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()

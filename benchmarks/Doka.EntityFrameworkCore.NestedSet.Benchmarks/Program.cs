@@ -239,8 +239,13 @@ public static class Program
         // WHY: Provider messages can contain credentials; stack frames and typed codes retain the actionable context.
         if (exception is AggregateException aggregate)
         {
-            foreach (var failure in aggregate.InnerExceptions)
+            // WHY: Aggregate failures form an indexable snapshot; diagnostics retain their original order.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var failureIndex = 0; failureIndex < aggregate.InnerExceptions.Count; failureIndex++)
             {
+                var failure = aggregate.InnerExceptions[failureIndex];
+
                 AppendFailure(details, failure);
             }
         }

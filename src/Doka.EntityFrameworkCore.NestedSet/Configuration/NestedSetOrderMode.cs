@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Controls whether explicit placement may override the configured sibling order.</summary>
+[PublicAPI]
 public enum NestedSetOrderMode
 {
     /// <summary>Requires sibling placement to follow the configured property order.</summary>

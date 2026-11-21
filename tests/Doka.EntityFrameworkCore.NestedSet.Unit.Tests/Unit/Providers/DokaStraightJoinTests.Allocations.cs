@@ -8,7 +8,7 @@ public sealed partial class DokaStraightJoinTests
     /// <summary>The actual typed ordered-join marker identity needs no per-query lookup allocations.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void WarmTypedMethodIdentityLookupDoesNotAllocate()
+    public void MeasureMethodLookups_WarmTypedMethodIdentityLookup_DoesNotAllocate()
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("MySql");

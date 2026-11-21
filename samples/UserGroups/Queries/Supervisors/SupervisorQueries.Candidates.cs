@@ -12,6 +12,8 @@ internal static partial class SupervisorQueries
         IQueryable<UserGroupMembership> memberships
     )
     {
+        // WHY: Keep EF-bound date/type/routing captures in one construction frame. Extracted joins capture
+        // no state; separate parameterized closure frames would retain additional query construction objects.
         var hierarchy = context
             .NestedSet<UserGroup>()
             .ForScope(tenantId);
@@ -43,35 +45,7 @@ internal static partial class SupervisorQueries
         }
         else
         {
-            // WHY: Membership keys are necessary witnesses, never authorization. Rejoin the visible source
-            // and group relation before group windows, including hidden-user and hidden-group checks.
-            // The fixed source user and membership primary key prove one origin per exact tenant/group.
-            paths = paths.Join(
-                origins,
-                path => new
-                {
-                    path.StartGroup.TenantId,
-                    path.StartGroup.Id,
-                },
-                origin => new
-                {
-                    origin.Group.TenantId,
-                    origin.Group.Id,
-                },
-                (path, origin) => path);
-
-            if (request.SearchStart == SearchStart.IncludeSelf)
-            {
-                // WHY: Each origin needs one exact self slot beside strict ancestor ranges. The disjoint branches
-                // share this statement's snapshot and preserve every authorized source occurrence.
-                paths = paths.Concat(
-                    origins.Select(origin => new SupervisorGroupPath
-                    {
-                        StartGroup = origin.Group,
-                        FoundGroup = origin.Group,
-                        Distance = 0,
-                    }));
-            }
+            paths = AuthorizeStrictPaths(paths, origins, request.SearchStart == SearchStart.IncludeSelf);
         }
 
         var types = request.Groups switch
@@ -141,27 +115,7 @@ internal static partial class SupervisorQueries
             var selected = SelectGroupKeys(candidates.Select(s_groupPositionProjection), origins, eligible.Number);
 
             var groups = context.Groups.Where(group => group.TenantId == tenantId);
-            var selectedPaths = selected
-                .Join(
-                    groups,
-                    choice => choice.StartGroupId,
-                    group => group.Id,
-                    (choice, start) => new
-                    {
-                        Choice = choice,
-                        Start = start,
-                    })
-                .Join(
-                    groups,
-                    row => row.Choice.FoundGroupId,
-                    group => group.Id,
-                    (row,
-                        found) => new SupervisorGroupPath
-                    {
-                        StartGroup = row.Start,
-                        FoundGroup = found,
-                        Distance = row.Choice.Distance,
-                    });
+            var selectedPaths = SelectedGroupPaths(selected, groups);
 
             // WHY: The group window already proved the entire path, whose rule depends only on its endpoints
             // and date. Rehydrate those exact mapped keys, then qualify every person again; rebuilding the
@@ -243,201 +197,72 @@ internal static partial class SupervisorQueries
             });
     }
 
-    /// <summary>Selects necessary own membership keys without asserting source-user or group visibility.</summary>
-    private static IQueryable<UserGroupMembership> SourceMemberships(
-        UserGroupContext context,
-        Guid tenantId,
-        SupervisorRequest request
+    /// <summary>
+    /// Rejoins strict membership witnesses to their authorized visible origins without captured state.
+    /// </summary>
+    private static IQueryable<SupervisorGroupPath> AuthorizeStrictPaths(
+        IQueryable<SupervisorGroupPath> paths,
+        IQueryable<SupervisorOrigin> origins,
+        bool includeSelf
     )
     {
-        var source = request.SourceUserId;
-        var start = request.StartGroupId;
-        var day = request.OnDay;
+        // WHY: Membership keys are necessary witnesses, never authorization. Rejoin the visible source
+        // and group relation before group windows, including hidden-user and hidden-group checks.
+        // The fixed source user and membership primary key prove one origin per exact tenant/group.
+        paths = paths.Join(
+            origins,
+            path => new
+            {
+                path.StartGroup.TenantId,
+                path.StartGroup.Id,
+            },
+            origin => new
+            {
+                origin.Group.TenantId,
+                origin.Group.Id,
+            },
+            (path, origin) => path);
 
-        return context.UserGroupMemberships.Where(member => member.TenantId == tenantId
-            && member.UserId == source
-            && (start == null || member.UserGroupId == start)
-            && (day == null
-                || ((member.FromDate == null || member.FromDate <= day)
-                    && (member.ToDate == null || member.ToDate >= day))));
-    }
-
-    /// <summary>Authorizes the exact visible source user and group over the shared membership relation.</summary>
-    private static IQueryable<SupervisorOrigin> Origins(
-        UserGroupContext context,
-        Guid tenantId,
-        int source,
-        IQueryable<UserGroupMembership> memberships
-    )
-    {
-        var visibleMemberships = memberships.Where(member => context.Users.Any(user =>
-            user.TenantId == tenantId && user.Id == source));
-
-        return visibleMemberships.Join(
-            context.Groups.Where(group => group.TenantId == tenantId),
-            s_membershipGroupKey,
-            s_groupKey,
-            s_originProjection);
-    }
-
-    /// <summary>Prunes concrete membership endpoints before joining them to structural paths.</summary>
-    private static IQueryable<UserGroupMembership> EligibleMemberships(
-        UserGroupContext context,
-        Guid tenantId,
-        int sourceUser,
-        SupervisorRoles roles,
-        DateOnly? day
-    )
-    {
-        var rows = context.UserGroupMemberships.Where(member => member.TenantId == tenantId
-            && member.UserId != sourceUser
-            && context.Users.Any(user => user.TenantId == tenantId && user.Id == member.UserId)
-            && (day == null
-                || ((member.FromDate == null || member.FromDate <= day)
-                    && (member.ToDate == null || member.ToDate >= day))));
-
-        if (roles is NoRoleFilter)
+        if (includeSelf)
         {
-            return rows;
+            // WHY: Each origin needs one exact self slot beside strict ancestor ranges. The disjoint branches
+            // share this statement's snapshot and preserve every authorized source occurrence.
+            paths = paths.Concat(
+                origins.Select(origin => new SupervisorGroupPath
+                {
+                    StartGroup = origin.Group,
+                    FoundGroup = origin.Group,
+                    Distance = 0,
+                }));
         }
 
-        var roleId = roles switch
-        {
-            MembershipRoleFilter local => local.RoleId,
-            GlobalUserRole global => global.RoleId,
-            EitherRole either => either.RoleId,
-            _ => throw new ArgumentException("Unknown person-role source.", nameof(roles)),
-        };
-
-        var localAllowed = roles is MembershipRoleFilter or EitherRole;
-        var globalAllowed = roles is GlobalUserRole or EitherRole;
-
-        // WHY: EXISTS preserves one membership with both grant sources. Keep the complete check inside a
-        // numeric condition so a flattened grant bag cannot multiply every selected group by all role holders.
-        return rows.Where(member => (context.Roles.Any(role => role.TenantId == tenantId && role.Id == roleId)
-                && ((localAllowed
-                        && context.MembershipRoles.Any(grant => grant.TenantId == tenantId
-                            && grant.RoleId == roleId
-                            && grant.UserId == member.UserId
-                            && grant.UserGroupId == member.UserGroupId
-                            && (day == null
-                                || ((grant.FromDate == null || grant.FromDate <= day)
-                                    && (grant.ToDate == null || grant.ToDate >= day)))))
-                    || (globalAllowed
-                        && context.UserRoles.Any(grant => grant.TenantId == tenantId
-                            && grant.RoleId == roleId
-                            && grant.UserId == member.UserId
-                            && (day == null
-                                || ((grant.FromDate == null || grant.FromDate <= day)
-                                    && (grant.ToDate == null || grant.ToDate >= day))))))
-                    ? 1L
-                    : 0L)
-            != 0L);
+        return paths;
     }
 
-    /// <summary>
-    /// Reuses one deferred owner projection across same-owner criteria instead of rebuilding its catalog predicates.
-    /// </summary>
-    private static IQueryable<SupervisorRoutingValue> SharedRoutingValues(
-        UserGroupContext context,
-        Guid tenantId,
-        MetadataOwner owner,
-        IQueryable<SupervisorRoutingValue>?[] sources
-    )
-    {
-        var index = owner switch
-        {
-            MetadataOwner.SourceUser or MetadataOwner.CandidateUser => 0,
-            MetadataOwner.SourceMembership or MetadataOwner.CandidateMembership => 1,
-            MetadataOwner.SourceGroup or MetadataOwner.CandidateGroup => 2,
-            _ => throw new ArgumentOutOfRangeException(nameof(owner)),
-        };
+    /// <summary>Rehydrates only the exact already-qualified endpoint keys without copying the path relation.</summary>
+    private static IQueryable<SupervisorGroupPath> SelectedGroupPaths(
+        IQueryable<SupervisorGroupChoice> selected,
+        IQueryable<UserGroup> groups
+    ) => selected
+        .Join(
+            groups,
+            choice => choice.StartGroupId,
+            group => group.Id,
+            (choice, start) => new
+            {
+                Choice = choice,
+                Start = start,
+            })
+        .Join(
+            groups,
+            row => row.Choice.FoundGroupId,
+            group => group.Id,
+            (row,
+                found) => new SupervisorGroupPath
+            {
+                StartGroup = row.Start,
+                FoundGroup = found,
+                Distance = row.Choice.Distance,
+            });
 
-        return sources[index] ??= RoutingValues(context, owner)
-            .Where(value => value.TenantId == tenantId);
-    }
-
-    /// <summary>Normalizes only the three explicitly chosen owner sources into scalar query projections.</summary>
-    private static IQueryable<SupervisorRoutingValue> RoutingValues(
-        UserGroupContext context,
-        MetadataOwner owner
-    )
-    {
-        // WHY: Owner-specific tables keep physical FKs; this shape sharing stays entirely in server expressions.
-        var values = owner switch
-        {
-            MetadataOwner.SourceUser or MetadataOwner.CandidateUser => context
-                .UserMetadatas
-                .Where(value => context.UserMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
-
-                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                    && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
-
-                    // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                    // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                    && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
-                .Select(value => new SupervisorRoutingValue
-                {
-                    TenantId = value.TenantId,
-                    UserId = value.UserId,
-                    GroupId = 0,
-                    FieldCode = value.FieldCode,
-                    Value = value.Value,
-                }),
-            MetadataOwner.SourceMembership or MetadataOwner.CandidateMembership => context
-                .MembershipMetadatas
-                .Where(value =>
-                    context.Groups.Any(group =>
-                        group.TenantId == value.TenantId
-                        && group.Id == value.UserGroupId
-                        && group.TypeId == value.GroupTypeId)
-                    && context.MembershipMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
-                        && definition.GroupTypeId == value.GroupTypeId
-
-                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                        && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
-
-                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                        && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
-                .Select(value => new SupervisorRoutingValue
-                {
-                    TenantId = value.TenantId,
-                    UserId = value.UserId,
-                    GroupId = value.UserGroupId,
-                    FieldCode = value.FieldCode,
-                    Value = value.Value,
-                }),
-            MetadataOwner.SourceGroup or MetadataOwner.CandidateGroup => context
-                .GroupMetadatas
-                .Where(value =>
-                    context.Groups.Any(group =>
-                        group.TenantId == value.TenantId
-                        && group.Id == value.UserGroupId
-                        && group.TypeId == value.GroupTypeId)
-                    && context.GroupMetadataDefinitions.Any(definition => definition.TenantId == value.TenantId
-                        && definition.GroupTypeId == value.GroupTypeId
-
-                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                        && SupervisorExactText.FieldEquals(definition.FieldCode, value.FieldCode)
-
-                        // WHY: The text inliner replaces this marker with string comparisons before EF translation.
-                        // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
-                        && SupervisorExactText.FieldEquals(definition.ValueKind, "Text")))
-                .Select(value => new SupervisorRoutingValue
-                {
-                    TenantId = value.TenantId,
-                    UserId = 0,
-                    GroupId = value.UserGroupId,
-                    FieldCode = value.FieldCode,
-                    Value = value.Value,
-                }),
-            _ => throw new ArgumentOutOfRangeException(nameof(owner)),
-        };
-
-        return values.Provider.CreateQuery<SupervisorRoutingValue>(SupervisorExactText.Inline(values.Expression));
-    }
 }

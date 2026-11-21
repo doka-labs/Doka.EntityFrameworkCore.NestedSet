@@ -12,7 +12,7 @@ public abstract partial class AutomaticMoveBudgetTests
     [InlineData("anchor-bounds", NestedSetErrorCode.InvalidStructure)]
     [InlineData("self", NestedSetErrorCode.CycleDetected)]
     [InlineData("descendant", NestedSetErrorCode.CycleDetected)]
-    public async Task AutomaticPlacementRetainsLockedValidation(
+    public async Task MoveToAsync_AutomaticPlacement_RetainsLockedValidation(
         string scenario,
         NestedSetErrorCode expected
     )
@@ -20,7 +20,8 @@ public abstract partial class AutomaticMoveBudgetTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -43,8 +44,8 @@ public abstract partial class AutomaticMoveBudgetTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var tree = context
             .NestedSet<OrderingNode>()

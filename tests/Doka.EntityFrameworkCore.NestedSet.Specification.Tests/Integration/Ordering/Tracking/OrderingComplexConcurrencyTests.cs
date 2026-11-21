@@ -17,7 +17,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RenameRefreshesComplexConcurrencyValues(
+    public async Task SaveChangesAsync_Rename_RefreshesComplexConcurrencyValues(
         bool acceptChanges
     )
     {
@@ -88,7 +88,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
 
     /// <summary>Proves that a later payload update does not use a stale complex concurrency token.</summary>
     [Fact]
-    public async Task PayloadSaveAfterRenameUsesFinalComplexConcurrencyToken()
+    public async Task SaveChangesAsync_PayloadSaveAfterRename_UsesFinalComplexConcurrencyToken()
     {
         // Arrange
         var database = await _fixture.PrepareAsync(
@@ -130,7 +130,7 @@ public abstract partial class OrderingComplexConcurrencyTests : ProviderTest
 
     /// <summary>Returns an ordered insertion with the complex token for its final structural position.</summary>
     [Fact]
-    public async Task OrderedInsertionReturnsFinalComplexConcurrencyToken()
+    public async Task InsertChildAsync_OrderedInsertion_ReturnsFinalComplexConcurrencyToken()
     {
         // Arrange
         var database = await _fixture.PrepareAsync(

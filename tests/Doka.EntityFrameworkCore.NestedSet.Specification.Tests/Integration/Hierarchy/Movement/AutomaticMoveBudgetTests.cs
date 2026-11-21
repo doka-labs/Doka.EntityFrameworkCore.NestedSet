@@ -19,7 +19,7 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     [InlineData("Strict", true)]
     [InlineData("Flexible", false)]
     [InlineData("Flexible", true)]
-    public async Task AutomaticPlacementReadsOnlyTheRequiredDestination(
+    public async Task MoveToAsync_AutomaticPlacement_ReadsOnlyTheRequiredDestination(
         string mode,
         bool upperGroup
     )
@@ -28,15 +28,15 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
         await using var setup = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            mode);
+            mode: mode);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            mode,
-            probe);
+            mode: mode,
+            interceptors: [probe]);
 
         var tree = context
             .NestedSet<OrderingNode>()
@@ -68,7 +68,7 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FlexibleManualPlacementKeepsItsOwnDestination(
+    public async Task MoveAfterAsync_FlexibleManualPlacement_KeepsItsOwnDestination(
         bool upperGroup
     )
     {
@@ -76,15 +76,15 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
         await using var setup = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible");
+            mode: "Flexible");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible",
-            probe);
+            mode: "Flexible",
+            interceptors: [probe]);
 
         var tree = context
             .NestedSet<OrderingNode>()
@@ -116,14 +116,15 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StrictManualPlacementRemainsRejected(
+    public async Task MoveAfterAsync_StrictManualPlacement_RemainsRejected(
         bool upperGroup
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -131,8 +132,8 @@ public abstract partial class AutomaticMoveBudgetTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var tree = context
             .NestedSet<OrderingNode>()

@@ -9,6 +9,8 @@
     <!-- WHY: Provider fixtures own their image data directly so qualification does not depend on optional tools. -->
     <Compile Include="../Shared/DatabaseTestTargets.cs" Link="Infrastructure/DatabaseTestTargets.cs" />
     <Compile Include="../Shared/SqlServerTestPlatform.cs" Link="Infrastructure/SqlServerTestPlatform.cs" />
+    <!-- WHY: Runtime and migration fixtures share one native timeout policy without exporting provider types to Core tests. -->
+    <Compile Include="../Shared/Database/FunctionalTestContextPolicy.cs" Link="Infrastructure/FunctionalTestContextPolicy.cs" />
     <EmbeddedResource Include="../../docker/database-images.Dockerfile" LogicalName="NestedSet.TestImages" Visible="false" />
   </ItemGroup>
 
@@ -34,6 +36,51 @@
     <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Integration/Querying/Composition/Consumers/CompositionConsumerDataset.*.cs">
+      <DependentUpon>CompositionConsumerDataset.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Concurrency/OrderingLockTests.*.cs">
+      <DependentUpon>OrderingLockTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Mutations/Facade/TypedParentContractTests.*.cs">
+      <DependentUpon>TypedParentContractTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Mutations/Facade/MutationBindingIsolationTests.*.cs">
+      <DependentUpon>MutationBindingIsolationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Mutations/Facade/MutableTreeIdentityTests.*.cs">
+      <DependentUpon>MutableTreeIdentityTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Diagnostics/DiagnosticsTests.*.cs">
+      <DependentUpon>DiagnosticsTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Concurrency/TreeRegistry/TreeRegistryLockTests.*.cs">
+      <DependentUpon>TreeRegistryLockTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/CompiledModels/CompiledModelTests.*.cs">
+      <DependentUpon>CompiledModelTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Transactions/RetryBoundaryTests.*.cs">
+      <DependentUpon>RetryBoundaryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/SaveChanges/ManagedSaveCallbackTests.*.cs">
+      <DependentUpon>ManagedSaveCallbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Ordering/Notifications/OrderingNotificationTests.*.cs">
+      <DependentUpon>OrderingNotificationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/ModelCompatibility/ValueConverters/ConvertedTextCollationTests.*.cs">
+      <DependentUpon>ConvertedTextCollationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/ModelCompatibility/Deletion/MappingDeletionTests.*.cs">
+      <DependentUpon>MappingDeletionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Integration/Hierarchy/Infrastructure/RelationalTests.*.cs">
+      <DependentUpon>RelationalTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Infrastructure/Providers/ProviderTestContract.*.cs">
+      <DependentUpon>ProviderTestContract.cs</DependentUpon>
+    </Compile>
     <Compile Update="Integration/Querying/Composition/Models/AncestorIndexMappedContext.*.cs">
       <DependentUpon>AncestorIndexMappedContext.cs</DependentUpon>
     </Compile>

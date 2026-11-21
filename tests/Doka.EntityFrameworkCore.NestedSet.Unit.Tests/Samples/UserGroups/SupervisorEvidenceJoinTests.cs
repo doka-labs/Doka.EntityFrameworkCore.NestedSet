@@ -11,7 +11,7 @@ public sealed partial class SupervisorEvidenceJoinTests
     [InlineData("unique")]
     [InlineData("priority")]
     [InlineData("person")]
-    public async Task SqlServerEvidenceAdmissionIsIndependentOfMissingOriginMarkers(
+    public async Task ResolutionRows_SqlServerEvidenceAdmission_IsIndependentOfMissingOriginMarkers(
         string mode
     )
     {
@@ -62,7 +62,7 @@ public sealed partial class SupervisorEvidenceJoinTests
     [InlineData("unique", true)]
     [InlineData("priority", true)]
     [InlineData("person", true)]
-    public async Task MixedOriginsKeepExactStatusesOccurrencesAndPhysicalRows(
+    public async Task ResolutionRows_MixedOrigins_KeepExactStatusesOccurrencesAndPhysicalRows(
         string mode,
         bool closed
     )
@@ -75,7 +75,8 @@ public sealed partial class SupervisorEvidenceJoinTests
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var data = await SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
-        await PrepareMixedOriginsAsync(context, data, closed, cancellationToken: TestContext.Current.CancellationToken);
+        await PrepareMixedOriginsAsync(context, data, closed, sharedWinner: false,
+            cancellationToken: TestContext.Current.CancellationToken);
         var request = data.Request(SearchStart.IncludeSelf) with
         {
             Groups = new AllEligibleGroups(),
@@ -154,7 +155,7 @@ public sealed partial class SupervisorEvidenceJoinTests
 
     /// <summary>A shared winner retains only the complete occurrences belonging to each exact origin.</summary>
     [Fact]
-    public async Task SharedWinnerCannotMixEvidenceBetweenOriginPaths()
+    public async Task ResolutionRows_SharedWinner_CannotMixEvidenceBetweenOriginPaths()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();

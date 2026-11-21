@@ -7,7 +7,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RepeatedRequestedKeysDoNotDuplicateAnchorsOrCollapseOverlap(
+    public async Task SelectSubtrees_RepeatedRequestedKeys_DoNotDuplicateAnchorsOrCollapseOverlap(
         bool empty
     )
     {
@@ -17,7 +17,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -57,7 +60,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionDistinctGrain.Target)]
     [InlineData(CompositionDistinctGrain.SourceTarget)]
     [InlineData(CompositionDistinctGrain.Walk)]
-    public async Task ExplicitDistinctUsesOnlyTheChosenResultGrain(
+    public async Task SelectSubtrees_ExplicitDistinct_UsesOnlyTheChosenResultGrain(
         CompositionDistinctGrain grain
     )
     {
@@ -67,7 +70,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -140,7 +146,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task JoinAndExistenceHaveDifferentMultiplicity(
+    public async Task SelectAncestors_JoinAndExistence_HaveDifferentMultiplicity(
         bool useExistence
     )
     {
@@ -150,7 +156,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -205,7 +214,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionPairShape.AncestorsOrSelf, false, true)]
     [InlineData(CompositionPairShape.AncestorsOrSelf, true, false)]
     [InlineData(CompositionPairShape.AncestorsOrSelf, true, true)]
-    public async Task PairShapesUseTheSelectedOwnerEndpoint(
+    public async Task WhereAnyAncestorOrSelf_PairShapes_UseTheSelectedOwnerEndpoint(
         CompositionPairShape pairShape,
         bool projectedEndpoint,
         bool nearest
@@ -217,7 +226,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

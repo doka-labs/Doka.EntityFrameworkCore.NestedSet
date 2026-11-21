@@ -28,9 +28,9 @@ public sealed partial class SafeMigrationTests : IClassFixture<MigrationFixture>
     ) => _fixture.CreateDatabaseAsync(
         engine,
         cancellationToken: cancellationToken,
-        options => SafeMigrationTestServices.ConfigureOptions(options, engine),
-        SafeMigrationTestServices.ConfigureDesignServices,
-        qualifySchema);
+        configureOptions: options => SafeMigrationTestServices.ConfigureOptions(options, engine),
+        configureDesignServices: SafeMigrationTestServices.ConfigureDesignServices,
+        qualifySchema: qualifySchema);
 
     /// <summary>Selects the index intents emitted by the compiled scaffolded migration.</summary>
     private static SafeMigrationOperation[] GetIndexOperations(

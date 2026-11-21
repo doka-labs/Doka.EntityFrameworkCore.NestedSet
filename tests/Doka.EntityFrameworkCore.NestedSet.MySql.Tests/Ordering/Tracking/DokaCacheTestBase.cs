@@ -29,7 +29,7 @@ public abstract class DokaCacheTestBase : ProviderTest
     [InlineData(true, 1)]
     [InlineData(true, 2)]
     [InlineData(true, 3)]
-    public async Task WarmDokaSaveMeasuresIndependentReseededForest(
+    public async Task SaveChangesAsync_WarmDokaSave_MeasuresIndependentReseededForest(
         bool adjacent,
         int sample
     )
@@ -43,7 +43,8 @@ public abstract class DokaCacheTestBase : ProviderTest
 
         await using var template = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
 

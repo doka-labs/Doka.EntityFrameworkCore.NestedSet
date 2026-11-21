@@ -32,7 +32,7 @@ public sealed class SampleCommandTests
 
     /// <summary>The default invocation selects Doka with MariaDB and every documented scenario.</summary>
     [Fact]
-    public void DefaultInvocationSelectsMariaDbAndAllScenarios()
+    public void Parse_DefaultInvocation_SelectsMariaDbAndAllScenarios()
     {
         // Arrange
         string[] args = [];
@@ -60,7 +60,7 @@ public sealed class SampleCommandTests
     [InlineData("MySQL", "MySql")]
     [InlineData("sqlite", "Sqlite")]
     [InlineData("SQLite", "Sqlite")]
-    public void DocumentedProviderIsSelected(
+    public void Parse_DocumentedProvider_IsSelected(
         string name,
         string expected
     )
@@ -82,7 +82,7 @@ public sealed class SampleCommandTests
     [InlineData("create")]
     [InlineData("move")]
     [InlineData("all")]
-    public void DocumentedScenarioRetainsExecutionFlags(
+    public void Parse_DocumentedScenario_RetainsExecutionFlags(
         string scenario
     )
     {
@@ -102,7 +102,7 @@ public sealed class SampleCommandTests
 
     /// <summary>Inspection accepts provider and detail selection without requesting a mutation.</summary>
     [Fact]
-    public void InspectionRetainsProviderAndDetails()
+    public void Parse_Inspection_RetainsProviderAndDetails()
     {
         // Arrange
         string[] args = ["--provider", "sqlite", "--inspect", "--details"];
@@ -120,7 +120,7 @@ public sealed class SampleCommandTests
 
     /// <summary>Help is parsed without requiring a provider or scenario value.</summary>
     [Fact]
-    public void HelpDoesNotRequireExecutionOptions()
+    public void Parse_Help_DoesNotRequireExecutionOptions()
     {
         // Arrange
         string[] args = ["--help"];
@@ -140,7 +140,7 @@ public sealed class SampleCommandTests
     /// <param name="message">The diagnostic identifying the command defect.</param>
     [Theory]
     [MemberData(nameof(InvalidInvocations))]
-    public void InvalidInvocationIsRejected(
+    public void Parse_InvalidInvocation_IsRejected(
         string[] args,
         string message
     )

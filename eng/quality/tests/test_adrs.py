@@ -1,9 +1,8 @@
-"""Regression tests for the full MADR document and generated-index contract."""
+"""Regression tests for the optional read-only MADR document check."""
 
 import contextlib
 import importlib.util
 import io
-import json
 import subprocess
 import sys
 import tempfile
@@ -25,7 +24,7 @@ status: proposed
 date: 2026-09-19
 decision-makers: [Accountable Owner]
 consulted: []
-informed: []
+informed: ["@doka-labs/core-maintainers"]
 scope: "Fixture contract"
 supersedes: []
 superseded-by: []
@@ -119,62 +118,39 @@ class AdrFixture(unittest.TestCase):
         self.assertIn(old, text)
         self.path.write_text(text.replace(old, new), encoding="ascii")
 
-    def validate(self, write_index=True):
+    def validate(self):
         """Run the real validator against the fixture without executing any ADR command."""
-        return ADR.validate_repository(self.root, write_index)
+        return ADR.validate_repository(self.root)
 
     def accepted_history(self):
         """Prepare a real proposal-to-acceptance chain for state-transition probes."""
         self.change("status: proposed", "status: accepted")
+        self.change("date: 2026-09-19", "date: 2026-09-20")
         self.change("- 2026-09-19: Decision recorded with status proposed.",
                     "- 2026-09-19: Decision recorded with status proposed.\n"
                     "- 2026-09-20: Status changed from proposed to accepted.")
 
 
 
-class AdrIndexGenerationTests(AdrFixture):
-    """Verify deterministic generation and normal read-only behavior."""
+class AdrReadOnlyTests(AdrFixture):
+    """Keep record validation independent of manual navigation and source mutations."""
 
-    def test_complete_corpus_generates_both_indexes(self):
-        """Valid metadata produces one consistent machine and human navigation entry."""
+    def test_validation_preserves_manual_navigation(self):
+        """Validation never generates indexes or replaces a maintainer's navigation."""
         # Arrange
-        expected_id = "D-001"
+        readme = self.directory / "README.md"
+        readme.write_text("# Manually maintained decisions\n", encoding="ascii")
+        before = {path.name: (path.read_bytes(), path.stat().st_mtime_ns)
+                  for path in self.directory.iterdir()}
 
         # Act
         errors = self.validate()
-
-        # Assert
-        self.assertEqual([], errors)
-        index = json.loads((self.directory / "decision-index.json").read_text())
-        self.assertEqual(expected_id, index["decisions"][0]["id"])
-        self.assertIn("[D-001](D-001-fixture.md)", (self.directory / "README.md").read_text())
-
-    def test_regeneration_is_byte_identical(self):
-        """Index regeneration does not introduce timestamps or unstable ordering."""
-        # Arrange
-        self.assertEqual([], self.validate())
-        before = {name: (self.directory / name).read_bytes() for name in ("README.md", "decision-index.json")}
-
-        # Act
-        errors = self.validate()
-
-        # Assert
-        self.assertEqual([], errors)
-        self.assertEqual(before, {name: (self.directory / name).read_bytes() for name in before})
-
-    def test_normal_validation_is_read_only(self):
-        """A valid generated corpus passes without rewriting source or index files."""
-        # Arrange
-        self.assertEqual([], self.validate())
-        before = {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in self.directory.iterdir()}
-
-        # Act
-        errors = self.validate(write_index=False)
 
         # Assert
         self.assertEqual([], errors)
         self.assertEqual(before, {path.name: (path.read_bytes(), path.stat().st_mtime_ns)
                                   for path in self.directory.iterdir()})
+        self.assertFalse((self.directory / "decision-index.json").exists())
 
     def test_empty_corpus_is_rejected(self):
         """Removing every record cannot produce a successful empty index."""
@@ -191,6 +167,17 @@ class AdrIndexGenerationTests(AdrFixture):
 
 class AdrMetadataTests(AdrFixture):
     """Enforce the flat metadata and canonical source-byte contracts."""
+
+    def test_empty_informed_audience_is_rejected(self):
+        """Every record names the designated maintainer audience explicitly."""
+        # Arrange
+        self.change('informed: ["@doka-labs/core-maintainers"]', "informed: []")
+
+        # Act
+        errors = self.validate()
+
+        # Assert
+        self.assertIn("informed must name exactly", "\n".join(errors))
 
     def test_unknown_metadata_is_rejected(self):
         """A misspelled or speculative field is not silently ignored."""
@@ -217,7 +204,8 @@ class AdrMetadataTests(AdrFixture):
     def test_metadata_order_is_enforced(self):
         """The flat grammar has one canonical metadata key order."""
         # Arrange
-        self.change("consulted: []\ninformed: []", "informed: []\nconsulted: []")
+        self.change('consulted: []\ninformed: ["@doka-labs/core-maintainers"]',
+                    'informed: ["@doka-labs/core-maintainers"]\nconsulted: []')
 
         # Act
         errors = self.validate()
@@ -302,7 +290,7 @@ class AdrMetadataTests(AdrFixture):
         errors = self.validate()
 
         # Assert
-        self.assertIn("invalid recording date", "\n".join(errors))
+        self.assertIn("invalid decision update date", "\n".join(errors))
 
     def test_unsupported_profile_version_is_rejected(self):
         """An unimplemented schema version cannot pass with old validation rules."""
@@ -553,6 +541,30 @@ class AdrSectionTests(AdrFixture):
 class AdrHistoryTests(AdrFixture):
     """Require explicit chronological transitions for every approval claim."""
 
+    def test_update_date_preserves_original_recording_event(self):
+        """The latest event dates metadata without rewriting when the record began."""
+        # Arrange
+        self.accepted_history()
+
+        # Act
+        errors = self.validate()
+
+        # Assert
+        self.assertEqual([], errors)
+        self.assertIn("2026-09-19: Decision recorded with status proposed.", self.path.read_text())
+
+    def test_stale_update_date_is_rejected(self):
+        """The recording date cannot stand in for a later recorded update."""
+        # Arrange
+        self.accepted_history()
+        self.change("date: 2026-09-20", "date: 2026-09-19")
+
+        # Act
+        errors = self.validate()
+
+        # Assert
+        self.assertIn("metadata date must match the last history date", "\n".join(errors))
+
     def test_missing_history_acceptance_cannot_approve_record(self):
         """Changing metadata alone cannot claim maintainer acceptance."""
         # Arrange
@@ -640,8 +652,8 @@ class AdrRelationshipTests(AdrFixture):
         # Assert
         self.assertIn("lacks reciprocal amended-by", "\n".join(errors))
 
-    def test_real_reciprocal_edges_generate_a_graph(self):
-        """Only actual relationship metadata contributes to the Mermaid graph."""
+    def test_real_reciprocal_edges_are_valid(self):
+        """Reciprocal relationships remain valid independently of index generation."""
         # Arrange
         self.change("amends: []", "amends: [D-002]")
         second = record("D-002").replace("amended-by: []", "amended-by: [D-001]")
@@ -652,7 +664,6 @@ class AdrRelationshipTests(AdrFixture):
 
         # Assert
         self.assertEqual([], errors)
-        self.assertIn('D_001["D-001"] -->|amends| D_002["D-002"]', (self.directory / "README.md").read_text())
 
     def test_successor_requires_superseded_status(self):
         """An active record cannot simultaneously claim it has been replaced."""
@@ -801,67 +812,21 @@ class AdrProvenanceTests(AdrFixture):
 
 
 
-class AdrIndexIntegrityTests(AdrFixture):
-    """Reject stale navigation and output path attacks without hiding corpus errors."""
-
-    def test_index_symlink_cannot_write_outside_repository(self):
-        """Explicit regeneration must not overwrite an external symlink target."""
-        # Arrange
-        external = self.root.parent / (self.root.name + "-untouched.txt")
-        external.write_text("preserve\n", encoding="ascii")
-        self.addCleanup(external.unlink)
-        (self.directory / "README.md").symlink_to(external)
-
-        # Act
-        errors = self.validate()
-
-        # Assert
-        self.assertIn("must not be symbolic links", "\n".join(errors))
-        self.assertEqual("preserve\n", external.read_text())
-
-    def test_stale_readme_is_rejected(self):
-        """Normal mode reports drift without silently fixing the human index."""
-        # Arrange
-        self.assertEqual([], self.validate())
-        (self.directory / "README.md").write_text("stale\n", encoding="ascii")
-
-        # Act
-        errors = self.validate(write_index=False)
-
-        # Assert
-        self.assertIn("README.md:1: generated index is missing or stale", "\n".join(errors))
-        self.assertEqual("stale\n", (self.directory / "README.md").read_text())
-
-    def test_stale_json_is_rejected(self):
-        """Machine-readable navigation receives the same drift check as Markdown."""
-        # Arrange
-        self.assertEqual([], self.validate())
-        (self.directory / "decision-index.json").write_text("{}\n", encoding="ascii")
-
-        # Act
-        errors = self.validate(write_index=False)
-
-        # Assert
-        self.assertIn("decision-index.json:1: generated index is missing or stale", "\n".join(errors))
-
-    def test_invalid_corpus_cannot_overwrite_indexes(self):
-        """An explicit write request is still gated by complete source validation."""
-        # Arrange
-        self.assertEqual([], self.validate())
-        before = (self.directory / "README.md").read_bytes()
-        self.change("status: proposed", "status: implemented")
-
-        # Act
-        errors = self.validate()
-
-        # Assert
-        self.assertTrue(errors)
-        self.assertEqual(before, (self.directory / "README.md").read_bytes())
-
-
-
 class AdrEntryPointTests(AdrFixture):
     """Check real CLI behavior and the stable shell delegation contract."""
+
+    def test_removed_index_write_option_is_rejected(self):
+        """The optional checker has no file-generating mode."""
+        # Arrange
+        stream = io.StringIO()
+
+        # Act
+        with contextlib.redirect_stderr(stream), self.assertRaises(SystemExit) as caught:
+            ADR.main(["--write-index"])
+
+        # Assert
+        self.assertEqual(2, caught.exception.code)
+        self.assertIn("unrecognized arguments", stream.getvalue())
 
     def test_unknown_cli_option_is_usage_failure(self):
         """Unrecognized flags never fall back to an unintended validation mode."""
@@ -906,7 +871,7 @@ class AdrEntryPointTests(AdrFixture):
 class AdrRepositoryTests(unittest.TestCase):
     """Keep the delivered corpus under the same rules as negative fixture tests."""
 
-    def test_repository_corpus_and_indexes_match(self):
+    def test_repository_corpus_matches_profile(self):
         """All actual records and implementation paths must validate in read-only mode."""
         # Arrange
         root = REPOSITORY

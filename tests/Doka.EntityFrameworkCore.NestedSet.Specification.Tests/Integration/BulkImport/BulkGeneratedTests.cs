@@ -17,7 +17,7 @@ public abstract class BulkGeneratedTests : ProviderTest
     ///     All generated parents exist before immediate FK updates and generated criteria determine final order.
     /// </summary>
     [Fact]
-    public async Task GeneratedParentsAndSortValuesAreResolvedInOneSave()
+    public async Task InsertForestAsync_GeneratedParentsAndSortValues_AreResolvedInOneSave()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
@@ -89,7 +89,7 @@ public abstract class BulkGeneratedTests : ProviderTest
     ///     A failed final refresh rolls back inserted rows and restores library- and database-assigned values.
     /// </summary>
     [Fact]
-    public async Task FailedRefreshRestoresGeneratedKeysAndDefaults()
+    public async Task InsertForestAsync_FailedRefresh_RestoresGeneratedKeysAndDefaults()
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
@@ -139,7 +139,7 @@ public abstract class BulkGeneratedTests : ProviderTest
 
     /// <summary>A failed import does not reverse application-owned payload changes made by save callbacks.</summary>
     [Fact]
-    public async Task FailedImportRetainsApplicationPayloadCallbackChanges()
+    public async Task InsertForestAsync_FailedImport_RetainsApplicationPayloadCallbackChanges()
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");

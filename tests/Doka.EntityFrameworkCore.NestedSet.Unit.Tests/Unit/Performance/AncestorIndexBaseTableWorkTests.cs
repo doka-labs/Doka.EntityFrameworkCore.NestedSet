@@ -7,7 +7,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 {
     /// <summary>Retains actual index/table leaves while excluding parent filters and temporary C lookups.</summary>
     [Fact]
-    public void MySqlSeparatesBaseAccessFromTemporaryAndParentTuples()
+    public void Read_MySql_SeparatesBaseAccessFromTemporaryAndParentTuples()
     {
         // Arrange
         const string sql =
@@ -29,7 +29,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Counts repeated native range access even when the chosen index name is not displayed.</summary>
     [Fact]
-    public void MySqlRetainsRepeatedBaseRangeScans()
+    public void Read_MySql_RetainsRepeatedBaseRangeScans()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a4`";
@@ -45,7 +45,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Does not attribute a native access to a base alias reused by a derived relation.</summary>
     [Fact]
-    public void AmbiguousBaseAndDerivedAliasFailsClosed()
+    public void Read_AmbiguousBaseAndDerivedAlias_FailsClosed()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a` JOIN (SELECT 1) AS `a` ON 1=1";
@@ -60,7 +60,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Rejects an estimated physical access rather than treating absent actual work as zero.</summary>
     [Fact]
-    public void EstimatedOnlyBaseAccessFailsClosed()
+    public void Read_EstimatedOnlyBaseAccess_FailsClosed()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
@@ -75,7 +75,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Rejects an incomplete physical alias inventory even when another actual access is valid.</summary>
     [Fact]
-    public void MissingBaseAccessFailsClosed()
+    public void Read_MissingBaseAccess_FailsClosed()
     {
         // Arrange
         const string sql =
@@ -95,7 +95,7 @@ public sealed class AncestorIndexBaseTableWorkTests
     /// Uses MariaDB pre-index observations and folds repeated shared-CTE metadata by its unique SQL owner.
     /// </summary>
     [Fact]
-    public void MariaDbRetainsPreIndexBaseWorkWithoutCountingTemporaryRows()
+    public void Read_MariaDb_RetainsPreIndexBaseWorkWithoutCountingTemporaryRows()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
@@ -118,7 +118,7 @@ public sealed class AncestorIndexBaseTableWorkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MariaDbRepeatedAccessRequiresTheSameKnownQueryBlock(
+    public void Read_MariaDbRepeatedAccess_RequiresTheSameKnownQueryBlock(
         bool differentBlocks
     )
     {
@@ -148,7 +148,7 @@ public sealed class AncestorIndexBaseTableWorkTests
     [InlineData("1.5")]
     [InlineData("\"block\"")]
     [InlineData("9223372036854775808")]
-    public void MariaDbInvalidQueryBlockFailsClosed(
+    public void Read_MariaDbInvalidQueryBlock_FailsClosed(
         string identity
     )
     {
@@ -167,7 +167,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Reports missing MariaDB pre-index evidence separately instead of inventing an input count.</summary>
     [Fact]
-    public void MariaDbLabelsUnexposedPreIndexWork()
+    public void Read_MariaDb_LabelsUnexposedPreIndexWork()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
@@ -183,7 +183,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Does not discard a differing repeated physical observation as shared-CTE metadata.</summary>
     [Fact]
-    public void MariaDbConflictingRepeatedAccessFailsClosed()
+    public void Read_MariaDbConflictingRepeatedAccess_FailsClosed()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
@@ -200,7 +200,7 @@ public sealed class AncestorIndexBaseTableWorkTests
 
     /// <summary>Does not treat a row estimate without actual loop evidence as completed base access.</summary>
     [Fact]
-    public void MariaDbMissingActualLoopsFailsClosed()
+    public void Read_MariaDbMissingActualLoops_FailsClosed()
     {
         // Arrange
         const string sql = "SELECT * FROM `AncestorIndexQueryNodes` AS `a`";
@@ -217,7 +217,7 @@ public sealed class AncestorIndexBaseTableWorkTests
     /// Accepts an explicitly unused branch without mistaking null row observations for executed work.
     /// </summary>
     [Fact]
-    public void MariaDbExplicitUnusedAliasCompletesInventory()
+    public void Read_MariaDbExplicitUnusedAlias_CompletesInventory()
     {
         // Arrange
         const string sql =

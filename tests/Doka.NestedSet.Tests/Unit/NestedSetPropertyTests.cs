@@ -9,7 +9,7 @@ public sealed class NestedSetPropertyTests
     /// <param name="coordinate">The generated starting-coordinate input.</param>
     /// <param name="nodeCount">The generated interval-size input.</param>
     [Property(MaxTest = 2000)]
-    public void ValidBoundsPreserveCounts(
+    public void Construct_ValidBounds_PreserveCounts(
         long coordinate,
         long nodeCount
     )
@@ -32,7 +32,7 @@ public sealed class NestedSetPropertyTests
     /// <param name="left">The generated left boundary, including invalid values.</param>
     /// <param name="right">The generated right boundary, including invalid values.</param>
     [Property(MaxTest = 2000)]
-    public void ConstructionAcceptsExactlyValidIntervals(
+    public void Construct_Construction_AcceptsExactlyValidIntervals(
         long left,
         long right
     )
@@ -67,7 +67,7 @@ public sealed class NestedSetPropertyTests
     /// <param name="secondCoordinate">The second interval's coordinate input.</param>
     /// <param name="secondCount">The second interval's size input.</param>
     [Property(MaxTest = 2000)]
-    public void ContainmentMatchesStrictCoordinateOrder(
+    public void Contains_Containment_MatchesStrictCoordinateOrder(
         long firstCoordinate,
         long firstCount,
         long secondCoordinate,
@@ -97,7 +97,7 @@ public sealed class NestedSetPropertyTests
     /// <param name="sameTree">Whether the descendant belongs to the ancestor's tree.</param>
     /// <param name="coordinate">The generated positive-coordinate input.</param>
     [Property(MaxTest = 1000)]
-    public void UnscopedAncestryRequiresTreeIdentity(
+    public void IsAncestorOf_UnscopedAncestry_RequiresTreeIdentity(
         int treeId,
         bool sameTree,
         int coordinate
@@ -131,7 +131,7 @@ public sealed class NestedSetPropertyTests
     /// <param name="sameTree">Whether the descendant belongs to the same tree.</param>
     /// <param name="sameScope">Whether the descendant belongs to the same scope.</param>
     [Property(MaxTest = 1000)]
-    public void ScopedAncestryRequiresCompleteIdentity(
+    public void IsAncestorOf_ScopedAncestry_RequiresCompleteIdentity(
         int treeId,
         int scope,
         bool sameTree,
@@ -161,7 +161,9 @@ public sealed class NestedSetPropertyTests
         Assert.False(descendant.IsAncestorOf(ancestor));
     }
 
-    /// <summary>Maps arbitrary generated values to paired intervals without clipping them to Int32 coordinates.</summary>
+    /// <summary>
+    /// Maps arbitrary generated values to paired intervals without clipping them to Int32 coordinates.
+    /// </summary>
     private static (long Left, long Right, long Count) ValidInterval(
         long coordinate,
         long nodeCount

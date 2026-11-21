@@ -10,9 +10,9 @@ internal static class CapacitySeed
     internal static async Task SeedAsync(
         TreeContext context,
         int count,
-        CancellationToken cancellationToken,
-        bool deep = false,
-        bool corrupt = false
+        bool deep,
+        bool corrupt,
+        CancellationToken cancellationToken
     )
     {
         await context
@@ -137,9 +137,9 @@ internal static class CapacitySeed
     internal static async Task<long> MismatchesAsync(
         TreeContext context,
         int count,
-        CancellationToken cancellationToken,
-        bool deep = false,
-        bool corrupt = false
+        bool deep,
+        bool corrupt,
+        CancellationToken cancellationToken
     )
     {
         var nodes = context
@@ -243,9 +243,3 @@ internal static class CapacitySeed
             .CountAsync(cancellationToken);
     }
 }
-
-/// <summary>Retains only the registry values that an atomic operation can mutate.</summary>
-internal sealed record CapacityRegistryState(
-    long Revision,
-    byte Lifecycle
-);

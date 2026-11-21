@@ -82,6 +82,7 @@ internal static partial class NestedSetInsertionTracking
 
     /// <summary>Keeps one mapped scalar typed until an initial or changed snapshot needs an object vector.</summary>
     /// <typeparam name="TValue">The exact mapped CLR type, including nullable and converted domain types.</typeparam>
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     private sealed class ValueReader<TValue> : ValueReader
     {
         private readonly Func<object, TValue>? _clr;

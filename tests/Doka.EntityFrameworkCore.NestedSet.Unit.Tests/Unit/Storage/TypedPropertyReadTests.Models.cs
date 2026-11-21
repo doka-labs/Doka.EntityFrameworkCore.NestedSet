@@ -6,27 +6,38 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class TypedPropertyReadTests
 {
     /// <summary>Retains only the mapped metadata reused by the allocation measurement.</summary>
-    private sealed class ReadProperties(
-        IEntityType entityType
-    )
+    private sealed class ReadProperties
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ReadProperties(
+            IEntityType entityType
+        )
+        {
+            IntegerParent = entityType.FindProperty(nameof(ReadNode.IntegerParent))!;
+            StructParent = entityType.FindProperty(nameof(ReadNode.StructParent))!;
+            Left = entityType.FindProperty(nameof(ReadNode.Left))!;
+            Right = entityType.FindProperty(nameof(ReadNode.Right))!;
+            Depth = entityType.FindProperty(nameof(ReadNode.Depth))!;
+            Position = entityType.FindProperty(nameof(ReadNode.Position))!;
+        }
+
         /// <summary>Gets the optional integer parent metadata.</summary>
-        internal IProperty IntegerParent { get; } = entityType.FindProperty(nameof(ReadNode.IntegerParent))!;
+        internal IProperty IntegerParent { get; }
 
         /// <summary>Gets the optional converted value parent metadata.</summary>
-        internal IProperty StructParent { get; } = entityType.FindProperty(nameof(ReadNode.StructParent))!;
+        internal IProperty StructParent { get; }
 
         /// <summary>Gets the left boundary metadata.</summary>
-        internal IProperty Left { get; } = entityType.FindProperty(nameof(ReadNode.Left))!;
+        internal IProperty Left { get; }
 
         /// <summary>Gets the right boundary metadata.</summary>
-        internal IProperty Right { get; } = entityType.FindProperty(nameof(ReadNode.Right))!;
+        internal IProperty Right { get; }
 
         /// <summary>Gets the depth metadata.</summary>
-        internal IProperty Depth { get; } = entityType.FindProperty(nameof(ReadNode.Depth))!;
+        internal IProperty Depth { get; }
 
         /// <summary>Gets the sibling position metadata.</summary>
-        internal IProperty Position { get; } = entityType.FindProperty(nameof(ReadNode.Position))!;
+        internal IProperty Position { get; }
     }
 
     /// <summary>Keeps the optional runtime nullable-key result observable by the test.</summary>
@@ -125,12 +136,18 @@ public sealed partial class TypedPropertyReadTests
     }
 
     /// <summary>Provides an operator-free converted value key.</summary>
-    private readonly struct ValueKey(
-        long value
-    ) : IEquatable<ValueKey>
+    private readonly struct ValueKey : IEquatable<ValueKey>
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ValueKey(
+            long value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets the stored scalar identity.</summary>
-        public long Value { get; } = value;
+        public long Value { get; }
 
         /// <inheritdoc />
         public bool Equals(
@@ -147,12 +164,18 @@ public sealed partial class TypedPropertyReadTests
     }
 
     /// <summary>Exposes misleading domain operators to exercise reference identity checks for null.</summary>
-    private sealed class ReferenceKey(
-        string value
-    ) : IEquatable<ReferenceKey>
+    private sealed class ReferenceKey : IEquatable<ReferenceKey>
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ReferenceKey(
+            string value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets the stored reference identity.</summary>
-        public string Value { get; } = value;
+        public string Value { get; }
 
         /// <inheritdoc />
         public bool Equals(

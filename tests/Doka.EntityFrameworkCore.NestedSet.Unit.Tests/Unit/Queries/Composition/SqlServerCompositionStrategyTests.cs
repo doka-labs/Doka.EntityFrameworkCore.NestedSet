@@ -23,7 +23,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StrictAncestorsDriveVisibleOwnersIntoFencedSourceRanges(
+    public async Task Match_StrictAncestors_DriveVisibleOwnersIntoFencedSourceRanges(
         bool treeBound
     )
     {
@@ -99,7 +99,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData("Sqlite", false)]
     [InlineData("MySql", false)]
     [InlineData("MariaDb", false)]
-    public async Task SelectedAdapterKeepsItsAncestorOwnerShape(
+    public async Task ToQueryString_SelectedAdapter_KeepsItsAncestorOwnerShape(
         string engine,
         bool fenced
     )
@@ -147,7 +147,7 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     /// <summary>Ignoring distance in the final DTO keeps the same fenced owner-first correlation.</summary>
     [Fact]
-    public async Task UnusedPublicDistanceKeepsFencedOwnerCorrelation()
+    public async Task ToQueryString_UnusedPublicDistance_KeepsFencedOwnerCorrelation()
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CompositionContext>("SqlServer");
@@ -182,10 +182,10 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     /// <summary>The owner-first strategy is not an optimized reader for the optional ancestor index.</summary>
     [Fact]
-    public async Task OwnerFirstAncestorsStillReportSchemaOnlyAncestorIndex()
+    public async Task SelectAncestors_OwnerFirstAncestors_ReportSchemaOnlyAncestorIndex()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var options = new DbContextOptionsBuilder<IndexedOwnerContext>(
                 ModelCompatibilityDatabase.Options<IndexedOwnerContext>("SqlServer"))
             .LogTo(

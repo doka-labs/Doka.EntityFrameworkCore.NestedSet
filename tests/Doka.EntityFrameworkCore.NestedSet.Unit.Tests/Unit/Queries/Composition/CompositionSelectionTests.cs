@@ -22,7 +22,7 @@ public sealed class CompositionSelectionTests
     [InlineData("NavigationLength", true)]
     [InlineData("NavigationAny", true)]
     [InlineData("RelationalAny", true)]
-    public void OnlyCollectionAndQueryDependenciesBypassTheSelectionBoundary(
+    public void UsesQueryOperators_OnlyCollectionAndQueryDependencies_BypassTheSelectionBoundary(
         string shape,
         bool expected
     )

@@ -4,7 +4,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 {
     /// <summary>Independent origins select their own nearest eligible pivot without a global minimum.</summary>
     [Fact]
-    public async Task NearestPivotIsChosenIndependentlyForEachOrigin()
+    public async Task WhereNearestAncestorOrSelf_NearestPivot_IsChosenIndependentlyForEachOrigin()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -12,7 +12,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -54,7 +57,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task NthEligiblePivotRankIsCorrelatedPerOrigin(
+    public async Task SelectAncestors_NthEligiblePivotRank_IsCorrelatedPerOrigin(
         int rank
     )
     {
@@ -64,7 +67,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -126,7 +132,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UniqueAnchorSelectionRestoresEachPayloadBeforeOwnerFiltering(
+    public async Task WhereNearestAncestorOrSelf_UniqueAnchorSelection_RestoresEachPayloadBeforeOwnerFiltering(
         bool secondAccepted
     )
     {
@@ -136,7 +142,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

@@ -14,7 +14,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task CatalogReusesFixedProjectionsWithoutReusingRequestBindings(
+    public async Task Catalog_DifferentRequests_ReusesProjectionsWithoutReusingBindings(
         string engine
     )
     {
@@ -54,12 +54,12 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task CatalogWarmShapeSurvivesEqualAndDistinctScalarValues(
+    public async Task Catalog_CatalogWarmShape_SurvivesEqualAndDistinctScalarValues(
         string engine
     )
     {
         // Arrange
-        var compilations = new List<string>();
+        List<string> compilations = [];
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary)
             .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);

@@ -7,7 +7,7 @@ public sealed class BulkPlanDepthTests
 
     /// <summary>One hundred thousand levels are planned and numbered without CLR call-stack recursion.</summary>
     [Fact]
-    public async Task DeepPlanIsStackSafe()
+    public async Task PrepareGeometry_DeepPlan_IsStackSafe()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()

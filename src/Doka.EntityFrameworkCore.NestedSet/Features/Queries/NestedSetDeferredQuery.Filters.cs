@@ -33,7 +33,9 @@ internal static partial class NestedSetDeferredQuery
         return source.Provider.CreateQuery<TRow>(marker);
     }
 
-    /// <summary>Defers ancestor existence construction until source visibility can be checked after normalization.</summary>
+    /// <summary>
+    /// Defers ancestor existence construction until source visibility can be checked after normalization.
+    /// </summary>
     internal static IQueryable<TRow> CreateAny<TEntity, TRow>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -86,6 +88,7 @@ internal static partial class NestedSetDeferredQuery
     }
 
     /// <summary>Marks the source-preserving path filter for normalized composition.</summary>
+    [UsedImplicitly]
     private static IQueryable<TRow> Path<TEntity, TRow>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -100,6 +103,7 @@ internal static partial class NestedSetDeferredQuery
         throw new InvalidOperationException("A deferred hierarchy marker must be expanded by UseNestedSets().");
 
     /// <summary>Marks the source-preserving ancestor existence filter for normalized composition.</summary>
+    [UsedImplicitly]
     private static IQueryable<TRow> Any<TEntity, TRow>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -113,6 +117,7 @@ internal static partial class NestedSetDeferredQuery
         throw new InvalidOperationException("A deferred hierarchy marker must be expanded by UseNestedSets().");
 
     /// <summary>Marks the source-preserving nearest-owner filter for normalized composition.</summary>
+    [UsedImplicitly]
     private static IQueryable<TRow> Nearest<TEntity, TRow>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -127,6 +132,7 @@ internal static partial class NestedSetDeferredQuery
         throw new InvalidOperationException("A deferred hierarchy marker must be expanded by UseNestedSets().");
 
     /// <summary>Reuses the existing path proof after its inner deferred source has expanded.</summary>
+    [UsedImplicitly]
     private static Expression ExpandPath<TEntity, TRow>(
         DbContext context,
         MethodCallExpression marker
@@ -145,6 +151,7 @@ internal static partial class NestedSetDeferredQuery
     }
 
     /// <summary>Reuses existing ancestor existence composition after normalized source visibility is known.</summary>
+    [UsedImplicitly]
     private static Expression ExpandAny<TEntity, TRow>(
         DbContext context,
         MethodCallExpression marker
@@ -161,6 +168,7 @@ internal static partial class NestedSetDeferredQuery
     }
 
     /// <summary>Reuses existing nearest-owner composition after normalized source visibility is known.</summary>
+    [UsedImplicitly]
     private static Expression ExpandNearest<TEntity, TRow>(
         DbContext context,
         MethodCallExpression marker

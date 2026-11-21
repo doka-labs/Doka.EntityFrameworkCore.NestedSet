@@ -11,7 +11,7 @@ public sealed partial class NullableParentIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TreePredicateEligibilityRequiresQueryProof(
+    public async Task ExplainAsync_TreePredicateEligibility_RequiresQueryProof(
         bool convertedTree
     )
     {
@@ -20,12 +20,15 @@ public sealed partial class NullableParentIndexTests
         await using var source = database.CreateContext();
         var observer = new TreeEligibilityObserver();
         var options = new DbContextOptionsBuilder<TreeEligibilityContext>()
-            .UseNpgsql(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseNpgsql(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>()
             .AddInterceptors(observer)
             .Options;
 
         await using var context = new TreeEligibilityContext(options, convertedTree);
+        FunctionalTestContextPolicy.Configure(context);
         var table = convertedTree
             ? "EligibilityConvertedTree"
             : "EligibilityNativeTree";
@@ -39,7 +42,7 @@ public sealed partial class NullableParentIndexTests
             ? "md5(((n - 1) / 20)::text)::uuid::text"
             : "md5(((n - 1) / 20)::text)::uuid";
 
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         await using var command = context
             .Database
             .GetDbConnection()
@@ -48,23 +51,23 @@ public sealed partial class NullableParentIndexTests
         // WHY: A scratch table with one index removes competing-cost ambiguity. The RI-shaped query must
         // prove eligibility from its own clauses even though every TreeId is physically required and non-null.
         command.CommandText = $"""
-                               CREATE TABLE "{table}" ("Id" int NOT NULL, "Scope" int NOT NULL,
-                                   "TreeId" {storeType} NOT NULL, "ParentId" int,
-                                   "Left" bigint NOT NULL, "Right" bigint NOT NULL, "Depth" int NOT NULL, "Position" bigint NOT NULL);
-                               CREATE INDEX "{index}" ON "{table}" ("Scope", "TreeId", "Left") WHERE "TreeId" IS NOT NULL;
-                               INSERT INTO "{table}" SELECT n, 1, {value},
-                                   CASE WHEN (n - 1) % 20 = 0 THEN NULL ELSE ((n - 1) / 20) * 20 + 1 END,
-                                   CASE WHEN (n - 1) % 20 = 0 THEN 1 ELSE ((n - 1) % 20) * 2 END,
-                                   CASE WHEN (n - 1) % 20 = 0 THEN 40 ELSE ((n - 1) % 20) * 2 + 1 END,
-                                   CASE WHEN (n - 1) % 20 = 0 THEN 0 ELSE 1 END,
-                                   CASE WHEN (n - 1) % 20 = 0 THEN 0 ELSE ((n - 1) % 20) - 1 END
-                               FROM generate_series(1, 20000) seed(n);
-                               """;
+        CREATE TABLE "{table}" ("Id" int NOT NULL, "Scope" int NOT NULL,
+            "TreeId" {storeType} NOT NULL, "ParentId" int,
+            "Left" bigint NOT NULL, "Right" bigint NOT NULL, "Depth" int NOT NULL, "Position" bigint NOT NULL);
+        CREATE INDEX "{index}" ON "{table}" ("Scope", "TreeId", "Left") WHERE "TreeId" IS NOT NULL;
+        INSERT INTO "{table}" SELECT n, 1, {value},
+            CASE WHEN (n - 1) % 20 = 0 THEN NULL ELSE ((n - 1) / 20) * 20 + 1 END,
+            CASE WHEN (n - 1) % 20 = 0 THEN 1 ELSE ((n - 1) % 20) * 2 END,
+            CASE WHEN (n - 1) % 20 = 0 THEN 40 ELSE ((n - 1) % 20) * 2 + 1 END,
+            CASE WHEN (n - 1) % 20 = 0 THEN 0 ELSE 1 END,
+            CASE WHEN (n - 1) % 20 = 0 THEN 0 ELSE ((n - 1) % 20) - 1 END
+        FROM generate_series(1, 20000) seed(n);
+        """;
 
-        await command.ExecuteNonQueryAsync(CancellationToken.None);
+        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         var tree = Guid.Parse("cfcd2084-95d5-65ef-66e7-dff9f98764da");
         var principalQuery = $"SELECT 1 FROM ONLY \"{table}\" x "
-            + "WHERE x.\"Scope\" = @scope AND x.\"Id\" = @key FOR KEY SHARE OF x";
+        + "WHERE x.\"Scope\" = @scope AND x.\"Id\" = @key FOR KEY SHARE OF x";
 
         // Act
         var principalPlan = await ExplainAsync(
@@ -80,7 +83,7 @@ public sealed partial class NullableParentIndexTests
             .Nodes
             .OrderBy(node => node.Left)
             .Select(node => node.Id)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-tree-predicate-"

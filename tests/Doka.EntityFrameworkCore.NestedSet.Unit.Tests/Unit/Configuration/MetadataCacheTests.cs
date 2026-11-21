@@ -9,7 +9,7 @@ public sealed class MetadataCacheTests
 {
     /// <summary>Contexts sharing the same finalized model reuse the same validated mapping.</summary>
     [Fact]
-    public async Task ContextsSharingModelReuseMapping()
+    public async Task For_ContextsSharingModel_ReuseMapping()
     {
         // Arrange
         await using var services = CreateServices();
@@ -29,7 +29,7 @@ public sealed class MetadataCacheTests
 
     /// <summary>Different models of the same CLR entity cannot reuse incompatible selectors or role names.</summary>
     [Fact]
-    public async Task DifferentModelsHaveIndependentMappings()
+    public async Task For_DifferentModels_HaveIndependentMappings()
     {
         // Arrange
         await using var services = CreateServices();
@@ -62,7 +62,7 @@ public sealed class MetadataCacheTests
 
     /// <summary>Preserves finalized EF property and parameter metadata when physical column names differ.</summary>
     [Fact]
-    public async Task PropertyDescriptorsRetainPhysicalMapping()
+    public async Task PropertyMapping_PropertyDescriptors_RetainPhysicalMapping()
     {
         // Arrange
         await using var services = CreateServices();
@@ -115,7 +115,7 @@ public sealed class MetadataCacheTests
 
     /// <summary>Allows unordered models to select the native save path without inspecting tracked entries.</summary>
     [Fact]
-    public async Task UnorderedModelHasNoSaveOrdering()
+    public async Task For_UnorderedModel_HasNoSaveOrdering()
     {
         // Arrange
         await using var services = CreateServices();
@@ -132,7 +132,7 @@ public sealed class MetadataCacheTests
 
     /// <summary>Shares total order and structural metadata between save scans and hierarchy operations.</summary>
     [Fact]
-    public async Task OrderedModelReusesOperationMetadata()
+    public async Task For_OrderedModel_ReusesOperationMetadata()
     {
         // Arrange
         await using var services = CreateServices();
@@ -161,7 +161,7 @@ public sealed class MetadataCacheTests
 
     /// <summary>Copies mutable EF annotation arrays before publishing the shared model descriptor.</summary>
     [Fact]
-    public async Task DescriptorDoesNotExposeOrderingAnnotationArray()
+    public async Task For_OrderingAnnotationMutation_DoesNotChangeDescriptor()
     {
         // Arrange
         await using var services = CreateServices();

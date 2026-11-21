@@ -2,17 +2,21 @@ namespace Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests;
 
 public sealed partial class SafeMigrationTests
 {
-    /// <summary>Applies the populated integer upgrade and replays its safe operations against the resulting catalog.</summary>
+    /// <summary>
+    /// Applies the populated integer upgrade and replays its safe operations against the resulting catalog.
+    /// </summary>
     /// <param name="engine">The native server engine and its optional adapter.</param>
     /// <param name="qualifySchema">Whether the hierarchy uses an explicit schema or database qualifier.</param>
-    /// <returns>A task that completes after checking schema, data, capacity, history, and actual guard replay.</returns>
+    /// <returns>
+    /// A task that completes after checking schema, data, capacity, history, and actual guard replay.
+    /// </returns>
     [Theory]
     [InlineData("PostgreSql", true)]
     [InlineData("MySql", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task ServerCoordinateUpgradePreservesDataHistoryAndReplays(
+    public async Task MigrateAsync_ServerCoordinateUpgrade_PreservesDataHistoryAndReplays(
         string engine,
         bool qualifySchema
     )
@@ -24,11 +28,13 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Baseline);
         var before = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
@@ -42,8 +48,10 @@ public sealed partial class SafeMigrationTests
         var beyondInt32 = (long)int.MaxValue + 1;
 
         // Act
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        var after = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await database.InsertNodeDirectlyAsync(
             new MigrationNode
             {
@@ -57,7 +65,9 @@ public sealed partial class SafeMigrationTests
             },
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBeforeReplay = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBeforeReplay = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var checks = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var foreignKeys = await database.ReadForeignKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -76,7 +86,9 @@ public sealed partial class SafeMigrationTests
                 new SafeMigrationRunOptions("nested-set-supported-upgrade-replay"),
                 CancellationToken.None);
 
-        var nodesAfterReplay = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfterReplay = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var indexesAfterReplay = await database.ReadIndexesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 

@@ -11,22 +11,22 @@ public sealed class SignalMaterializationReaderTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ExplicitTokenPreservesCompleteReaderLifecycle(
+    public async Task WithCancellation_ExplicitToken_PreservesCompleteReaderLifecycle(
         bool cancellable,
         bool suspend
     )
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable
+        var cancellationToken = cancellable
             ? cancellation.Token
             : CancellationToken.None;
 
         var rows = new SignalMaterializationRows<int>([1, 2], suspend);
-        var values = new List<int>();
+        List<int> values = [];
 
         // Act
-        await foreach (var value in rows.WithCancellation(token))
+        await foreach (var value in rows.WithCancellation(cancellationToken))
         {
             values.Add(value);
         }
@@ -41,7 +41,7 @@ public sealed class SignalMaterializationReaderTests
 
     /// <summary>Cancellation between rows neither advances the reader nor prevents token-free disposal.</summary>
     [Fact]
-    public async Task CanceledReaderRejectsNextReadAndStillDisposes()
+    public async Task MoveNextAsync_CanceledReader_RejectsNextReadAndStillDisposes()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -71,7 +71,7 @@ public sealed class SignalMaterializationReaderTests
 
     /// <summary>A pre-canceled enumeration never acquires a reader or creates cleanup work.</summary>
     [Fact]
-    public async Task PreCanceledReaderIsRejectedBeforeAcquisition()
+    public async Task GetAsyncEnumerator_PreCanceledReader_IsRejectedBeforeAcquisition()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();

@@ -1,7 +1,7 @@
 ---
 id: D-011
 status: implemented
-date: 2026-09-25
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -152,9 +152,11 @@ entity. The folder structure is not a new public contract.
 - 2026-09-28: Confirmed feature-owned source folders, shared execution and storage boundaries, the removed compatibility interface, and architectural regression specifications against the linked repository evidence.
 - 2026-10-25: Refined file ownership within existing query, save, and insertion types and separated independently consumed mapping descriptors. The public API, type identities, initialization order, and shared execution boundary remain unchanged; this entry records source organization rather than a new runtime qualification result.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
-- [Source layout](../implementation-design.md#source-layout)
+- [Source layout](D-011-feature-oriented-source-layout.md)
 - [Bulk import](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkInsert.cs)
 - [Bulk plan staging](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkPlan.Stage.cs)
 - [Managed save](../../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetSaveGroup.cs)

@@ -3,14 +3,24 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Combines the hierarchy model with an independent shared application row.</summary>
-    private sealed class ManagedSharingContext(
-        DbContextOptions options,
-        string shape
-    )
-        : NestedSetDbContext(options), ITestModelVariant
+    private sealed class ManagedSharingContext
+        : NestedSetDbContext, ITestModelVariant
     {
+        private readonly string _shape;
+
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        /// <param name="shape">The model variant whose identity must remain distinct in the cache.</param>
+        public ManagedSharingContext(
+            DbContextOptions options,
+            string shape
+        ) : base(options)
+        {
+            _shape = shape;
+        }
+
         /// <inheritdoc />
-        object ITestModelVariant.ModelVariant => shape;
+        object ITestModelVariant.ModelVariant => _shape;
 
         /// <inheritdoc />
         protected override void OnModelCreating(
@@ -33,7 +43,7 @@ public abstract partial class SaveChangesTests
                 .HasColumnName("Version")
                 .IsConcurrencyToken();
 
-            if (shape == "owned")
+            if (_shape == "owned")
             {
                 row.OwnsOne(
                     value => value.Payload,
@@ -64,7 +74,7 @@ public abstract partial class SaveChangesTests
                     .Navigation(value => value.Payload)
                     .IsRequired();
             }
-            else if (shape == "split")
+            else if (_shape == "split")
             {
                 var payload = modelBuilder.Entity<ManagedSharingPayload>();
                 payload.ToTable("ManagedSharingRows");

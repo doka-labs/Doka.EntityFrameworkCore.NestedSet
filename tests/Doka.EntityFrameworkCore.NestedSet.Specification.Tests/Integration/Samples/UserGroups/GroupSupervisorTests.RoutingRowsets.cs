@@ -17,14 +17,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("within-pair", true)]
     [InlineData("between-pairs", false)]
     [InlineData("between-pairs", true)]
-    public async Task MixedOwnerRowsetsKeepEveryConditionOnTheSameCandidate(
+    public async Task ResolveAsync_MixedOwnerRowsets_KeepEveryConditionOnTheSameCandidate(
         string shape,
         bool reverse
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
             context,
@@ -217,13 +220,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("case")]
     [InlineData("padding")]
     [InlineData("space")]
-    public async Task FinalRoutingPairRemainsRequiredInsideTheOwnerRowset(
+    public async Task ResolveAsync_FinalRoutingPair_RemainsRequiredInsideTheOwnerRowset(
         string shape
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(
             context,

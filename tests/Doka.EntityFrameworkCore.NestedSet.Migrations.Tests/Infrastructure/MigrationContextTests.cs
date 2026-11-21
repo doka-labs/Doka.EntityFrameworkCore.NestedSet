@@ -3,19 +3,23 @@ namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 /// <summary>Protects the stable entity identity shared by historical and current migration models.</summary>
 public sealed class MigrationContextTests
 {
-    /// <summary>Every model stage resolves its actual CLR shape through the same nonrecursive public identity.</summary>
+    /// <summary>
+    /// Every model stage resolves its actual CLR shape through the same nonrecursive public identity.
+    /// </summary>
     /// <param name="stage">The historical, current or specialized migration model.</param>
     [Theory]
     [InlineData(MigrationStage.Baseline)]
     [InlineData(MigrationStage.Current)]
     [InlineData(MigrationStage.Specialized)]
-    public void StableEntityNameResolvesTheSelectedModel(
+    public void FinalizeModel_StableEntityName_ResolvesTheSelectedModel(
         MigrationStage stage
     )
     {
         // Arrange
         var options = new DbContextOptionsBuilder<MigrationContext>()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, MigrationModelCacheKeyFactory>()
             .Options;
 

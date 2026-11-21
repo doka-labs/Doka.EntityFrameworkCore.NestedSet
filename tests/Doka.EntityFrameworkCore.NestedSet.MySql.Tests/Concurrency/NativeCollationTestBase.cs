@@ -1,9 +1,7 @@
-using Microsoft.EntityFrameworkCore.Storage;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Exercises the Doka family's native Scope collation and padding semantics.</summary>
-public abstract class NativeCollationTestBase : ProviderTest
+public abstract partial class NativeCollationTestBase : ProviderTest
 {
     private readonly ModelCompatibilityDatabase _fixture;
 
@@ -22,7 +20,7 @@ public abstract class NativeCollationTestBase : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InheritedBinaryScopeCollationKeepsUnaffectedDuplicateKey(
+    public async Task ExecuteAsync_InheritedBinaryScopeCollation_KeepsUnaffectedDuplicateKey(
         bool convertedKeys
     )
     {
@@ -125,7 +123,7 @@ public abstract class NativeCollationTestBase : ProviderTest
 
     /// <summary>A PAD SPACE Scope alias still identifies its persisted affected row.</summary>
     [Fact]
-    public async Task NativePadSpaceScopeAliasRejectsAffectedStaleMembership()
+    public async Task ExecuteAsync_NativePadSpaceScopeAlias_RejectsAffectedStaleMembership()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -215,7 +213,7 @@ public abstract class NativeCollationTestBase : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnknownDatabaseScopeAliasRejectsAffectedStaleMembership(
+    public async Task ExecuteAsync_UnknownDatabaseScopeAlias_RejectsAffectedStaleMembership(
         bool convertedKeys
     )
     {
@@ -374,151 +372,5 @@ public abstract class NativeCollationTestBase : ProviderTest
                 context,
                 entityType.FindProperty(nameof(BroadScopeNode.Scope))!,
                 entityType));
-    }
-
-    /// <summary>Captures complete mutable tracker values without retaining the converted Scope instance.</summary>
-    private static (string Scope, int Id, Guid TreeId, int? Parent, long Left, long Right, int Depth, long Position,
-        string Name) ScopeSnapshot(
-            BroadScopeNode node
-        )
-        => (node.Scope.Value, node.Id, node.TreeId, node.ParentId,
-            node.Left, node.Right, node.Depth, node.Position, node.Name);
-
-    /// <summary>Reads every persisted value in this test's independently assigned node-key range.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="root">The synthetic root node.</param>
-    private static async Task<(string Scope, int Id, Guid TreeId, int? Parent, long Left, long Right, int Depth,
-        long Position, string Name)[]> BroadScopeRowsAsync(
-        DbContext context,
-        int root,
-        CancellationToken cancellationToken
-    )
-    {
-        var rows = await context
-            .Set<BroadScopeNode>()
-            .AsNoTracking()
-            .Where(node => node.Id >= root && node.Id <= root + 1)
-            .OrderBy(node => node.Id)
-            .ToArrayAsync(cancellationToken);
-
-        return rows
-            .Select(ScopeSnapshot)
-            .ToArray();
-    }
-
-    /// <summary>Captures all persisted registry identity and lifecycle fields for the selected tree.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="treeId">The hierarchy tree identity.</param>
-    private static async Task<(string Scope, Guid TreeId, long Revision, byte Lifecycle)[]> BroadScopeRegistriesAsync(
-        DbContext context,
-        Guid treeId,
-        CancellationToken cancellationToken
-    )
-    {
-        var entityType = context.Model.FindEntityType(typeof(BroadScopeNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(entityType)
-            .Registry;
-
-        var rows = await context
-            .Set<NestedSetTreeRegistry>(registry.Name)
-            .AsNoTracking()
-            .Where(row => EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId) == treeId)
-            .Select(row => new
-            {
-                Scope = EF.Property<BroadScope>(row, NestedSetTreeRegistryMetadata.Scope),
-                TreeId = EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
-                Revision = EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
-                Lifecycle = EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle),
-            })
-            .ToArrayAsync(cancellationToken);
-
-        return rows
-            .OrderBy(row => row.Scope.Value, StringComparer.Ordinal)
-            .Select(row => (row.Scope.Value, row.TreeId, row.Revision, row.Lifecycle))
-            .ToArray();
-    }
-
-    /// <summary>Creates the unknown-facet model in a schema whose native default no other suite can change.</summary>
-    /// <typeparam name="TContext">The exact normal or converted-key compatibility model.</typeparam>
-    /// <param name="database">The independently owned schema on the existing assembly server.</param>
-    /// <param name="create">Constructs the exact mapped context from its provider options.</param>
-    /// <param name="probe">The observer for the guard operation.</param>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <returns>The ready context, whose lifetime transfers to the caller.</returns>
-    private async Task<TContext> CreateUnknownDatabaseContextAsync<TContext>(
-        TestDatabase database,
-        Func<DbContextOptions<TContext>, TContext> create,
-        NativeGuardProbe probe,
-        CancellationToken cancellationToken
-    )
-        where TContext : BroadScopeContext
-    {
-        await using var source = database.CreateContext();
-        var options = new DbContextOptionsBuilder<TContext>(
-                ModelCompatibilityDatabase.Options<TContext>(Engine, source.Database.GetConnectionString()!))
-            .AddInterceptors(probe)
-            .Options;
-
-        var context = create(options);
-
-        try
-        {
-            await context
-                .GetService<IRelationalDatabaseCreator>()
-                .CreateTablesAsync(cancellationToken);
-
-            return context;
-        }
-        catch
-        {
-            await context.DisposeAsync();
-
-            throw;
-        }
-    }
-
-    /// <summary>Selects distinct cached models for inherited collations and verified/scalar key transport.</summary>
-    /// <param name="engine">The immutable engine selected by the concrete suite fixture.</param>
-    /// <param name="convertedKeys">Whether to exercise the converted NodeKey transport.</param>
-    /// <param name="noPad">Whether to use MySQL's table-level NO PAD comparison.</param>
-    /// <param name="probe">The native command observer for this independently arranged scenario.</param>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <returns>The existing compatibility model with its exact configured physical collation.</returns>
-    private protected async Task<BroadScopeContext> CreateInheritedScopeContextAsync(
-        string engine,
-        bool convertedKeys,
-        bool noPad,
-        NativeGuardProbe probe,
-        CancellationToken cancellationToken
-    )
-    {
-        if (noPad)
-        {
-            return convertedKeys
-                ? await _fixture.CreateContextAsync<ConvertedInheritedNoPadScopeContext>(
-                    engine,
-                    static options => new ConvertedInheritedNoPadScopeContext(options),
-                    cancellationToken: cancellationToken,
-                    probe)
-                : await _fixture.CreateContextAsync<InheritedNoPadScopeContext>(
-                    engine,
-                    static options => new InheritedNoPadScopeContext(options),
-                    cancellationToken: cancellationToken,
-                    probe);
-        }
-
-        return convertedKeys
-            ? await _fixture.CreateContextAsync<ConvertedInheritedBinaryScopeContext>(
-                engine,
-                static options => new ConvertedInheritedBinaryScopeContext(options),
-                cancellationToken: cancellationToken,
-                probe)
-            : await _fixture.CreateContextAsync<InheritedBinaryScopeContext>(
-                engine,
-                static options => new InheritedBinaryScopeContext(options),
-                cancellationToken: cancellationToken,
-                probe);
     }
 }

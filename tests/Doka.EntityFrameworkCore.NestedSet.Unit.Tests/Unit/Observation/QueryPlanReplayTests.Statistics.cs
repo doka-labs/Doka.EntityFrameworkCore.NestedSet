@@ -17,7 +17,7 @@ public sealed partial class QueryPlanReplayTests
     [InlineData(null, 30)]
     [InlineData(0, 0)]
     [InlineData(7, 7)]
-    public async Task StatisticsRefreshScansEachOwnedStatisticWithUnchangedTimeout(
+    public async Task RefreshStatisticsAsync_StatisticsRefresh_ScansEachOwnedStatisticWithUnchangedTimeout(
         int? configured,
         int expected
     )
@@ -62,7 +62,7 @@ public sealed partial class QueryPlanReplayTests
     /// The object identity is a bound value, so a foreign table's catalog cannot supply refresh names.
     /// </summary>
     [Fact]
-    public async Task StatisticsCatalogBindsOnlyTheOwnedTableIdentity()
+    public async Task RefreshStatisticsAsync_StatisticsCatalog_BindsOnlyTheOwnedTableIdentity()
     {
         // Arrange
         PlanReplayConnection connection = null!;
@@ -112,7 +112,7 @@ public sealed partial class QueryPlanReplayTests
     [InlineData("MariaDb", "ANALYZE TABLE ")]
     [InlineData("PostgreSql", "ANALYZE ")]
     [InlineData("Sqlite", "ANALYZE ")]
-    public async Task OtherStatisticsRefreshBranchesRemainSingleStatements(
+    public async Task RefreshStatisticsAsync_OtherStatisticsRefreshBranches_RemainSingleStatements(
         string engine,
         string prefix
     )
@@ -166,10 +166,13 @@ public sealed partial class QueryPlanReplayTests
             .Options);
 
     /// <summary>Maps an explicitly owned table with identifiers that require provider escaping.</summary>
-    private sealed class StatisticsContext(
-        DbContextOptions<StatisticsContext> options
-    ) : DbContext(options)
+    private sealed class StatisticsContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public StatisticsContext(
+            DbContextOptions<StatisticsContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

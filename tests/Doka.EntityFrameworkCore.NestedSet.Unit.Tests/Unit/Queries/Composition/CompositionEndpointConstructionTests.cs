@@ -12,7 +12,7 @@ public sealed class CompositionEndpointConstructionTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
-    public void SourceVisibilityIsCheckedOncePerOperation(
+    public void WherePathEdges_SourceVisibility_IsCheckedOncePerOperation(
         int operations
     )
     {
@@ -54,7 +54,7 @@ public sealed class CompositionEndpointConstructionTests
     [Theory]
     [InlineData("join")]
     [InlineData("select-many")]
-    public void UnselectedPayloadQueryExpressionIsNotRead(
+    public void WhereAnyAncestorOrSelf_UnselectedPayloadQueryExpression_IsNotRead(
         string shape
     )
     {
@@ -111,7 +111,7 @@ public sealed class CompositionEndpointConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SkippedPayloadLegStillParticipatesInVisibilityProof(
+    public void Require_SkippedPayloadLegStill_ParticipatesInVisibilityProof(
         bool ignoreFilters
     )
     {
@@ -157,7 +157,7 @@ public sealed class CompositionEndpointConstructionTests
 
     /// <summary>A shared syntax result does not turn an independently supplied endpoint into a bound alias.</summary>
     [Fact]
-    public void SharedSourceVisibilityDoesNotProveAnExternalEndpoint()
+    public void Require_SharedSourceVisibility_DoesNotProveAnExternalEndpoint()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -210,7 +210,7 @@ public sealed class CompositionEndpointConstructionTests
 
     /// <summary>A fabricated endpoint depending on both selector legs is not accepted as either mapped alias.</summary>
     [Fact]
-    public void EndpointConstructedFromBothSelectorParametersIsRejected()
+    public void WhereAnyAncestorOrSelf_EndpointConstructedFromBothSelectorParameters_IsRejected()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -264,17 +264,25 @@ public sealed class CompositionEndpointConstructionTests
     }
 
     /// <summary>Exposes unwanted metadata access to a query that does not carry the selected endpoint.</summary>
-    /// <param name="query">The deferred query whose expression must stay unread on an unrelated leg.</param>
-    private sealed class QueryExpressionTrap(
-        IQueryable<CompositionGuardNode> query
-    )
+    private sealed class QueryExpressionTrap
         : IQueryable<CompositionGuardNode>
     {
+        private readonly IQueryable<CompositionGuardNode> _query;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        /// <param name="query">The deferred query whose expression must stay unread on an unrelated leg.</param>
+        public QueryExpressionTrap(
+            IQueryable<CompositionGuardNode> query
+        )
+        {
+            _query = query;
+        }
+
         /// <summary>Gets the number of expression reads performed after the deferred source was assembled.</summary>
         internal int ExpressionReads { get; private set; }
 
         /// <inheritdoc />
-        public Type ElementType => query.ElementType;
+        public Type ElementType => _query.ElementType;
 
         /// <inheritdoc />
         public Expression Expression
@@ -283,12 +291,12 @@ public sealed class CompositionEndpointConstructionTests
             {
                 ExpressionReads++;
 
-                return query.Expression;
+                return _query.Expression;
             }
         }
 
         /// <inheritdoc />
-        public IQueryProvider Provider => query.Provider;
+        public IQueryProvider Provider => _query.Provider;
 
         /// <inheritdoc />
         public IEnumerator<CompositionGuardNode> GetEnumerator()

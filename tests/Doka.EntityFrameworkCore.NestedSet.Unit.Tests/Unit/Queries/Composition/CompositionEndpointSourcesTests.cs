@@ -30,7 +30,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("parent", "path")]
     [InlineData("parent", "any")]
     [InlineData("parent", "nearest")]
-    public void ExistingHierarchyQueriesRemainComposable(
+    public void Filter_ExistingHierarchyQueries_RemainComposable(
         string sourceKind,
         string operation
     )
@@ -69,7 +69,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void CapturedInnerAliasRetainsItsSelectedMapping(
+    public void Filter_CapturedInnerAlias_RetainsItsSelectedMapping(
         string operation
     )
     {
@@ -105,7 +105,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void TwoArgumentSelectManyRetainsInnerAlias(
+    public void Filter_TwoArgumentSelectMany_RetainsInnerAlias(
         string operation
     )
     {
@@ -135,7 +135,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void CapturedInnerAliasFromAnotherNamedMappingIsRejected(
+    public void Filter_CapturedInnerAliasFromAnotherNamedMapping_IsRejected(
         string operation
     )
     {
@@ -168,7 +168,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void CapturedQueryDoesNotLegitimizeConstructedEndpoints(
+    public void Filter_CapturedQuery_DoesNotLegitimizeConstructedEndpoints(
         string operation
     )
     {
@@ -197,7 +197,7 @@ public sealed class CompositionEndpointSourcesTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void QueryPropertyGetterIsNotExecutedByTheGuard(
+    public void Filter_QueryPropertyGetter_IsNotExecutedByTheGuard(
         string operation
     )
     {

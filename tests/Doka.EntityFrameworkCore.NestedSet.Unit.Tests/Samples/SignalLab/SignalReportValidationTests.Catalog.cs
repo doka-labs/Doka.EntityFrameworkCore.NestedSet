@@ -8,7 +8,7 @@ public sealed partial class SignalReportValidationTests
     /// The catalog accepts arbitrary row order and duplicate identical evidence without changing membership.
     /// </summary>
     [Fact]
-    public void CatalogAcceptsReorderedDuplicateEvidenceAndNoTagGroups()
+    public void RequireCatalog_Catalog_AcceptsReorderedDuplicateEvidenceAndNoTagGroups()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with { Criteria = [] });
@@ -34,7 +34,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CatalogRequiresEverySelectedIdentity(
+    public void RequireCatalog_Catalog_RequiresEverySelectedIdentity(
         bool missingMetric
     )
     {
@@ -59,7 +59,7 @@ public sealed partial class SignalReportValidationTests
     /// Missing authorization remains the first reported catalog failure even when the units also disagree.
     /// </summary>
     [Fact]
-    public void MissingSelectionPrecedesUnitAndMetadataFailures()
+    public void RequireCatalog_MissingSelection_PrecedesUnitAndMetadataFailures()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -96,7 +96,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("", false)]
     [InlineData(null, false)]
     [InlineData("currency", true)]
-    public void CatalogRejectsNonidenticalOrMissingUnitEvidence(
+    public void RequireCatalog_Catalog_RejectsNonidenticalOrMissingUnitEvidence(
         string? unit,
         bool duplicateId
     )
@@ -135,7 +135,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("choice-case")]
     [InlineData("choice-padding")]
     [InlineData("missing-choice")]
-    public void CatalogRequiresExactClassificationFieldAndChoiceEvidence(
+    public void RequireCatalog_Catalog_RequiresExactClassificationFieldAndChoiceEvidence(
         string shape
     )
     {

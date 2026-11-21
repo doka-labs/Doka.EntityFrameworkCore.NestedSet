@@ -12,7 +12,7 @@ public sealed class TrackerMembershipDeltaTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RestoreIsIdempotentAndPreservesUnownedMembership(
+    public async Task RecordPersistedAddition_Restore_IsIdempotentAndPreservesUnownedMembership(
         bool removedBeforeUndo
     )
     {
@@ -98,7 +98,7 @@ public sealed class TrackerMembershipDeltaTests
 
     /// <summary>An absent native collection slot remains absent when an already-cleared addition is undone.</summary>
     [Fact]
-    public async Task RestoreDoesNotCreateMissingNativeMembershipSlot()
+    public async Task RecordPersistedAddition_Restore_DoesNotCreateMissingNativeMembershipSlot()
     {
         // Arrange
         await using var context = new NullSlotContext();

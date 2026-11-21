@@ -19,7 +19,7 @@ public abstract class AutomaticMoveKeyTests : ProviderTest
     ///     A key alias resolves to the persisted canonical parent while descendants retain their own links.
     /// </summary>
     [Fact]
-    public async Task AutomaticDestinationUsesTheCanonicalParentKey()
+    public async Task MoveToAsync_AutomaticDestination_UsesTheCanonicalParentKey()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(

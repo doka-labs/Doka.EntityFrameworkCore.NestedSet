@@ -8,7 +8,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionEndpointFilter.Path)]
     [InlineData(CompositionEndpointFilter.Any)]
     [InlineData(CompositionEndpointFilter.Nearest)]
-    public async Task IgnoringVisibilityKeepsScopeAndTreeBindings(
+    public async Task WherePathEdges_IgnoringVisibility_KeepsScopeAndTreeBindings(
         CompositionEndpointFilter composer
     )
     {
@@ -20,7 +20,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             hidden: 3,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            sql: null,
+            chainNodes: null);
 
         var localTree = await context
             .Set<CompositionNode>()
@@ -80,7 +82,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>A visible endpoint in another tree cannot pass a bound-tree query even with equal bounds.</summary>
     [Fact]
-    public async Task ForeignTreeEndpointCannotAdoptMatchingLocalBounds()
+    public async Task WhereNearestAncestorOrSelf_ForeignTreeEndpoint_CannotAdoptMatchingLocalBounds()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -88,7 +90,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var tree = await context
             .Set<CompositionNode>()
@@ -152,7 +157,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionEndpointFilter.Path)]
     [InlineData(CompositionEndpointFilter.Any)]
     [InlineData(CompositionEndpointFilter.Nearest)]
-    public async Task MissingEndpointOnlyRemovesItsOwnOccurrences(
+    public async Task WherePathEdges_MissingEndpoint_RemovesOnlyItsOwnOccurrences(
         CompositionEndpointFilter composer
     )
     {
@@ -162,7 +167,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -219,7 +227,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnerPredicateUsesTheExplicitlySelectedAlias(
+    public async Task WhereAnyAncestorOrSelf_OwnerPredicate_UsesTheExplicitlySelectedAlias(
         bool selectPivot
     )
     {
@@ -229,7 +237,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

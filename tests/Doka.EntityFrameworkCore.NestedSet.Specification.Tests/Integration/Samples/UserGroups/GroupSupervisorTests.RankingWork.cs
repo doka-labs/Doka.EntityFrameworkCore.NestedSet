@@ -20,7 +20,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData("NthAbsent", "NotFound", -1)]
     [InlineData("NthTieFirstSlot", "Ambiguous", -1)]
     [InlineData("NthTieSecondSlot", "Ambiguous", -1)]
-    public async Task PersonRankingRetainsNativeWorkAndExactOccurrenceEvidence(
+    public async Task ResolveAsync_PersonRanking_RetainsNativeWorkAndExactOccurrenceEvidence(
         string profile,
         string status,
         int winner
@@ -34,7 +34,7 @@ public abstract partial class GroupSupervisorTests
         await using var context = await CreateAsync(
             probe,
             cancellationToken: TestContext.Current.CancellationToken,
-            planProbe);
+            planProbe: planProbe);
 
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var users = await SeedFanInAsync(

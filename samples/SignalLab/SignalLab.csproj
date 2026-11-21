@@ -3,7 +3,17 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab</RootNamespace>
   </PropertyGroup>
+  <ItemGroup Label="Provider adapters and design tooling">
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj" />
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj" />
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Scenarios/SignalReportDataset.*.cs">
+      <DependentUpon>SignalReportDataset.cs</DependentUpon>
+    </Compile>
     <Compile Update="Reporting/SignalReportBuilder.*.cs">
       <DependentUpon>SignalReportBuilder.cs</DependentUpon>
     </Compile>

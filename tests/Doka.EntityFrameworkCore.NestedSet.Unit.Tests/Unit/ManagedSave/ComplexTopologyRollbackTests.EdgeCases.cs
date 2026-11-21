@@ -12,7 +12,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task RawNullOrDuplicatePreimageSurvivesCallback(
+    public async Task Restore_RawNullOrDuplicatePreimage_SurvivesCallback(
         bool nullTail,
         bool detectCallback
     )
@@ -81,7 +81,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ContainingLifecyclePreservesNativeLanes(
+    public async Task Restore_ContainingLifecycle_PreservesNativeLanes(
         bool deleted,
         bool accepted
     )

@@ -10,7 +10,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [InlineData("remove", true)]
     [InlineData("reverse", false)]
     [InlineData("reverse", true)]
-    public async Task PendingNativeTopologySurvivesCallbackAndAcceptance(
+    public async Task Restore_PendingNativeTopology_SurvivesCallbackAndAcceptance(
         string pendingChange,
         bool accepted
     )

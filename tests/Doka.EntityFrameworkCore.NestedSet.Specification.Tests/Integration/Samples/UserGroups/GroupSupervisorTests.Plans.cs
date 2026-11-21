@@ -13,7 +13,7 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ActualSupervisorQueriesProduceBoundedCommandAndPlanEvidence(
+    public async Task ResolveAsync_ActualSupervisorQueries_ProduceBoundedCommandAndPlanEvidence(
         bool unique
     )
     {
@@ -23,7 +23,7 @@ public abstract partial class GroupSupervisorTests
         await using var context = await CreateAsync(
             probe,
             cancellationToken: TestContext.Current.CancellationToken,
-            planProbe);
+            planProbe: planProbe);
 
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(context, data, 16, 4, cancellationToken: TestContext.Current.CancellationToken);

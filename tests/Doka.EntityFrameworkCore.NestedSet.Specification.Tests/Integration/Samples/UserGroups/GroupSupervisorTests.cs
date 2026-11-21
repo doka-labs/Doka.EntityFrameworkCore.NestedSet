@@ -26,14 +26,17 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     [Theory]
     [InlineData(false, 2)]
     [InlineData(true, 2)]
-    public async Task OwnOriginsStaySeparateWithoutPreload(
+    public async Task ResolveAsync_OwnOrigins_StaySeparateWithoutPreload(
         bool self,
         int origins
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(
             self
@@ -82,14 +85,17 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     [InlineData("type", 3)]
     [InlineData("unique", -1)]
     [InlineData("missing", -2)]
-    public async Task GroupAndPersonSelectionsRemainDistinct(
+    public async Task ResolveAsync_GroupAndPersonSelections_RemainDistinct(
         string mode,
         int expectedUserIndex
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         var selection = App.SupervisorSelection.RequireUnique;
@@ -152,14 +158,17 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     [InlineData("hidden", "SourceNotFound")]
     [InlineData("foreign", "NoVisibleMemberships")]
     [InlineData("empty", "Completed")]
-    public async Task SourceAndMembershipStatusesRemainExplicit(
+    public async Task ResolveAsync_SourceAndMembershipStatuses_RemainExplicit(
         string shape,
         string expected
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         if (shape == "hidden")
@@ -202,8 +211,8 @@ public abstract partial class GroupSupervisorTests : ProviderTest
     /// <param name="planProbe">An optional observer for provider query plans.</param>
     private Task<App.UserGroupContext> CreateAsync(
         SupervisorCommandProbe probe,
-        CancellationToken cancellationToken,
-        EnterpriseProbe? planProbe = null
+        EnterpriseProbe? planProbe,
+        CancellationToken cancellationToken
     )
         => _fixture.CreateContextAsync<App.UserGroupContext>(
             Engine,

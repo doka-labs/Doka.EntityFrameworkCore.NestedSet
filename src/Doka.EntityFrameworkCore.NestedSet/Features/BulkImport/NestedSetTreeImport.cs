@@ -3,6 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Associates one detached root branch with the stable identity of the tree to create.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
 /// <typeparam name="TTreeId">The mapped TreeId type.</typeparam>
+[PublicAPI]
 public sealed class NestedSetTreeImport<TEntity, TTreeId>
     where TEntity : class
     where TTreeId : notnull

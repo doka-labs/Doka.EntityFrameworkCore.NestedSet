@@ -4,5 +4,11 @@
 
   <PropertyGroup Label="Benchmark project defaults">
     <OutputType>Exe</OutputType>
+    <IsTestProject>false</IsTestProject>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+
+  <ItemGroup Label="Benchmark tooling">
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
 </Project>

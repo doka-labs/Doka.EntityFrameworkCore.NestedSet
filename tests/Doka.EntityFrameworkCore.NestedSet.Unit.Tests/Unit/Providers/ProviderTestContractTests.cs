@@ -5,7 +5,7 @@ public sealed partial class ProviderTestContractTests
 {
     /// <summary>The local audit leaves shared-base declarations to the separate shared coverage guard.</summary>
     [Fact]
-    public async Task InheritedSharedRowsAreNotAuditedAsLocalDeclarations()
+    public async Task FindDeclaredOwnershipErrorsAsync_InheritedSharedRows_AreNotAuditedAsLocalDeclarations()
     {
         // Arrange
         var name = new AssemblyName("InheritedOwnershipProbe");
@@ -38,7 +38,7 @@ public sealed partial class ProviderTestContractTests
     [InlineData("PostgreSql", 1)]
     [InlineData("SqlServer", 1)]
     [InlineData("Sqlite", 1)]
-    public void ExecutableOwnershipIncludesEveryEngine(
+    public void OwnedEngines_ExecutableOwnership_IncludesEveryEngine(
         string project,
         int count
     )
@@ -56,7 +56,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Ordinary local facts use the leaf's exact fixture rather than explicit provider annotations.</summary>
     [Fact]
-    public async Task OrdinaryLocalFactUsesConcreteFixture()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalFact_UsesConcreteFixture()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact()]);
@@ -75,7 +75,7 @@ public sealed partial class ProviderTestContractTests
     [Theory]
     [InlineData(typeof(MySqlEngine))]
     [InlineData(typeof(MariaDbEngine))]
-    public async Task OrdinaryFamilyFactUsesItsLeafMarker(
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryFamilyFact_UsesItsLeafMarker(
         Type marker
     )
     {
@@ -98,7 +98,7 @@ public sealed partial class ProviderTestContractTests
     [Theory]
     [InlineData("provider")]
     [InlineData("foreignEngine")]
-    public async Task OrdinaryLocalTheoryAllowsEngineLookingPayload(
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalTheory_AllowsEngineLookingPayload(
         string parameterName
     )
     {
@@ -117,7 +117,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>An ordinary local theory cannot accept a selector that contradicts fixture ownership.</summary>
     [Fact]
-    public async Task OrdinaryLocalEngineSelectorIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalEngineSelector_IsRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralTheory(), NeutralInline(["Sqlite"])], parameterName: "engine");
@@ -134,7 +134,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Raw local member data preserves an explicitly configured external source type.</summary>
     [Fact]
-    public async Task OrdinaryLocalExternalMemberSourceIsPreserved()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalExternalMemberSource_IsPreserved()
     {
         // Arrange
         var suite = CreateNeutralProbe(
@@ -153,7 +153,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Unset MemberType resolves through the concrete leaf to its local base's public factory.</summary>
     [Fact]
-    public async Task OrdinaryInheritedMemberSourceUsesReflectedLeaf()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryInheritedMemberSource_UsesReflectedLeaf()
     {
         // Arrange
         var suite = CreateNeutralProbe(
@@ -175,7 +175,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>An empty ordinary factory inherited from a local base remains a visible failure.</summary>
     [Fact]
-    public async Task OrdinaryInheritedEmptyMemberSourceIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryInheritedEmptyMemberSource_IsRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe(
@@ -198,7 +198,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Invalid metadata inherited from a local family base cannot evade the concrete-leaf audit.</summary>
     [Fact]
-    public async Task OrdinaryInheritedUnknownExclusionIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryInheritedUnknownExclusion_IsRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact(["Postgres"])], inherited: true);
@@ -217,7 +217,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Fixture ownership is checked even when method exclusions would hide the local declaration.</summary>
     [Fact]
-    public async Task ExcludedLocalMethodCannotHideForeignFixture()
+    public async Task FindDeclaredOwnershipErrorsAsync_ExcludedLocalMethod_CannotHideForeignFixture()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact(["SqlServer"])], markers: [typeof(SqlServerEngine)]);
@@ -234,7 +234,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>The owning executable passed to the guard cannot disagree with the actual concrete leaf.</summary>
     [Fact]
-    public async Task OrdinaryLocalFixtureRejectsForeignAuditOwner()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalFixture_RejectsForeignAuditOwner()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact()]);
@@ -251,7 +251,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>An ordinary local suite without a concrete marker cannot infer an owner from its payload.</summary>
     [Fact]
-    public async Task OrdinaryLocalMissingFixtureIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalMissingFixture_IsRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact()], markers: []);
@@ -270,7 +270,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Exact closed fixture markers may not contradict one another in a single concrete leaf.</summary>
     [Fact]
-    public async Task OrdinaryLocalContradictoryFixturesAreRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalContradictoryFixtures_AreRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe(
@@ -290,7 +290,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>An injected fixture is insufficient when xUnit cannot resolve its exact registration.</summary>
     [Fact]
-    public async Task OrdinaryLocalUnregisteredFixtureIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalUnregisteredFixture_IsRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralFact()], registerFixture: false);
@@ -309,7 +309,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Ordinary local declarations must expose their immutable fixture engine through ProviderTest.</summary>
     [Fact]
-    public async Task OrdinaryLocalMissingProviderBaseIsRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalMissingProviderBase_IsRejected()
     {
         // Arrange
         var suite = CreateProbe([NeutralFact()]);
@@ -326,7 +326,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>A local ordinary theory without any raw rows remains a test failure.</summary>
     [Fact]
-    public async Task OrdinaryLocalMissingRowsAreRejected()
+    public async Task FindDeclaredOwnershipErrorsAsync_OrdinaryLocalMissingRows_AreRejected()
     {
         // Arrange
         var suite = CreateNeutralProbe([NeutralTheory()]);

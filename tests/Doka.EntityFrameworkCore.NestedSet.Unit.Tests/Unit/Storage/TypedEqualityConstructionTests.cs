@@ -4,12 +4,20 @@ using System.Linq.Expressions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Preserves native and converted equality while binding reflection once per mapped type.</summary>
-/// <param name="output">Records paired construction allocation evidence.</param>
 [Collection("Allocation measurements")]
-public sealed class TypedEqualityConstructionTests(
-    ITestOutputHelper output
-)
+public sealed partial class TypedEqualityConstructionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Records paired construction allocation evidence.</param>
+    public TypedEqualityConstructionTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Cached operator metadata retains the framework's native and nullable binary expression shape.</summary>
     /// <param name="shape">The native or operator-free mapped expression type.</param>
     [Theory]
@@ -24,7 +32,7 @@ public sealed class TypedEqualityConstructionTests(
     [InlineData("NullableTyped")]
     [InlineData("Object")]
     [InlineData("NullableObject")]
-    public void ConstructionRetainsOriginalExpressionShape(
+    public void Current_Construction_RetainsOriginalExpressionShape(
         string shape
     )
     {
@@ -91,7 +99,7 @@ public sealed class TypedEqualityConstructionTests(
     [InlineData("NullableObject", 1, 1)]
     [InlineData("NullableObject", 1, 2)]
     [InlineData("NullableObject", 1, 3)]
-    public void EqualityRetainsNullAndValueSemantics(
+    public void Compile_EqualityPredicate_RetainsNullAndValueSemantics(
         string shape,
         int left,
         int right
@@ -117,7 +125,7 @@ public sealed class TypedEqualityConstructionTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void OperatorDiscoveryDoesNotInvokeClrOperator(
+    public void Current_OperatorDiscovery_DoesNotInvokeClrOperator(
         bool nullable
     )
     {
@@ -149,7 +157,7 @@ public sealed class TypedEqualityConstructionTests(
     [InlineData("NullableTyped", 32)]
     [InlineData("Object", 32)]
     [InlineData("NullableObject", 32)]
-    public void ConstructionAllocationDoesNotRegress(
+    public void MeasurePaired_ConstructionAllocation_DoesNotRegress(
         string shape,
         int minimumSavedBytes
     )
@@ -170,7 +178,7 @@ public sealed class TypedEqualityConstructionTests(
         var allocated = QueryConstructionAllocation.MeasurePaired(prepared.Reference, prepared.Current);
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Equality shape={shape}; reference={allocated.Baseline} B/op; "
             + $"cached={allocated.Expanded} B/op.");
 
@@ -313,86 +321,4 @@ public sealed class TypedEqualityConstructionTests(
     private static int IdentityValue(
         int kind
     ) => kind switch { 1 => 17, 2 => 18, 3 => 27, _ => throw new ArgumentOutOfRangeException(nameof(kind)) };
-
-    /// <summary>Keeps both prepared construction delegates outside measured operations.</summary>
-    /// <param name="Reference">The original framework-backed construction factory.</param>
-    /// <param name="Current">The current cached construction factory.</param>
-    private sealed record ConstructionCase(
-        Func<Expression> Reference,
-        Func<Expression> Current
-    );
-
-    /// <summary>Provides exact typed equality without declaring an equality operator.</summary>
-    private readonly struct TypedIdentity(
-        int value
-    ) : IEquatable<TypedIdentity>
-    {
-        /// <summary>Gets the model identity before its normalized equality comparison.</summary>
-        private int Value { get; } = value;
-
-        /// <inheritdoc />
-        public bool Equals(
-            TypedIdentity other
-        ) => Value % 10 == other.Value % 10;
-
-        /// <inheritdoc />
-        public override bool Equals(
-            object? obj
-        ) => obj is TypedIdentity other && Equals(other);
-
-        /// <inheritdoc />
-        public override int GetHashCode() => Value % 10;
-    }
-
-    /// <summary>Provides only object equality for the explicit object marker fallback.</summary>
-    private readonly struct ObjectIdentity(
-        int value
-    )
-    {
-        /// <summary>Gets the model identity before its normalized equality comparison.</summary>
-        private int Value { get; } = value;
-
-        /// <inheritdoc />
-        public override bool Equals(
-            object? obj
-        ) => obj is ObjectIdentity other && Value % 10 == other.Value % 10;
-
-        /// <inheritdoc />
-        public override int GetHashCode() => Value % 10;
-    }
-
-    /// <summary>Throws if expression construction accidentally executes the discovered CLR operator.</summary>
-    private readonly struct OperatorProbe(
-        int value
-    )
-    {
-        /// <summary>Gets the probe value used only by ordinary object equality.</summary>
-        private int Value { get; } = value;
-
-        /// <summary>Rejects executing operator equality while its expression node is being built.</summary>
-        public static bool operator==(
-            OperatorProbe left,
-            OperatorProbe right
-        )
-        {
-            throw new InvalidOperationException("Construction must not invoke CLR equality.");
-        }
-
-        /// <summary>Rejects executing operator inequality while its expression node is being built.</summary>
-        public static bool operator!=(
-            OperatorProbe left,
-            OperatorProbe right
-        )
-        {
-            throw new InvalidOperationException("Construction must not invoke CLR inequality.");
-        }
-
-        /// <inheritdoc />
-        public override bool Equals(
-            object? obj
-        ) => obj is OperatorProbe other && Value == other.Value;
-
-        /// <inheritdoc />
-        public override int GetHashCode() => Value;
-    }
 }

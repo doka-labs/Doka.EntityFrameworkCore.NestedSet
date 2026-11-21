@@ -10,7 +10,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     [Theory]
     [InlineData(128)]
     [InlineData(2_048)]
-    public async Task DetectedCallbackClearRebindsNativeEntriesWithinGraphAllocation(
+    public async Task Restore_DetectedCallbackClear_RebindsNativeEntriesWithinGraphAllocation(
         int rows
     )
     {

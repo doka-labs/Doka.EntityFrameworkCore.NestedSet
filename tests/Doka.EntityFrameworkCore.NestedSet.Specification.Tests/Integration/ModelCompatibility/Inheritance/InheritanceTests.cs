@@ -16,7 +16,7 @@ public abstract partial class InheritanceTests : ProviderTest
 
     /// <summary>Stores multiple derived node types in one complete polymorphic TPH tree.</summary>
     [Fact]
-    public async Task TphSupportsPolymorphicTreeAsync()
+    public async Task InsertRootAsync_Tph_SupportsPolymorphicTree()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(
@@ -62,7 +62,7 @@ public abstract partial class InheritanceTests : ProviderTest
 
     /// <summary>Writes structural state only through the TPT base fragment while retaining derived payload.</summary>
     [Fact]
-    public async Task TptSupportsStructureCoLocatedInBaseTableAsync()
+    public async Task InsertRootAsync_Tpt_SupportsStructureCoLocatedInBaseTable()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TptContext>(
@@ -119,7 +119,7 @@ public abstract partial class InheritanceTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task DerivedParentChangeUsesBaseHierarchyMapping(
+    public async Task SaveNestedSetChangesAsync_DerivedParentChange_UsesBaseHierarchyMapping(
         bool tpt
     )
     {
@@ -192,7 +192,7 @@ public abstract partial class InheritanceTests : ProviderTest
 
     /// <summary>A native save cannot bypass the coordinator through a concrete derived node type.</summary>
     [Fact]
-    public async Task DirectDerivedParentSaveIsRejectedBeforeSql()
+    public async Task SaveChangesAsync_DirectDerivedParentSave_IsRejectedBeforeSql()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TphContext>(

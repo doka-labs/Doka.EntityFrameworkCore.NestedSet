@@ -9,7 +9,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("PostgreSql", 2)]
     [InlineData("SqlServer", 3)]
     [InlineData("Sqlite", 2)]
-    public async Task MemberVariantsUseTheFixtureEngine(
+    public async Task GetData_MemberVariants_UseTheFixtureEngine(
         string engine,
         int expectedCount
     )
@@ -49,7 +49,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>An explicit member source remains authoritative over the inherited suite's default source.</summary>
     [Fact]
-    public async Task ExplicitMemberTypeIsPreserved()
+    public async Task GetData_ExplicitMemberType_IsPreserved()
     {
         // Arrange
         var method = CreateTestMethod("MySql", nameof(DiscoveryProbe.Member));
@@ -74,7 +74,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Raw member rows retain their engine exclusions for the provider contract guard.</summary>
     [Fact]
-    public async Task SourceInspectionPreservesExcludedRows()
+    public async Task GetSourceData_SourceInspection_PreservesExcludedRows()
     {
         // Arrange
         var method = CreateTestMethod("Sqlite", nameof(DiscoveryProbe.Member));
@@ -97,7 +97,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Row normalization retains exclusions, xUnit settings, and merged attribute traits.</summary>
     [Fact]
-    public async Task MemberNormalizationPreservesMergedRowMetadata()
+    public async Task GetSourceData_MemberNormalization_PreservesMergedRowMetadata()
     {
         // Arrange
         var method = CreateTestMethod("MySql", nameof(DiscoveryProbe.Member));
@@ -138,7 +138,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(false, false, 0)]
     [InlineData(true, true, 0)]
     [InlineData(false, true, 0)]
-    public async Task DiscoveryDoesNotEnumerateMemberFactoriesTwice(
+    public async Task Discover_Discovery_DoesNotEnumerateMemberFactoriesTwice(
         bool preEnumerate,
         bool delayedSource,
         int expectedCalls
@@ -173,7 +173,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>A delayed source yields its arguments when requested during execution.</summary>
     [Fact]
-    public async Task DelayedMemberDataEnumeratesOnceWhenRequested()
+    public async Task GetData_DelayedMemberData_EnumeratesOnceWhenRequested()
     {
         // Arrange
         DiscoveryProbe.SourceCalls = 0;
@@ -196,7 +196,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(false, false)]
     [InlineData(true, true)]
     [InlineData(false, true)]
-    public async Task EmptyOrOverFilteredSourceRemainsAFailure(
+    public async Task Discover_EmptyOrOverFilteredSource_RemainsAFailure(
         bool preEnumerate,
         bool overFiltered
     )
@@ -232,7 +232,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Invalid row metadata is rejected even when a valid member-level exclusion omits its engine.</summary>
     [Fact]
-    public async Task WholeMemberExclusionDoesNotHideInvalidRows()
+    public async Task GetData_WholeMemberExclusion_DoesNotHideInvalidRows()
     {
         // Arrange
         var method = CreateTestMethod("Sqlite", nameof(DiscoveryProbe.Member));

@@ -1,7 +1,7 @@
 ---
 id: D-019
 status: implemented
-date: 2026-10-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -385,7 +385,7 @@ and the remaining native x64 SQL Server boundary. Implemented
 status refers to this NestedSet contract, not provider publication or a hosted
 release pass.
 
-The [regression map](../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
+The [ancestor-index contract](../configuration.md#optional-ancestor-index)
 owns the exact test inventory. Required controls cover exact public capability
 identity and lifetimes; independent endpoint provenance; mapped/filter/bag
 semantics; fresh/populated/down/compiled migrations; generated-value rollback;
@@ -473,6 +473,8 @@ informational diagnosis when that path is actually requested.
 - 2026-11-03: Restored the two original initial status entries from manifest-verified pre-consolidation ADR copies and recorded the later Git metadata transition. Earlier copies also describe implementation on October 19; that date is not used as an independently verified transition. The restoration adds no historical approval or new decision.
 - 2026-11-03: Retrieved the four pinned EF/.NET source files again to record actual retrieval provenance. The earlier inspections remain historical: QueryCompiler on October 24, both options files on October 25, and RuntimeType.CoreCLR on October 26. The new retrieval dates do not replace those inspections or requalify runtime behavior.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Ordinary strict ancestor source bounds](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQuery.AncestorPairs.cs)
@@ -521,7 +523,7 @@ informational diagnosis when that path is actually requested.
 - [Generated property-bag identity and exact recovery tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Models/AncestorIndexQueryTests.GeneratedBags.cs)
 - [Persistent native ancestor work controls](../../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Querying/Composition/Performance/AncestorIndexWorkTestBase.cs)
 - [Post-structural-write generated refresh recovery tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/AncestorIndexLifecycleTests.LateRollback.cs)
-- [Focused regression map and allocation observations](../query-composition-regression-coverage.md#optional-ancestor-index-and-source-binding)
+- [Ancestor-index contract and native prerequisites](../configuration.md#optional-ancestor-index)
 - [Historical local and native qualification (2026-10-19)](../qualification/query-composition.md#optional-ancestor-access)
 - [Performance boundaries](../performance.md#optional-ancestor-index-and-shared-source-boundaries)
 

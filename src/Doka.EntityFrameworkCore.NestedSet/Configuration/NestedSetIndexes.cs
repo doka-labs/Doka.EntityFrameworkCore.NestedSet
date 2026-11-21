@@ -28,6 +28,7 @@ internal static class NestedSetIndexes
         // WHY: Explicit application configuration adopts an index even when it repeats the convention value.
         owned.RemoveAll(index => !index.IsInModel || !IsUnmodified(index));
 
+        // WHY: Setting convention metadata can re-enter model callbacks; retain List's mutation detection here.
         foreach (var index in owned)
         {
             // WHY: Table and column mappings may be configured after HasNestedSet; physical names follow the final map.
@@ -36,8 +37,17 @@ internal static class NestedSetIndexes
 
         var retained = new HashSet<IConventionIndex>();
 
-        foreach (var definition in desired)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (
+            int definitionIndex = 0, definitionCount = desired.Count;
+            definitionIndex < definitionCount;
+            definitionIndex++
+        )
         {
+            var definition = desired[definitionIndex];
+
             var existing = entity
                 .GetIndexes()
                 .Where(index => index.Properties.SequenceEqual(definition.Properties)

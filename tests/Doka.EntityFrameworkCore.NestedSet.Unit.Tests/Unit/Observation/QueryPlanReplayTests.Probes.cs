@@ -49,11 +49,21 @@ public sealed partial class QueryPlanReplayTests
     }
 
     /// <summary>Keeps a real local connection while substituting only its diagnostic command and result sets.</summary>
-    private sealed class PlanReplayConnection(
-        Func<DbDataReader> reader,
-        Func<int>? nonQuery = null
-    ) : SqliteConnection("Data Source=:memory:")
+    private sealed class PlanReplayConnection : SqliteConnection
     {
+        private readonly Func<DbDataReader> _reader;
+        private readonly Func<int>? _nonQuery;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public PlanReplayConnection(
+            Func<DbDataReader> reader,
+            Func<int>? nonQuery = null
+        ) : base("Data Source=:memory:")
+        {
+            _reader = reader;
+            _nonQuery = nonQuery;
+        }
+
         /// <summary>Gets the raw diagnostic command after the helper applies its own deadline and statement.</summary>
         internal PlanReplayCommand? Command { get; private set; }
 
@@ -63,7 +73,7 @@ public sealed partial class QueryPlanReplayTests
         /// <inheritdoc />
         protected override DbCommand CreateDbCommand()
         {
-            Command = new PlanReplayCommand(reader, nonQuery);
+            Command = new PlanReplayCommand(_reader, _nonQuery);
             Commands.Add(Command);
 
             return Command;
@@ -73,11 +83,21 @@ public sealed partial class QueryPlanReplayTests
     /// <summary>
     /// Records the raw deadline and returns controlled framework reader results for the actual helper.
     /// </summary>
-    private sealed class PlanReplayCommand(
-        Func<DbDataReader> reader,
-        Func<int>? nonQuery
-    ) : DbCommand
+    private sealed class PlanReplayCommand : DbCommand
     {
+        private readonly Func<DbDataReader> _reader;
+        private readonly Func<int>? _nonQuery;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public PlanReplayCommand(
+            Func<DbDataReader> reader,
+            Func<int>? nonQuery
+        )
+        {
+            _reader = reader;
+            _nonQuery = nonQuery;
+        }
+
         private readonly SqliteCommand _parameters = new();
 
         /// <summary>Gets the values bound at execution before EF clears its reusable parameter collection.</summary>
@@ -132,9 +152,9 @@ public sealed partial class QueryPlanReplayTests
                 .ToArray();
 
             return Task.FromResult(
-                nonQuery is null
+                _nonQuery is null
                     ? throw new NotSupportedException()
-                    : nonQuery());
+                    : _nonQuery());
         }
 
         /// <inheritdoc />
@@ -149,7 +169,7 @@ public sealed partial class QueryPlanReplayTests
         /// <inheritdoc />
         protected override DbDataReader ExecuteDbDataReader(
             CommandBehavior behavior
-        ) => reader();
+        ) => _reader();
 
         /// <inheritdoc />
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(
@@ -163,7 +183,7 @@ public sealed partial class QueryPlanReplayTests
                 .Select(parameter => parameter.Value)
                 .ToArray();
 
-            return Task.FromResult(reader());
+            return Task.FromResult(_reader());
         }
 
         /// <inheritdoc />

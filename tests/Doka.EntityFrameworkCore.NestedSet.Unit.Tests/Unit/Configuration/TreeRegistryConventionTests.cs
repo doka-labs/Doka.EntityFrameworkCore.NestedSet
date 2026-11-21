@@ -5,7 +5,7 @@ public sealed class TreeRegistryConventionTests
 {
     /// <summary>Copies converted string identity facets and uses Scope plus TreeId as the registry key.</summary>
     [Fact]
-    public void ScopedRegistryCopiesIdentityStoreSemantics()
+    public void RegistryFor_ScopedRegistry_CopiesIdentityStoreSemantics()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<RegistryContext>()
@@ -32,7 +32,7 @@ public sealed class TreeRegistryConventionTests
 
     /// <summary>Omits Scope entirely when a hierarchy is configured without an application partition.</summary>
     [Fact]
-    public void UnscopedRegistryUsesTreeIdAsItsOnlyIdentity()
+    public void RegistryFor_UnscopedRegistry_UsesTreeIdAsItsOnlyIdentity()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<RegistryContext>()

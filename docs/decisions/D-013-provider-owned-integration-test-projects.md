@@ -1,7 +1,7 @@
 ---
 id: D-013
 status: implemented
-date: 2026-09-25
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -9,7 +9,7 @@ scope: "EF Core test ownership, fixture-owned engines, referenced specifications
 supersedes: []
 superseded-by: []
 amends: []
-amended-by: []
+amended-by: [D-023]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -166,7 +166,7 @@ cancellation behavior.
 
 Read-only comparison and query-plan scenario rows use lazy class-owned seed
 resources. Resettable native-type and collection-mode rows cannot invalidate the
-comparison seed. The [current lifetime map](../implementation-design.md#test-project-ownership)
+comparison seed. The [current lifetime map](../testing.md#test-project-ownership)
 describes the separate comparison database and deterministic aggregate evidence;
 the existing assembly-owned containers remain shared.
 
@@ -520,7 +520,7 @@ filtered run does not establish coverage for a provider introduced later.
 - Run the [paired Unit commands](../performance.md#coverage-collector-18110-and-unloadability).
   Both partitions must pass; the released-adapter and deliberately live
   registration controls must retain their opposing weak-reference assertions.
-  Run `RegistrationLifetimeControlsRunWithoutCoverage`; actual xUnit metadata
+  Run `Construct_RegistrationLifetime_ControlsRunWithoutCoverage`; actual xUnit metadata
   must classify both controls in the required uninstrumented partition.
   Result validation must reject missing reports, repeated case identities,
   failures and skips rather than treating the excluded coverage rows as passed.
@@ -641,6 +641,10 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-10-25: Comparison and server-plan aggregates became independently discovered scenario rows with lazy class-owned immutable seeds and deterministic aggregate evidence. The comparison seed is separate from resettable sibling rows, while containers remain assembly-owned. Current framework text now follows the central pin; dated xUnit 4.0.1 sources and prior history remain intact. This entry records no new hosted qualification result.
 - 2026-10-26: After the independent GC-root diagnosis, the owner explicitly retained Code Coverage 18.11.0 with mandatory uninstrumented registration-lifetime controls. Recorded the two collector-owned unloading blockers, unchanged positive/negative assertions, downgrade criteria and re-evaluation requirements. The collector remains affected; this documentation update introduces no new product behavior or hosted qualification claim.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
+
 ### Implementation References
 
 - [Coverage boundary, control matrix and paired Unit commands](../performance.md#coverage-collector-18110-and-unloadability)
@@ -649,7 +653,7 @@ optional SafeMigrations adapter retain their own existing test projects.
 - [CI complementary Unit executions](../../.github/workflows/ci.yml)
 - [RC partition execution and result validation](../../eng/release/qualification.py)
 - [Current central framework and adapter pins](../../Directory.Packages.props)
-- [Current test lifetime map](../implementation-design.md#test-project-ownership)
+- [Current test lifetime map](../testing.md#test-project-ownership)
 - [Independent key comparisons](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.cs)
 - [Comparison seed isolation](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonTests.Seed.cs)
 - [Comparison fixture](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Indexes/KeyFilterComparisonFixture.cs)

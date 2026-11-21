@@ -6,6 +6,8 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 ///     entity type per configured hierarchy and stores its typed Scope and TreeId values in shadow properties.
 ///     Public visibility is required because EF-generated compiled models live in the consuming assembly.
 /// </remarks>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
+[PublicAPI]
 public sealed class NestedSetTreeRegistry
 {
     /// <summary>Creates an infrastructure row for EF materialization and compiled-model construction.</summary>

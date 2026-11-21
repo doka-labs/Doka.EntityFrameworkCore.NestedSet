@@ -15,7 +15,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("SqlServer", false)]
     [InlineData("Sqlite", true)]
     [InlineData("Sqlite", false)]
-    public async Task OrdinaryVariantsAutomaticallyCoverEveryEngine(
+    public async Task Discover_OrdinaryVariantsAutomatically_CoverEveryEngine(
         string engine,
         bool preEnumerate
     )
@@ -53,7 +53,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task OrdinaryMemberVariantsAutomaticallyCoverEveryEngine(
+    public async Task Discover_OrdinaryMemberVariantsAutomatically_CoverEveryEngine(
         string engine
     )
     {
@@ -75,12 +75,12 @@ public sealed partial class EngineTestDiscoveryTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task DiscoveryDoesNotConstructProviderResources(
+    public async Task Discover_Discovery_DoesNotConstructProviderResources(
         bool preEnumerate
     )
     {
         // Arrange
-        var types = new[] { typeof(ProviderFixture<DiscoveryOnlyResource, SqlServerEngine>) };
+        Type[] types = [ typeof(ProviderFixture<DiscoveryOnlyResource, SqlServerEngine>) ];
         var method = CreateTestMethod("SqlServer", nameof(DiscoveryProbe.ConditionalInline), types);
         var options = CreateDiscoveryOptions(preEnumerate);
         var attribute = Assert.Single(method.FactAttributes);
@@ -100,7 +100,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("PostgreSql", true)]
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
-    public async Task FactExclusionUsesTheConcreteFixture(
+    public async Task Discover_FactExclusion_UsesTheConcreteFixture(
         string engine,
         bool expected
     )

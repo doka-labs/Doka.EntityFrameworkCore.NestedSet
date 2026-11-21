@@ -1,7 +1,7 @@
 ---
 id: D-018
 status: implemented
-date: 2026-10-16
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -470,6 +470,8 @@ A malformed existing API fails clearly instead of guessing a server family.
 - 2026-11-03: Status changed from accepted to implemented.
 - 2026-11-03: Reconciled status with the implemented compositors and successful native-provider qualification in RC run 41014625971 for version 10.1.0. Recorded the correction today; the original acceptance date, historical failures and qualification boundaries remain unchanged.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Historical predecessor construction qualification](../qualification/query-performance.md#historical-report-construction-and-materialization)
@@ -490,7 +492,7 @@ A malformed existing API fails clearly instead of guessing a server family.
 - [Actual SignalLab query pipeline](../../samples/SignalLab/Reporting/SignalReportBuilder.Query.cs)
 - [SignalLab execution and snapshot ownership](../../samples/SignalLab/Reporting/SignalReportBuilder.cs)
 - [Shared sample snapshot](../../samples/Shared/SampleReadSnapshot.cs)
-- [Composition regression mapping](../query-composition-regression-coverage.md)
+- [Composition usage and failure contracts](../query-composition.md)
 - [Performance contract](../performance.md)
 - [Matched cost qualification](../qualification/query-composition.md#semantic-and-native-work-evidence)
 

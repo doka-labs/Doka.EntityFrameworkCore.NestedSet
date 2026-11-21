@@ -9,7 +9,7 @@ public sealed partial class OptionsExtensionTests
 {
     /// <summary>Equal assembly and type names in another load context do not share an EF service identity.</summary>
     [Fact]
-    public void EqualAdapterNamesFromAnotherLoadContextRemainDifferentOwners()
+    public void ShouldUseSameServiceProvider_EqualAdapterNamesFromAnotherLoadContext_RemainDifferentOwners()
     {
         // Arrange
         using var foreign = ForeignAdapter.Load();
@@ -49,7 +49,7 @@ public sealed partial class OptionsExtensionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ForeignLoadContextAdapterIsRejectedBeforeModelOrIo(
+    public void FinalizeModel_ForeignLoadContextAdapter_IsRejectedBeforeModelOrIo(
         bool suppliedModel
     )
     {
@@ -106,7 +106,7 @@ public sealed partial class OptionsExtensionTests
     // The required uninstrumented measurement partition observes the application's actual GC lifetime.
     [Trait("Category", "Allocation")]
     [Fact]
-    public void RegistrationDoesNotRetainACollectibleAdapter()
+    public void UseNestedSets_CollectibleAdapterRegistration_DoesNotRetainAdapter()
     {
         // Arrange
         var released = RegisterAndReleaseForeignAdapter();
@@ -123,7 +123,7 @@ public sealed partial class OptionsExtensionTests
     /// <summary>A deliberately live registration keeps its adapter reachable, validating the lifetime probe.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void LiveRegistrationRetainsItsCollectibleAdapter()
+    public void UseNestedSets_LiveCollectibleAdapterRegistration_RetainsAdapter()
     {
         // Arrange
         var registration = RegisterForeignAdapter(out var retained);
@@ -140,7 +140,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Exact native assembly identity is checked even when a foreign provider has the same name.</summary>
     [Fact]
-    public void EqualNativeAssemblyNamesCannotSatisfyAdapterValidation()
+    public void ValidateOptions_EqualNativeAssemblyNames_CannotSatisfyAdapterValidation()
     {
         // Arrange
         var selected = NestedSetTestAdapters.ForEngine("MySql");
@@ -150,7 +150,7 @@ public sealed partial class OptionsExtensionTests
             .Single(extension => extension.Info.IsDatabaseProvider);
 
         var loadContext = new AssemblyLoadContext(
-            nameof(EqualNativeAssemblyNamesCannotSatisfyAdapterValidation),
+            nameof(ValidateOptions_EqualNativeAssemblyNames_CannotSatisfyAdapterValidation),
             isCollectible: true);
 
         loadContext.Resolving += ResolveSharedDependency;

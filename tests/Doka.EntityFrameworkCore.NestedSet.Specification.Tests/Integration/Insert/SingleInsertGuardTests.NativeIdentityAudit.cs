@@ -4,7 +4,7 @@ public abstract partial class SingleInsertGuardTests
 {
     /// <summary>A callback-corrupted mutable hash key produces an explicit error requiring context disposal.</summary>
     [Fact]
-    public async Task RepeatedSingleIdentityMutationRequiresDiscardingTheContext()
+    public async Task InsertRootAsync_RepeatedSingleIdentityMutation_RequiresDiscardingTheContext()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
@@ -69,7 +69,7 @@ public abstract partial class SingleInsertGuardTests
 
     /// <summary>Comparer-equal identity replacements remain valid before and after callback-owned detection.</summary>
     [Fact]
-    public async Task EquivalentSingleIdentityReplacementsRemainValidAroundExplicitDetection()
+    public async Task InsertRootAsync_EquivalentSingleIdentityReplacements_RemainValidAroundExplicitDetection()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();

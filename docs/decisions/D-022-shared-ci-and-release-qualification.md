@@ -1,7 +1,7 @@
 ---
 id: D-022
 status: implemented
-date: 2026-10-30
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -9,7 +9,7 @@ scope: "Shared pull-request and release-candidate qualification jobs, test cells
 supersedes: []
 superseded-by: []
 amends: [D-016, D-021]
-amended-by: []
+amended-by: [D-023]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -61,7 +61,7 @@ the exact version and the frozen preflight line, then seals, attests and
 publishes as before. GitHub reports called jobs as `Qualification / <job>`;
 scheduled maintenance verifies those names from the exact workflow sources.
 
-The shared build job restores the reviewed shipping locks into owned copies,
+The shared build job restores the reviewed solution-project locks into owned copies,
 builds the Release solution once with the selected version, packs each shipping
 package once and inspects all primary and symbol archives. CI selects the source
 version; the release candidate supplies its reviewed version and line. Package
@@ -70,6 +70,11 @@ run. Test and sample cells restore and build their own projects from the same
 commit with locked restores. The shared MySQL/MariaDB project keeps its
 complementary filtered cells; a contract test proves that the filters partition
 the project.
+
+[D-023](D-023-reproducible-engineering-contracts.md) extends reviewed lockfiles
+to every solution project, including nonshipping qualification graphs. The
+pack-only exact adapter dependency and immutable package handoff remain the
+same; adopting that policy does not change the release publisher's authority.
 
 Complete result verification requires a passing, non-skipped result for every
 executable test project. Reports from one project may come from several cells,
@@ -147,6 +152,10 @@ timeouts and the per-process budget.
 - 2026-10-30: After the 10.1.0 release candidate waited on its single 71.8-minute MySQL/MariaDB cell, the owner chose the SafeMigrations model, consumer and SBOM checks in every pull request, and removal of the local complete qualification.
 - 2026-11-03: Status changed from accepted to implemented.
 - 2026-11-03: Reconciled status with both shared-workflow callers, candidate sealing/attestation wiring and successful hosted CI run 41447864717. A complete hosted RC execution of this arrangement remains pending and is not inferred from the earlier 10.1.0 RC. No historical approval date or publication evidence is added.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
 
 ### Implementation References
 

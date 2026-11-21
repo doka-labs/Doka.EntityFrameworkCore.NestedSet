@@ -22,7 +22,7 @@ public sealed class ForestPreparationAllocationTests
     /// <summary>A single tree adds bounded orchestration overhead without another pair of per-node indexes.</summary>
     /// <returns>A task that completes after preparation stops at its first connection boundary.</returns>
     [Fact]
-    public async Task SingleTreePreparationDoesNotRepeatPlanIdentityIndexes()
+    public async Task InsertForestAsync_SingleTreePreparation_DoesNotRepeatPlanIdentityIndexes()
     {
         // Arrange
         var boundary = new PreparationBoundary();
@@ -48,7 +48,7 @@ public sealed class ForestPreparationAllocationTests
             .ToArray();
 
         var root = new NestedSetBranch<TreeNode>(new TreeNode { NodeId = 1 }, children);
-        var imports = new[] { new NestedSetTreeImport<TreeNode, Guid>(Guid.Empty, root) };
+        NestedSetTreeImport<TreeNode, Guid>[] imports = [new(Guid.Empty, root)];
         var store = new NestedSetStore<TreeNode, int, Guid, int>(
             context,
             context.Model.FindEntityType(typeof(TreeNode))!,

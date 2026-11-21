@@ -101,8 +101,17 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
             var structuralProperties = original.Keys.ToHashSet();
 
-            foreach (var candidate in introduced)
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (
+                int candidateIndex = 0, candidateCount = introduced.Count;
+                candidateIndex < candidateCount;
+                candidateIndex++
+            )
             {
+                var candidate = introduced[candidateIndex];
+
                 // WHY: Generated leaves and owned identities can propagate before a late failure. Share their
                 // metadata-qualified policy with bulk rollback without copying structural roles twice.
                 if (NestedSetInsertionValues.Capture(

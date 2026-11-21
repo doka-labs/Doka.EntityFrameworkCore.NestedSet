@@ -1,17 +1,25 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 /// <summary>Checks person-rank semantics and storage proportional to people rather than repeated evidence.</summary>
-/// <param name="output">Receives the measured allocation count outside the measured operation.</param>
-public sealed class SupervisorPersonRankScaleTests(
-    ITestOutputHelper output
-)
+public sealed class SupervisorPersonRankScaleTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Receives the measured allocation count outside the measured operation.</param>
+    public SupervisorPersonRankScaleTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Ranking uses the best nearest priority without replacing the first nearest continuation.</summary>
     /// <param name="reverse">Whether canonical evidence arrives in the opposite order.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CanonicalPersonRankAndContinuationUseTheirDistinctContracts(
+    public void NthPerson_CanonicalPersonRankAndContinuation_UseTheirDistinctContracts(
         bool reverse
     )
     {
@@ -52,7 +60,7 @@ public sealed class SupervisorPersonRankScaleTests(
     [InlineData(3)]
     [InlineData(4)]
     [InlineData(5)]
-    public void EverySlotInsideLargerRankBandIsAmbiguous(
+    public void NthPerson_EverySlotInsideLargerRankBand_IsAmbiguous(
         int slot
     )
     {
@@ -87,7 +95,7 @@ public sealed class SupervisorPersonRankScaleTests(
     [InlineData(5_001)]
     [InlineData(10_000)]
     [InlineData(10_001)]
-    public void LargeFanInUsesCanonicalDistinctPersonSlots(
+    public void NthPerson_LargeFanIn_UsesCanonicalDistinctPersonSlots(
         int slot
     )
     {
@@ -120,7 +128,7 @@ public sealed class SupervisorPersonRankScaleTests(
 
     /// <summary>An evaluated origin without people has no occupied first slot.</summary>
     [Fact]
-    public void EmptyPersonRankIsNotFound()
+    public void NthPerson_EmptyPersonRank_IsNotFound()
     {
         // Arrange
         SupervisorCandidate[] candidates = [];
@@ -138,7 +146,7 @@ public sealed class SupervisorPersonRankScaleTests(
     /// <summary>Repeated evidence does not require per-person occurrence buckets or a sorted occurrence copy.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void RankStorageIsBoundedByDistinctPeopleInsteadOfOccurrenceFanIn()
+    public void Select_RankStorage_IsBoundedByDistinctPeopleInsteadOfOccurrenceFanIn()
     {
         // Arrange
         const int people = 1_024;
@@ -161,7 +169,7 @@ public sealed class SupervisorPersonRankScaleTests(
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"People={people}; occurrences={candidates.Length}; rank allocation={allocated} B.");
+        _output.WriteLine($"People={people}; occurrences={candidates.Length}; rank allocation={allocated} B.");
         Assert.Equal(SupervisorResolutionStatus.Found, result.Status);
         Assert.Equal(occurrencesPerPerson, result.Evidence.Count);
         Assert.Equal(512, result.Continuation!.CandidateUserId);

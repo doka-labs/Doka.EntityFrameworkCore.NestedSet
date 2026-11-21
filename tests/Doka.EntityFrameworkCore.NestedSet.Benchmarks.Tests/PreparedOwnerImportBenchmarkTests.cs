@@ -32,7 +32,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
     /// <param name="mode">The pre-import owner tracking and inverse collection state.</param>
     [Theory]
     [MemberData(nameof(ImportCases))]
-    public async Task ImportRetainsExactTopologyAndReusableOwner(
+    public async Task ForestOrSubtree_PreparedImport_RetainsExactTopologyAndReusableOwner(
         int nodes,
         bool forest,
         PreparedOwnerMode mode
@@ -64,7 +64,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
 
     /// <summary>Prepared owner membership cannot turn an unexecuted workload into valid evidence.</summary>
     [Fact]
-    public async Task VerificationRejectsUnexecutedImport()
+    public async Task VerifyAsync_Verification_RejectsUnexecutedImport()
     {
         // Arrange
         var benchmark = Create(65, PreparedOwnerMode.Prepared);
@@ -88,7 +88,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
 
     /// <summary>Rejects missing measured rows independently of the importer being benchmarked.</summary>
     [Fact]
-    public async Task VerificationRejectsRemovedImportedRow()
+    public async Task VerifyAsync_Verification_RejectsRemovedImportedRow()
     {
         // Arrange
         var benchmark = Create(65, PreparedOwnerMode.Untracked);
@@ -123,7 +123,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [InlineData(2_000)]
     [InlineData(4_000)]
     [InlineData(8_000)]
-    public async Task ExplicitScalingSizeInitializesTheExistingFixture(
+    public async Task Initialize_ExplicitScalingSize_InitializesTheExistingFixture(
         int nodes
     )
     {
@@ -152,7 +152,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NativeScalingSelectorExcludesUnrequestedOwnerModes(
+    public void Discover_NativeScalingSelector_ExcludesUnrequestedOwnerModes(
         bool forest
     )
     {
@@ -236,7 +236,7 @@ public sealed class PreparedOwnerImportBenchmarkTests
     [Theory]
     [InlineData(0)]
     [InlineData(9)]
-    public void InvalidInputSizeRejectsBeforeContextAcquisition(
+    public void Initialize_InvalidInputSize_RejectsBeforeContextAcquisition(
         int nodes
     )
     {

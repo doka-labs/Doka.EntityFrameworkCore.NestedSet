@@ -6,7 +6,7 @@ public abstract partial class OrderingTrackerTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedOrderingRestoresUnchangedCallbackPayload(
+    public async Task SaveChangesAsync_FailedOrdering_RestoresUnchangedCallbackPayload(
         bool acceptChanges
     )
     {

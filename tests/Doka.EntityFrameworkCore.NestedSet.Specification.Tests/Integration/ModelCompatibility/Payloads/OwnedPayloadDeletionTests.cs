@@ -16,7 +16,7 @@ public abstract class OwnedPayloadDeletionTests : ProviderTest
 
     /// <summary>Deletes an owned subtree through EF's one-statement path and keeps the surviving payload.</summary>
     [Fact]
-    public async Task InlineOwnedPayloadDoesNotRequirePhysicalBatchDelete()
+    public async Task DeleteSubtreeAsync_InlineOwnedPayload_DoesNotRequirePhysicalBatchDelete()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PayloadContext>(

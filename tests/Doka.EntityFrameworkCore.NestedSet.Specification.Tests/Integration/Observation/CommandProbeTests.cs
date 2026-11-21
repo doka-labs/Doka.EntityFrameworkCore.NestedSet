@@ -16,7 +16,7 @@ public abstract class CommandProbeTests : ProviderTest
 
     /// <summary>A position-only CASE assignment must not trigger a bounds-write failure.</summary>
     [Fact]
-    public async Task PositionCaseAssignmentDoesNotCountAsBoundsWrite()
+    public async Task ExecuteUpdateAsync_PositionCaseAssignment_DoesNotCountAsBoundsWrite()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

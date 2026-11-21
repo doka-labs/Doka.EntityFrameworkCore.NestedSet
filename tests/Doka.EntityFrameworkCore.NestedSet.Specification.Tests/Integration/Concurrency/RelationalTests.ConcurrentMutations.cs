@@ -11,7 +11,7 @@ public abstract partial class RelationalTests
     [InlineData("MoveDelete")]
     [InlineData("MoveRebuild")]
     [InlineData("DeleteRebuild")]
-    public async Task ConcurrentMutationsPreserveTheForest(
+    public async Task MutateAsync_ConcurrentMutations_PreserveTheForest(
         string operation
     )
     {
@@ -23,7 +23,7 @@ public abstract partial class RelationalTests
             .ForScope(1);
 
         await SeedPlacementTreeAsync(setup, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await tree.InsertChildAsync(Node(7), 1, CancellationToken.None);
+        await tree.InsertChildAsync(Node(7), 1, TestContext.Current.CancellationToken);
 
         if (operation == "Rebuild")
         {
@@ -35,19 +35,18 @@ public abstract partial class RelationalTests
                     setters => setters
                         .SetProperty(node => node.Start, 1)
                         .SetProperty(node => node.End, 2),
-                    CancellationToken.None);
+                    TestContext.Current.CancellationToken);
         }
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(45));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var arrivals = 0;
         var lockBarrier = new MutationLockBarrier(setup.Model.FindEntityType(typeof(TreeNode))!, 1, Guid.Empty);
 
-        var first = MutateAsync(2, cancellationToken: timeout.Token);
-        var second = MutateAsync(3, cancellationToken: timeout.Token);
-        await ready.Task.WaitAsync(timeout.Token);
+        var first = MutateAsync(2, cancellationToken: operationCancellationToken);
+        var second = MutateAsync(3, cancellationToken: operationCancellationToken);
+        await ready.Task.WaitAsync(operationCancellationToken);
 
         // Act
         // WHY: Both contexts reach the barrier before release; correctness cannot depend on task startup order.
@@ -68,7 +67,7 @@ public abstract partial class RelationalTests
             .AsNoTracking()
             .Where(node => node.Tree == 1)
             .OrderBy(node => node.NodeId)
-            .ToArrayAsync(timeout.Token);
+            .ToArrayAsync(operationCancellationToken);
 
         var expectedCount = operation switch
         {

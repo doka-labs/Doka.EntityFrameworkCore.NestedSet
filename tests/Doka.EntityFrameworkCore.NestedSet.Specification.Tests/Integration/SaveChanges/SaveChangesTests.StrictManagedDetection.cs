@@ -22,7 +22,7 @@ public abstract partial class SaveChangesTests
     [InlineData("forest", false, true)]
     [InlineData("forest", true, false)]
     [InlineData("forest", true, true)]
-    public async Task ManualManagedInsertionSavesOnlyExplicitWrites(
+    public async Task InsertManualShapeAsync_ManualManagedInsertion_SavesOnlyExplicitWrites(
         string shape,
         bool callbackWrite,
         bool marked
@@ -31,7 +31,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -163,112 +164,6 @@ public abstract partial class SaveChangesTests
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
-    /// <summary>Managed insertion still rejects raw callback changes to another tree's hierarchy roles.</summary>
-    [Theory]
-    [InlineData("single", "Name")]
-    [InlineData("single", "ParentId")]
-    [InlineData("single", "Left")]
-    [InlineData("subtree", "Name")]
-    [InlineData("subtree", "ParentId")]
-    [InlineData("subtree", "Left")]
-    [InlineData("forest", "Name")]
-    [InlineData("forest", "ParentId")]
-    [InlineData("forest", "Left")]
-    public async Task ManualManagedCallbacksCannotChangeHierarchyRoles(
-        string shape,
-        string role
-    )
-    {
-        // Arrange
-        await using var setup = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
-        var callback = new SaveBoundaryCallback();
-        var probe = new SaveBoundaryProbe();
-        await using var context = CreateManualDetectionContext(setup, wrapped: true, callback, probe);
-        var node = await context
-            .Set<OrderingNode>()
-            .SingleAsync(value => value.Id == 1, CancellationToken.None);
-
-        context.ChangeTracker.AutoDetectChangesEnabled = false;
-        var before = await setup
-            .Set<OrderingNode>()
-            .OrderBy(value => value.Id)
-            .Select(value => new
-            {
-                value.Id,
-                value.Name,
-                value.ParentId,
-                value.Left,
-                value.Right,
-            })
-            .ToArrayAsync(CancellationToken.None);
-
-        int? writesAtCallback = null;
-        callback.OnSaving = _ =>
-        {
-            // WHY: Opening the target interval precedes the callback; no payload may execute after its illegal edit.
-            writesAtCallback = probe.PayloadCommands;
-
-            switch (role)
-            {
-                case "Name":
-                    node.Name = "Zulu";
-                    break;
-                case "ParentId":
-                    node.ParentId = 2;
-                    break;
-                case "Left":
-                    node.Left++;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(role));
-            }
-        };
-
-        var inputs = ManualInsertionInputs(shape);
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => InsertManualShapeAsync(
-            context,
-            shape,
-            inputs,
-            cancellationToken: TestContext.Current.CancellationToken));
-
-        var after = await setup
-            .Set<OrderingNode>()
-            .OrderBy(value => value.Id)
-            .Select(value => new
-            {
-                value.Id,
-                value.Name,
-                value.ParentId,
-                value.Left,
-                value.Right,
-            })
-            .ToArrayAsync(CancellationToken.None);
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        Assert.NotNull(writesAtCallback);
-        Assert.Equal(writesAtCallback, probe.PayloadCommands);
-        Assert.Equal(before, after);
-        Assert.All(
-            inputs,
-            input => Assert.Equal(
-                EntityState.Detached,
-                context.Entry(input)
-                    .State));
-
-        Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-    }
-
     /// <summary>
     ///     Managed failure restores explicitly pending rows without detecting initially raw foreign payload.
     /// </summary>
@@ -276,14 +171,15 @@ public abstract partial class SaveChangesTests
     [InlineData("single")]
     [InlineData("subtree")]
     [InlineData("forest")]
-    public async Task ManualManagedFailureRestoresExplicitPendingWrites(
+    public async Task InsertManualShapeAsync_ManualManagedFailure_RestoresExplicitPendingWrites(
         string shape
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -374,63 +270,6 @@ public abstract partial class SaveChangesTests
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
-    /// <summary>Manual mode does not bypass the existing facade rejection of initially registered writes.</summary>
-    [Theory]
-    [InlineData("single")]
-    [InlineData("subtree")]
-    [InlineData("forest")]
-    public async Task ManualManagedInsertionRejectsInitiallyRegisteredWrites(
-        string shape
-    )
-    {
-        // Arrange
-        await using var setup = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
-        var probe = new SaveBoundaryProbe();
-        await using var context = CreateManualDetectionContext(setup, wrapped: true, probe);
-        context.ChangeTracker.AutoDetectChangesEnabled = false;
-        var addition = new OrderingMarker
-        {
-            Id = 4,
-            Value = "pending before facade",
-        };
-
-        await context.AddAsync(addition, CancellationToken.None);
-        var inputs = ManualInsertionInputs(shape);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => InsertManualShapeAsync(
-            context,
-            shape,
-            inputs,
-            cancellationToken: TestContext.Current.CancellationToken));
-
-        var count = await setup
-            .Set<OrderingNode>()
-            .CountAsync(CancellationToken.None);
-
-        var markers = await setup
-            .Set<OrderingMarker>()
-            .CountAsync(CancellationToken.None);
-
-        // Assert
-        var rejection = Assert.IsType<NestedSetException>(error);
-        Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Contains("no pending tracked changes", rejection.Message, StringComparison.Ordinal);
-        Assert.Equal(0, probe.PayloadCommands);
-        Assert.Equal(4, count);
-        Assert.Equal(0, markers);
-        Assert.Equal(
-            EntityState.Added,
-            context.Entry(addition)
-                .State);
-
-        Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-    }
-
     /// <summary>Managed save callbacks can deliberately choose native detection without a library override.</summary>
     [Theory]
     [InlineData("single", false)]
@@ -439,7 +278,7 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", true)]
     [InlineData("forest", false)]
     [InlineData("forest", true)]
-    public async Task ManagedCallbacksCanChooseNativeDetectionPolicy(
+    public async Task InsertManualShapeAsync_ManagedCallbacks_CanChooseNativeDetectionPolicy(
         string shape,
         bool automaticDetection
     )
@@ -447,7 +286,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedManualDestinationAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await SeedManualMarkersAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -522,103 +362,5 @@ public abstract partial class SaveChangesTests
                 },
                 s_manualDestinationTree,
                 cancellationToken);
-    }
-
-    /// <summary>Creates detached inputs for one single insert, one subtree, or two forest roots.</summary>
-    private static OrderingNode[] ManualInsertionInputs(
-        string shape
-    ) => shape switch
-    {
-        "single" =>
-        [
-            new OrderingNode
-            {
-                Id = 101,
-                Name = "Inserted",
-            },
-        ],
-        "subtree" =>
-        [
-            new OrderingNode
-            {
-                Id = 101,
-                Name = "Inserted",
-            },
-            new OrderingNode
-            {
-                Id = 102,
-                Name = "Child",
-            },
-        ],
-        "forest" =>
-        [
-            new OrderingNode
-            {
-                Id = 101,
-                Name = "Inserted",
-            },
-            new OrderingNode
-            {
-                Id = 102,
-                Name = "Child",
-            },
-            new OrderingNode
-            {
-                Id = 201,
-                Name = "Second",
-            },
-            new OrderingNode
-            {
-                Id = 202,
-                Name = "Child",
-            },
-        ],
-        _ => throw new ArgumentOutOfRangeException(nameof(shape)),
-    };
-
-    /// <summary>Runs the selected public insertion API without touching the caller's detection policy.</summary>
-    private static async Task InsertManualShapeAsync(
-        DbContext context,
-        string shape,
-        OrderingNode[] inputs,
-        CancellationToken cancellationToken
-    )
-    {
-        var tree = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
-        switch (shape)
-        {
-            case "single":
-                await tree.InsertChildAsync(inputs[0], 100, cancellationToken);
-                break;
-            case "subtree":
-                await tree.InsertSubtreeAsync(
-                    new NestedSetBranch<OrderingNode>(inputs[0], [new NestedSetBranch<OrderingNode>(inputs[1])]),
-                    100,
-                    cancellationToken);
-
-                break;
-            case "forest":
-                await tree.InsertForestAsync(
-                    [
-                        new NestedSetTreeImport<OrderingNode, Guid>(
-                            s_manualFirstImportTree,
-                            new NestedSetBranch<OrderingNode>(
-                                inputs[0],
-                                [new NestedSetBranch<OrderingNode>(inputs[1])])),
-                        new NestedSetTreeImport<OrderingNode, Guid>(
-                            s_manualSecondImportTree,
-                            new NestedSetBranch<OrderingNode>(
-                                inputs[2],
-                                [new NestedSetBranch<OrderingNode>(inputs[3])])),
-                    ],
-                    cancellationToken);
-
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(shape));
-        }
     }
 }

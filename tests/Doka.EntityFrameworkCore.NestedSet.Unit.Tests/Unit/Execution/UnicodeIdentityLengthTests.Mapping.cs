@@ -15,7 +15,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("MariaDb", true)]
     [InlineData("PostgreSql", false)]
     [InlineData("PostgreSql", true)]
-    public void ConcreteRuntimeMappingCloneRetainsCharacterPolicy(
+    public void UsesUnicodeScalarLength_ConcreteRuntimeMappingClone_RetainsCharacterPolicy(
         string engine,
         bool fixedWidth
     )
@@ -51,7 +51,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("MySql")]
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
-    public void KnownConcreteMappingDoesNotAuthorizeAnUnknownStoreFamily(
+    public void UsesUnicodeScalarLength_KnownConcreteMapping_DoesNotAuthorizeAnUnknownStoreFamily(
         string engine
     )
     {
@@ -83,7 +83,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("MariaDb", true)]
     [InlineData("PostgreSql", false)]
     [InlineData("PostgreSql", true)]
-    public void CustomVarcharMappingRetainsConservativeGuard(
+    public void Construct_CustomVarcharMapping_RetainsConservativeGuard(
         string engine,
         bool scopeRole
     )
@@ -140,7 +140,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("MariaDb", true)]
     [InlineData("PostgreSql", false)]
     [InlineData("PostgreSql", true)]
-    public void CustomVarcharMappingAcceptsExactConservativeBoundary(
+    public void Construct_CustomVarcharMapping_AcceptsExactConservativeBoundary(
         string engine,
         bool scopeRole
     )
@@ -175,7 +175,7 @@ public sealed partial class UnicodeIdentityLengthTests
 
     /// <summary>Does not trust a third-party mapping that happens to reuse a provider's full CLR type name.</summary>
     [Fact]
-    public void ProviderTypeNameFromAnotherAssemblyDoesNotAuthorizeCharacterPolicy()
+    public void UsesUnicodeScalarLength_ProviderTypeNameFromAnotherAssembly_DoesNotAuthorizeCharacterPolicy()
     {
         // Arrange
         using var context = new UnicodeContext("MySql");
@@ -242,7 +242,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("PostgreSql", false, true)]
     [InlineData("PostgreSql", true, false)]
     [InlineData("PostgreSql", true, true)]
-    public void FixedWidthCharacterMappingUsesScalarBoundary(
+    public void Construct_FixedWidthCharacterMapping_UsesScalarBoundary(
         string engine,
         bool scopeRole,
         bool overflow

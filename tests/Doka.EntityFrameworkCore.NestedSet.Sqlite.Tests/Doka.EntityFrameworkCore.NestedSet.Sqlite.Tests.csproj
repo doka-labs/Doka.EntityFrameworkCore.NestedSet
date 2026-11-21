@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../Shared/TestRunnerReferences.props" />
 
   <ItemGroup>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj" />
@@ -7,6 +6,9 @@
     <ProjectReference Include="../../samples/UserGroups/UserGroups.csproj" Aliases="global,SnapshotSample" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="BulkImport/BulkOwnedGeneratedTests.*.cs">
+      <DependentUpon>BulkOwnedGeneratedTests.cs</DependentUpon>
+    </Compile>
     <Compile Update="BulkImport/BulkIdentityRetentionTests.*.cs">
       <DependentUpon>BulkIdentityRetentionTests.cs</DependentUpon>
     </Compile>

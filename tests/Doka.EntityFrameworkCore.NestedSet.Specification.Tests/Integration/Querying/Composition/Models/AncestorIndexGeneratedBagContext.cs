@@ -2,9 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Exercises a required generated indexer flag together with a store-generated indexer identity.</summary>
 /// <param name="options">The provider fixture's relational context options.</param>
-internal sealed class AncestorIndexGeneratedBagContext(DbContextOptions<AncestorIndexGeneratedBagContext> options)
-    : DbContext(options)
+internal sealed class AncestorIndexGeneratedBagContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public AncestorIndexGeneratedBagContext(
+        DbContextOptions<AncestorIndexGeneratedBagContext> options
+    ) : base(options) { }
+
     /// <summary>Identifies the fixed generated-key mapping independently of other dictionary hierarchies.</summary>
     internal const string Mapping = "AncestorIndexGeneratedBag";
 

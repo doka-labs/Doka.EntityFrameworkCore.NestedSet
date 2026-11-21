@@ -22,7 +22,7 @@ public sealed class TypedProviderComparerTests
     [InlineData("Int")]
     [InlineData("Guid")]
     [InlineData("NullableParent")]
-    public void NativeComparisonsDoNotAllocatePerPair(
+    public void Compare_NativeComparisons_DoNotAllocatePerPair(
         string role
     )
     {
@@ -67,7 +67,7 @@ public sealed class TypedProviderComparerTests
 
     /// <summary>Preserves converted equality without boxing twice before the required converter boundary.</summary>
     [Fact]
-    public void ConvertedComparisonsAllocateOnlyTheNecessaryConverterBoundary()
+    public void Matches_ConvertedComparisons_AllocateOnlyTheNecessaryConverterBoundary()
     {
         // Arrange
         using var context = new ComparerContext();

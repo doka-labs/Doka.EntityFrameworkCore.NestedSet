@@ -7,7 +7,7 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsPreserveOwnedAndOrdinaryCollections(
+    public async Task SelectAncestors_IndexedNavigationCollections_PreserveOwnedAndOrdinaryMembers(
         bool includeSelf
     )
     {
@@ -19,7 +19,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var hierarchy = context
             .NestedSet<CompositionNavigationNode>()
@@ -115,7 +116,7 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsPreserveMappedEntityPayload(
+    public async Task AsSingleQuery_IndexedAncestors_PreserveMappedEntityPayload(
         bool includeSelf
     )
     {
@@ -127,7 +128,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var hierarchy = context
             .NestedSet<CompositionNavigationNode>()

@@ -3,14 +3,16 @@ namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 /// <summary>Verifies mixed migration rows and explicitly bound tests without starting database resources.</summary>
 public sealed class DatabasePlatformTests
 {
-    /// <summary>The named engine argument is selected by position, not by method name or another string value.</summary>
+    /// <summary>
+    /// The named engine argument is selected by position, not by method name or another string value.
+    /// </summary>
     [Theory]
     [InlineData("SqlServer")]
     [InlineData("PostgreSql")]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
     [InlineData("Sqlite")]
-    public void MixedRowUsesItsEngineArgument(
+    public void ResolveEngine_MixedRow_UsesItsEngineArgument(
         string engine
     )
     {
@@ -29,11 +31,12 @@ public sealed class DatabasePlatformTests
 
     /// <summary>An explicit SQL-only hook works when the theory has no engine parameter.</summary>
     [Fact]
-    public void ExplicitEngineDoesNotRequireEngineArgument()
+    public void ResolveEngine_ExplicitEngine_DoesNotRequireEngineArgument()
     {
         // Arrange
         var attribute = new DatabasePlatformAttribute("SqlServer");
-        var method = typeof(DatabasePlatformTests).GetMethod(nameof(ExplicitEngineDoesNotRequireEngineArgument))!;
+        var method = typeof(DatabasePlatformTests).GetMethod(
+            nameof(ResolveEngine_ExplicitEngine_DoesNotRequireEngineArgument))!;
 
         // Act
         var resolved = attribute.ResolveEngine(method, []);
@@ -44,11 +47,12 @@ public sealed class DatabasePlatformTests
 
     /// <summary>Metadata-only tests are not classified from provider words in their names or inputs.</summary>
     [Fact]
-    public void MetadataDoesNotRequireDatabase()
+    public void ResolveEngine_Metadata_DoesNotRequireDatabase()
     {
         // Arrange
         var attribute = new DatabasePlatformAttribute();
-        var method = typeof(DatabasePlatformTests).GetMethod(nameof(ExplicitEngineDoesNotRequireEngineArgument))!;
+        var method = typeof(DatabasePlatformTests).GetMethod(
+            nameof(ResolveEngine_ExplicitEngine_DoesNotRequireEngineArgument))!;
 
         // Act
         var resolved = attribute.ResolveEngine(method, []);
@@ -59,7 +63,7 @@ public sealed class DatabasePlatformTests
 
     /// <summary>A missing row engine fails instead of silently bypassing platform applicability.</summary>
     [Fact]
-    public void MissingEngineFailsClosed()
+    public void ResolveEngine_MissingEngine_FailsClosed()
     {
         // Arrange
         var attribute = new DatabasePlatformAttribute();

@@ -44,7 +44,9 @@ internal abstract partial class NestedSetProviderCapabilities : INestedSetProvid
         return binding.Provider;
     }
 
-    /// <summary>Rejects absent or foreign native options before model use, including supplied compiled models.</summary>
+    /// <summary>
+    /// Rejects absent or foreign native options before model use, including supplied compiled models.
+    /// </summary>
     /// <param name="options">The fully configured options, after all provider callbacks have completed.</param>
     internal void ValidateOptions(
         IDbContextOptions options

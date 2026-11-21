@@ -9,7 +9,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public async Task RejectedSingleInitializationAllowsInputRetry(
+    public async Task InsertRootAsync_RejectedSingleInitialization_AllowsInputRetry(
         int fault
     )
     {
@@ -76,7 +76,7 @@ public abstract partial class SingleInsertGuardTests
 
     /// <summary>Rejecting tracked input preserves its caller-owned native identity and owned payload.</summary>
     [Fact]
-    public async Task TrackedSingleInputRejectionPreservesCallerIdentity()
+    public async Task InsertRootAsync_TrackedSingleInputRejection_PreservesCallerIdentity()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
@@ -149,7 +149,7 @@ public abstract partial class SingleInsertGuardTests
 
     /// <summary>Graph preparation cannot take ownership of payload already tracked for another caller row.</summary>
     [Fact]
-    public async Task TrackedOwnedPayloadRejectionPreservesCallerAggregate()
+    public async Task InsertRootAsync_TrackedOwnedPayloadRejection_PreservesCallerAggregate()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
@@ -228,7 +228,7 @@ public abstract partial class SingleInsertGuardTests
 
     /// <summary>Rejecting foreign payload preserves a relationship already owned by the caller's tracker.</summary>
     [Fact]
-    public async Task TrackedForeignOwnedNavigationRejectionPreservesCallerIdentity()
+    public async Task InsertRootAsync_TrackedForeignOwnedNavigationRejection_PreservesCallerIdentity()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();

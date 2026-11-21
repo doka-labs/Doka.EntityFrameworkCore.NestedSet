@@ -12,7 +12,7 @@ public sealed class SupervisorChainBudgetTests
     [Theory]
     [InlineData("reads")]
     [InlineData("visits")]
-    public void ExhaustedCounterPreservesOtherAllowances(
+    public void Read_ExhaustedCounter_PreservesOtherAllowances(
         string counter
     )
     {
@@ -59,7 +59,7 @@ public sealed class SupervisorChainBudgetTests
 
     /// <summary>Counter admission does not allocate while checking and consuming existing request limits.</summary>
     [Fact]
-    public void CounterAdmissionAndExhaustionDoNotAllocate()
+    public void Read_CounterAdmissionAndExhaustion_DoNotAllocate()
     {
         // Arrange
         const int operations = 10_000;

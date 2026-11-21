@@ -34,7 +34,7 @@ engine, one capacity cell per engine and one cell for the remaining serial
 allocation measurements. Its filters must partition the project, so each test
 still runs exactly once. Test and sample matrix cells run on separate runners
 without a repository-imposed parallelism cap. Each restores its own project
-graph while the shipping packages retain their reviewed locks, so Docker
+graph using its reviewed dependency locks, so Docker
 resources and instrumented outputs are isolated. The evidence job waits for all
 test reports from the current run attempt and verifies results, provider plans,
 and coverage. CI's stable `Repository qualification` check requires the shared
@@ -46,14 +46,15 @@ The build job runs the release-mode build once:
 python3 -m eng.release.qualification --job build --version 10.3.0 --output artifacts/qualification
 ```
 
-It copies the reviewed shipping locks, adapts internal project-version edges
+It copies every reviewed solution-project lock, adapts internal project-version edges
 while keeping their external dependencies locked, builds the Release solution
 with the selected version, packs each shipping package once, and inspects all
 primary/symbol archives. CI selects the source version; the release candidate
 supplies its reviewed version and the frozen preflight line. Package consumers
 and SBOMs download the resulting immutable artifact by its exact nonempty ID.
-Tests, samples, benchmarks, and engineering tools do not require separate
-committed lockfiles.
+Tests, samples, benchmarks, and engineering tools retain their own committed
+lockfiles. Qualification copies those locks too; it never rewrites the reviewed
+source locks when applying the candidate version.
 
 The Unit test cell and the evidence job invoke the read-only results validator,
 without initializing a release qualification or duplicating its report checks
@@ -132,6 +133,8 @@ coordinates daily branch-native transitive audits and weekly full CI for active
 lines. It verifies exact child source/workflow/correlation and successful real
 producers, including all matrix cells. The audit checks complete fresh advisory
 JSON for the actual solution graph, not only command exit status.
+The existing audit restore sets `DokaAuditPipeline=true` so advisory and audit-service
+warnings fail that dedicated check without making ordinary local builds depend on audit availability.
 
 The retained Dependabot template keeps all four ecosystems and existing Docker
 LTS constraints. Render/check reviewed active-line changes with:
@@ -220,9 +223,9 @@ bash eng/validate-adrs.sh
 python3 -m unittest discover -s eng/quality/tests -p 'test_*.py' -v
 ```
 
-The first command verifies the complete [MADR profile](../docs/decisions/MADR-PROFILE.md), links, history, relationships,
-and deterministic indexes. Use `bash eng/validate-adrs.sh --write-index` to update navigation after valid ADR edits;
-the check is separate from CI and RC qualification. The second command verifies the validator against positive and
+The first command verifies the [MADR profile](../docs/decisions/MADR-PROFILE.md), links, history and relationships
+without changing files. The [decision index](../docs/decisions/README.md) is maintained by hand;
+the optional check remains separate from CI and RC qualification. The second command verifies the validator against positive and
 negative fixtures. Run the release engineering tests separately with
 `python3 -m unittest discover -s eng/tests -p 'test_*.py' -v`. Run the Dependabot
 lockfile diagnostic fixtures with
@@ -307,8 +310,7 @@ Each CI test lane requires a Cobertura report before uploading its artifacts.
 The separate coverage job downloads the reports from every lane of the current
 run attempt and runs this verifier. Hosted RC requires coverage from every
 executable test project, then verifies all reports together in `qualify` before
-assembling a candidate. Local serial RC performs the same verification in its
-test stage. A canceled coverage run can
+assembling a candidate. A canceled coverage run can
 leave instrumented DLL/PDB copies in a test output directory and cause a later
 collection to produce an empty report. Rebuild the Release configuration and
 rerun the complete test stage; the verifier reports an empty artifact instead

@@ -18,7 +18,7 @@ public sealed partial class ComplexRecoveryCompositionTests
     [InlineData(true, "remove")]
     [InlineData(true, "clear")]
     [InlineData(true, "null")]
-    public async Task CallbackOnlyNestedOwnersRestoreAbsentCapturedMembership(
+    public async Task Restore_CallbackOnlyNestedOwners_RestoreAbsentCapturedMembership(
         bool capturedNull,
         string hide
     )
@@ -35,7 +35,7 @@ public sealed partial class ComplexRecoveryCompositionTests
             .ToArray();
 
         var callbackIdentities = CallbackIdentities(callbackEntries);
-        output.WriteLine($"CapturedNull={capturedNull}; detected callback nested addition; hide={hide}.");
+        _output.WriteLine($"CapturedNull={capturedNull}; detected callback nested addition; hide={hide}.");
 
         // Act
         snapshot.Restore();
@@ -70,7 +70,7 @@ public sealed partial class ComplexRecoveryCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RepeatedCallbacksDoNotRetainLostNativeOwners(
+    public async Task Restore_RepeatedCallbacks_DoNotRetainLostNativeOwners(
         bool capturedNull
     )
     {
@@ -86,7 +86,7 @@ public sealed partial class ComplexRecoveryCompositionTests
             .ToArray();
 
         var firstIdentities = CallbackIdentities(firstCallback);
-        output.WriteLine($"Reduced seed3890 shape; capturedNull={capturedNull}; two detected callback additions.");
+        _output.WriteLine($"Reduced seed3890 shape; capturedNull={capturedNull}; two detected callback additions.");
 
         // Act
         snapshot.Restore();

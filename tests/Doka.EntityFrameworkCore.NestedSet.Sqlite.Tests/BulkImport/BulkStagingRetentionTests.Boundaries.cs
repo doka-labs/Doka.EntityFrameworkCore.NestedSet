@@ -9,7 +9,7 @@ public sealed partial class BulkStagingRetentionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task DeepForeignNavigationRejectionPreservesOwnershipBoundaries(
+    public async Task InsertForestAsync_ForeignNavigationRejection_PreservesOwnershipBoundaries(
         bool tracked
     )
     {
@@ -21,10 +21,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -93,7 +96,7 @@ public sealed partial class BulkStagingRetentionTests
 
     /// <summary>Ordinary application payload remains savable after a failed insertion tracking transition.</summary>
     [Fact]
-    public async Task TrackingFailurePreservesUnrelatedApplicationSave()
+    public async Task SaveChangesAsync_TrackingFailure_PreservesUnrelatedApplicationSave()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -103,10 +106,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -167,7 +173,7 @@ public sealed partial class BulkStagingRetentionTests
 
     /// <summary>A rejected detachment preserves the tracking error and explicitly invalidates the context.</summary>
     [Fact]
-    public async Task CleanupFailurePreservesTheTrackingErrorAndRequiresContextDiscard()
+    public async Task InsertForestAsync_CleanupFailure_PreservesTrackingErrorAndRequiresContextDiscard()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -177,10 +183,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);

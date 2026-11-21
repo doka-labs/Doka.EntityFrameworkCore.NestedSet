@@ -16,7 +16,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedAfterOpenNotificationRestoresOnlyOwnedPhysicalConnection(
+    public async Task RunAsync_FailedAfter_OpenNotificationRestoresOnlyOwnedPhysicalConnection(
         bool cancel,
         bool alreadyOpen
     )
@@ -95,12 +95,22 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Fails only after the real physical open, before EF finishes recording that open.</summary>
-    private sealed class FailingSnapshotOpenNotification(
-        CancellationTokenSource stop,
-        bool cancel
-    )
+    private sealed class FailingSnapshotOpenNotification
         : DbConnectionInterceptor
     {
+        private readonly CancellationTokenSource _stop;
+        private readonly bool _cancel;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public FailingSnapshotOpenNotification(
+            CancellationTokenSource stop,
+            bool cancel
+        )
+        {
+            _stop = stop;
+            _cancel = cancel;
+        }
+
         /// <summary>Gets or sets whether setup has completed and the next physical open must fail.</summary>
         internal bool Armed { get; set; }
 
@@ -124,9 +134,9 @@ public sealed partial class SampleReadSnapshotTests
 
             FailedOpens++;
 
-            if (cancel)
+            if (_cancel)
             {
-                await stop.CancelAsync();
+                await _stop.CancelAsync();
                 cancellationToken.ThrowIfCancellationRequested();
             }
 

@@ -10,13 +10,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnrepresentableReaderBudgetIsRejectedBeforeIo(
+    public async Task FollowAllMembershipsAsync_UnrepresentableReaderBudget_IsRejectedBeforeIo(
         bool expanded
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = ChainRequest(data, false) with { MaxResultRows = int.MaxValue };
         probe.Enabled = true;
@@ -46,7 +49,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData(true, 2, true)]
     [InlineData(false, int.MaxValue - 1, true)]
     [InlineData(true, int.MaxValue - 1, true)]
-    public async Task ReaderBudgetAcceptsExactRowsAndDetectsOneOverflow(
+    public async Task FollowAllMembershipsAsync_ReaderBudget_AcceptsExactRowsAndDetectsOneOverflow(
         bool expanded,
         int maximumRows,
         bool complete
@@ -54,7 +57,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var initial = ChainRequest(data, false);
@@ -101,13 +107,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AllTransportsOriginMarkersSeparatelyFromEvidence(
+    public async Task ResolutionRows_All_TransportsOriginMarkersSeparatelyFromEvidence(
         bool found
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {
@@ -211,7 +220,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData(true, 3, true)]
     [InlineData(false, int.MaxValue - 1, true)]
     [InlineData(true, int.MaxValue - 1, true)]
-    public async Task AllReaderBudgetCountsMarkersAndOneOverflow(
+    public async Task FollowAllMembershipsAsync_AllReaderBudget_CountsMarkersAndOneOverflow(
         bool expanded,
         int maximumRows,
         bool complete
@@ -219,7 +228,10 @@ public abstract partial class GroupSupervisorTests
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .MembershipRoles
@@ -294,13 +306,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AllMarkerExhaustionStopsBeforeTheNextReader(
+    public async Task FollowAllMembershipsAsync_AllMarkerExhaustion_StopsBeforeTheNextReader(
         bool expanded
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .MembershipRoles

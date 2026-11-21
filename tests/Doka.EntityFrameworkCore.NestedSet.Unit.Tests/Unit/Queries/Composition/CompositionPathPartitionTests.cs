@@ -31,7 +31,7 @@ public sealed class CompositionPathPartitionTests
     [InlineData(9_223_372_030_926_249_001L)]
     [InlineData(9_223_372_030_926_249_002L)]
     [InlineData(long.MaxValue)]
-    public void WidthEstimateRemainsPositiveAtCoordinateBoundaries(
+    public void CoordinateBlockWidth_CoordinateBoundaries_RetainPositiveEstimate(
         long maximumRight
     )
     {
@@ -60,7 +60,7 @@ public sealed class CompositionPathPartitionTests
     [InlineData(9_007_199_254_740_993L, 9_007_199_254_740_993L)]
     [InlineData(long.MaxValue - 1, long.MaxValue)]
     [InlineData(long.MaxValue, long.MaxValue)]
-    public void PartitionsKeepTheirCompleteIntegerWindow(
+    public void CoordinateBlockStart_IntegerPartitions_KeepTheirCompleteWindow(
         long left,
         long maximumRight
     )

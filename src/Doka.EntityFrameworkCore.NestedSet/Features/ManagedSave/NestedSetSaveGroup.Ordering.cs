@@ -198,8 +198,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
 
             // WHY: Each placement reads the current rule predecessor. Changed siblings must therefore move in
             // rule order, or a later move can separate a node from a predecessor placed before it.
-            foreach (var key in ordered)
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int keyIndex = 0, keyCount = ordered.Count; keyIndex < keyCount; keyIndex++)
             {
+                var key = ordered[keyIndex];
+
                 AddIntervals(
                     scope,
                     treeId,

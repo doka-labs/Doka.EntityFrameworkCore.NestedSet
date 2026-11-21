@@ -10,6 +10,48 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Features/BulkImport/NestedSetBulkInsert.*.cs">
+      <DependentUpon>NestedSetBulkInsert.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Maintenance/NestedSetMaintenance.*.cs">
+      <DependentUpon>NestedSetMaintenance.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/Maintenance/NestedSetInspector.*.cs">
+      <DependentUpon>NestedSetInspector.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/BulkImport/NestedSetBulkStore.*.cs">
+      <DependentUpon>NestedSetBulkStore.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Features/BulkImport/NestedSetForestInsert.*.cs">
+      <DependentUpon>NestedSetForestInsert.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Diagnostics/NestedSetTelemetry.*.cs">
+      <DependentUpon>NestedSetTelemetry.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Mapping/NestedSetModelValidator.*.cs">
+      <DependentUpon>NestedSetModelValidator.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetTrackedIdentityGuard.*.cs">
+      <DependentUpon>NestedSetTrackedIdentityGuard.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetInsertionContract.*.cs">
+      <DependentUpon>NestedSetInsertionContract.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetComplexEntryAccess.*.cs">
+      <DependentUpon>NestedSetComplexEntryAccess.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetCollectionBaseline.*.cs">
+      <DependentUpon>NestedSetCollectionBaseline.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetTrackerSnapshot.*.cs">
+      <DependentUpon>NestedSetTrackerSnapshot.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetRelationshipSnapshot.*.cs">
+      <DependentUpon>NestedSetRelationshipSnapshot.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Execution/NestedSetComplexSnapshot.*.cs">
+      <DependentUpon>NestedSetComplexSnapshot.cs</DependentUpon>
+    </Compile>
     <Compile Update="Providers/NestedSetProviderCapabilities.*.cs">
       <DependentUpon>NestedSetProviderCapabilities.cs</DependentUpon>
     </Compile>

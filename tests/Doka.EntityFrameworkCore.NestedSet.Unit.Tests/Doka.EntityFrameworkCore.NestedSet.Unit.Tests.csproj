@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../Shared/TestRunnerReferences.props" />
 
   <PropertyGroup Label="Isolated heap calibration">
     <!-- WHY: The existing executable can calibrate the actual helper before xUnit creates runner state.
@@ -15,6 +14,54 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Unit/Observation/ManagedHeapObservationTests.*.cs">
+      <DependentUpon>ManagedHeapObservationTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/UserSupervisorCommandTests.*.cs">
+      <DependentUpon>UserSupervisorCommandTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/MappedMemberConstructionTests.*.cs">
+      <DependentUpon>MappedMemberConstructionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Queries/Composition/CompositionEndpointProvenanceTests.*.cs">
+      <DependentUpon>CompositionEndpointProvenanceTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/UserGroups/SupervisorOriginSelectionTests.*.cs">
+      <DependentUpon>SupervisorOriginSelectionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/UserGroups/SupervisorChainRuleTests.*.cs">
+      <DependentUpon>SupervisorChainRuleTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Samples/UserGroups/SupervisorServerRankTests.*.cs">
+      <DependentUpon>SupervisorServerRankTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Execution/TrackedIdentityCaptureTests.*.cs">
+      <DependentUpon>TrackedIdentityCaptureTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Execution/PropertyBagRollbackTests.*.cs">
+      <DependentUpon>PropertyBagRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Storage/TypedEqualityConstructionTests.*.cs">
+      <DependentUpon>TypedEqualityConstructionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/ComplexContainerSemanticsRecoveryTests.*.cs">
+      <DependentUpon>ComplexContainerSemanticsRecoveryTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/SupplementalRelationshipRollbackTests.*.cs">
+      <DependentUpon>SupplementalRelationshipRollbackTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/ManagedSave/SaveValidationLifetimeTests.*.cs">
+      <DependentUpon>SaveValidationLifetimeTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/TreeRegistryTableNameTests.*.cs">
+      <DependentUpon>TreeRegistryTableNameTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/TargetModelConventionTests.*.cs">
+      <DependentUpon>TargetModelConventionTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Unit/Configuration/InsertionReflectionContractTests.*.cs">
+      <DependentUpon>InsertionReflectionContractTests.cs</DependentUpon>
+    </Compile>
     <Compile Update="Samples/UserGroups/SupervisorEvidenceJoinTests.*.cs">
       <DependentUpon>SupervisorEvidenceJoinTests.cs</DependentUpon>
     </Compile>

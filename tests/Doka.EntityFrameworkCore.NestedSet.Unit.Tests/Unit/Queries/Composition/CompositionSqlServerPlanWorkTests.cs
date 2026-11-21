@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards native SQL Server work independently of timing, estimates and final result size.</summary>
@@ -7,7 +9,7 @@ public sealed class CompositionSqlServerPlanWorkTests
     /// Residual filtering cannot conceal the population repeatedly scanned by the old long-path plan.
     /// </summary>
     [Fact]
-    public void RepeatedReadsExceedTheUnchangedPathBudget()
+    public void ReadXml_RepeatedReads_ExceedTheUnchangedPathBudget()
     {
         // Arrange
         var plan = Plan(
@@ -29,7 +31,7 @@ public sealed class CompositionSqlServerPlanWorkTests
 
     /// <summary>Thread counters are summed once; SQL Server already includes every execution in each value.</summary>
     [Fact]
-    public void ParallelCumulativeRowsAreNotMultipliedByExecutions()
+    public void ReadXml_ParallelCumulativeRows_AreNotMultipliedByExecutions()
     {
         // Arrange
         var plan = Plan(
@@ -47,7 +49,7 @@ public sealed class CompositionSqlServerPlanWorkTests
 
     /// <summary>An executed empty seek may legitimately omit the pre-filter read counter.</summary>
     [Fact]
-    public void EmptyExecutedSeekIsValidEvidence()
+    public void ReadXml_EmptyExecutedSeek_IsValidEvidence()
     {
         // Arrange
         var plan = Plan("""<RunTimeCountersPerThread Thread="0" ActualRows="0" ActualExecutions="1" />""");
@@ -61,7 +63,7 @@ public sealed class CompositionSqlServerPlanWorkTests
 
     /// <summary>A positive storage read cannot silently lose its required pre-filter work observation.</summary>
     [Fact]
-    public void MissingReadCounterForPositiveStorageOutputIsRejected()
+    public void ReadXml_MissingReadCounterForPositiveStorageOutput_IsRejected()
     {
         // Arrange
         var plan = Plan("""<RunTimeCountersPerThread ActualRows="1" ActualExecutions="1" />""")
@@ -83,16 +85,17 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData(95_050, 100_001, true)]
     [InlineData(95_050, 10_000_100, false)]
     [InlineData(10_000_100, 100_001, false)]
-    public void ActualBudgetGuardChecksBothCounters(
+    public void AssertWithinBudget_ActualBudgetGuard_ChecksBothCounters(
         long output,
         long read,
         bool accepted
     )
     {
         // Arrange
-        var plan = Plan(
-            FormattableString.Invariant(
-                $"""<RunTimeCountersPerThread ActualRows="{output}" ActualRowsRead="{read}" ActualExecutions="100" />"""));
+        const string counters = """<RunTimeCountersPerThread ActualRows="{0}" """
+            + """ActualRowsRead="{1}" ActualExecutions="100" />""";
+
+        var plan = Plan(string.Format(CultureInfo.InvariantCulture, counters, output, read));
 
         var budget = CompositionPlanWorkBudget.ForPaths(100_001, 100, 95_050);
 
@@ -122,7 +125,7 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1\" ActualExecutions=\"-1\" />")]
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1\" ActualExecutions=\"1\" ActualRowsRead=\"NaN\" />")]
     [InlineData("<RunTimeCountersPerThread ActualRows=\"1e400\" ActualExecutions=\"1\" />")]
-    public void InvalidRuntimeEvidenceIsRejected(
+    public void ReadXml_InvalidRuntimeEvidence_IsRejected(
         string counters
     )
     {
@@ -142,7 +145,7 @@ public sealed class CompositionSqlServerPlanWorkTests
     [InlineData("")]
     [InlineData("<root />")]
     [InlineData("<!DOCTYPE root [<!ENTITY value SYSTEM 'file:///unread'>]><root>&value;</root>")]
-    public void InvalidXmlEvidenceIsRejected(
+    public void ReadXml_InvalidEvidence_IsRejected(
         string plan
     )
     {

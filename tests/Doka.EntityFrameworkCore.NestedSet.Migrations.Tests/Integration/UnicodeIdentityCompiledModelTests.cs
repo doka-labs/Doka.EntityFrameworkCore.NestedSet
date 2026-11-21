@@ -23,7 +23,7 @@ public sealed class UnicodeIdentityCompiledModelTests
     [InlineData("MySql")]
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
-    public async Task GeneratedStringMappingsPreserveSupplementaryIdentityBoundary(
+    public async Task InsertChildAsync_GeneratedStringMappings_PreserveSupplementaryIdentityBoundary(
         string engine
     )
     {
@@ -31,7 +31,9 @@ public sealed class UnicodeIdentityCompiledModelTests
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
             qualifySchema: false,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
@@ -75,7 +77,7 @@ public sealed class UnicodeIdentityCompiledModelTests
     [InlineData("MariaDb", true)]
     [InlineData("PostgreSql", false)]
     [InlineData("PostgreSql", true)]
-    public async Task GeneratedStringMappingsRejectScalarOverflow(
+    public async Task InsertRootAsync_GeneratedStringMappings_RejectScalarOverflow(
         string engine,
         bool scopeRole
     )
@@ -84,7 +86,9 @@ public sealed class UnicodeIdentityCompiledModelTests
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
             qualifySchema: false,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         await using var design = CreateContext(database, engine);
         var model = CompiledModelTestSupport.Generate(design);
@@ -131,7 +135,7 @@ public sealed class UnicodeIdentityCompiledModelTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task GeneratedBoundedAliasPreservesCharacterContract(
+    public async Task InsertRootAsync_GeneratedBoundedAlias_PreservesCharacterContract(
         bool scopeRole,
         bool overflow
     )
@@ -140,12 +144,16 @@ public sealed class UnicodeIdentityCompiledModelTests
         await using var database = await _fixture.CreateDatabaseAsync(
             "PostgreSql",
             qualifySchema: false,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<UnicodeIdentityAliasCompiledContext>().UseNpgsql(
             source.Database.GetConnectionString()!,
-            provider => provider.UseNestedSets());
+            provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets());
 
         await using var design = new UnicodeIdentityAliasCompiledContext(options.Options);
         var model = CompiledModelTestSupport.Generate(design);
@@ -227,7 +235,9 @@ public sealed class UnicodeIdentityCompiledModelTests
 
         if (engine == "PostgreSql")
         {
-            options.UseNpgsql(connection, provider => provider.UseNestedSets());
+            options.UseNpgsql(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets());
         }
         else
         {
@@ -236,7 +246,8 @@ public sealed class UnicodeIdentityCompiledModelTests
                 engine == "MariaDb"
                     ? DatabaseTestTargets.MariaDb
                     : DatabaseTestTargets.MySql,
-                provider => provider.UseNestedSets());
+                provider => provider
+                    .UseNestedSets());
         }
 
         if (model is not null)

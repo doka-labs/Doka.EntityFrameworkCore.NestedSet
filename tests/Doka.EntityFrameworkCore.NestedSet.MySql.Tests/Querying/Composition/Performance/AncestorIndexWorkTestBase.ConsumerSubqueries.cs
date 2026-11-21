@@ -16,7 +16,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData("NotAny", false)]
     [InlineData("NotAny", true)]
     [Trait("Category", "Capacity")]
-    public async Task InclusiveAncestorsPreserveConsumerSubqueryWork(
+    public async Task ObserveConsumerFactsAsync_InclusiveAncestors_PreserveConsumerSubqueryWork(
         string operation,
         bool matches
     )
@@ -37,13 +37,23 @@ public abstract partial class AncestorIndexWorkTestBase
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest: false,
+            cancellationToken: TestContext.Current.CancellationToken,
+            dense: false,
+            branching: false,
+            balanced: false,
+            nodes: Nodes);
         int[] selected = [20, 30];
         await SeedConsumerFactsAsync(
             context,
             scope,
             selected,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            unrelatedNode: 99);
 
         await SeedUnrelatedConsumerFactsAsync(
             context,
@@ -91,7 +101,10 @@ public abstract partial class AncestorIndexWorkTestBase
                 expected,
                 profile,
                 factRows: decoyFacts + 12,
-                cancellationToken: TestContext.Current.CancellationToken);
+                cancellationToken: TestContext.Current.CancellationToken,
+                population: Nodes,
+                readWarmups: 3,
+                measuredReads: 5);
 
             // Assert
             AssertConsumerFacts(observation, selected.Length);

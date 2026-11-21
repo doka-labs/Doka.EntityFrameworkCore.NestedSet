@@ -11,7 +11,7 @@ public sealed class CapacityPayloadSeedingTests
     [InlineData(100, 1)]
     [InlineData(100_000, 1)]
     [InlineData(100_001, 2)]
-    public async Task BoundedPayloadRetainsExactSourceKeys(
+    public async Task SeedPayloadAsync_BoundedPayload_RetainsExactSourceKeys(
         int facts,
         int expectedBatches
     )
@@ -24,7 +24,8 @@ public sealed class CapacityPayloadSeedingTests
 
         await using (var setup = database.CreateContext())
         {
-            await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
+            await CapacitySeed.SeedAsync(setup, nodes, deep: false, corrupt: false,
+                cancellationToken: TestContext.Current.CancellationToken);
             setup
                 .Set<UnrelatedRow>()
                 .Add(

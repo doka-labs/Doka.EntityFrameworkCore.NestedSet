@@ -18,7 +18,7 @@ public abstract partial class SignalReportTests
     [InlineData(true, "Receiver|", "Receiver|", true)]
     [InlineData(false, "Receiver|", "Receiver| ", false)]
     [InlineData(true, "Receiver|", "Receiver| ", false)]
-    public async Task OwnerChoicesPreserveEmptyTextDelimitersAndSignificantSpaces(
+    public async Task ReadAsync_OwnerChoices_PreserveEmptyTextDelimitersAndSignificantSpaces(
         bool nearest,
         string selected,
         string stored,
@@ -31,7 +31,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         context.TagChoices.Add(
             new TagChoice
             {

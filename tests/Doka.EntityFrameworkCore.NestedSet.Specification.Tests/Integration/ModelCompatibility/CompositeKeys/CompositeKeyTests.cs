@@ -14,9 +14,11 @@ public abstract class CompositeKeyTests : ProviderTest
         _fixture = fixture.Value;
     }
 
-    /// <summary>Uses the alternate scalar NodeKey for parent lookup and the complete composite key for persistence.</summary>
+    /// <summary>
+    /// Uses the alternate scalar NodeKey for parent lookup and the complete composite key for persistence.
+    /// </summary>
     [Fact]
-    public async Task AlternateNodeKeySupportsCompositePrimaryKeyAsync()
+    public async Task InsertRootAsync_AlternateNodeKey_SupportsCompositePrimaryKey()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
@@ -72,7 +74,7 @@ public abstract class CompositeKeyTests : ProviderTest
 
     /// <summary>Automatic ordering refresh keeps equal node keys isolated by scope.</summary>
     [Fact]
-    public async Task OrderedSaveRefreshesOnlyMatchingScopeAsync()
+    public async Task SaveNestedSetChangesAsync_OrderedSave_RefreshesOnlyMatchingScope()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(
@@ -168,7 +170,7 @@ public abstract class CompositeKeyTests : ProviderTest
 
     /// <summary>Tracked move refresh cannot adopt coordinates from another scope's equal node keys.</summary>
     [Fact]
-    public async Task ParentSaveRefreshesOnlyMatchingScopeAsync()
+    public async Task SaveNestedSetChangesAsync_ParentSave_RefreshesOnlyMatchingScope()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeKeyContext>(

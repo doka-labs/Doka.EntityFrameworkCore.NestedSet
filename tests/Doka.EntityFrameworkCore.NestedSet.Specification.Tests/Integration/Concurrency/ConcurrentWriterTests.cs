@@ -19,18 +19,18 @@ public abstract class ConcurrentWriterTests : ProviderTest
     /// <summary>Releases 64 writers together to append children beneath the same existing tree root.</summary>
     /// <returns>A task that completes after checking serialization, dense positions, and full tree validity.</returns>
     [Fact]
-    public async Task SameTreeSerializes64ChildWritersWithDensePositions()
+    public async Task InsertChildAsync_SameTreeConcurrentWriters_RetainDensePositions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = TreeId(1);
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         await using (var setup = database.CreateContext())
         {
             await setup
                 .NestedSet<ConcurrentNode>()
                 .ForScope(Scope)
-                .InsertRootAsync(new ConcurrentNode { Id = 1 }, treeId, deadline.Token);
+                .InsertRootAsync(new ConcurrentNode { Id = 1 }, treeId, operationCancellationToken);
         }
 
         var barrier = new ConcurrentCapacityBarrier(WriterCount);
@@ -39,7 +39,8 @@ public abstract class ConcurrentWriterTests : ProviderTest
             .ToArray();
 
         // Act
-        await Task.WhenAll(writerIds.Select(id => InsertContendingChildAsync(database, id, barrier, deadline.Token)));
+        await Task.WhenAll(
+            writerIds.Select(id => InsertContendingChildAsync(database, id, barrier, operationCancellationToken)));
 
         // Assert
         Assert.Equal(WriterCount, barrier.Arrivals);
@@ -48,7 +49,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
             .Set<ConcurrentNode>()
             .AsNoTracking()
             .OrderBy(node => node.Left)
-            .ToArrayAsync(deadline.Token);
+            .ToArrayAsync(operationCancellationToken);
 
         Assert.Equal(WriterCount + 1, nodes.Length);
         Assert.All(nodes, node => Assert.Equal((Scope, treeId), (node.Tree, node.TreeId)));
@@ -78,7 +79,7 @@ public abstract class ConcurrentWriterTests : ProviderTest
                 .NestedSet<ConcurrentNode>()
                 .ForScope(Scope)
                 .InTree(treeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, deadline.Token)).Issues);
+                .ValidateAsync(NestedSetValidationLevel.Full, operationCancellationToken)).Issues);
     }
 
     /// <summary>Waits before transaction acquisition so SQLite can also serialize every released writer.</summary>

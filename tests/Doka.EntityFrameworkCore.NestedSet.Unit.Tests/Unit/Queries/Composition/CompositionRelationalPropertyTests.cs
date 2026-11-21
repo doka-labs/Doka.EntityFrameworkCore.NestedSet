@@ -13,7 +13,7 @@ public sealed class CompositionRelationalPropertyTests
     /// <returns>A task completing after one real SQL result is compared with its independent adjacency bag.</returns>
     [Trait("Category", "Relational")]
     [Property(MaxTest = 64, StartSize = 0, EndSize = 24)]
-    public async Task GeneratedSqlResultsMatchIndependentAdjacencyBags(
+    public async Task Construct_GeneratedSqlResults_MatchIndependentAdjacencyBags(
         int[] input,
         int selector,
         bool upward,
@@ -209,7 +209,7 @@ public sealed class CompositionRelationalPropertyTests
         bool includeSelf
     )
     {
-        var expected = new List<RelationalPair>();
+        List<RelationalPair> expected = [];
 
         // WHY: Keep origin identities aligned with the parent-array slots used by the independent oracle.
         // ReSharper disable once ForCanBeConvertedToForeach

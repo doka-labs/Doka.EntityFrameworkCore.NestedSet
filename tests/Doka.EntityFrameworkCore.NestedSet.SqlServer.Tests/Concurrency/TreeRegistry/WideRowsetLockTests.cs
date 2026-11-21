@@ -22,7 +22,7 @@ public sealed class WideRowsetLockTests : ProviderTest,
 
     /// <summary>Verifies one database-defined order survives more trees than SQL Server's parameter ceiling.</summary>
     [Fact]
-    public async Task RequestedTreesAboveParameterLimitUseOneJsonRowset()
+    public async Task AcquireAsync_RequestedTreesAboveParameterLimit_UseOneJsonRowset()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(

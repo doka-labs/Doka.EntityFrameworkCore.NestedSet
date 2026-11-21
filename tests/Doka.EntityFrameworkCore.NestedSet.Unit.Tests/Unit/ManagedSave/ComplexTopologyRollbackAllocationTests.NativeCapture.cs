@@ -12,7 +12,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     [InlineData(128)]
     [InlineData(2_048)]
     [InlineData(20_000)]
-    public async Task AlignedNativeCaptureAvoidsTransientIdentityMaps(
+    public async Task Construct_AlignedNativeCapture_AvoidsTransientIdentityMaps(
         int rows
     )
     {

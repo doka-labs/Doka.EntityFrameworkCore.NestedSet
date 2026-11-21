@@ -23,7 +23,9 @@ internal static class NestedSetIdentityLength
         return SearchValues.Create(characters);
     }
 
-    /// <summary>Captures native identity-count facts while the selected adapter and mapping services are available.</summary>
+    /// <summary>
+    /// Captures native identity-count facts while the selected adapter and mapping services are available.
+    /// </summary>
     /// <param name="hierarchy">The exact configured hierarchy whose physical identities are finalized.</param>
     /// <param name="descriptor">The validated structural role descriptors.</param>
     /// <param name="provider">The selected adapter owning native mapping semantics.</param>
@@ -46,7 +48,9 @@ internal static class NestedSetIdentityLength
             ResolvePolicy(descriptor.TreeId.Resolve(hierarchy), provider, typeMappings));
     }
 
-    /// <summary>Reads one captured native policy without reconstructing the model or resolving a live provider.</summary>
+    /// <summary>
+    /// Reads one captured native policy without reconstructing the model or resolving a live provider.
+    /// </summary>
     /// <param name="hierarchy">The finalized hierarchy, including runtime and compiled models.</param>
     /// <param name="annotation">The exact Scope or TreeId policy annotation.</param>
     /// <returns>The immutable policy selected by the native model finalizer.</returns>
@@ -67,7 +71,9 @@ internal static class NestedSetIdentityLength
             + "Regenerate the model after calling UseNestedSets() inside the matching native provider callback.");
     }
 
-    /// <summary>Asks the selected adapter about the effective mapping, retaining conservative custom-map behavior.</summary>
+    /// <summary>
+    /// Asks the selected adapter about the effective mapping, retaining conservative custom-map behavior.
+    /// </summary>
     private static bool ResolvePolicy(
         IReadOnlyProperty? property,
         NestedSetProviderCapabilities provider,

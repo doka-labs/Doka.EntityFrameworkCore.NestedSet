@@ -4,7 +4,7 @@ public abstract partial class BulkIntervalRefreshTests
 {
     /// <summary>The token refreshed after generated parent repair permits a subsequent ordinary tracked save.</summary>
     [Fact]
-    public async Task RefreshedGeneratedTokenAllowsOrdinaryPayloadSave()
+    public async Task SaveChangesAsync_RefreshedGeneratedToken_AllowsOrdinaryPayloadSave()
     {
         // Arrange
         await using var context = await _generated.ResetAsync(

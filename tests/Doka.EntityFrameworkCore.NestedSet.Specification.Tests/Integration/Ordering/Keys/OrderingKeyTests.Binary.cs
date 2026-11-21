@@ -4,13 +4,14 @@ public abstract partial class OrderingKeyTests
 {
     /// <summary>Places tied binary identities by database value while resolving fresh key arrays.</summary>
     [Fact]
-    public async Task BinaryKeyInsertionUsesNativeTieOrderAndContentEquality()
+    public async Task InsertChildAsync_BinaryKeyInsertion_UsesNativeTieOrderAndContentEquality()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<byte[], byte[]?>(
             Engine,
             BinaryKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         var inserted = scenario.Node(6, "Same");
 
@@ -25,13 +26,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Moves a binary-key subtree using fresh arrays and retains descendants and native tie order.</summary>
     [Fact]
-    public async Task BinaryKeyMoveRetainsNativeOrderAndDescendants()
+    public async Task MoveToAsync_BinaryKeyMove_RetainsNativeOrderAndDescendants()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<byte[], byte[]?>(
             Engine,
             BinaryKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         // Act
         await scenario.Tree.MoveToAsync(scenario.Reference(2), scenario.Reference(9), CancellationToken.None);
@@ -45,13 +47,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Reorders a tracked binary-key subtree without relying on reference equality for key values.</summary>
     [Fact]
-    public async Task BinaryKeyRenameRetainsNativeTieOrderAndScopeIsolation()
+    public async Task SaveChangesAsync_BinaryKeyRename_RetainsNativeTieOrderAndScopeIsolation()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<byte[], byte[]?>(
             Engine,
             BinaryKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         var key = scenario.Reference(2);
         var renamed = await scenario

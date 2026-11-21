@@ -83,8 +83,13 @@ internal sealed class NestedSetCallbackWrites
         // identities need retention; both exclusion sets already belong to the validated persistence plan.
         var saved = new NestedSetCollectionBaseline.SavedRelationships(introducedEntries, introducedEntities);
 
-        foreach (var identity in related)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int identityIndex = 0, identityCount = related.Count; identityIndex < identityCount; identityIndex++)
         {
+            var identity = related[identityIndex];
+
             identity.CollectSavedRelationships(saved);
         }
 

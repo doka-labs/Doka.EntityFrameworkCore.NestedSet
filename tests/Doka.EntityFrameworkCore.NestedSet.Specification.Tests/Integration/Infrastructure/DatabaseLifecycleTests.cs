@@ -12,7 +12,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     /// <summary>Resolves the executable assembly's server owner from a method in the shared library.</summary>
     [DatabaseIndependent]
     [Fact]
-    public async Task SharedLibraryResolvesExecutingAssemblyFixture()
+    public async Task GetCurrentAsync_SharedLibrary_ResolvesExecutingAssemblyFixture()
     {
         // Arrange
         var expected = await TestContext.Current.GetFixture<TestDatabaseServers>();
@@ -34,7 +34,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     /// <summary>Rejects a foreign engine before the shared fixture can start its container.</summary>
     [DatabaseIndependent]
     [Fact]
-    public async Task AssemblyFixtureRejectsForeignServer()
+    public async Task NewConnectionStringAsync_AssemblyFixture_RejectsForeignServer()
     {
         // Arrange
         var foreignEngine = Engine is "MySql" or "MariaDb"
@@ -58,7 +58,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite owns files rather than an assembly-shared server startup.")]
-    public async Task PreCanceledServerAcquisitionNeverStartsAContainer()
+    public async Task NewConnectionStringAsync_PreCanceledServerAcquisition_NeverStartsAContainer()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -84,7 +84,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite owns files rather than an assembly-shared server startup.")]
-    public async Task CanceledSharedStartupDoesNotPoisonALiveWaiter()
+    public async Task CancelAsync_CanceledSharedStartup_DoesNotPoisonALiveWaiter()
     {
         // Arrange
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -126,7 +126,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite owns files rather than an assembly-shared server startup.")]
-    public async Task UnrelatedStartupCancellationIsNotRetried()
+    public async Task NewConnectionStringAsync_UnrelatedStartupCancellation_IsNotRetried()
     {
         // Arrange
         var expected = new OperationCanceledException("Unrelated startup timeout.", CancellationToken.None);
@@ -152,7 +152,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite owns files rather than an assembly-shared server startup.")]
-    public async Task ServerTeardownObservesPendingStartupAfterCallerCancellation()
+    public async Task CancelAsync_ServerTeardown_ObservesPendingStartupAfterCallerCancellation()
     {
         // Arrange
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -190,7 +190,7 @@ public abstract class DatabaseLifecycleTests : ProviderTest
         ExcludedEngines = ["Sqlite"],
         Reason = "This lifecycle assertion compares two server database names sharing one server; "
             + "SQLite uses isolated files.")]
-    public async Task ServerDatabasesShareEngineWithoutSharingRows()
+    public async Task SaveChangesAsync_ServerDatabases_ShareEngineWithoutSharingRows()
     {
         // Arrange
         await using var first = await TestDatabase.CreateAsync(Engine, TestContext.Current.CancellationToken);

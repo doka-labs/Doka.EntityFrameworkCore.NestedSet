@@ -16,7 +16,7 @@ public abstract class TpcTests : ProviderTest
 
     /// <summary>Uses one concrete TPC table as an independent hierarchy entity set.</summary>
     [Fact]
-    public async Task ConcreteTpcEntitySupportsIndependentTreeAsync()
+    public async Task InsertRootAsync_ConcreteTpcEntity_SupportsIndependentTree()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ConcreteTpcContext>(
@@ -61,7 +61,7 @@ public abstract class TpcTests : ProviderTest
     /// <summary>Rejects a base hierarchy whose polymorphic TPC query spans multiple tables.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void PolymorphicTpcHierarchyIsRejected()
+    public void NestedSet_PolymorphicTpcHierarchy_IsRejected()
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<PolymorphicTpcContext>(Engine);

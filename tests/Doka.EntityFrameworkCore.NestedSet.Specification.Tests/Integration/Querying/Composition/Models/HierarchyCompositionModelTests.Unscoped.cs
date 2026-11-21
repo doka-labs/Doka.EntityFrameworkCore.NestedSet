@@ -16,7 +16,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task DirectUnscopedFacadeComposesWithoutATreeWrapper(
+    public async Task SelectAncestors_DirectUnscopedFacade_ComposesWithoutATreeWrapper(
         HierarchyCompositionOperation operation
     )
     {

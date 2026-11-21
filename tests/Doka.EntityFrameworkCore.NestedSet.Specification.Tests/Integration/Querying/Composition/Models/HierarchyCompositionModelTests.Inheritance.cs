@@ -24,7 +24,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(true, HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(true, HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(true, HierarchyCompositionOperation.BlockedPath)]
-    public async Task InheritedMappingsRetainPolymorphicIdentityAndCompletePaths(
+    public async Task QueryDepths_InheritedMappings_RetainPolymorphicIdentityAndCompletePaths(
         bool tpt,
         HierarchyCompositionOperation operation
     )
@@ -103,7 +103,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task ConcreteTpcMappingRetainsExactEntityIdentity(
+    public async Task QueryDepths_ConcreteTpcMapping_RetainsExactEntityIdentity(
         HierarchyCompositionOperation operation
     )
     {

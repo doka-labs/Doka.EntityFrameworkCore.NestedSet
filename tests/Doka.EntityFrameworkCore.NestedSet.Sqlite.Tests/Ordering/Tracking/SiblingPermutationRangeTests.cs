@@ -21,7 +21,7 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProductionPermutationBatchesSeekRightBoundsAndPreserveGaps(
+    public async Task SaveChangesAsync_ProductionPermutationBatchesSeekRightBoundsAnd_PreserveGaps(
         bool analyzed
     )
     {
@@ -31,7 +31,8 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
         await fixture.InitializeAsync();
         await using var setup = await fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var before = await setup
@@ -49,8 +50,8 @@ public sealed class SiblingPermutationRangeTests : ProviderTest,
         await using var context = await fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var changed = await context
             .Set<OrderingNode>()

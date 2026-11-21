@@ -6,90 +6,62 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class OrderingQueryShapeTests
 {
-    /// <summary>Records executed scalar ordinals without changing provider services or query expressions.</summary>
-    private sealed class OrdinalProbe : DbCommandInterceptor
+    /// <summary>Delegates provider reads and disposal while observing already-materialized scalar ordinals.</summary>
+    private sealed class OrdinalReader : DbDataReader
     {
-        /// <summary>Gets reader observations in actual command execution order.</summary>
-        internal List<OrdinalRead> Readers { get; } = [];
+        private readonly DbDataReader _inner;
+        private readonly OrdinalRead _observed;
 
-        /// <summary>Starts a fresh observation window without changing the underlying EF cache.</summary>
-        internal void Reset() => Readers.Clear();
-
-        /// <inheritdoc />
-        public override ValueTask<DbDataReader> ReaderExecutedAsync(
-            DbCommand command,
-            CommandExecutedEventData eventData,
-            DbDataReader result,
-            CancellationToken cancellationToken = default
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="inner">The native reader whose behavior is delegated without materialization.</param>
+        /// <param name="observed">The shared observation state for this fixture operation.</param>
+        public OrdinalReader(
+            DbDataReader inner,
+            OrdinalRead observed
         )
         {
-            if (eventData.CommandSource != CommandSource.LinqQuery)
-            {
-                // WHY: Npgsql's native SaveChanges batch requires its concrete reader; only LINQ refresh is observed.
-                return ValueTask.FromResult(result);
-            }
-
-            var observed = new OrdinalRead(command.CommandText);
-            Readers.Add(observed);
-
-            return ValueTask.FromResult<DbDataReader>(new OrdinalReader(result, observed));
+            _inner = inner;
+            _observed = observed;
         }
-    }
 
-    /// <summary>Retains executed SQL and actual returned ordinal values after the provider command is disposed.</summary>
-    private sealed class OrdinalRead(string sql)
-    {
-        /// <summary>Gets the exact executed command text used to correlate this reader with the compilation probe.</summary>
-        internal string Sql { get; } = sql;
-
-        /// <summary>Gets observed numeric values from the projected first column, preserving duplicates.</summary>
-        internal List<int> Ordinals { get; } = [];
-    }
-
-    /// <summary>Delegates provider reads and disposal while observing already-materialized scalar ordinals.</summary>
-    private sealed class OrdinalReader(
-        DbDataReader inner,
-        OrdinalRead observed
-    ) : DbDataReader
-    {
         private bool _disposeStarted;
 
         /// <inheritdoc />
         public override object this[
             int ordinal
         ] =>
-            inner[ordinal];
+            _inner[ordinal];
 
         /// <inheritdoc />
         public override object this[
             string name
         ] =>
-            inner[name];
+            _inner[name];
 
         /// <inheritdoc />
-        public override int Depth => inner.Depth;
+        public override int Depth => _inner.Depth;
 
         /// <inheritdoc />
-        public override int FieldCount => inner.FieldCount;
+        public override int FieldCount => _inner.FieldCount;
 
         /// <inheritdoc />
-        public override int VisibleFieldCount => inner.VisibleFieldCount;
+        public override int VisibleFieldCount => _inner.VisibleFieldCount;
 
         /// <inheritdoc />
-        public override bool HasRows => inner.HasRows;
+        public override bool HasRows => _inner.HasRows;
 
         /// <inheritdoc />
-        public override bool IsClosed => inner.IsClosed;
+        public override bool IsClosed => _inner.IsClosed;
 
         /// <inheritdoc />
-        public override int RecordsAffected => inner.RecordsAffected;
+        public override int RecordsAffected => _inner.RecordsAffected;
 
         /// <inheritdoc />
         public override async Task<bool> ReadAsync(
             CancellationToken cancellationToken
         )
         {
-            var available = await inner
+            var available = await _inner
                 .ReadAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -103,31 +75,33 @@ public abstract partial class OrderingQueryShapeTests
         {
             // WHY: DbDataReader requires synchronous delegation too; the measured EF queries use ReadAsync.
             // ReSharper disable once MethodHasAsyncOverload
-            var available = inner.Read();
+            var available = _inner.Read();
             RecordOrdinal(available);
 
             return available;
         }
 
-        /// <summary>Observes projected integer ordinals without coercing keys from preceding non-refresh queries.</summary>
+        /// <summary>
+        /// Observes projected integer ordinals without coercing keys from preceding non-refresh queries.
+        /// </summary>
         private void RecordOrdinal(
             bool available
         )
         {
             if (!available
-                || inner.FieldCount == 0)
+                || _inner.FieldCount == 0)
             {
                 return;
             }
 
             // WHY: SQLite exposes integer expressions as Int64; both representations carry the same exact ordinal.
-            switch (inner.GetValue(0))
+            switch (_inner.GetValue(0))
             {
                 case int value:
-                    observed.Ordinals.Add(value);
+                    _observed.Ordinals.Add(value);
                     break;
                 case long value:
-                    observed.Ordinals.Add(checked((int)value));
+                    _observed.Ordinals.Add(checked((int)value));
                     break;
             }
         }
@@ -137,64 +111,66 @@ public abstract partial class OrderingQueryShapeTests
         {
             // WHY: The synchronous reader contract remains synchronous; measured operations use NextResultAsync.
             // ReSharper disable once MethodHasAsyncOverload
-            return inner.NextResult();
+            return _inner.NextResult();
         }
 
         /// <inheritdoc />
         public override Task<bool> NextResultAsync(
             CancellationToken cancellationToken
-        ) => inner.NextResultAsync(cancellationToken);
+        ) => _inner.NextResultAsync(cancellationToken);
 
         /// <inheritdoc />
         public override bool IsDBNull(
             int ordinal
         )
         {
-            // WHY: EF scalar materialization requires the synchronous reader member; no database read is initiated here.
+            // WHY: EF scalar materialization requires the synchronous reader member; no database read is initiated
+            // here.
             // ReSharper disable once MethodHasAsyncOverload
-            return inner.IsDBNull(ordinal);
+            return _inner.IsDBNull(ordinal);
         }
 
         /// <inheritdoc />
         public override Task<bool> IsDBNullAsync(
             int ordinal,
             CancellationToken cancellationToken
-        ) => inner.IsDBNullAsync(ordinal, cancellationToken);
+        ) => _inner.IsDBNullAsync(ordinal, cancellationToken);
 
         /// <inheritdoc />
         public override object GetValue(
             int ordinal
-        ) => inner.GetValue(ordinal);
+        ) => _inner.GetValue(ordinal);
 
         /// <inheritdoc />
         public override int GetValues(
             object[] values
-        ) => inner.GetValues(values);
+        ) => _inner.GetValues(values);
 
         /// <inheritdoc />
         public override T GetFieldValue<T>(
             int ordinal
         ) =>
 
-            // WHY: EF scalar materialization requires the synchronous reader member; asynchronous delegation is separate.
+            // WHY: EF scalar materialization requires the synchronous reader member; asynchronous delegation is
+            // separate.
             // ReSharper disable once MethodHasAsyncOverload
-            inner.GetFieldValue<T>(ordinal);
+            _inner.GetFieldValue<T>(ordinal);
 
         /// <inheritdoc />
         public override Task<T> GetFieldValueAsync<T>(
             int ordinal,
             CancellationToken cancellationToken
-        ) => inner.GetFieldValueAsync<T>(ordinal, cancellationToken);
+        ) => _inner.GetFieldValueAsync<T>(ordinal, cancellationToken);
 
         /// <inheritdoc />
         public override string GetName(
             int ordinal
-        ) => inner.GetName(ordinal);
+        ) => _inner.GetName(ordinal);
 
         /// <inheritdoc />
         public override string GetDataTypeName(
             int ordinal
-        ) => inner.GetDataTypeName(ordinal);
+        ) => _inner.GetDataTypeName(ordinal);
 
         /// <inheritdoc />
         [return:
@@ -203,22 +179,22 @@ public abstract partial class OrderingQueryShapeTests
                 | DynamicallyAccessedMemberTypes.PublicFields)]
         public override Type GetFieldType(
             int ordinal
-        ) => inner.GetFieldType(ordinal);
+        ) => _inner.GetFieldType(ordinal);
 
         /// <inheritdoc />
         public override int GetOrdinal(
             string name
-        ) => inner.GetOrdinal(name);
+        ) => _inner.GetOrdinal(name);
 
         /// <inheritdoc />
         public override bool GetBoolean(
             int ordinal
-        ) => inner.GetBoolean(ordinal);
+        ) => _inner.GetBoolean(ordinal);
 
         /// <inheritdoc />
         public override byte GetByte(
             int ordinal
-        ) => inner.GetByte(ordinal);
+        ) => _inner.GetByte(ordinal);
 
         /// <inheritdoc />
         public override long GetBytes(
@@ -227,12 +203,12 @@ public abstract partial class OrderingQueryShapeTests
             byte[]? buffer,
             int bufferOffset,
             int length
-        ) => inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
+        ) => _inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
 
         /// <inheritdoc />
         public override char GetChar(
             int ordinal
-        ) => inner.GetChar(ordinal);
+        ) => _inner.GetChar(ordinal);
 
         /// <inheritdoc />
         public override long GetChars(
@@ -241,72 +217,72 @@ public abstract partial class OrderingQueryShapeTests
             char[]? buffer,
             int bufferOffset,
             int length
-        ) => inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
+        ) => _inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
 
         /// <inheritdoc />
         public override Guid GetGuid(
             int ordinal
-        ) => inner.GetGuid(ordinal);
+        ) => _inner.GetGuid(ordinal);
 
         /// <inheritdoc />
         public override short GetInt16(
             int ordinal
-        ) => inner.GetInt16(ordinal);
+        ) => _inner.GetInt16(ordinal);
 
         /// <inheritdoc />
         public override int GetInt32(
             int ordinal
-        ) => inner.GetInt32(ordinal);
+        ) => _inner.GetInt32(ordinal);
 
         /// <inheritdoc />
         public override long GetInt64(
             int ordinal
-        ) => inner.GetInt64(ordinal);
+        ) => _inner.GetInt64(ordinal);
 
         /// <inheritdoc />
         public override DateTime GetDateTime(
             int ordinal
-        ) => inner.GetDateTime(ordinal);
+        ) => _inner.GetDateTime(ordinal);
 
         /// <inheritdoc />
         public override decimal GetDecimal(
             int ordinal
-        ) => inner.GetDecimal(ordinal);
+        ) => _inner.GetDecimal(ordinal);
 
         /// <inheritdoc />
         public override double GetDouble(
             int ordinal
-        ) => inner.GetDouble(ordinal);
+        ) => _inner.GetDouble(ordinal);
 
         /// <inheritdoc />
         public override float GetFloat(
             int ordinal
-        ) => inner.GetFloat(ordinal);
+        ) => _inner.GetFloat(ordinal);
 
         /// <inheritdoc />
         public override string GetString(
             int ordinal
-        ) => inner.GetString(ordinal);
+        ) => _inner.GetString(ordinal);
 
         /// <inheritdoc />
         public override Stream GetStream(
             int ordinal
-        ) => inner.GetStream(ordinal);
+        ) => _inner.GetStream(ordinal);
 
         /// <inheritdoc />
         public override TextReader GetTextReader(
             int ordinal
-        ) => inner.GetTextReader(ordinal);
+        ) => _inner.GetTextReader(ordinal);
 
         /// <inheritdoc />
         public override object GetProviderSpecificValue(
             int ordinal
-        ) => inner.GetProviderSpecificValue(ordinal);
+        ) => _inner.GetProviderSpecificValue(ordinal);
 
         /// <inheritdoc />
         public override int GetProviderSpecificValues(
             object[] values
-        ) => inner.GetProviderSpecificValues(values);
+        ) => _inner.GetProviderSpecificValues(values);
 
         /// <inheritdoc />
         [return:
@@ -315,32 +291,32 @@ public abstract partial class OrderingQueryShapeTests
                 | DynamicallyAccessedMemberTypes.PublicFields)]
         public override Type GetProviderSpecificFieldType(
             int ordinal
-        ) => inner.GetProviderSpecificFieldType(ordinal);
+        ) => _inner.GetProviderSpecificFieldType(ordinal);
 
         /// <inheritdoc />
         public override DataTable? GetSchemaTable() =>
 
             // WHY: The synchronous metadata contract must not initiate asynchronous work or block on a task.
             // ReSharper disable once MethodHasAsyncOverload
-            inner.GetSchemaTable();
+            _inner.GetSchemaTable();
 
         /// <inheritdoc />
         public override Task<DataTable?> GetSchemaTableAsync(
             CancellationToken cancellationToken = default
-        ) => inner.GetSchemaTableAsync(cancellationToken);
+        ) => _inner.GetSchemaTableAsync(cancellationToken);
 
         /// <inheritdoc />
         public override Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(
             CancellationToken cancellationToken = default
-        ) => inner.GetColumnSchemaAsync(cancellationToken);
+        ) => _inner.GetColumnSchemaAsync(cancellationToken);
 
         /// <inheritdoc />
         protected override DbDataReader GetDbDataReader(
             int ordinal
-        ) => inner.GetData(ordinal);
+        ) => _inner.GetData(ordinal);
 
         /// <inheritdoc />
-        public override IEnumerator GetEnumerator() => inner.GetEnumerator();
+        public override IEnumerator GetEnumerator() => _inner.GetEnumerator();
 
         /// <inheritdoc />
         public override void Close()
@@ -352,13 +328,13 @@ public abstract partial class OrderingQueryShapeTests
 
             // WHY: The synchronous reader contract remains synchronous; asynchronous callers use CloseAsync.
             // ReSharper disable once MethodHasAsyncOverload
-            inner.Close();
+            _inner.Close();
         }
 
         /// <inheritdoc />
         public override Task CloseAsync() => _disposeStarted
             ? Task.CompletedTask
-            : inner.CloseAsync();
+            : _inner.CloseAsync();
 
         /// <inheritdoc />
         protected override void Dispose(
@@ -373,7 +349,7 @@ public abstract partial class OrderingQueryShapeTests
 
                     // WHY: Required synchronous disposal delegates once; asynchronous disposal has its own override.
                     // ReSharper disable once MethodHasAsyncOverload
-                    inner.Dispose();
+                    _inner.Dispose();
                 }
             }
             finally
@@ -391,7 +367,7 @@ public abstract partial class OrderingQueryShapeTests
                 if (!_disposeStarted)
                 {
                     _disposeStarted = true;
-                    await inner
+                    await _inner
                         .DisposeAsync()
                         .ConfigureAwait(false);
                 }

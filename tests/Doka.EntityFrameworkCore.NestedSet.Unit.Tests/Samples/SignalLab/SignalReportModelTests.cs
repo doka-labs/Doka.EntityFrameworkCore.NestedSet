@@ -7,7 +7,7 @@ public sealed class SignalReportModelTests
 {
     /// <summary>All structural coordinates remain shadow state and normal parent writes cannot cross tenants.</summary>
     [Fact]
-    public void ReportingNodeKeepsStructureInShadowStateAndTenantQualifiedRelationships()
+    public void FinalizeModel_ReportingNode_KeepsStructureInShadowStateAndTenantQualifiedRelationships()
     {
         // Arrange
         using var context = CreateSqliteContext();
@@ -46,7 +46,7 @@ public sealed class SignalReportModelTests
 
     /// <summary>Each acquisition format owns independent event identities without an EF inheritance mapping.</summary>
     [Fact]
-    public void PhysicalFactSourcesDoNotBecomeAnEfInheritanceHierarchy()
+    public void FinalizeModel_PhysicalFactSources_DoNotBecomeAnEfInheritanceHierarchy()
     {
         // Arrange
         using var context = CreateSqliteContext();
@@ -82,7 +82,7 @@ public sealed class SignalReportModelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ReportingModelMatchesItsCheckedInMigrationSnapshot(
+    public void HasPendingModelChanges_ReportingModel_MatchesItsCheckedInMigrationSnapshot(
         bool doka
     )
     {

@@ -5,6 +5,29 @@ All notable changes to this project are documented here. The format follows
 including documented exceptions to Semantic Versioning, is defined in
 [Release governance](docs/release-governance.md#version-policy).
 
+## Unreleased
+
+### Changed
+
+- Align code and test organization, explicit constructors, cancellation
+  contracts, and reproducible build/editor configuration with the repository's
+  documented engineering decisions. Review every solution project's lockfile.
+- Keep decision update dates in metadata and original approval events in
+  history; maintain decision navigation without generated metadata copies.
+- Consolidate public guides around feature contracts, XML documentation, and
+  reproducible qualification boundaries.
+
+### Fixed
+
+- Preserve original query errors when diagnostic output fails, protect owned
+  cleanup from cancellation, and propagate runner cancellation through forward
+  capacity work.
+- Remove remaining private timing assumptions from functional concurrency,
+  capacity, plan-replay, pool-ownership checks, and benchmark observations while retaining correctness,
+  resource, cancellation, and intentional provider-timeout assertions.
+- Keep the chain benchmark's independent person reduction valid on MariaDB
+  without buffering candidate fan-in or changing ambiguity and result budgets.
+
 ## 10.3.0 (2026-11-06)
 
 Stable contract for all six packages on .NET 10 and EF Core 10. Update all
@@ -32,15 +55,6 @@ selected adapters and the common EF package together.
   identities and application payload across valid and rejected rollback paths.
   Restore the migration fixture's stable entity-name getter and cover the
   historical, current and specialized model identities without database I/O.
-- Align the portable signed build-provenance filename with Doka and
-  SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
-  discover it. Preserve signature verification and exact asset inventories;
-  published releases retain their original assets and tagged verification guide.
-
-## Unreleased
-
-### Fixed
-
 - Align the portable signed build-provenance filename with Doka and
   SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
   discover it. Preserve signature verification and exact asset inventories;

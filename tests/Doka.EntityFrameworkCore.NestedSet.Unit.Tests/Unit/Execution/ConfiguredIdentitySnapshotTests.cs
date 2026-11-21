@@ -11,7 +11,7 @@ public sealed class ConfiguredIdentitySnapshotTests
     [InlineData(nameof(MutableIdentityNode.Id))]
     [InlineData(nameof(MutableIdentityNode.Scope))]
     [InlineData(nameof(MutableIdentityNode.TreeId))]
-    public async Task ConvertedIdentityUsesConfiguredSnapshot(
+    public async Task Snapshot_ConvertedIdentity_UsesConfiguredSnapshot(
         string propertyName
     )
     {
@@ -32,7 +32,7 @@ public sealed class ConfiguredIdentitySnapshotTests
 
     /// <summary>Retains independent array storage even when the application configures a shallow snapshot.</summary>
     [Fact]
-    public async Task ShallowArrayComparerCannotShareStructuralSnapshotStorage()
+    public async Task Snapshot_ShallowArrayComparer_CannotShareStructuralSnapshotStorage()
     {
         // Arrange
         await using var context = new IdentityContext();
@@ -57,7 +57,7 @@ public sealed class ConfiguredIdentitySnapshotTests
 
     /// <summary>Configured snapshot semantics do not replace the default CLR sentinel comparison.</summary>
     [Fact]
-    public async Task ConfiguredComparerDoesNotChangeStructuralSentinelMatching()
+    public async Task Matches_ConfiguredComparer_DoesNotChangeStructuralSentinelMatching()
     {
         // Arrange
         await using var context = new IdentityContext();
@@ -132,12 +132,18 @@ public sealed class ConfiguredIdentitySnapshotTests
     }
 
     /// <summary>Represents an application-owned identity requiring its configured copy strategy.</summary>
-    private sealed class MutableIdentity(
-        string value
-    )
+    private sealed class MutableIdentity
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public MutableIdentity(
+            string value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets or sets the converted identity representation.</summary>
-        public string Value { get; set; } = value;
+        public string Value { get; set; }
     }
 
     /// <summary>Maps the three identity roles through the same explicitly configured mutable representation.</summary>

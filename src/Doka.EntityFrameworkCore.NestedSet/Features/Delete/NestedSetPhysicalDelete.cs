@@ -83,7 +83,9 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
         return affected;
     }
 
-    /// <summary>Deletes one bounded key batch from a physical fragment using that table's key-column mappings.</summary>
+    /// <summary>
+    /// Deletes one bounded key batch from a physical fragment using that table's key-column mappings.
+    /// </summary>
     /// <param name="table">The fragment selected by the plan's dependent-before-principal ordering.</param>
     /// <param name="keyProperties">The model primary-key components in the same order as every key vector.</param>
     /// <param name="keys">The bounded logical identities projected before any fragment is removed.</param>
@@ -175,12 +177,16 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
     /// </remarks>
     private sealed class DeletePlan
     {
-        /// <summary>Retains one completed mapping plan without changing its metadata or table order afterward.</summary>
+        /// <summary>
+        /// Retains one completed mapping plan without changing its metadata or table order afterward.
+        /// </summary>
         /// <param name="keyProperties">The ordered logical primary-key properties used by the projection.</param>
         /// <param name="keyProjection">The scalar key vector projected from every selected hierarchy row.</param>
         /// <param name="tables">All participating fragments, with dependents before their principals.</param>
         /// <param name="structureTable">The fragment whose affected rows prove the logical delete count.</param>
-        /// <param name="isRequired">Whether the mapping requires this path instead of single-table ExecuteDelete.</param>
+        /// <param name="isRequired">
+        /// Whether the mapping requires this path instead of single-table ExecuteDelete.
+        /// </param>
         private DeletePlan(
             IProperty[] keyProperties,
             Expression<Func<TEntity, object?[]>> keyProjection,
@@ -196,13 +202,19 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             IsRequired = isRequired;
         }
 
-        /// <summary>Gets the ordered logical key components supplying each table's provider parameter mappings.</summary>
+        /// <summary>
+        /// Gets the ordered logical key components supplying each table's provider parameter mappings.
+        /// </summary>
         internal IProperty[] KeyProperties { get; }
 
-        /// <summary>Gets the key-vector projection whose component order matches <see cref="KeyProperties" />.</summary>
+        /// <summary>
+        /// Gets the key-vector projection whose component order matches <see cref="KeyProperties" />.
+        /// </summary>
         internal Expression<Func<TEntity, object?[]>> KeyProjection { get; }
 
-        /// <summary>Gets the physical fragments ordered so their dependents are deleted before their principals.</summary>
+        /// <summary>
+        /// Gets the physical fragments ordered so their dependents are deleted before their principals.
+        /// </summary>
         internal ITable[] Tables { get; }
 
         /// <summary>Gets the managed-coordinate fragment whose row count must match each logical key batch.</summary>
@@ -211,11 +223,15 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
         /// <summary>Gets whether multiple fragments or independent shared mappings require physical deletion.</summary>
         internal bool IsRequired { get; }
 
-        /// <summary>Resolves all hierarchy fragments and constructs a shared primary-key projection for deletion.</summary>
+        /// <summary>
+        /// Resolves all hierarchy fragments and constructs a shared primary-key projection for deletion.
+        /// </summary>
         /// <param name="entity">The exact mapped hierarchy type, including its inherited and derived fragments.</param>
         /// <param name="store">The physical table containing the hierarchy's managed structural properties.</param>
         /// <returns>A context-free plan suitable for caching under the finalized entity metadata.</returns>
-        /// <exception cref="InvalidOperationException">The mapping has no primary key or contains a table cycle.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// The mapping has no primary key or contains a table cycle.
+        /// </exception>
         internal static DeletePlan Create(
             IEntityType entity,
             StoreObjectIdentifier store
@@ -287,10 +303,14 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
             return new DeletePlan(keyProperties, projection, ordered, structureTable, isRequired);
         }
 
-        /// <summary>Orders mapped fragments by their foreign-key dependencies without relying on cascade deletes.</summary>
+        /// <summary>
+        /// Orders mapped fragments by their foreign-key dependencies without relying on cascade deletes.
+        /// </summary>
         /// <param name="tables">The distinct fragments participating in the logical hierarchy mapping.</param>
         /// <returns>Each fragment once, with any mapped dependents before their principal fragment.</returns>
-        /// <exception cref="InvalidOperationException">The participating fragments contain a foreign-key cycle.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// The participating fragments contain a foreign-key cycle.
+        /// </exception>
         private static ITable[] OrderTables(
             ITable[] tables
         )
@@ -300,9 +320,9 @@ internal sealed class NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>
 
             while (pending.Count > 0)
             {
-                var next = pending.FirstOrDefault(table => !pending.Any(other =>
-                    !ReferenceEquals(other, table)
-                    && other.ForeignKeyConstraints.Any(foreignKey => ReferenceEquals(
+                var next = pending.FirstOrDefault(table => pending.All(other =>
+                    ReferenceEquals(other, table)
+                    || other.ForeignKeyConstraints.All(foreignKey => !ReferenceEquals(
                         foreignKey.PrincipalTable,
                         table))));
 

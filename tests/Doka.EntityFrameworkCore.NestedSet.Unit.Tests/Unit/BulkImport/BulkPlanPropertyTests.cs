@@ -16,7 +16,7 @@ public sealed class BulkPlanPropertyTests
     /// <param name="position">The destination sibling-position input.</param>
     /// <returns>A task that completes after verifying one independently generated forest.</returns>
     [Property(MaxTest = 1000)]
-    public async Task GeneratedForestsPreserveGeometry(
+    public async Task CreatePlan_GeneratedForests_PreserveGeometry(
         int[] input,
         int boundary,
         byte depth,
@@ -54,7 +54,7 @@ public sealed class BulkPlanPropertyTests
     /// <param name="rankInputs">Shrinkable inputs defining a complete stable ranking.</param>
     /// <returns>A task that completes after verifying one reordered forest.</returns>
     [Property(MaxTest = 1000)]
-    public async Task GeneratedRanksPreserveSiblingAndParentContracts(
+    public async Task CreatePlan_GeneratedRanks_PreserveSiblingAndParentContracts(
         int[] input,
         int[] rankInputs
     )
@@ -87,7 +87,7 @@ public sealed class BulkPlanPropertyTests
     /// <param name="secondParent">Whether the repeated entity is introduced through another parent.</param>
     /// <returns>A task that completes after checking rejection without modifying detached values.</returns>
     [Property(MaxTest = 1000)]
-    public async Task RepeatedEntitiesAreRejectedBeforeStaging(
+    public async Task CreatePlan_RepeatedEntities_AreRejectedBeforeStaging(
         int[] input,
         bool secondParent
     )
@@ -122,7 +122,7 @@ public sealed class BulkPlanPropertyTests
     /// <param name="siblings">Whether colliding nodes share a parent instead of being separate roots.</param>
     /// <returns>A task that completes after verifying rejection of the duplicate key.</returns>
     [Property(MaxTest = 1000)]
-    public async Task DuplicateAssignedKeysAreRejectedBeforeStaging(
+    public async Task CreatePlan_DuplicateAssignedKeys_AreRejectedBeforeStaging(
         int key,
         bool siblings
     )
@@ -183,7 +183,7 @@ public sealed class BulkPlanPropertyTests
         var parents = new int[count];
         var branches = new NestedSetBranch<TreeNode>[count];
         var children = new List<NestedSetBranch<TreeNode>>[count];
-        var roots = new List<NestedSetBranch<TreeNode>>();
+        List<NestedSetBranch<TreeNode>> roots = [];
 
         // WHY: Matching slots keep each entity, its parent selector and its child buffer aligned.
         // ReSharper disable once ForCanBeConvertedToForeach

@@ -22,7 +22,7 @@ public sealed class SingleInsertScaleTests : ProviderTest,
 
     /// <summary>Inserting one child avoids repeated global detection and unrelated entry wrappers.</summary>
     [Fact]
-    public async Task SingleInsertAllocationPerUnrelatedTrackedEntityStaysBounded()
+    public async Task InsertChildAsync_SingleInsertAllocationPerUnrelatedTrackedEntity_StaysBounded()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

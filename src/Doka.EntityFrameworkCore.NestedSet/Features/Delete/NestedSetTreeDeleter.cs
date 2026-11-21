@@ -23,7 +23,7 @@ internal static class NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>
             store.Map.EntityType);
 
         return executor.ExecuteAsync(
-            async token =>
+            async operationCancellationToken =>
             {
                 var physicalDelete = new NestedSetPhysicalDelete<TEntity, TKey, TTreeId, TScope>(store);
 
@@ -33,16 +33,16 @@ internal static class NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>
                 {
                     // WHY: Doka and SQLite must tolerate restrictive self-FKs created outside the EF model.
                     await store
-                        .SetParentAsync(store.Nodes.Where(store.HasParent()), default, token)
+                        .SetParentAsync(store.Nodes.Where(store.HasParent()), default, operationCancellationToken)
                         .ConfigureAwait(false);
                 }
 
                 var affected = physicalDelete.IsRequired
                     ? await physicalDelete
-                        .ExecuteAsync(store.Nodes, token)
+                        .ExecuteAsync(store.Nodes, operationCancellationToken)
                         .ConfigureAwait(false)
                     : await NestedSetTelemetry
-                        .TrackRows(store.Nodes.ExecuteDeleteAsync(token))
+                        .TrackRows(store.Nodes.ExecuteDeleteAsync(operationCancellationToken))
                         .ConfigureAwait(false);
 
                 if (affected == 0)
@@ -53,7 +53,7 @@ internal static class NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>
                 }
 
                 await NestedSetTreeRegistryState
-                    .TombstoneAsync(store.Context, request, token)
+                    .TombstoneAsync(store.Context, request, operationCancellationToken)
                     .ConfigureAwait(false);
             },
             [request],

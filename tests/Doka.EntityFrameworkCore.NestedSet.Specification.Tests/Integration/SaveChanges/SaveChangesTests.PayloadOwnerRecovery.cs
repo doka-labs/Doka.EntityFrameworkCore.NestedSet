@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task PayloadOwnerCallbackRollbackRestoresInstalledNativeBaseline(
+    public async Task SaveChangesAsync_PayloadOwnerCallbackRollback_RestoresInstalledNativeBaseline(
         bool publicCurrentValue,
         bool hierarchyFailure
     )
@@ -95,79 +95,6 @@ public abstract partial class SaveChangesTests
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
-    /// <summary>Rollback keeps native membership that the application installed before the save began.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task PayloadOwnerPreexistingNativeBaselineSurvivesRollback(
-        bool publicCurrentValue
-    )
-    {
-        // Arrange
-        await using var database = await CreateNavigationDatabaseAsync(
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await SeedPayloadOwnersAsync(
-            database,
-            assigned: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var failure = new PlannedParentFailure();
-        await using var context = await CreateNavigationContextAsync(
-            database,
-            wrapped: true,
-            cancellationToken: TestContext.Current.CancellationToken,
-            failure);
-
-        var graph = await PreparePayloadOwnerRecoveryAsync(
-            context,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        StagePayloadOwnerWrite(graph, publicCurrentValue);
-        var before = CapturePlannedParentState(context);
-        var membersBefore = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedBefore = await ReadPreparedOwnerStoreAsync(
-            database,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var after = CapturePlannedParentState(context);
-        var membersAfter = PayloadOwnerNativeMembers(context, graph.Target);
-        var storedAfter = await ReadPreparedOwnerStoreAsync(
-            database,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await using var verification = await CreateNavigationContextAsync(
-            database,
-            wrapped: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var storedOwner = await verification
-            .Set<NavigationNode>()
-            .Where(node => node.Id == graph.Node.Id)
-            .Select(node => node.PayloadOwnerId)
-            .SingleAsync(CancellationToken.None);
-
-        // Assert
-        Assert.Same(failure.Error, error);
-        AssertPlannedParentState(before, after);
-        Assert.Equal(publicCurrentValue, membersBefore.Contains(graph.Node));
-        Assert.True(
-            membersBefore
-                .ToHashSet(ReferenceEqualityComparer.Instance)
-                .SetEquals(membersAfter));
-
-        Assert.Contains(graph.Node, graph.Target.Nodes);
-        Assert.Equal(2, graph.Node.PayloadOwnerId);
-        Assert.True(graph.ForeignKey.IsModified);
-        Assert.Equal(storedBefore.Nodes, storedAfter.Nodes);
-        Assert.Equal(storedBefore.Note, storedAfter.Note);
-        Assert.Equal(1, storedOwner);
-        Assert.Equal(0, storedAfter.Issues);
-        Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
-    }
-
     /// <summary>Independent retry policies preserve pending raw membership without detecting it implicitly.</summary>
     [Theory]
     [InlineData(false, "automatic")]
@@ -176,7 +103,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, "automatic")]
     [InlineData(true, "manual-unmarked")]
     [InlineData(true, "manual-marked")]
-    public async Task PayloadOwnerCallbackRollbackAllowsIndependentRetry(
+    public async Task SaveChangesAsync_PayloadOwnerCallbackRollback_AllowsIndependentRetry(
         bool hierarchyFailure,
         string retryPolicy
     )
@@ -272,7 +199,7 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PayloadOwnerCallbackRollbackRejectsDetachedFollowup(
+    public async Task SaveChangesAsync_PayloadOwnerCallbackRollback_RejectsDetachedFollowup(
         bool hierarchyFailure
     )
     {
@@ -352,46 +279,6 @@ public abstract partial class SaveChangesTests
         Assert.False(context.ChangeTracker.AutoDetectChangesEnabled);
     }
 
-    /// <summary>Prepares a marked ordering candidate without assigning its ordinary payload relationship.</summary>
-    private static async Task<PayloadOwnerRecoveryGraph> PreparePayloadOwnerRecoveryAsync(
-        DbContext context,
-        CancellationToken cancellationToken
-    )
-    {
-        var node = await context
-            .Set<NavigationNode>()
-            .SingleAsync(value => value.Id == 2, cancellationToken);
-
-        var owners = await context
-            .Set<NavigationPayloadOwner>()
-            .Include(value => value.Nodes)
-            .Where(value => value.Scope == node.Scope)
-            .ToArrayAsync(cancellationToken);
-
-        var note = await context
-            .Set<NavigationNote>()
-            .SingleAsync(cancellationToken);
-
-        context.ChangeTracker.AutoDetectChangesEnabled = false;
-        var entry = context.Entry(node);
-        var name = entry.Property(value => value.Name);
-        var foreignKey = entry.Property(value => value.PayloadOwnerId);
-        var noteValue = context
-            .Entry(note)
-            .Property(value => value.Value);
-
-        node.Name = "Zulu";
-        name.IsModified = true;
-
-        return new PayloadOwnerRecoveryGraph(
-            node,
-            entry,
-            owners.Single(owner => owner.Id == 1),
-            owners.Single(owner => owner.Id == 2),
-            foreignKey,
-            noteValue);
-    }
-
     /// <summary>Copies installed native membership independently of the pending application collection.</summary>
     private static object[] PayloadOwnerNativeMembers(
         DbContext context,
@@ -434,23 +321,6 @@ public abstract partial class SaveChangesTests
         }
     }
 
-    /// <summary>Selects native save completion or the first later structural UPDATE as the failing boundary.</summary>
-    private static (IInterceptor Interceptor, Exception Error) CreatePayloadOwnerRecoveryFailure(
-        bool hierarchy
-    )
-    {
-        if (hierarchy)
-        {
-            var failure = new PayloadOwnerHierarchyFailure();
-
-            return (failure, failure.Error);
-        }
-
-        var saved = new PlannedParentFailure();
-
-        return (saved, saved.Error);
-    }
-
     /// <summary>Arms a structural fault only after the provider's ordinary payload save completed.</summary>
     private static void ArmPayloadOwnerHierarchyFailure(
         DbContext context,
@@ -462,93 +332,4 @@ public abstract partial class SaveChangesTests
             context.SavedChanges += (_, _) => failure.Arm();
         }
     }
-
-    /// <summary>Fails the actual later ordering UPDATE once, after its earlier payload SQL succeeded.</summary>
-    private sealed class PayloadOwnerHierarchyFailure : DbCommandInterceptor
-    {
-        private bool _armed;
-        private bool _failed;
-
-        /// <summary>Gets the exact fault distinguishing structural rollback from early rejection.</summary>
-        internal Exception Error { get; } = new InvalidOperationException("Injected payload-owner hierarchy failure.");
-
-        /// <summary>Marks the native payload save as completed without failing its completion callbacks.</summary>
-        internal void Arm() => _armed = true;
-
-        /// <inheritdoc />
-        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
-            DbCommand command,
-            CommandEventData eventData,
-            InterceptionResult<int> result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            Inspect(command);
-
-            return ValueTask.FromResult(result);
-        }
-
-        /// <inheritdoc />
-        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-            DbCommand command,
-            CommandEventData eventData,
-            InterceptionResult<DbDataReader> result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            Inspect(command);
-
-            return ValueTask.FromResult(result);
-        }
-
-        /// <summary>Inspects UPDATE setters using the existing tracker-fault delimiter normalization.</summary>
-        private void Inspect(
-            DbCommand command
-        )
-        {
-            if (!_armed || _failed)
-            {
-                return;
-            }
-
-            var sql = command
-                .CommandText
-                .Replace('`', '"')
-                .Replace('[', '"')
-                .Replace(']', '"');
-
-            var start = sql.IndexOf("SET ", StringComparison.Ordinal);
-            var end = sql.IndexOf("WHERE ", Math.Max(0, start), StringComparison.Ordinal);
-
-            if (!sql.Contains("UPDATE ", StringComparison.Ordinal)
-                || !sql.Contains("\"NavigationSaveNodes\"", StringComparison.Ordinal)
-                || start < 0)
-            {
-                return;
-            }
-
-            var setters = end < 0
-                ? sql[start..]
-                : sql[start..end];
-
-            if (setters.Contains("\"Left\"", StringComparison.Ordinal)
-                || setters.Contains("\"Right\"", StringComparison.Ordinal)
-                || setters.Contains("\"Position\"", StringComparison.Ordinal))
-            {
-                _failed = true;
-
-                throw Error;
-            }
-        }
-    }
-
-    /// <summary>Retains existing entries without incidental detection during failure and retry assertions.</summary>
-    private sealed record PayloadOwnerRecoveryGraph(
-        NavigationNode Node,
-        EntityEntry<NavigationNode> Entry,
-        NavigationPayloadOwner Previous,
-        NavigationPayloadOwner Target,
-        PropertyEntry<NavigationNode, int?> ForeignKey,
-        PropertyEntry<NavigationNote, string> Note
-    );
 }

@@ -15,7 +15,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task FinalSingleDetachmentFailureRollsBackGeneratedPayload(
+    public async Task InsertRootAsync_FinalSingleDetachmentFailure_RollsBackGeneratedPayload(
         bool afterChange,
         bool owned,
         bool callerTransaction
@@ -111,7 +111,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task FinalSingleDetachmentFailureAllowsInputRetry(
+    public async Task InsertRootAsync_FinalSingleDetachmentFailure_AllowsInputRetry(
         bool afterChange,
         bool owned,
         bool callerTransaction

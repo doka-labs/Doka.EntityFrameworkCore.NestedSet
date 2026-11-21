@@ -10,7 +10,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("hidden-owner")]
     [InlineData("missing-source")]
     [InlineData("parent-mismatch")]
-    public async Task SparseAncestorPairsKeepScopeTreeVisibilityAndBoundsSemantics(
+    public async Task AsSingleQuery_SparseAncestorPairs_KeepScopeTreeVisibilityAndBoundsSemantics(
         string shape
     )
     {

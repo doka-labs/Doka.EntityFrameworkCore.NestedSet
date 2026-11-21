@@ -145,8 +145,18 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
     }
 
     /// <summary>Checks row dependencies within the surrounding visitors' syntax ownership boundary.</summary>
-    private sealed class SelectionReference(ParameterExpression parameter) : ExpressionVisitor
+    private sealed class SelectionReference : ExpressionVisitor
     {
+        private readonly ParameterExpression _parameter;
+
+        /// <summary>Retains the exact selection boundary searched during this syntax visit.</summary>
+        internal SelectionReference(
+            ParameterExpression parameter
+        )
+        {
+            _parameter = parameter;
+        }
+
         /// <summary>Gets whether a parameter reference or opaque child prevents an independence proof.</summary>
         internal bool FoundOrOpaque { get; private set; }
 
@@ -180,7 +190,7 @@ internal sealed partial class NestedSetQuerySelection : ExpressionVisitor
             ParameterExpression node
         )
         {
-            FoundOrOpaque = ReferenceEquals(node, parameter);
+            FoundOrOpaque = ReferenceEquals(node, _parameter);
 
             return node;
         }

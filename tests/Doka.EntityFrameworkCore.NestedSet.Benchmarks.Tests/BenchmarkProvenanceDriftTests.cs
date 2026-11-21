@@ -12,7 +12,7 @@ public sealed class BenchmarkProvenanceDriftTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FinalProvenanceRetainsInitialSourceAndReportsDrift(
+    public async Task WriteAsync_FinalProvenance_RetainsInitialSourceAndReportsDrift(
         bool changeSource
     )
     {
@@ -185,16 +185,17 @@ public sealed class BenchmarkProvenanceDriftTests
             var repository = new TemporaryRepository(directory);
             await BenchmarkLifecycle.InitializeAsync(
                 repository,
-                async token =>
+                async callbackCancellationToken =>
                 {
-                    await RunGitAsync(directory, ["init", "--quiet"], token);
+                    await RunGitAsync(directory, ["init", "--quiet"], callbackCancellationToken);
                     await File.WriteAllTextAsync(
                         repository.SourceFile,
                         "class OriginalSource { }\n",
-                        token);
+                        callbackCancellationToken);
 
-                    await RunGitAsync(directory, ["add", "source.cs"], token);
-                    await RunGitAsync(directory, ["commit", "--quiet", "--message", "source fixture"], token);
+                    await RunGitAsync(directory, ["add", "source.cs"], callbackCancellationToken);
+                    await RunGitAsync(
+                        directory, ["commit", "--quiet", "--message", "source fixture"], callbackCancellationToken);
                 },
                 cancellationToken);
 

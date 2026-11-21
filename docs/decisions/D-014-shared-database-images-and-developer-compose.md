@@ -1,7 +1,7 @@
 ---
 id: D-014
 status: implemented
-date: 2026-09-29
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -218,6 +218,8 @@ workflow and no benchmark acceptance criterion.
 - 2026-10-09: The owner approved replacing the shared SQL Server 2025 CU9 pin with 2022 CU27 on Ubuntu 22.04 at the digest recorded above. The prior private candidate passed 1,072 provider, 10 ordinary migration, and 51 SafeMigrations SQL Server cases plus 30 starts under macOS ARM emulation. This is limited local candidate evidence, not native CI qualification or a confirmed CU9 fix.
 - 2026-10-09: The owner also approved visible local ARM database skips before container startup under D-013. Metadata and unit cases remain runnable; native Linux x64 CI must execute all applicable SQL Server cases, and unsupported CI must fail. No new host, project, dependency, timeout increase, or global concurrency cap is introduced. Native CI evidence remains required.
 - 2026-10-26: The owner approved current version and digest refreshes within the existing engine lines. The manifest selects MySQL 8.4.13 and SQL Server 2022 CU27-GDR1, plus rebuilt MariaDB 11.8.9 and PostgreSQL 17.11 images. Historical evidence remains tied to its original inputs; native SQL Server x64 qualification is still required.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

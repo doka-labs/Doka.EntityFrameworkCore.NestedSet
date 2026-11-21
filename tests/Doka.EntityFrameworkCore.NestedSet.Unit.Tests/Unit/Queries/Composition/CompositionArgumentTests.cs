@@ -24,7 +24,7 @@ public sealed class CompositionArgumentTests
     [InlineData("nearest.node", "node")]
     [InlineData("nearest.candidate", "candidate")]
     [InlineData("nearest.predicate", "predicate")]
-    public void RequiredArgumentsAreRejectedBeforeIo(
+    public void WithNullArgument_RequiredArguments_AreRejectedBeforeIo(
         string argument,
         string expectedParameter
     )
@@ -63,7 +63,7 @@ public sealed class CompositionArgumentTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void ScopedHierarchyRequiresBindingForEveryComposer(
+    public void SelectAncestors_ScopedHierarchy_RequiresBindingForEveryComposer(
         string operation
     )
     {

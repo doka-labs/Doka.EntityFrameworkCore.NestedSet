@@ -4,7 +4,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 {
     /// <summary>A simple MemberInit preserves mapped aliases through a legitimate independent payload join.</summary>
     [Fact]
-    public async Task MemberInitAndIndependentPayloadRetainTheSelectedMapping()
+    public async Task WhereAnyAncestorOrSelf_MemberInitAndIndependentPayload_RetainTheSelectedMapping()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -12,7 +12,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         await context.AddAsync(
             new CompositionInputOne
@@ -87,7 +90,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionEndpointFilter.Path)]
     [InlineData(CompositionEndpointFilter.Any)]
     [InlineData(CompositionEndpointFilter.Nearest)]
-    public async Task ConstructedEndpointIsRejectedBeforeSql(
+    public async Task WherePathEdges_ConstructedEndpoint_IsRejectedBeforeSql(
         CompositionEndpointFilter composer
     )
     {
@@ -97,7 +100,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -148,7 +154,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>A second context hidden in a payload join still fails before either context sends SQL.</summary>
     [Fact]
-    public async Task NestedForeignContextRootFailsBeforeEitherReader()
+    public async Task WhereAnyAncestorOrSelf_NestedForeignContextRoot_FailsBeforeEitherReader()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -157,12 +163,18 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         await using var other = await CreateContextAsync(
             Guid.NewGuid(),
             otherProbe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         probe.Reset();
         otherProbe.Reset();
@@ -203,7 +215,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionEndpointFilter.Path)]
     [InlineData(CompositionEndpointFilter.Any)]
     [InlineData(CompositionEndpointFilter.Nearest)]
-    public async Task NonTranslatablePredicateFailsBeforeSql(
+    public async Task WhereNearestAncestorOrSelf_NonTranslatablePredicate_FailsBeforeSql(
         CompositionEndpointFilter composer
     )
     {
@@ -213,7 +225,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -268,7 +283,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Scalar values change bindings while the already composed SQL shape remains stable.</summary>
     [Fact]
-    public async Task ChangingScalarCriteriaKeepsCommandShapeAndBindings()
+    public async Task SelectSubtrees_ChangingScalarCriteria_KeepsCommandShapeAndBindings()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -278,7 +293,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             sql: sql,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            chainNodes: null);
 
         sql.Commands.Clear();
         sql.ParameterValues.Clear();

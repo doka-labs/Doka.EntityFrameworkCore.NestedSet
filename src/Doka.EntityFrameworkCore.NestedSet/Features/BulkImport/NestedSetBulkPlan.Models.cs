@@ -139,7 +139,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         }
     }
 
-    /// <summary>Retains non-sentinel values and dictionary membership without allocating for conventional sentinels.</summary>
+    /// <summary>
+    /// Retains non-sentinel values and dictionary membership without allocating for conventional sentinels.
+    /// </summary>
     internal sealed class OriginalStructure
     {
         private readonly int _depth;
@@ -193,7 +195,9 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             byte field
         ) => (_membership & field) != 0 && (_fields & field) == 0;
 
-        /// <summary>Retains a present null key that EF's typed getter normalizes to the nonnullable CLR default.</summary>
+        /// <summary>
+        /// Retains a present null key that EF's typed getter normalizes to the nonnullable CLR default.
+        /// </summary>
         internal object? KeyOr(
             object? original
         ) => (_fields & (1 << 7)) != 0

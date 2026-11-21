@@ -14,7 +14,7 @@ public abstract partial class GroupSupervisorTests
     [Trait("Category", "Capacity")]
     [InlineData(1)]
     [InlineData(16)]
-    public async Task AllOriginsRetainDirectEvidenceAndBoundedNativeWork(
+    public async Task ResolveAsync_AllOrigins_RetainDirectEvidenceAndBoundedNativeWork(
         int fields
     )
     {
@@ -25,7 +25,7 @@ public abstract partial class GroupSupervisorTests
         await using var context = await CreateAsync(
             probe,
             cancellationToken: TestContext.Current.CancellationToken,
-            plans);
+            planProbe: plans);
 
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(

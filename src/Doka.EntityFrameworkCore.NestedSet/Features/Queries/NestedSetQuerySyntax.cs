@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 /// <summary>Shares runtime-owned syntax checks without conflating distinct hierarchy provenance proofs.</summary>
 internal static class NestedSetQuerySyntax
 {
-    /// <summary>Admits non-extensible runtime syntax and the exact EF nodes used before relational translation.</summary>
+    /// <summary>
+    /// Admits non-extensible runtime syntax and the exact EF nodes used before relational translation.
+    /// </summary>
     internal static bool CanInspect(
         Expression node
     ) => (node.GetType()

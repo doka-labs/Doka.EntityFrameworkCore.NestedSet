@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class HierarchyCompositionTests
 {
-    /// <summary>Direct endpoint reuse retains visibility, exact links, every edge rule and middle containment.</summary>
+    /// <summary>
+    /// Direct endpoint reuse retains visibility, exact links, every edge rule and middle containment.
+    /// </summary>
     /// <param name="distance">The number of direct edges between the selected endpoints.</param>
     /// <param name="fault">The isolated visibility, relationship, bounds or application-rule defect.</param>
     [Theory]
@@ -21,7 +23,7 @@ public abstract partial class HierarchyCompositionTests
     [InlineData(2, "hidden-middle")]
     [InlineData(1, "hidden-upper")]
     [InlineData(2, "hidden-lower")]
-    public async Task MappedShortPathsRejectEveryBrokenDirectEdge(
+    public async Task WherePathEdges_MappedShortPaths_RejectEveryBrokenDirectEdge(
         int distance,
         string fault
     )

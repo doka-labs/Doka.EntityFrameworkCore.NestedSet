@@ -16,7 +16,7 @@ public abstract class OffsetScopeTests : ProviderTest
 
     /// <summary>Reorders both converted offsets while retaining their separate registry identities.</summary>
     [Fact]
-    public async Task SameInstantScopesRemainIndependentDuringSaveAsync()
+    public async Task SaveNestedSetChangesAsync_SameInstantScopes_RemainIndependentDuringSave()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<OffsetScopeContext>(

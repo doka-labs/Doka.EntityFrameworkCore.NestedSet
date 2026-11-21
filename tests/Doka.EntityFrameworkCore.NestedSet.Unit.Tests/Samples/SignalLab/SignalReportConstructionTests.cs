@@ -7,10 +7,18 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 // WHY: Unrelated collections can perturb current-thread allocation measurements during forced GC
 // and large graph tests. Reuse the existing measurement collection without changing any budget.
 [Collection("Allocation measurements")]
-public sealed partial class SignalReportConstructionTests(
-    ITestOutputHelper output
-)
+public sealed partial class SignalReportConstructionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    public SignalReportConstructionTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>
     /// Bounds fixed four-criterion construction independently from database size and EF cold-model initialization.
     /// </summary>
@@ -27,7 +35,7 @@ public sealed partial class SignalReportConstructionTests(
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task WarmReportConstructionStaysWithinItsManagedAllocationBudget(
+    public async Task Measure_WarmReportConstruction_StaysWithinItsManagedAllocationBudget(
         string engine,
         bool nearest
     )
@@ -64,7 +72,7 @@ public sealed partial class SignalReportConstructionTests(
         var allocated = QueryConstructionAllocation.Measure(() => SignalReportBuilder.Build(context, request));
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
             + $"criteria=4; bytes/build={allocated}; maximum={maximumBytes}.");
 
@@ -89,7 +97,7 @@ public sealed partial class SignalReportConstructionTests(
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task AdditionalSameOwnerCriterionHasABoundedAllocationDelta(
+    public async Task MeasurePaired_AdditionalSameOwnerCriterion_HasABoundedAllocationDelta(
         string engine,
         bool nearest
     )
@@ -134,7 +142,7 @@ public sealed partial class SignalReportConstructionTests(
         var delta = allocations.Expanded - allocations.Baseline;
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
             + $"baseline={allocations.Baseline} B/build; "
             + $"expanded={allocations.Expanded} B/build; additional criterion={delta} B/build.");
@@ -156,7 +164,7 @@ public sealed partial class SignalReportConstructionTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SqlServerReportTranslatesGroupingAndIndependentSources(
+    public async Task Build_SqlServerReport_TranslatesGroupingAndIndependentSources(
         bool nearest
     )
     {
@@ -199,7 +207,7 @@ public sealed partial class SignalReportConstructionTests(
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task CatalogTranslatesRequestedBindingsWithoutIo(
+    public async Task Catalog_RequestedBindings_TranslateWithoutIo(
         string engine,
         bool withoutCriteria
     )

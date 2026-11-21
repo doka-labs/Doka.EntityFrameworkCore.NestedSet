@@ -1,7 +1,7 @@
 ---
 id: D-020
 status: implemented
-date: 2026-10-26
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -236,6 +236,8 @@ version, source mapping, fresh cache and archive-byte checks.
 - 2026-10-28: Candidate project inputs became explicit templates after automatic NuGet submission attempted to restore them without a candidate version. The existing runner materializes identical project XML in isolated output; no release guard or dependency check was relaxed.
 
 - 2026-11-03: Clarified the exact adapter/kernel example as its historical introduction version while preparing stable 10.2.0. The private ABI policy, original approval and compatibility exception are unchanged.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

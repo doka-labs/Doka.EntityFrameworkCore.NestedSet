@@ -6,7 +6,7 @@ public sealed partial class HierarchyChangeDetectionTests
 {
     /// <summary>A required key-only FK can delete its dependent without Cascade deletion behavior.</summary>
     [Fact]
-    public async Task RequiredKeyOnlyOwnerClearIsHierarchyWorkWithoutCascade()
+    public async Task HasHierarchyChanges_RequiredKeyOnlyOwnerClear_IsHierarchyWorkWithoutCascade()
     {
         // Arrange
         await using var context = new KeyOnlyRequiredOwnerContext();
@@ -40,7 +40,7 @@ public sealed partial class HierarchyChangeDetectionTests
 
     /// <summary>Shared non-key ordering fields are excluded when EF severs only ordinary FK payload.</summary>
     [Fact]
-    public async Task MinimalOverlapDoesNotNullSharedNonKeyOrderingProperty()
+    public async Task HasHierarchyChanges_MinimalOverlap_DoesNotNullSharedNonKeyOrderingProperty()
     {
         // Arrange
         await using var context = new NonKeyOverlapOwnerContext();
@@ -84,7 +84,7 @@ public sealed partial class HierarchyChangeDetectionTests
 
     /// <summary>Clearing ordinary required payload can delete a hierarchy node through orphan processing.</summary>
     [Fact]
-    public async Task RequiredCascadeOwnerClearIsHierarchyWork()
+    public async Task HasHierarchyChanges_RequiredCascadeOwnerClear_IsHierarchyWork()
     {
         // Arrange
         await using var context = new RequiredCascadeOwnerContext();
@@ -135,7 +135,7 @@ public sealed partial class HierarchyChangeDetectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UniqueRequiredOwnerReassignmentProtectsHierarchyVictim(
+    public async Task HasHierarchyChanges_UniqueRequiredOwnerReassignment_ProtectsHierarchyVictim(
         bool occupied
     )
     {
@@ -186,7 +186,7 @@ public sealed partial class HierarchyChangeDetectionTests
 
     /// <summary>An untracked generated sentinel is not evidence that the eventual principal key is equal.</summary>
     [Fact]
-    public async Task GeneratedPrincipalSentinelRemainsGuarded()
+    public async Task HasHierarchyChanges_GeneratedPrincipalSentinel_RemainsGuarded()
     {
         // Arrange
         await using var context = new GeneratedPrincipalContext();
@@ -226,7 +226,7 @@ public sealed partial class HierarchyChangeDetectionTests
 
     /// <summary>An untracked shadow principal key cannot be read as a CLR value or assumed equal.</summary>
     [Fact]
-    public async Task UnknownShadowPrincipalKeyRemainsGuarded()
+    public async Task HasHierarchyChanges_UnknownShadowPrincipalKey_RemainsGuarded()
     {
         // Arrange
         await using var context = new ShadowPrincipalContext();
@@ -263,151 +263,5 @@ public sealed partial class HierarchyChangeDetectionTests
             Assert
                 .Single(foreignKey.PrincipalKey.Properties)
                 .IsShadowProperty());
-    }
-
-    /// <summary>Lets the real SQLite provider assign an inserted principal's zero-sentinel identity.</summary>
-    private sealed class GeneratedPrincipalContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder
-                .Entity<ProbeOwner>()
-                .Property(value => value.Id)
-                .ValueGeneratedOnAdd();
-        }
-    }
-
-    /// <summary>Maps the guarded scope FK to an alternate key unavailable on an untracked CLR principal.</summary>
-    private sealed class ShadowPrincipalContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder
-                .Entity<ProbeOwner>()
-                .Property<int>("ShadowId");
-
-            modelBuilder
-                .Entity<ProbeOwner>()
-                .HasAlternateKey("ShadowId");
-
-            modelBuilder
-                .Entity<ProbeNode>()
-                .HasOne(value => value.ScopeOwner)
-                .WithMany(value => value.ScopeNodes)
-                .HasForeignKey(value => value.Scope)
-                .HasPrincipalKey("ShadowId");
-        }
-    }
-
-    /// <summary>Uses ordinary payload as a required FK whose severing can delete a tracked hierarchy node.</summary>
-    private sealed class RequiredCascadeOwnerContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder
-                .Entity<ProbeNode>()
-                .HasOne(value => value.Owner)
-                .WithMany()
-                .HasForeignKey(value => value.OwnerId)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Cascade);
-        }
-    }
-
-    /// <summary>Lets an occupied owner reassignment sever another hierarchy node's required FK.</summary>
-    private sealed class UniqueRequiredCascadeOwnerContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder
-                .Entity<ProbeNode>()
-                .HasOne(value => value.Owner)
-                .WithOne()
-                .HasForeignKey<ProbeNode>(value => value.OwnerId)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Cascade);
-        }
-    }
-
-    /// <summary>Isolates EF's required key-only deletion path from its independent Cascade branch.</summary>
-    private sealed class KeyOnlyRequiredOwnerContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            var node = modelBuilder.Entity<ProbeNode>();
-            node.HasAlternateKey(value => value.OwnerId);
-            node
-                .HasOne(value => value.Owner)
-                .WithMany()
-                .HasForeignKey(value => value.OwnerId)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Restrict);
-        }
-    }
-
-    /// <summary>Shares a non-key guarded criterion between two composite ordinary owner relationships.</summary>
-    private sealed class NonKeyOverlapOwnerContext : ProbeContext
-    {
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder
-                .Entity<ProbeOwner>()
-                .HasAlternateKey(value => new
-                {
-                    value.Payload,
-                    value.Id,
-                });
-
-            var node = modelBuilder.Entity<ProbeNode>();
-
-            // WHY: Scoped Parent keys always contain Scope. Name is a guarded, non-key ordering criterion,
-            // so this fixture isolates minimal-overlap selection without hiding it behind IsKey checks.
-            node
-                .HasOne(value => value.Owner)
-                .WithMany()
-                .HasForeignKey(value => new
-                {
-                    value.Name,
-                    value.OwnerId,
-                })
-                .HasPrincipalKey(value => new
-                {
-                    value.Payload,
-                    value.Id,
-                })
-                .OnDelete(DeleteBehavior.Restrict);
-
-            node.Property<int?>("SecondaryOwnerId");
-            node
-                .HasOne<ProbeOwner>()
-                .WithMany()
-                .HasForeignKey(nameof(ProbeNode.Name), "SecondaryOwnerId")
-                .HasPrincipalKey(nameof(ProbeOwner.Payload), nameof(ProbeOwner.Id))
-                .OnDelete(DeleteBehavior.Restrict);
-        }
     }
 }

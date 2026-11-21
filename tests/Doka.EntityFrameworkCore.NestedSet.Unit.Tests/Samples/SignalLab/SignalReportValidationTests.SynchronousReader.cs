@@ -8,7 +8,7 @@ public sealed partial class SignalReportValidationTests
 {
     /// <summary>The synchronous collection adapter preserves ToDictionary's immediate duplicate rejection.</summary>
     [Fact]
-    public void SynchronousGridRejectsDuplicateBeforeLaterEnumerationFailure()
+    public void CreateGrid_SynchronousGrid_RejectsDuplicateBeforeLaterEnumerationFailure()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -24,10 +24,18 @@ public sealed partial class SignalReportValidationTests
     }
 
     /// <summary>Distinguishes the first duplicate from a later non-database enumeration failure.</summary>
-    private sealed class FailingTotals(
-        SignalReportTotal total
-    ) : IReadOnlyCollection<SignalReportTotal>
+    private sealed class FailingTotals : IReadOnlyCollection<SignalReportTotal>
     {
+        private readonly SignalReportTotal _total;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public FailingTotals(
+            SignalReportTotal total
+        )
+        {
+            _total = total;
+        }
+
         /// <summary>Gets whether the reader advanced beyond the duplicate pair.</summary>
         internal bool LateFailureReached { get; private set; }
 
@@ -37,8 +45,8 @@ public sealed partial class SignalReportValidationTests
         /// <summary>Supplies the duplicate before a separate late enumeration failure.</summary>
         public IEnumerator<SignalReportTotal> GetEnumerator()
         {
-            yield return total;
-            yield return total;
+            yield return _total;
+            yield return _total;
             LateFailureReached = true;
 
             throw new InvalidOperationException("later synchronous enumeration failure");

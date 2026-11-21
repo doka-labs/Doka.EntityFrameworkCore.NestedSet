@@ -4,12 +4,13 @@ public abstract partial class OrderingRefreshTests
 {
     /// <summary>Bounds refresh commands independently of foreign scopes and correlates native string aliases.</summary>
     [Fact]
-    public async Task OneRenameAmongFiveThousandStringKeysRefreshesOnlyItsScope()
+    public async Task SaveChangesAsync_OneRenameAmongFiveThousandStringKeys_RefreshesOnlyItsScope()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var extensions = setup
             .GetService<IDbContextOptions>()
@@ -117,12 +118,13 @@ public abstract partial class OrderingRefreshTests
 
     /// <summary>Preserves distinct database scopes despite a broader application CLR comparer.</summary>
     [Fact]
-    public async Task BroaderScopeComparerDoesNotOmitASeparateDatabaseScope()
+    public async Task SaveChangesAsync_BroaderScopeComparer_DoesNotOmitASeparateDatabaseScope()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var extensions = setup
             .GetService<IDbContextOptions>()

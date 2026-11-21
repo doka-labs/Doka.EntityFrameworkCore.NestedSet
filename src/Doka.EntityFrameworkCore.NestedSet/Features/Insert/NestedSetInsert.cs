@@ -30,70 +30,6 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         _placement = placement;
     }
 
-    /// <summary>Creates the sole root of the store's new tree.</summary>
-    /// <param name="entity">The detached root whose managed structure is assigned during insertion.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertRootAsync(
-        TEntity entity,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, default, null, cancellationToken, automatic: true);
-
-    /// <summary>Inserts a child using the configured automatic rule or the last sibling position.</summary>
-    /// <param name="entity">The detached child whose managed structure is assigned during insertion.</param>
-    /// <param name="parent">The existing parent key within the store's tree.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertChildAsync(
-        TEntity entity,
-        TKey parent,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, parent, NestedSetPlacement.LastChild, cancellationToken, automatic: true);
-
-    /// <summary>Inserts a child at the first sibling position when manual placement is permitted.</summary>
-    /// <param name="entity">The detached child to insert.</param>
-    /// <param name="parent">The existing parent key within the store's tree.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertAsFirstChildAsync(
-        TEntity entity,
-        TKey parent,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, parent, NestedSetPlacement.FirstChild, cancellationToken);
-
-    /// <summary>Inserts a child at the last sibling position when manual placement is permitted.</summary>
-    /// <param name="entity">The detached child to insert.</param>
-    /// <param name="parent">The existing parent key within the store's tree.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertAsLastChildAsync(
-        TEntity entity,
-        TKey parent,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, parent, NestedSetPlacement.LastChild, cancellationToken);
-
-    /// <summary>Inserts a sibling immediately before an existing non-root node.</summary>
-    /// <param name="entity">The detached sibling to insert.</param>
-    /// <param name="sibling">The existing sibling key within the store's tree.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertBeforeAsync(
-        TEntity entity,
-        TKey sibling,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, sibling, NestedSetPlacement.Before, cancellationToken);
-
-    /// <summary>Inserts a sibling immediately after an existing non-root node.</summary>
-    /// <param name="entity">The detached sibling to insert.</param>
-    /// <param name="sibling">The existing sibling key within the store's tree.</param>
-    /// <param name="cancellationToken">The token used for lock acquisition and database work.</param>
-    /// <returns>A task that completes after the owned commit or caller savepoint release.</returns>
-    internal Task InsertAfterAsync(
-        TEntity entity,
-        TKey sibling,
-        CancellationToken cancellationToken
-    ) => InsertAsync(entity, sibling, NestedSetPlacement.After, cancellationToken);
-
     /// <summary>Inserts a detached node and restores its CLR state if the write fails.</summary>
     /// <param name="entity">The new node without populated navigations.</param>
     /// <param name="anchor">The destination parent or sibling key; ignored when appending a root.</param>
@@ -105,8 +41,8 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         TEntity entity,
         TKey? anchor,
         NestedSetPlacement? placement,
-        CancellationToken cancellationToken,
-        bool automatic = false
+        bool automatic,
+        CancellationToken cancellationToken
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -140,12 +76,12 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             await _store
                 .ExecuteMutationAsync(
                     _executor,
-                    async token =>
+                    async operationCancellationToken =>
                     {
                         if (placement is null
                             && await _store
                                 .Nodes
-                                .AnyAsync(token)
+                                .AnyAsync(operationCancellationToken)
                                 .ConfigureAwait(false))
                         {
                             throw new NestedSetException(
@@ -162,7 +98,9 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                         if (placement is not null
                             && await _store
                                 .Nodes
-                                .AnyAsync(node => EF.Property<long>(node, _store.Map.Right) > long.MaxValue - 2, token)
+                                .AnyAsync(
+                                    node => EF.Property<long>(node, _store.Map.Right) > long.MaxValue - 2,
+                                    operationCancellationToken)
                                 .ConfigureAwait(false))
                         {
                             throw new OverflowException("The insertion exceeds the supported 64-bit coordinates.");
@@ -171,14 +109,14 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                         _ = checked(maximum + 2);
 
                         var destination = await _placement
-                            .ResolveAsync(anchor, placement, maximum, token)
+                            .ResolveAsync(anchor, placement, maximum, knownAnchor: null, operationCancellationToken)
                             .ConfigureAwait(false);
 
                         // WHY: A leaf needs two adjacent coordinates; existing nodes and siblings vacate them first.
                         if (placement is not null)
                         {
                             await _store
-                                .ShiftBoundsAsync(destination.Boundary, 2, token)
+                                .ShiftBoundsAsync(destination.Boundary, 2, operationCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
@@ -193,7 +131,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                                     _store.Map.Position,
                                     1,
                                     1,
-                                    token)
+                                    operationCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
@@ -258,8 +196,18 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                                 knownTracked),
                             persistenceCompleted: () =>
                             {
-                                foreach (var candidate in insertionEntries)
+                                // WHY: This operation owns the stable indexed input; retain its established visit
+                                // order.
+                                // ReSharper disable once ForCanBeConvertedToForeach
+                                // ReSharper disable once LoopCanBeConvertedToQuery
+                                for (
+                                    int candidateIndex = 0, candidateCount = insertionEntries.Count;
+                                    candidateIndex < candidateCount;
+                                    candidateIndex++
+                                )
                                 {
+                                    var candidate = insertionEntries[candidateIndex];
+
                                     candidate.Identity?.Refresh();
                                 }
                             }))
@@ -273,7 +221,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                                 _store.Context.Database.AutoSavepointsEnabled = false;
                                 await _store
                                     .Context
-                                    .SaveChangesAsync(token)
+                                    .SaveChangesAsync(operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
                             finally
@@ -307,13 +255,13 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             // empty under the lock; a single node already satisfies every configured ordering rule.
                             var key = NestedSetTypedValue<TKey>.Read(entry, _store.Map.KeyProperty);
                             await new NestedSetOrderer<TEntity, TKey, TTreeId, TScope>(_store)
-                                .ReorderAsync(key, token)
+                                .ReorderAsync(key, operationCancellationToken)
                                 .ConfigureAwait(false);
 
                             // WHY: Generated keys and sort values exist only after saving. The subsequent set-based
                             // move bypasses tracking, so return the node with its final persisted coordinates.
                             var saved = await _store
-                                .FindAsync(key, token)
+                                .FindAsync(key, operationCancellationToken)
                                 .ConfigureAwait(false);
 
                             entry.Property<long>(_store.Map.LeftProperty)
@@ -331,14 +279,20 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
                             // WHY: The move can fire update triggers or change a provider-generated version after
                             // INSERT returned its token. Returning that stale token would break a later attached save.
                             await NestedSetGeneratedConcurrency<TEntity>
-                                .RefreshAsync(_store.Nodes.Where(_store.Equal(_store.Map.Key, key)), entry, token)
+                                .RefreshAsync(
+                                    _store.Nodes.Where(_store.Equal(_store.Map.Key, key)),
+                                    entry,
+                                    operationCancellationToken)
                                 .ConfigureAwait(false);
                         }
 
                         if (placement is not null)
                         {
                             await NestedSetTreeRegistryState
-                                .TouchAsync(_store.Context, _store.LockRequest(NestedSetTreeLockMode.Existing), token)
+                                .TouchAsync(
+                                    _store.Context,
+                                    _store.LockRequest(NestedSetTreeLockMode.Existing),
+                                    operationCancellationToken)
                                 .ConfigureAwait(false);
                         }
 

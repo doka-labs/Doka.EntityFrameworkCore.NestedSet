@@ -218,6 +218,7 @@ internal static partial class NestedSetSaveChanges
     }
 
     /// <summary>Keeps ordinary scalar comparisons typed while preserving custom CLR/model member mappings.</summary>
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     private sealed class GuardReader<TValue> : GuardReader
         where TValue : notnull
     {

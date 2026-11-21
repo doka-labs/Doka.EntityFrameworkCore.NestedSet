@@ -15,7 +15,7 @@ public sealed class NestedSetNodeExtensionsTests
     [InlineData(1L, 8L, 1L, 8L, false)]
     [InlineData(2L, 5L, 6L, 7L, false)]
     [InlineData(2L, long.MaxValue, long.MaxValue - 2, long.MaxValue - 1, true)]
-    public void AncestorRequiresStrictContainment(
+    public void IsAncestorOf_Ancestor_RequiresStrictContainment(
         long left,
         long right,
         long otherLeft,
@@ -46,7 +46,7 @@ public sealed class NestedSetNodeExtensionsTests
     [InlineData(1L, 8L, 1L, 8L, false)]
     [InlineData(2L, 5L, 6L, 7L, false)]
     [InlineData(long.MaxValue - 2, long.MaxValue - 1, 2L, long.MaxValue, true)]
-    public void DescendantRequiresStrictContainment(
+    public void IsDescendantOf_Descendant_RequiresStrictContainment(
         long left,
         long right,
         long otherLeft,
@@ -67,7 +67,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that matching bounds in different trees never imply ancestry.</summary>
     [Fact]
-    public void AncestorRejectsMatchingBoundsFromDifferentTree()
+    public void IsAncestorOf_Ancestor_RejectsMatchingBoundsFromDifferentTree()
     {
         // Arrange
         var ancestor = new Node(1, 1, 8, TreeId: Guid.NewGuid());
@@ -82,7 +82,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that an unscoped hierarchy also rejects matching bounds from another tree.</summary>
     [Fact]
-    public void UnscopedAncestorRejectsMatchingBoundsFromDifferentTree()
+    public void IsAncestorOf_UnscopedAncestor_RejectsMatchingBoundsFromDifferentTree()
     {
         // Arrange
         var ancestor = new UnscopedNode(1, Guid.NewGuid(), 1, 8);
@@ -97,7 +97,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that an unscoped hierarchy accepts strict containment within the same tree.</summary>
     [Fact]
-    public void UnscopedAncestorAcceptsSameTree()
+    public void IsAncestorOf_UnscopedAncestor_AcceptsSameTree()
     {
         // Arrange
         var treeId = Guid.NewGuid();
@@ -113,7 +113,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that matching tree identities and bounds in different scopes never imply ancestry.</summary>
     [Fact]
-    public void AncestorRejectsMatchingBoundsFromDifferentScope()
+    public void IsAncestorOf_Ancestor_RejectsMatchingBoundsFromDifferentScope()
     {
         // Arrange
         var treeId = Guid.NewGuid();
@@ -129,7 +129,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that descendant checks reject matching bounds from another scoped tree.</summary>
     [Fact]
-    public void DescendantRejectsMatchingBoundsFromDifferentTree()
+    public void IsDescendantOf_Descendant_RejectsMatchingBoundsFromDifferentTree()
     {
         // Arrange
         var descendant = new Node(2, 2, 5, TreeId: Guid.NewGuid());
@@ -144,7 +144,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that descendant checks reject matching bounds from another scope.</summary>
     [Fact]
-    public void DescendantRejectsMatchingBoundsFromDifferentScope()
+    public void IsDescendantOf_Descendant_RejectsMatchingBoundsFromDifferentScope()
     {
         // Arrange
         var treeId = Guid.NewGuid();
@@ -160,7 +160,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that a scoped hierarchy accepts strict descent within the same scope and tree.</summary>
     [Fact]
-    public void ScopedDescendantAcceptsSameScopeAndTree()
+    public void IsDescendantOf_ScopedDescendant_AcceptsSameScopeAndTree()
     {
         // Arrange
         var treeId = Guid.NewGuid();
@@ -176,7 +176,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that ancestor checks reject another node with invalid bounds.</summary>
     [Fact]
-    public void AncestorRejectsInvalidNode()
+    public void IsAncestorOf_Ancestor_RejectsInvalidNode()
     {
         // Arrange
         var root = new Node(1, 1, 8);
@@ -191,7 +191,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that ancestor checks reject invalid bounds on the candidate ancestor.</summary>
     [Fact]
-    public void AncestorRejectsInvalidReceiver()
+    public void IsAncestorOf_Ancestor_RejectsInvalidReceiver()
     {
         // Arrange
         var invalid = new Node(1, 0, 0);
@@ -206,7 +206,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that ancestor checks reject a null candidate descendant.</summary>
     [Fact]
-    public void AncestorRejectsNullDescendant()
+    public void IsAncestorOf_Ancestor_RejectsNullDescendant()
     {
         // Arrange
         var root = new Node(1, 1, 8);
@@ -220,7 +220,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that ancestor checks reject a null extension-method receiver.</summary>
     [Fact]
-    public void AncestorRejectsNullReceiver()
+    public void IsAncestorOf_Ancestor_RejectsNullReceiver()
     {
         // Arrange
         var root = new Node(1, 1, 8);
@@ -234,7 +234,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that descendant checks reject a null candidate ancestor.</summary>
     [Fact]
-    public void DescendantRejectsNullAncestor()
+    public void IsDescendantOf_Descendant_RejectsNullAncestor()
     {
         // Arrange
         var root = new Node(1, 1, 8);
@@ -248,7 +248,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that descendant checks reject invalid bounds on the candidate descendant.</summary>
     [Fact]
-    public void DescendantRejectsInvalidReceiver()
+    public void IsDescendantOf_Descendant_RejectsInvalidReceiver()
     {
         // Arrange
         var invalid = new Node(2, 0, 0);
@@ -263,7 +263,7 @@ public sealed class NestedSetNodeExtensionsTests
 
     /// <summary>Verifies that node coordinates preserve values beyond 32-bit range.</summary>
     [Fact]
-    public void NodeContractPreservesLongCoordinates()
+    public void Left_NodeContract_PreservesLongCoordinates()
     {
         // Arrange
         IScopedNestedSetNode<int, Guid, string> node = new Node(

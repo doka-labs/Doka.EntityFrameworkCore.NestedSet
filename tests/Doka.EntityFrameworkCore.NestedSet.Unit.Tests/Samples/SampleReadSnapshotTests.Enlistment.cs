@@ -20,7 +20,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("ambient", true)]
     [InlineData("enlisted", false)]
     [InlineData("enlisted", true)]
-    public async Task CustomEnlistmentBoundaryPreservesConnectionOwnership(
+    public async Task RunAsync_CustomEnlistmentBoundary_PreservesConnectionOwnership(
         string boundary,
         bool alreadyOpen
     )
@@ -110,23 +110,33 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Introduces a provider-owned boundary without changing the global ambient transaction.</summary>
-    private sealed class SnapshotEnlistmentConnection(
-        string boundary,
-        CommittableTransaction enlistment
-    )
-        : SqliteConnection("Data Source=:memory:")
+    private sealed class SnapshotEnlistmentConnection
+        : SqliteConnection
     {
+        private readonly string _boundary;
+        private readonly CommittableTransaction _enlistment;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SnapshotEnlistmentConnection(
+            string boundary,
+            CommittableTransaction enlistment
+        ) : base("Data Source=:memory:")
+        {
+            _boundary = boundary;
+            _enlistment = enlistment;
+        }
+
         /// <summary>Gets the native transaction that must be disposed even when EF rejects adoption.</summary>
         internal SqliteTransaction? Begun { get; private set; }
 
         /// <summary>Gets the customized ambient precondition after the native transaction has begun.</summary>
-        internal AmbientTransaction? Ambient => Begun is not null && boundary == "ambient"
-            ? enlistment
+        internal AmbientTransaction? Ambient => Begun is not null && _boundary == "ambient"
+            ? _enlistment
             : null;
 
         /// <summary>Gets the customized enlisted precondition after the native transaction has begun.</summary>
-        internal AmbientTransaction? Enlisted => Begun is not null && boundary == "enlisted"
-            ? enlistment
+        internal AmbientTransaction? Enlisted => Begun is not null && _boundary == "enlisted"
+            ? _enlistment
             : null;
 
         /// <inheritdoc />
@@ -142,12 +152,15 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Exercises the public relational extension seam with connection-specific transaction state.</summary>
-    /// <param name="dependencies">The configured context's relational dependencies.</param>
-    private sealed class SnapshotEnlistmentRelationalConnection(
-        RelationalConnectionDependencies dependencies
-    )
-        : RelationalConnection(dependencies)
+    private sealed class SnapshotEnlistmentRelationalConnection
+        : RelationalConnection
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        /// <param name="dependencies">The configured context's relational dependencies.</param>
+        public SnapshotEnlistmentRelationalConnection(
+            RelationalConnectionDependencies dependencies
+        ) : base(dependencies) { }
+
         /// <inheritdoc />
         public override AmbientTransaction? CurrentAmbientTransaction
             => ((SnapshotEnlistmentConnection)DbConnection).Ambient;

@@ -16,7 +16,7 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
 
     /// <summary>A required nullable CLR key can create a root without constructing a second Nullable wrapper.</summary>
     [Fact]
-    public async Task RequiredNullableClrKeySupportsRootInsertion()
+    public async Task InsertRootAsync_RequiredNullableClrKey_SupportsRootInsertion()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NullableKeyContext>(
@@ -47,7 +47,7 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
 
     /// <summary>Parent joins and repair retain the single nullable CLR representation of required keys.</summary>
     [Fact]
-    public async Task RequiredNullableClrKeySupportsParentJoinDuringRebuild()
+    public async Task RebuildAsync_RequiredNullableClrKey_SupportsParentJoinDuringRebuild()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NullableKeyContext>(
@@ -115,8 +115,14 @@ public abstract class RequiredNullableKeyModelTests : ProviderTest
     }
 
     /// <summary>Explicitly marks the nullable CLR primary key as required rather than rejecting the model.</summary>
-    private sealed class NullableKeyContext(DbContextOptions<NullableKeyContext> options) : DbContext(options)
+    private sealed class NullableKeyContext : DbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public NullableKeyContext(
+            DbContextOptions<NullableKeyContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

@@ -32,7 +32,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData("compact", "correlated", 1)]
     [InlineData("adjacent", "correlated", 1)]
     [InlineData("empty-interior", "correlated", 1)]
-    public async Task DensePathBoundariesFollowActualParentIdentity(
+    public async Task WherePathEdges_DensePathBoundaries_FollowActualParentIdentity(
         string layout,
         string filter,
         int expectedCount

@@ -72,7 +72,8 @@ public abstract partial class DensePathWorkTestBase
         await QueryPlanTestSupport.WriteEvidenceAsync(
             Engine + "-dense-path-work-native-" + profile,
             [
-                $"Profile={profile}; visiblePopulation={scenario.VisibleNodes}; storedPopulation={scenario.StoredNodes}; "
+                $"Profile={profile}; visiblePopulation={scenario.VisibleNodes}; storedPopulation={
+                    scenario.StoredNodes}; "
                 + $"construction={allocation} B/op; "
                 + $"commandBytes={commandBytes}; planBytes={planBytes}; resultRows={actual.Length}",
                 probe.Commands[0],

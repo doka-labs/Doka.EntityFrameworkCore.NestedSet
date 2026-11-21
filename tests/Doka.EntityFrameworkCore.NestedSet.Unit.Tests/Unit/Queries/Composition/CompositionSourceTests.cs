@@ -11,7 +11,7 @@ public sealed class CompositionSourceTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void ArrayQueryCannotSupplyHierarchyAliases(
+    public void Filter_ArrayQuery_CannotSupplyHierarchyAliases(
         string operation
     )
     {
@@ -53,7 +53,7 @@ public sealed class CompositionSourceTests
     [InlineData("any", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public void EnumerableQueryIsRejectedWithoutEnumeration(
+    public void Filter_EnumerableQuery_IsRejectedWithoutEnumeration(
         string operation,
         bool filtered
     )
@@ -91,7 +91,7 @@ public sealed class CompositionSourceTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void ForeignContextSourceIsRejectedBeforeIo(
+    public void Filter_ForeignContextSource_IsRejectedBeforeIo(
         string operation
     )
     {

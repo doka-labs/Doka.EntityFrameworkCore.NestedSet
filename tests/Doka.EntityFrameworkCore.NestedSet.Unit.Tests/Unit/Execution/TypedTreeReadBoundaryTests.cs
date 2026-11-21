@@ -9,7 +9,7 @@ public sealed class TypedTreeReadBoundaryTests
     [Theory]
     [InlineData("New")]
     [InlineData("Tombstoned")]
-    public async Task ReadBoundaryRejectsLifecycleTransitions(
+    public async Task ExecuteReadAsync_ReadBoundary_RejectsLifecycleTransitions(
         string modeName
     )
     {

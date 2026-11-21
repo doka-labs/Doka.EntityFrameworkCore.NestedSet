@@ -25,7 +25,7 @@ public sealed class NearestDecisionTests : ProviderTest
     [InlineData("self-reject", 0)]
     [InlineData("hidden-path", 0)]
     [InlineData("row-aware", 1)]
-    public async Task ProjectedDecisionPreservesSelectionPathAndOriginalBag(
+    public async Task WhereNearestAncestorOrSelf_ProjectedDecision_PreservesSelectionPathAndOriginalBag(
         string mode,
         int expectedCount
     )
@@ -41,7 +41,11 @@ public sealed class NearestDecisionTests : ProviderTest
             hidden: mode == "hidden-path"
                 ? 2
                 : null,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var treeId = await context
             .Set<CompositionNode>()

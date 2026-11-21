@@ -43,18 +43,25 @@ internal static partial class SignalReportBuilder
     ) => Expression.Field(Expression.Constant(new StrongBox<Guid>(value)), s_requestedGuid);
 
     /// <summary>Owns one criterion's immutable scalar slots during deferred catalog binding.</summary>
-    /// <param name="fieldCode">The exact requested field code.</param>
-    /// <param name="value">The exact requested scalar value.</param>
-    private sealed class CriterionParameters(
-        string fieldCode,
-        string value
-    )
+    private sealed class CriterionParameters
     {
         /// <summary>Stores a distinct field-code slot even when another slot contains equal text.</summary>
-        internal readonly string FieldCode = fieldCode;
+        internal readonly string FieldCode;
 
         /// <summary>Stores the value slot without a reflected property getter or a second holder object.</summary>
-        internal readonly string Value = value;
+        internal readonly string Value;
+
+        /// <summary>Captures both scalar slots once without adding property-getter interpretation.</summary>
+        /// <param name="fieldCode">The exact requested field code.</param>
+        /// <param name="value">The exact requested scalar value.</param>
+        internal CriterionParameters(
+            string fieldCode,
+            string value
+        )
+        {
+            FieldCode = fieldCode;
+            Value = value;
+        }
     }
 
     /// <summary>Owns one owner's ordinary and suffixed scalar parameter slots for one query construction.</summary>

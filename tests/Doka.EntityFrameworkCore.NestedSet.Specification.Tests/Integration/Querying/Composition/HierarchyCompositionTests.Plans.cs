@@ -8,7 +8,7 @@ public abstract partial class HierarchyCompositionTests
     [InlineData("Path")]
     [InlineData("Nearest")]
     [InlineData("UpDown")]
-    public async Task CompositionRetainsExecutedSqlAndNativePlanEvidence(
+    public async Task ExplainAsync_Composition_RetainsExecutedSqlAndNativePlanEvidence(
         string shape
     )
     {
@@ -20,7 +20,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             planProbe: planProbe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

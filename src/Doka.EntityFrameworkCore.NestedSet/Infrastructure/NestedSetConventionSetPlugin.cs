@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Adds nested-set conventions to each context's provider convention set.</summary>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
 {
     /// <summary>The selected native policy validated for this context scope.</summary>
@@ -16,7 +17,9 @@ internal sealed class NestedSetConventionSetPlugin : IConventionSetPlugin
 
     /// <summary>Creates the convention plugin for one provider service graph.</summary>
     /// <param name="sql">The provider's SQL identifier service.</param>
-    /// <param name="binding">The adapter validated against this context's completed options and native provider.</param>
+    /// <param name="binding">
+    /// The adapter validated against this context's completed options and native provider.
+    /// </param>
     /// <param name="typeMappings">The provider's effective property-mapping service.</param>
     public NestedSetConventionSetPlugin(
         ISqlGenerationHelper sql,

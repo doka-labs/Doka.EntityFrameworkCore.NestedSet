@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Late owner rehydration preserves polymorphic entity types and payload stored outside the coordinate source.</summary>
+    /// <summary>
+    /// Late owner rehydration preserves polymorphic entity types and payload stored outside the coordinate source.
+    /// </summary>
     /// <param name="tpt">Whether derived payload occupies separate tables.</param>
     /// <param name="includeSelf">Whether the selected leaf entity is returned as well.</param>
     [Theory]
@@ -10,7 +12,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedOwnerRehydrationPreservesInheritedPayloadAndConcreteTypes(
+    public async Task SelectAncestors_IndexedOwnerRehydration_PreservesInheritedPayloadAndConcreteTypes(
         bool tpt,
         bool includeSelf
     )
@@ -45,7 +47,8 @@ public abstract partial class AncestorIndexQueryTests
                 : depth == 1
                     ? new TphMetricNode()
                     : new TphFolderNode(),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            name: null);
 
         var hierarchy = context
             .NestedSet<InheritanceNode>()

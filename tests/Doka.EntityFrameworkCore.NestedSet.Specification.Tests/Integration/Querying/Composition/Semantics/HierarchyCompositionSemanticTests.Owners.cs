@@ -10,7 +10,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(1, true)]
     [InlineData(3, false)]
     [InlineData(3, true)]
-    public async Task NearestSelfHasNoMatchingAncestorFallback(
+    public async Task WhereNearestAncestorOrSelf_NearestSelf_HasNoMatchingAncestorFallback(
         int nodeId,
         bool accepted
     )
@@ -21,7 +21,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -56,7 +59,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NoEligibleOwnerProducesNoRows(
+    public async Task WhereNearestAncestorOrSelf_NoEligibleOwner_ProducesNoRows(
         bool nearest
     )
     {
@@ -66,7 +69,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -92,7 +98,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Candidate type and accepted value remain correlated to each outer payload occurrence.</summary>
     [Fact]
-    public async Task NearestCandidateSelectionUsesEachOuterRowsPayload()
+    public async Task WhereNearestAncestorOrSelf_NearestCandidateSelection_UsesEachOuterRowsPayload()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -100,7 +106,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -146,7 +155,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnerCriteriaMustMatchTheSameAncestor(
+    public async Task WhereNearestAncestorOrSelf_OwnerCriteria_MustMatchTheSameAncestor(
         bool nearest
     )
     {
@@ -156,7 +165,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -189,7 +201,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Nearest-owner selection does not silently interpret application periods as structural edges.</summary>
     [Fact]
-    public async Task NearestDoesNotInterpretApplicationPeriodsAsStructuralEdges()
+    public async Task WhereNearestAncestorOrSelf_Nearest_DoesNotInterpretApplicationPeriodsAsStructuralEdges()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -197,7 +209,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -229,7 +244,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Strict nearest selection follows parent distance despite opposing key and date orders.</summary>
     [Fact]
-    public async Task StrictNearestUsesStructuralDepthWithNonMonotonicKeys()
+    public async Task WhereNearestAncestorOrSelf_StrictNearest_UsesStructuralDepthWithNonMonotonicKeys()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -237,7 +252,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var tree = Guid.NewGuid();
         await context.AddRangeAsync(
@@ -320,7 +338,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProjectedNearestIsChosenBeforeSubtreeExpansion(
+    public async Task WhereNearestAncestorOrSelf_ProjectedNearest_IsChosenBeforeSubtreeExpansion(
         bool strictCandidates
     )
     {
@@ -330,7 +348,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

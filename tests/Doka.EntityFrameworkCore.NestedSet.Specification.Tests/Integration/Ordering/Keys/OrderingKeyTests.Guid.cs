@@ -4,13 +4,14 @@ public abstract partial class OrderingKeyTests
 {
     /// <summary>Places tied Guid identities using the provider's unconverted native key representation.</summary>
     [Fact]
-    public async Task GuidKeyInsertionUsesNativeTieOrder()
+    public async Task InsertChildAsync_GuidKeyInsertion_UsesNativeTieOrder()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
             Engine,
             GuidKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         var inserted = scenario.Node(6, "Same");
 
@@ -25,13 +26,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Moves a Guid-key subtree and preserves descendants and provider-native sibling order.</summary>
     [Fact]
-    public async Task GuidKeyMoveRetainsNativeOrderAndDescendants()
+    public async Task MoveToAsync_GuidKeyMove_RetainsNativeOrderAndDescendants()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
             Engine,
             GuidKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         // Act
         await scenario.Tree.MoveToAsync(scenario.Reference(2), scenario.Reference(9), CancellationToken.None);
@@ -45,13 +47,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Reorders a Guid-key subtree after a payload rename and preserves the independent scope.</summary>
     [Fact]
-    public async Task GuidKeyRenameRetainsNativeTieOrderAndScopeIsolation()
+    public async Task SaveChangesAsync_GuidKeyRename_RetainsNativeTieOrderAndScopeIsolation()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<Guid, Guid?>(
             Engine,
             GuidKey,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null);
 
         var key = scenario.Reference(2);
         var renamed = await scenario

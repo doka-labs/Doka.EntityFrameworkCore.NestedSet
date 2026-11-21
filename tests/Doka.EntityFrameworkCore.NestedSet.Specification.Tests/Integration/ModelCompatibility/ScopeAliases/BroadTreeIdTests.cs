@@ -17,7 +17,7 @@ public abstract class BroadTreeIdTests : ProviderTest
     /// <summary>Compares converted TreeIds by stored value in typed and runtime guards.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ProviderComparerSeparatesTreeAliases()
+    public void Equals_ProviderComparer_SeparatesTreeAliases()
     {
         // Arrange
         using var context = new BroadTreeIdContext(ModelCompatibilityDatabase.Options<BroadTreeIdContext>(Engine));
@@ -39,7 +39,7 @@ public abstract class BroadTreeIdTests : ProviderTest
 
     /// <summary>Registers both stored identities even when their domain values compare equal.</summary>
     [Fact]
-    public async Task RegistryRetainsBothStoredTreeIdsAsync()
+    public async Task Select_Registry_RetainsBothStoredTreeIds()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
@@ -71,7 +71,7 @@ public abstract class BroadTreeIdTests : ProviderTest
 
     /// <summary>Reorders two trees whose domain identities compare equal.</summary>
     [Fact]
-    public async Task SortedSaveKeepsStoredTreesSeparateAsync()
+    public async Task SaveNestedSetChangesAsync_SortedSave_KeepsStoredTreesSeparate()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
@@ -120,7 +120,7 @@ public abstract class BroadTreeIdTests : ProviderTest
 
     /// <summary>Plans parent moves independently for two stored tree identities.</summary>
     [Fact]
-    public async Task ParentSaveKeepsStoredTreesSeparateAsync()
+    public async Task SaveNestedSetChangesAsync_ParentSave_KeepsStoredTreesSeparate()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
@@ -167,7 +167,7 @@ public abstract class BroadTreeIdTests : ProviderTest
 
     /// <summary>A save callback cannot redirect a single insert to an unlocked stored TreeId.</summary>
     [Fact]
-    public async Task SingleInsertRejectsCallbackTreeAliasAsync()
+    public async Task InsertRootAsync_SingleInsert_RejectsCallbackTreeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(
@@ -207,7 +207,7 @@ public abstract class BroadTreeIdTests : ProviderTest
 
     /// <summary>A save callback cannot redirect a bulk import to an unlocked stored TreeId.</summary>
     [Fact]
-    public async Task BulkInsertRejectsCallbackTreeAliasAsync()
+    public async Task InsertForestAsync_BulkInsert_RejectsCallbackTreeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadTreeIdContext>(

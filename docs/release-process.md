@@ -96,14 +96,14 @@ not restore dependencies or set up .NET. Only then does it seal the candidate
 and pass its artifact ID unchanged to `attest` and `publish`. Job timeouts and a
 bounded per-process budget limit each job; there is no shared deadline.
 
-All six shipping projects under `src/` commit dependency locks. RC
+Every solution project commits its dependency lock. RC
 qualification copies those locks into its owned workspace and verifies that
 restore preserves them. Tests, samples, benchmarks, and tools restore their
-own graphs without additional committed lockfiles.
+own reviewed graphs from their committed lockfiles.
 
 | Stage | Required evidence |
 | --- | --- |
-| `quality` | Offline release-tooling tests, shell syntax, reviewed shipping package locks, Roslyn style/import checks, warning-free Release build |
+| `quality` | Offline release-tooling tests, shell syntax, reviewed solution dependency locks, Roslyn style/import checks, warning-free Release build |
 | `tests` | Docker readiness, every test project, all provider cells, ordinary and optional migrations, coverage artifacts, query plans, and runnable samples |
 | `packages` | One pack per shipping package from the release build; exact primary/symbol metadata, assembly, PDB, XML docs, source, dependencies, and archive inventory |
 | `consumer` | Six isolated package roots plus the actual FileSystem sample restore the exact archives; bounds/SQLite/sample execution and real provider API/model/query translation are checked without external databases |

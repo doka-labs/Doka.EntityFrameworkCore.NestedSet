@@ -19,8 +19,8 @@ public abstract partial class OrderingKeyTests : ProviderTest
     private async Task<KeyScenario<TKey, TParent>> CreateScenarioAsync<TKey, TParent>(
         string engine,
         Func<int, TKey> key,
-        CancellationToken cancellationToken,
-        Func<TKey, TKey>? alias = null
+        Func<TKey, TKey>? alias,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {

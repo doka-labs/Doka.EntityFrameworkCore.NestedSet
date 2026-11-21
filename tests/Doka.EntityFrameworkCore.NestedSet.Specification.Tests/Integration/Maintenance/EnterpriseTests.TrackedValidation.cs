@@ -11,7 +11,7 @@ public abstract partial class EnterpriseTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ValidationKeepsTrackedValuesAndCallerOwnership(
+    public async Task ValidateAsync_Validation_KeepsTrackedValuesAndCallerOwnership(
         bool caller,
         bool pending
     )
@@ -22,7 +22,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         await using var context = database.CreateContext();
         await using var transaction = caller

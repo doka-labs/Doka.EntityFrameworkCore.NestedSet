@@ -41,7 +41,7 @@ public abstract partial class KeyFilterComparisonTests : ProviderTest
     /// <param name="count">The requested number of distinct existing keys.</param>
     [Theory]
     [MemberData(nameof(ComparisonCases))]
-    public Task NativeContainsAndBalancedEqualityHaveEquivalentResults(
+    public Task CompareSeededAsync_NativeContainsAndBalancedEquality_HaveEquivalentResults(
         string representation,
         int count
     ) => representation switch

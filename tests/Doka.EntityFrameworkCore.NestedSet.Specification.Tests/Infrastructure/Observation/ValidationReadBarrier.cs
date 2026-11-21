@@ -5,7 +5,9 @@ internal sealed class ValidationReadBarrier : DbCommandInterceptor
 {
     private readonly Func<CancellationToken, Task> _betweenReads;
 
-    /// <summary>Creates a deterministic callback that runs after the first structural result has been consumed.</summary>
+    /// <summary>
+    /// Creates a deterministic callback that runs after the first structural result has been consumed.
+    /// </summary>
     internal ValidationReadBarrier(
         Func<CancellationToken, Task> betweenReads
     )

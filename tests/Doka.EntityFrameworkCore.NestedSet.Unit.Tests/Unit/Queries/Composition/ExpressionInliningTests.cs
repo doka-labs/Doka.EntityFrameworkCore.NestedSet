@@ -4,18 +4,26 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks fixed-arity substitutions against the retained general expression-inlining contract.</summary>
-/// <param name="output">Records measured allocation observations from the companion tests.</param>
-public sealed partial class ExpressionInliningTests(
-    ITestOutputHelper output
-)
+public sealed partial class ExpressionInliningTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Records measured allocation observations from the companion tests.</param>
+    public ExpressionInliningTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Fixed bindings retain independent nested parameters even when their names match.</summary>
     /// <param name="arity">The number of outer bindings replaced together.</param>
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void NestedParametersRemainIndependent(
+    public void Inline_NestedParameters_RemainIndependent(
         int arity
     )
     {
@@ -46,7 +54,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void SuppliedArgumentsAreNotRevisited(
+    public void Inline_SuppliedArguments_AreNotRevisited(
         int arity
     )
     {
@@ -78,7 +86,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(1, true)]
     [InlineData(2, true)]
     [InlineData(3, true)]
-    public void ProjectionMembersReduceToExistingArgumentExpressions(
+    public void Inline_ProjectionMembers_ReduceToExistingArgumentExpressions(
         int arity,
         bool initializer
     )
@@ -122,7 +130,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void CapturedGettersAreNotInvoked(
+    public void Inline_CapturedGetters_AreNotInvoked(
         int arity
     )
     {
@@ -149,7 +157,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void UnusedMissingBindingsRetainGeneralPathBehavior(
+    public void Inline_UnusedMissingBindings_RetainGeneralPathBehavior(
         int arity
     )
     {
@@ -174,7 +182,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void RequiredMissingBindingsRetainGeneralPathRejection(
+    public void Inline_RequiredMissingBindings_RetainGeneralPathRejection(
         int arity
     )
     {
@@ -198,7 +206,7 @@ public sealed partial class ExpressionInliningTests(
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void UnusedAdditionalBindingsRetainGeneralPathBehavior(
+    public void Inline_UnusedAdditionalBindings_RetainGeneralPathBehavior(
         int arity
     )
     {
@@ -223,7 +231,7 @@ public sealed partial class ExpressionInliningTests(
     [InlineData(8)]
     [InlineData(9)]
     [InlineData(10)]
-    public void GeneralPathRetainsLargerBindings(
+    public void Inline_GeneralPath_RetainsLargerBindings(
         int arity
     )
     {

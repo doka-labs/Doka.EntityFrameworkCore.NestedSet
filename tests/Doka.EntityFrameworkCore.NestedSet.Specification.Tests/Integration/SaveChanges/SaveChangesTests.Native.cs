@@ -8,14 +8,15 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UnrelatedSaveRetriesWithoutHierarchyLocksAndHonorsAcceptance(
+    public async Task SaveChangesAsync_UnrelatedSave_RetriesWithoutHierarchyLocksAndHonorsAcceptance(
         bool acceptChanges
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         await using var services = RetryBoundaryServices.Create(Engine);
@@ -61,14 +62,15 @@ public abstract partial class SaveChangesTests
         IsolationLevel.RepeatableRead,
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite exposes Serializable and ReadUncommitted transactions, not RepeatableRead.")]
-    public async Task UnrelatedSavePreservesCallerTransactionIsolation(
+    public async Task SaveChangesAsync_UnrelatedSave_PreservesCallerTransactionIsolation(
         IsolationLevel isolation
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var probe = new SaveBoundaryProbe();
         await using var context = new SaveBoundaryContext(
@@ -107,12 +109,13 @@ public abstract partial class SaveChangesTests
     ///     Does not restore a pre-save snapshot over ordinary callback changes when a native command fails.
     /// </summary>
     [Fact]
-    public async Task FailedUnrelatedSaveKeepsNativePendingCallbackState()
+    public async Task SaveChangesAsync_FailedUnrelatedSave_KeepsNativePendingCallbackState()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
         var callback = new SaveBoundaryCallback();

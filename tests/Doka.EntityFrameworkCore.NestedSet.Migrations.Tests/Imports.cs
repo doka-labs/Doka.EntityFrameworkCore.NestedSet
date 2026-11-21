@@ -15,6 +15,7 @@ global using DotNet.Testcontainers.Builders;
 global using DotNet.Testcontainers.Containers;
 global using Microsoft.CodeAnalysis;
 global using Microsoft.CodeAnalysis.CSharp;
+global using Microsoft.Data.SqlClient;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Design;
 global using Microsoft.EntityFrameworkCore.Infrastructure;

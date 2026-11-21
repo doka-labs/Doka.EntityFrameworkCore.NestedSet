@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
-    <Compile Update="Registry/PostgresNestedSetProvider.Rowsets.cs">
-      <DependentUpon>PostgresNestedSetProvider.Registry.cs</DependentUpon>
+    <Compile Update="**/PostgresNestedSetProvider.*.cs">
+      <DependentUpon>../PostgresNestedSetProvider.cs</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

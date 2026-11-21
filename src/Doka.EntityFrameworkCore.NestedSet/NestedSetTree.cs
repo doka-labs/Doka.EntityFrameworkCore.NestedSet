@@ -3,6 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <summary>Represents one stable TreeId selected from a configured nested-set hierarchy.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
 /// <typeparam name="TTreeId">The mapped TreeId type.</typeparam>
+[PublicAPI]
 public sealed partial class NestedSetTree<TEntity, TTreeId>
     where TEntity : class
     where TTreeId : notnull

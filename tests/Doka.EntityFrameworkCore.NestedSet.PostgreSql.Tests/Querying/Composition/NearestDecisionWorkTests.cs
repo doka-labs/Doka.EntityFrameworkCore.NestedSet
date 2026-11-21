@@ -24,7 +24,7 @@ public sealed class NearestDecisionWorkTests : ProviderTest,
     [InlineData(10_000)]
     [InlineData(100_000)]
     [Trait("Category", "Capacity")]
-    public async Task BroadPayloadDoesNotRepeatWholePopulationMaterialization(
+    public async Task MeasureAsync_BroadPayload_DoesNotRepeatWholePopulationMaterialization(
         int nodes
     )
     {
@@ -34,7 +34,12 @@ public sealed class NearestDecisionWorkTests : ProviderTest,
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         int[] anchors = [1, 10, 100, 1_000];
 
         // Act
@@ -45,7 +50,8 @@ public sealed class NearestDecisionWorkTests : ProviderTest,
             Engine,
             nodes,
             broad: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            balanced: false);
 
         // Assert
         Assert.Equal(anchors.Length, observations.Count);

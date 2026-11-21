@@ -20,7 +20,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, true, false, true)]
     [InlineData(true, true, true, false)]
     [InlineData(true, true, true, true)]
-    public async Task LateDetectionCallbackCannotChangeHierarchy(
+    public async Task SaveNavigationAsync_LateDetectionCallback_CannotChangeHierarchy(
         bool wrapped,
         bool synchronous,
         bool pendingWrite,
@@ -30,7 +30,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();

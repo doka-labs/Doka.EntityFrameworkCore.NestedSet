@@ -133,10 +133,13 @@ public sealed partial class CompositionCoordinateProjectionTests
     }
 
     /// <summary>Maps the same CLR property bag with independent role names and one shadow-role entity.</summary>
-    private sealed class CoordinateContext(
-        DbContextOptions<CoordinateContext> options
-    ) : DbContext(options)
+    private sealed class CoordinateContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public CoordinateContext(
+            DbContextOptions<CoordinateContext> options
+        ) : base(options) { }
+
         /// <summary>Names a scope-partitioned mapping with renamed interval properties.</summary>
         internal const string Scoped = "ScopedCoordinates";
 

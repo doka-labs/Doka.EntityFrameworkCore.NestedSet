@@ -15,12 +15,13 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
 
     /// <summary>Two separate swaps do not rewrite the large unchanged tree between them.</summary>
     [Fact]
-    public async Task StableInteriorSubtreeIsExcludedFromEveryUpdate()
+    public async Task ReorderAsync_StableInteriorSubtree_IsExcludedFromEveryUpdate()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(
             setup,
@@ -32,8 +33,8 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -61,12 +62,13 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
 
     /// <summary>A changed ordinal with unchanged bounds updates a sibling without rewriting its descendants.</summary>
     [Fact]
-    public async Task PositionOnlySiblingDoesNotRewriteItsDescendants()
+    public async Task ReorderAsync_PositionOnlySibling_DoesNotRewriteItsDescendants()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(
             setup,
@@ -78,8 +80,8 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -107,12 +109,13 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
     /// More than one parameter batch preserves the stable middle subtree and all moved leaf positions.
     /// </summary>
     [Fact]
-    public async Task MultipleBatchesSkipTheStableInteriorSubtree()
+    public async Task ReorderAsync_MultipleBatches_SkipTheStableInteriorSubtree()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var sizes = Enumerable
             .Repeat(1, 81)
@@ -135,8 +138,8 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         // Act
         await ReorderAsync(context, CancellationToken.None);
@@ -163,7 +166,7 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
     /// <summary>Runs the real permutation writer inside the ordinary locked mutation boundary.</summary>
     private static Task ReorderAsync(
         OrderingContext context,
-        CancellationToken token
+        CancellationToken cancellationToken
     )
     {
         var store = new NestedSetStore<OrderingNode, int, Guid, int>(
@@ -175,14 +178,14 @@ public abstract partial class SiblingReorderWriteTests : ProviderTest
         var executor = new NestedSetMutationExecutor<OrderingNode, int, Guid, int>(context, store.Map.EntityType);
 
         return executor.ExecuteAsync(
-            async cancellation =>
+            async operationCancellationToken =>
             {
                 await new NestedSetSiblingReorderer<OrderingNode, int, Guid, int>(store).ReorderAsync(
                     new NestedSetParent<int>(true, 9000001),
-                    cancellation);
+                    operationCancellationToken);
             },
             [store.LockRequest(NestedSetTreeLockMode.Existing)],
-            token);
+            cancellationToken);
     }
 
     /// <summary>Reads only the measured child identities in their persisted hierarchy order.</summary>

@@ -18,7 +18,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData("ScopedCoordinates", true)]
     [InlineData("UnscopedCoordinates", false)]
     [InlineData("UnscopedCoordinates", true)]
-    public async Task ExactMappingReusesSelectorAcrossQueryRoots(
+    public async Task Coordinates_ExactMapping_ReusesSelectorAcrossQueryRoots(
         string mapping,
         bool includeNonLeaf
     )
@@ -57,7 +57,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData("named-mapping")]
     [InlineData("model")]
     [InlineData("nonleaf-mode")]
-    public async Task IndependentCoordinateIdentitiesNeverShareSelectors(
+    public async Task Coordinates_IndependentCoordinateIdentities_NeverShareSelectors(
         string boundary
     )
     {
@@ -99,7 +99,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [InlineData("ScopedCoordinates", true)]
     [InlineData("UnscopedCoordinates", false)]
     [InlineData("UnscopedCoordinates", true)]
-    public async Task CoordinateRolesKeepExactMappingsWithoutClosureValues(
+    public async Task Coordinates_CoordinateRoles_KeepExactMappingsWithoutClosureValues(
         string mapping,
         bool includeNonLeaf
     )
@@ -163,7 +163,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>A cached expression must not retain its caller's disposed context or finalized model.</summary>
     [Fact]
-    public void CoordinateCacheDoesNotRootContextOrModel()
+    public void CollectCoordinateGarbage_CoordinateCache_DoesNotRootContextOrModel()
     {
         // Arrange
         var weak = BuildCollectibleCoordinates();
@@ -177,7 +177,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>The lifetime probe still detects a deliberately retained model and its entity metadata.</summary>
     [Fact]
-    public void CoordinateCacheLifetimeProbeDetectsRetainedModel()
+    public void CollectCoordinateGarbage_CoordinateCacheLifetimeProbe_DetectsRetainedModel()
     {
         // Arrange
         var weak = BuildCollectibleCoordinates(out var retainedModel);
@@ -194,7 +194,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>Concurrent first access publishes a single immutable selector for the exact mapping.</summary>
     [Fact]
-    public async Task ColdCoordinatePublicationReturnsOneSelector()
+    public async Task CoordinateSelection_ColdCoordinatePublication_ReturnsOneSelector()
     {
         // Arrange
         var options = CoordinateOptions();
@@ -228,7 +228,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>Cached structure leaves each source's request predicate and parameter values independent.</summary>
     [Fact]
-    public async Task CoordinateReuseNeverReusesCallerSelection()
+    public async Task CoordinateSelection_Coordinate_ReuseNeverReusesCallerSelection()
     {
         // Arrange
         var options = CoordinateOptions();
@@ -269,7 +269,7 @@ public sealed partial class CompositionCoordinateProjectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ShadowCoordinateSelectorsRemainServerSide(
+    public async Task CoordinateSelection_ShadowCoordinateSelectors_RemainServerSide(
         bool includeNonLeaf
     )
     {

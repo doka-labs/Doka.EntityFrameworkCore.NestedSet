@@ -8,7 +8,7 @@ public sealed partial class SignalReportValidationTests
     /// Grid order follows anchor, metric and source selection order independently from SQL aggregate order.
     /// </summary>
     [Fact]
-    public void GridPreservesRequestedGrainAndIgnoresForeignTotals()
+    public void CreateGrid_Grid_PreservesRequestedGrainAndIgnoresForeignTotals()
     {
         // Arrange
         var first = SignalReportDataset.Id(2);
@@ -71,7 +71,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void GridRejectsDuplicateTotals(
+    public void CreateGrid_Grid_RejectsDuplicateTotals(
         bool foreign,
         bool sameValue
     )
@@ -113,7 +113,7 @@ public sealed partial class SignalReportValidationTests
     /// The complete selected result size is checked before allocating or enumerating billions of cells.
     /// </summary>
     [Fact]
-    public void GridRejectsCardinalityOverflowBeforeMaterialization()
+    public void CreateGrid_Grid_RejectsCardinalityOverflowBeforeMaterialization()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
@@ -137,7 +137,7 @@ public sealed partial class SignalReportValidationTests
 
     /// <summary>A large display grain preserves its final total, explicit zero and all absent cells.</summary>
     [Fact]
-    public void GridBuildsCompleteLargeGrainWithMissingAndZeroGroups()
+    public void CreateGrid_GridBuilds_CompleteLargeGrainWithMissingAndZeroGroups()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(
@@ -204,7 +204,7 @@ public sealed partial class SignalReportValidationTests
     /// </summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void GridRetainsABoundedPerCellAllocation()
+    public void Measure_Grid_RetainsABoundedPerCellAllocation()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(
@@ -235,7 +235,7 @@ public sealed partial class SignalReportValidationTests
         var allocated = QueryConstructionAllocation.Measure(() => SignalReportValidation.CreateGrid(snapshot, []));
 
         // Assert
-        output.WriteLine($"Grid: cells={cells}; bytes/report={allocated}; maximum={cells * 76 + 2048}.");
+        _output.WriteLine($"Grid: cells={cells}; bytes/report={allocated}; maximum={cells * 76 + 2048}.");
         Assert.InRange(allocated, 0, cells * 76 + 2048);
     }
 }

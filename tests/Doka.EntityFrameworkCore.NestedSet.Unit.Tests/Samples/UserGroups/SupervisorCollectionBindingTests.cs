@@ -11,7 +11,7 @@ public sealed class SupervisorCollectionBindingTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task CatalogCollectionsUseEnumerableAndOriginsRemainQueryable(
+    public async Task ResolutionRows_CatalogCollections_UseEnumerableAndOriginsRemainQueryable(
         string engine
     )
     {

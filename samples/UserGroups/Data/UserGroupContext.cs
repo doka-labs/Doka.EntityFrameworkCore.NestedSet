@@ -90,7 +90,7 @@ public class UserGroupContext : DbContext
         // WHY: Tracker acceptance must wait until both the application's save and the hierarchy work succeed.
         return this.SaveNestedSetChangesAsync(
             acceptAllChangesOnSuccess,
-            token => base.SaveChangesAsync(false, token),
+            operationCancellationToken => base.SaveChangesAsync(false, operationCancellationToken),
             cancellationToken);
     }
 

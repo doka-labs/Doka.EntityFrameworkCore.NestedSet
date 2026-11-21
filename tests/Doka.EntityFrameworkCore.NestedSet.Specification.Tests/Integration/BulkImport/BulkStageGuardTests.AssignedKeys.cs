@@ -7,7 +7,7 @@ public abstract partial class BulkStageGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CallbackCannotReplaceAssignedIntegerKey(
+    public async Task InsertForestAsync_Callback_CannotReplaceAssignedIntegerKey(
         bool afterSave
     )
     {
@@ -69,7 +69,7 @@ public abstract partial class BulkStageGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CallbackCannotMutateAssignedBinaryKeyInPlace(
+    public async Task InsertForestAsync_Callback_CannotMutateAssignedBinaryKeyInPlace(
         bool afterSave
     )
     {

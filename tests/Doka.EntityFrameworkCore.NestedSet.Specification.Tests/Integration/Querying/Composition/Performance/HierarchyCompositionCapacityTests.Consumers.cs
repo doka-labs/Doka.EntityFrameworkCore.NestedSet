@@ -9,7 +9,7 @@ public abstract partial class HierarchyCompositionCapacityTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task LargeConsumerCompositionRetainsItsResultsAndAllocationBudgets(
+    public async Task MeasureAsync_LargeConsumerComposition_RetainsItsResultsAndAllocationBudgets(
         bool deep
     )
     {
@@ -24,7 +24,8 @@ public abstract partial class HierarchyCompositionCapacityTests
             context,
             nodes,
             deep: deep,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         // WHY: The shared generic profiles prepare these physical statistics before their consumer
         // reads. This independent entry point must do the same; fresh-row estimates otherwise hide
@@ -44,8 +45,9 @@ public abstract partial class HierarchyCompositionCapacityTests
                 database,
                 Engine,
                 nodes,
-                TestContext.Current.CancellationToken,
-                deep: deep));
+                cancellationToken: TestContext.Current.CancellationToken,
+                deep: deep,
+                balanced: false));
 
         if (!deep)
         {
@@ -64,15 +66,16 @@ public abstract partial class HierarchyCompositionCapacityTests
                     database,
                     Engine,
                     nodes,
-                    TestContext.Current.CancellationToken,
-                    balanced: true));
+                    cancellationToken: TestContext.Current.CancellationToken,
+                    balanced: true,
+                    deep: false));
         }
 
         var validation = await context
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(validation.IsValid, string.Join(", ", validation.Issues.Select(issue => issue.Code)));

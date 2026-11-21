@@ -1,10 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../Shared/TestRunnerReferences.props" />
 
   <ItemGroup>
     <ProjectReference Include="../Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests.csproj" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Querying/Composition/IndependentAncestorEnvelopeTestBase.*.cs">
+      <DependentUpon>IndependentAncestorEnvelopeTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="ModelCompatibility/Inheritance/TptInheritedCollationTestBase.*.cs">
+      <DependentUpon>TptInheritedCollationTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Querying/Composition/Performance/HierarchyCompositionWorkTests.*.cs">
+      <DependentUpon>HierarchyCompositionWorkTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="ModelCompatibility/TableMappings/EntitySplitCollationTestBase.*.cs">
+      <DependentUpon>EntitySplitCollationTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Concurrency/NativeCollationTestBase.*.cs">
+      <DependentUpon>NativeCollationTestBase.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Concurrency/InheritedRegistryCollationTestBase.*.cs">
+      <DependentUpon>InheritedRegistryCollationTestBase.cs</DependentUpon>
+    </Compile>
     <Compile Update="Querying/Composition/Performance/AncestorIndexWorkTestBase.*.cs">
       <DependentUpon>AncestorIndexWorkTestBase.cs</DependentUpon>
     </Compile>

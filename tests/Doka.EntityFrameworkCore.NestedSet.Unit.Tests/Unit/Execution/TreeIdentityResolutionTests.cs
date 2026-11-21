@@ -44,7 +44,7 @@ public sealed class TreeIdentityResolutionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void UniqueAnchorsRetainRequestedOrder(
+    public void Resolve_UniqueAnchors_RetainRequestedOrder(
         bool targetFirst,
         bool sameTree
     )
@@ -72,7 +72,7 @@ public sealed class TreeIdentityResolutionTests
 
     /// <summary>Retains reference-typed tree identities without converting or replacing them.</summary>
     [Fact]
-    public void ReferenceTreeIdentitiesRetainTheirInstances()
+    public void Resolve_ReferenceTreeIdentities_RetainTheirInstances()
     {
         // Arrange
         var source = new string('a', 4);
@@ -92,7 +92,7 @@ public sealed class TreeIdentityResolutionTests
     /// <param name="expected">The existing public error classification.</param>
     [Theory]
     [MemberData(nameof(InvalidRows))]
-    public void InvalidCardinalitiesRetainTheirError(
+    public void Resolve_InvalidCardinalities_RetainTheirError(
         int[] ordinals,
         NestedSetErrorCode expected
     )
@@ -122,7 +122,7 @@ public sealed class TreeIdentityResolutionTests
     [InlineData(0)]
     [InlineData(63)]
     [InlineData(2_048)]
-    public void SuccessfulResolutionAvoidsPerCallBuffers(
+    public void Resolve_SuccessfulResolution_AvoidsPerCallBuffers(
         int ignoredRows
     )
     {

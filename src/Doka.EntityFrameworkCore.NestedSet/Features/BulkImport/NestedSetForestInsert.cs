@@ -5,7 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.BulkImport;
 /// <typeparam name="TKey">The mapped NodeKey type.</typeparam>
 /// <typeparam name="TScope">The mapped Scope type or the scopeless marker.</typeparam>
 /// <typeparam name="TTreeId">The mapped TreeId type.</typeparam>
-internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
+internal sealed partial class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
     where TEntity : class
     where TKey : notnull
     where TTreeId : notnull
@@ -94,15 +94,15 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
         {
             await executor
                 .ExecuteAsync(
-                    async token =>
+                    async operationCancellationToken =>
                     {
                         // WHY: TreeId equality belongs to the database collation and converter, not CLR equality.
                         // All registry rows are already reserved, so this check precedes the first hierarchy write.
                         await NestedSetTreeLocks
-                            .RequireDistinctAsync(_context, lockRequests, token)
+                            .RequireDistinctAsync(_context, lockRequests, operationCancellationToken)
                             .ConfigureAwait(false);
 
-                        await InsertPreparedAsync(prepared, knownTracked, callbackWrites, token)
+                        await InsertPreparedAsync(prepared, knownTracked, callbackWrites, operationCancellationToken)
                             .ConfigureAwait(false);
                     },
                     lockRequests,
@@ -172,8 +172,15 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
 
         foreach (var tree in prepared)
         {
-            foreach (var node in tree.Plan.Nodes)
+            var nodeItems = tree.Plan.Nodes;
+
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int nodeIndex = 0, nodeCount = nodeItems.Count; nodeIndex < nodeCount; nodeIndex++)
             {
+                var node = nodeItems[nodeIndex];
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 if (!entities.Add(node.Entity))
@@ -193,232 +200,4 @@ internal sealed class NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>
             }
         }
     }
-
-    /// <summary>Shares bounded payload waves across trees while preserving independent structural identities.</summary>
-    /// <param name="prepared">The validated tree plans whose complete registry lock set is already held.</param>
-    /// <param name="knownTracked">The immutable hierarchy identity baseline captured before import.</param>
-    /// <param name="callbackWrites">The shared rollback log for every accepted application callback write.</param>
-    /// <param name="cancellationToken">The token used for staging, persistence and structural finalization.</param>
-    private async Task InsertPreparedAsync(
-        PreparedTree[] prepared,
-        HashSet<TEntity> knownTracked,
-        NestedSetCallbackWrites callbackWrites,
-        CancellationToken cancellationToken
-    )
-    {
-        var order = NestedSetMapping<TEntity, TKey, TScope>.For(_context, _entityType)
-            .Order;
-
-        // WHY: Write each resolved destination back to the corresponding prepared-tree slot.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < prepared.Length; index++)
-        {
-            var tree = prepared[index];
-            var destination = await tree
-                .Insertion
-                .PrepareDestinationAsync(tree.Plan, default, null, cancellationToken)
-                .ConfigureAwait(false);
-
-            prepared[index] = tree with { Destination = destination };
-
-            if (order is null)
-            {
-                tree.Plan.PrepareGeometry(destination, null, cancellationToken);
-            }
-        }
-
-        var active = new List<PreparedTree>(Math.Min(prepared.Length, NestedSetBatch.MaximumRows));
-        var expected = new HashSet<TEntity>(ReferenceEqualityComparer.Instance);
-        var treeIndex = 0;
-        var treeOffset = 0;
-        var autoSavepoints = _context.Database.AutoSavepointsEnabled;
-
-        try
-        {
-            // WHY: Every wave shares the executor's rollback boundary. Per-save EF savepoints would add commands
-            // while all tree locks remain held, without making a partial forest independently recoverable.
-            _context.Database.AutoSavepointsEnabled = false;
-
-            while (treeIndex < prepared.Length)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                active.Clear();
-                expected.Clear();
-                var remaining = NestedSetBatch.MaximumRows;
-
-                while (remaining > 0
-                    && treeIndex < prepared.Length)
-                {
-                    var tree = prepared[treeIndex];
-                    var count = Math.Min(remaining, tree.Plan.Nodes.Count - treeOffset);
-                    tree.Plan.StageBatch(tree.Destination, treeOffset, count, callbackWrites, cancellationToken);
-                    active.Add(tree);
-
-                    // WHY: Authorize exactly the staged slice of the current tree in the shared payload wave.
-                    // ReSharper disable once ForCanBeConvertedToForeach
-                    // ReSharper disable once LoopCanBeConvertedToQuery
-                    for (var index = treeOffset; index < treeOffset + count; index++)
-                    {
-                        expected.Add(tree.Plan.Nodes[index].Entity);
-                    }
-
-                    treeOffset += count;
-                    remaining -= count;
-
-                    if (treeOffset == tree.Plan.Nodes.Count)
-                    {
-                        treeIndex++;
-                        treeOffset = 0;
-                    }
-                }
-
-                // WHY: Independent one-node trees must share payload saves too. The wave guard authorizes the
-                // exact union of staged roots while each plan still verifies its own typed tree coordinates.
-                IReadOnlySet<IUpdateEntry> introducedEntries;
-                IReadOnlySet<object> introducedEntities;
-
-                using (var managedSave = NestedSetSaveChanges.EnterManagedSave(
-                    _context,
-                    active.SelectMany(tree => tree.Plan.ManagedEntities),
-                    () => RequireSavedWave(active, knownTracked, expected),
-                    () =>
-                    {
-                        foreach (var tree in active)
-                        {
-                            tree.Plan.RefreshInsertionIdentities();
-                        }
-                    }))
-                {
-                    try
-                    {
-                        await _context
-                            .SaveChangesAsync(cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        callbackWrites.Add(managedSave.CallbackWrites);
-                    }
-
-                    introducedEntries = managedSave.PersistedEntries;
-                    introducedEntities = managedSave.PersistedEntities;
-                }
-
-                RequireSavedWave(active, knownTracked, expected);
-                NestedSetTelemetry.RecordRowsAffected(NestedSetBatch.MaximumRows - remaining);
-                NestedSetTelemetry.RecordBatch();
-                callbackWrites.RecordSavedRelationships(
-                    active.SelectMany(tree => tree.Plan.ActiveIdentities),
-                    introducedEntries,
-                    introducedEntities);
-
-                foreach (var tree in active)
-                {
-                    tree.Plan.CompleteBatch();
-                }
-            }
-        }
-        finally
-        {
-            _context.Database.AutoSavepointsEnabled = autoSavepoints;
-        }
-
-        foreach (var tree in prepared)
-        {
-            await tree
-                .Insertion
-                .FinalizePreparedAsync(tree.Plan, tree.Destination, null, cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
-
-    /// <summary>Validates wave membership once and then verifies every participating plan's scalar structure.</summary>
-    private void RequireSavedWave(
-        IReadOnlyList<PreparedTree> active,
-        HashSet<TEntity> knownTracked,
-        HashSet<TEntity> expected
-    )
-    {
-        NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>.RequireSavedMembership(
-            _context,
-            _entityType,
-            knownTracked,
-            expected);
-
-        foreach (var tree in active)
-        {
-            tree.Plan.RequireSavedGeometry();
-        }
-    }
-
-    /// <summary>Restores every input after rollback and preserves both operation and cleanup failures.</summary>
-    private static void Restore(
-        IReadOnlyList<PreparedTree> prepared,
-        NestedSetCallbackWrites callbackWrites,
-        Exception operationError
-    )
-    {
-        List<Exception>? errors = null;
-
-        foreach (var tree in prepared)
-        {
-            try
-            {
-                tree.Plan.Restore();
-            }
-            catch (Exception restoreError)
-            {
-                (errors ??= []).Add(restoreError);
-            }
-        }
-
-        try
-        {
-            callbackWrites.Restore();
-        }
-        catch (Exception restoreError)
-        {
-            (errors ??= []).Add(restoreError);
-        }
-
-        if (errors is not null)
-        {
-            throw new AggregateException(
-                "Nested-set forest restoration failed. Discard the context.",
-                [operationError, .. errors]);
-        }
-    }
-
-    /// <summary>Ensures every successfully imported input remains detached from the caller's context.</summary>
-    private static void Detach(
-        IReadOnlyList<PreparedTree> prepared
-    )
-    {
-        List<Exception>? errors = null;
-
-        foreach (var tree in prepared)
-        {
-            try
-            {
-                tree.Plan.Detach();
-            }
-            catch (Exception detachError)
-            {
-                (errors ??= []).Add(detachError);
-            }
-        }
-
-        if (errors is not null)
-        {
-            throw new AggregateException("One or more imported trees could not be detached.", errors);
-        }
-    }
-
-    /// <summary>Keeps one validated plan with the exact-tree insertion engine that owns it.</summary>
-    private readonly record struct PreparedTree(
-        NestedSetBulkInsert<TEntity, TKey, TTreeId, TScope> Insertion,
-        NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope> Plan,
-        NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination Destination
-    );
 }

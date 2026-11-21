@@ -19,7 +19,7 @@ public sealed class CompositionEndpointTests
     [InlineData("select-many-payload", "path")]
     [InlineData("select-many-payload", "any")]
     [InlineData("select-many-payload", "nearest")]
-    public void MappedAliasesAllowIndependentPayloadRoots(
+    public void Filter_MappedAliases_AllowIndependentPayloadRoots(
         string shape,
         string operation
     )
@@ -80,7 +80,7 @@ public sealed class CompositionEndpointTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void SameClrTypeDoesNotMakeNamedMappingsInterchangeable(
+    public void Filter_SameClrType_DoesNotMakeNamedMappingsInterchangeable(
         string operation
     )
     {
@@ -116,7 +116,7 @@ public sealed class CompositionEndpointTests
     [InlineData("path")]
     [InlineData("any")]
     [InlineData("nearest")]
-    public void ConstructedEntityCannotImpersonateMappedEndpoint(
+    public void Filter_ConstructedEntity_CannotImpersonateMappedEndpoint(
         string operation
     )
     {
@@ -143,7 +143,7 @@ public sealed class CompositionEndpointTests
 
     /// <summary>A concrete TPC hierarchy accepts its actual alias after a base query is narrowed with OfType.</summary>
     [Fact]
-    public void ConcreteTpcAliasRetainsMappingThroughOfType()
+    public void WhereAnyAncestorOrSelf_ConcreteTpcAlias_RetainsMappingThroughOfType()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -172,7 +172,7 @@ public sealed class CompositionEndpointTests
 
     /// <summary>A derived TPH alias belongs to the hierarchy configured on its base entity.</summary>
     [Fact]
-    public void DerivedTphAliasRetainsConfiguredBaseHierarchy()
+    public void WhereAnyAncestorOrSelf_DerivedTphAlias_RetainsConfiguredBaseHierarchy()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();

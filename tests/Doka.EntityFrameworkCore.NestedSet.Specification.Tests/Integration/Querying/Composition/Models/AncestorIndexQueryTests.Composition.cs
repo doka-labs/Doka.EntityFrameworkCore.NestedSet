@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Indexed pairs keep endpoint provenance and visible-edge rules in subsequent generic hierarchy operators.</summary>
+    /// <summary>
+    /// Indexed pairs keep endpoint provenance and visible-edge rules in subsequent generic hierarchy operators.
+    /// </summary>
     /// <param name="operation">The positive or rejecting operator composed after ancestor expansion.</param>
     /// <param name="capturedFacts">Whether ordinary captured fact selection supplies the same leaf.</param>
     [Theory]
@@ -18,7 +20,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData("missing-any", true)]
     [InlineData("nearest", true)]
     [InlineData("nearest-rejects", true)]
-    public async Task IndexedAncestorEndpointsRetainPathAnyAndNearestContracts(
+    public async Task WhereNearestAncestorOrSelf_IndexedAncestorEndpoints_RetainPathAnyAndNearestContracts(
         string operation,
         bool capturedFacts
     )
@@ -31,7 +33,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var hierarchy = context
             .NestedSet<CompositionNavigationNode>()
@@ -98,7 +101,8 @@ public abstract partial class AncestorIndexQueryTests
             _ => [1, 2],
         };
 
-        // WHY: Later path operators have their own aggregates even when the ancestor-source optimization is unavailable.
+        // WHY: Later path operators have their own aggregates even when the ancestor-source optimization is
+        // unavailable.
         probe.Reset();
 
         // Act
@@ -114,12 +118,14 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>A later direction change retains its indexed first leg with scalar or ordinary captured fact selection.</summary>
+    /// <summary>
+    /// A later direction change retains its indexed first leg with scalar or ordinary captured fact selection.
+    /// </summary>
     /// <param name="capturedFacts">Whether the selected leaf is reached through an ordinary captured fact Any.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedUpwardSelectionComposesWithDownwardExpansion(
+    public async Task WherePathEdges_IndexedUpwardSelection_ComposesWithDownwardExpansion(
         bool capturedFacts
     )
     {
@@ -131,7 +137,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var hierarchy = context
             .NestedSet<CompositionNavigationNode>()

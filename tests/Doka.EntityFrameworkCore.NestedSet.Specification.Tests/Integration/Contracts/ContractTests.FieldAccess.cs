@@ -5,7 +5,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that inserting a root stores bounds through the configured backing fields.</summary>
     /// <returns>A task that completes when the persisted root has been verified.</returns>
     [Fact]
-    public async Task RootInsertionRespectsConfiguredFieldAccess()
+    public async Task InsertRootAsync_RootInsertion_RespectsConfiguredFieldAccess()
     {
         // Arrange
         await using var context = await _fixture.CreateFieldContextAsync(
@@ -40,7 +40,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that child insertion reads backing fields instead of decorated parent getters.</summary>
     /// <returns>A task that completes when the persisted parent and child have been verified.</returns>
     [Fact]
-    public async Task ChildInsertionRespectsConfiguredFieldAccess()
+    public async Task InsertChildAsync_ChildInsertion_RespectsConfiguredFieldAccess()
     {
         // Arrange
         await using var context = await _fixture.CreateFieldContextAsync(
@@ -78,7 +78,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that validation reads field-backed structural values instead of altered CLR getters.</summary>
     /// <returns>A task that completes when the field-backed hierarchy has been validated.</returns>
     [Fact]
-    public async Task ValidationRespectsConfiguredFieldAccess()
+    public async Task ValidateAsync_Validation_RespectsConfiguredFieldAccess()
     {
         // Arrange
         await using var context = await _fixture.CreateFieldContextAsync(
@@ -102,7 +102,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that root promotion reads the stored interval and depth from backing fields.</summary>
     /// <returns>A task that completes when both field-backed roots have been verified.</returns>
     [Fact]
-    public async Task MoveRespectsConfiguredFieldAccess()
+    public async Task DetachAsTreeAsync_FieldMappedModel_RespectsConfiguredFieldAccess()
     {
         // Arrange
         await using var context = await _fixture.CreateFieldContextAsync(
@@ -143,7 +143,7 @@ public abstract partial class ContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RebuildRespectsConfiguredFieldAccess(
+    public async Task RebuildAsync_Rebuild_RespectsConfiguredFieldAccess(
         bool separateRoots
     )
     {

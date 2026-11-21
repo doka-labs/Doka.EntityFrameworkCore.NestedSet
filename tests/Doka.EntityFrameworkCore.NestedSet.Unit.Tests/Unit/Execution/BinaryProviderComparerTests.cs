@@ -13,7 +13,7 @@ public sealed class BinaryProviderComparerTests
     [InlineData("erased")]
     [InlineData("converted")]
     [InlineData("converted-erased")]
-    public void EqualProviderValuesShareEqualityAndHash(
+    public void Compare_EqualProviderValues_ShareEqualityAndHash(
         string shape
     )
     {
@@ -50,7 +50,7 @@ public sealed class BinaryProviderComparerTests
     [InlineData("converted-erased", "prefix")]
     [InlineData("converted-erased", "suffix")]
     [InlineData("converted-erased", "length")]
-    public void DifferentProviderValuesRemainUnequal(
+    public void Compare_DifferentProviderValues_RemainUnequal(
         string shape,
         string change
     )
@@ -103,7 +103,7 @@ public sealed class BinaryProviderComparerTests
     [InlineData("erased")]
     [InlineData("converted")]
     [InlineData("converted-erased")]
-    public void NullAndReferenceComparisonsRetainTheirMeaning(
+    public void Compare_NullAndReferenceComparisons_RetainTheirMeaning(
         string shape
     )
     {
@@ -113,13 +113,13 @@ public sealed class BinaryProviderComparerTests
         var value = operations.Model([], 10)!;
 
         // Act
-        var results = new[]
-        {
+        bool[] results =
+        [
             operations.Compare(null, null),
             operations.Compare(value, value),
             operations.Compare(null, value),
             operations.Compare(value, null),
-        };
+        ];
 
         // Assert
         Assert.Equal([true, true, false, false], results);
@@ -136,7 +136,7 @@ public sealed class BinaryProviderComparerTests
     [InlineData(16)]
     [InlineData(1024)]
     [InlineData(65_536)]
-    public void HashesMatchFrameworkStructuralArrayHash(
+    public void Hash_Hashes_MatchFrameworkStructuralArrayHash(
         int length
     )
     {
@@ -154,7 +154,7 @@ public sealed class BinaryProviderComparerTests
         var expected = StructuralComparisons.StructuralEqualityComparer.GetHashCode(bytes);
 
         // Act
-        var hashes = new[] { native.Hash(bytes), erased.Hash(bytes), converted.Hash(model) };
+        int[] hashes = [native.Hash(bytes), erased.Hash(bytes), converted.Hash(model)];
 
         // Assert
         Assert.All(hashes, hash => Assert.Equal(expected, hash));
@@ -164,7 +164,7 @@ public sealed class BinaryProviderComparerTests
     /// Converters producing null keep the framework fallback instead of treating null as an empty array.
     /// </summary>
     [Fact]
-    public void NullProviderOutputsRetainFrameworkEqualityAndHash()
+    public void Equals_NullProviderOutputs_RetainFrameworkEqualityAndHash()
     {
         // Arrange
         using var context = new BinaryContext();
@@ -192,7 +192,7 @@ public sealed class BinaryProviderComparerTests
     /// An object provider must not acquire binary structural semantics from its runtime input values.
     /// </summary>
     [Fact]
-    public void ObjectProviderRetainsReferenceEqualityForBinaryInputs()
+    public void Equals_ObjectProvider_RetainsReferenceEqualityForBinaryInputs()
     {
         // Arrange
         var comparer = new NestedSetProviderComparer<object>(null);
@@ -212,7 +212,7 @@ public sealed class BinaryProviderComparerTests
 
     /// <summary>Unexpected runtime values still use the framework's type-error behavior.</summary>
     [Fact]
-    public void BinaryProviderRejectsIncompatibleErasedValues()
+    public void Matches_BinaryProvider_RejectsIncompatibleErasedValues()
     {
         // Arrange
         using var context = new BinaryContext();
@@ -235,7 +235,7 @@ public sealed class BinaryProviderComparerTests
     [InlineData("erased")]
     [InlineData("converted")]
     [InlineData("converted-erased")]
-    public void BinaryComparisonsAndHashesAvoidPerByteAllocation(
+    public void Compare_BinaryComparisonsAndHashes_AvoidPerByteAllocation(
         string shape
     )
     {

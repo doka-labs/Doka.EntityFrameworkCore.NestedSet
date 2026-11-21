@@ -6,6 +6,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 /// <see cref="NestedSetDbContextExtensions.SaveNestedSetChangesAsync" /> instead.
 ///     Synchronous saves reject changes that require hierarchy ordering; use an asynchronous save for those changes.
 /// </remarks>
+[PublicAPI]
 public abstract class NestedSetDbContext : DbContext
 {
     /// <summary>Creates a context whose provider is configured by the derived context.</summary>
@@ -31,7 +32,7 @@ public abstract class NestedSetDbContext : DbContext
         CancellationToken cancellationToken = default
     ) => this.SaveNestedSetChangesAsync(
         acceptAllChangesOnSuccess,
-        token => base.SaveChangesAsync(false, token),
+        operationCancellationToken => base.SaveChangesAsync(false, operationCancellationToken),
         cancellationToken);
 
     /// <summary>Saves synchronously when hierarchy changes do not require asynchronous coordination.</summary>

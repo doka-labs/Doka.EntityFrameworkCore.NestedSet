@@ -15,11 +15,11 @@ public sealed class SqliteInstructionBudgetTests : ProviderTest,
                                       """;
 
     private const string QuadraticRead = """
-                                         WITH RECURSIVE numbers(Value) AS (
-                                             SELECT 1 UNION ALL SELECT Value + 1 FROM numbers WHERE Value < 100
-                                         )
-                                         SELECT SUM(first.Value * second.Value) FROM numbers AS first CROSS JOIN numbers AS second;
-                                         """;
+        WITH RECURSIVE numbers(Value) AS (
+            SELECT 1 UNION ALL SELECT Value + 1 FROM numbers WHERE Value < 100
+        )
+        SELECT SUM(first.Value * second.Value) FROM numbers AS first CROSS JOIN numbers AS second;
+        """;
 
     /// <summary>Retains explicit SQLite test ownership without starting shared database resources.</summary>
     /// <param name="fixture">The resource-free provider marker.</param>
@@ -29,7 +29,7 @@ public sealed class SqliteInstructionBudgetTests : ProviderTest,
 
     /// <summary>A finite read returns its exact result and records positive work below its fixed allowance.</summary>
     [Fact]
-    public async Task FiniteReadCompletesWithinInstructionBudget()
+    public async Task ExecuteScalarAsync_FiniteRead_CompletesWithinInstructionBudget()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:;Pooling=False");
@@ -49,7 +49,7 @@ public sealed class SqliteInstructionBudgetTests : ProviderTest,
 
     /// <summary>A quadratic read is interrupted deterministically before it can overrun its fixed allowance.</summary>
     [Fact]
-    public async Task QuadraticReadIsInterruptedByInstructionBudget()
+    public async Task ExecuteScalarAsync_QuadraticRead_IsInterruptedByInstructionBudget()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:;Pooling=False");
@@ -76,7 +76,7 @@ public sealed class SqliteInstructionBudgetTests : ProviderTest,
 
     /// <summary>Removing an interrupted read's handler lets the same native connection execute normally.</summary>
     [Fact]
-    public async Task DisposingInterruptedBudgetRestoresConnectionReads()
+    public async Task ExecuteScalarAsync_DisposingInterruptedBudget_RestoresConnectionReads()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:;Pooling=False");

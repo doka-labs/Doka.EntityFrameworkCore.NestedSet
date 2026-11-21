@@ -8,7 +8,7 @@ public sealed partial class ExpressionInliningTests
     /// <summary>Direct projection member lookup does not require a visitor or a collection enumerator.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void MemberInitializerLookupAvoidsPerTraversalAllocation()
+    public void Inline_MemberInitializerLookup_AvoidsPerTraversalAllocation()
     {
         // Arrange
         Expression<Func<ProjectionMembers>> projection = () => new ProjectionMembers
@@ -43,7 +43,7 @@ public sealed partial class ExpressionInliningTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Member lookup: operations={repetitions}; allocated={allocated} B.");
+        _output.WriteLine($"Member lookup: operations={repetitions}; allocated={allocated} B.");
 
         // WHY: Fixed noise headroom rejects either the former visitor or enumerator allocation on every lookup.
         Assert.InRange(allocated, 0, 4096);
@@ -56,7 +56,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void FixedBindingsAllocateLessThanExplicitArrayBindings(
+    public void MeasurePaired_FixedBindings_AllocateLessThanExplicitArrayBindings(
         int arity
     )
     {
@@ -93,7 +93,7 @@ public sealed partial class ExpressionInliningTests
         var allocated = QueryConstructionAllocation.MeasurePaired(baseline, current);
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Arity={arity}; explicit-array={allocated.Baseline} B/op; "
             + $"fixed={allocated.Expanded} B/op; saved={allocated.Baseline - allocated.Expanded} B/op.");
 

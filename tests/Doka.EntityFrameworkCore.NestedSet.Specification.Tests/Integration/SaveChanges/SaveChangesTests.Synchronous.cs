@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SynchronousSaveGuardsEventsAndInterceptors(
+    public async Task SaveChanges_SynchronousSave_GuardsEventsAndInterceptors(
         bool interceptor,
         bool automaticDetection
     )
@@ -18,7 +18,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
@@ -67,7 +68,7 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SynchronousUnrelatedSaveHonorsAcceptance(
+    public async Task SaveChanges_SynchronousUnrelatedSave_HonorsAcceptance(
         bool acceptChanges,
         bool automaticDetection
     )
@@ -75,7 +76,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var probe = new SaveBoundaryProbe();
         await using var context = new SaveBoundaryContext(
@@ -126,12 +128,13 @@ public abstract partial class SaveChangesTests
 
     /// <summary>Prevents an inherited custom-base synchronous API from bypassing the post-callback guard.</summary>
     [Fact]
-    public async Task CustomBaseRequiresExplicitSynchronousWrapper()
+    public async Task SaveChanges_CustomBase_RequiresExplicitSynchronousWrapper()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var extensions = setup

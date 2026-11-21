@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Protects native physical identities on a secondary entity-splitting structure fragment.</summary>
-public abstract class EntitySplitCollationTestBase : ProviderTest
+public abstract partial class EntitySplitCollationTestBase : ProviderTest
 {
     private readonly ModelCompatibilityDatabase _fixture;
 
@@ -17,7 +17,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     /// <summary>Binary secondary-table Scope identities override the CI model default in public reservations.</summary>
     /// <returns>A task that completes after verifying independent trees, payload, and native registry parity.</returns>
     [Fact]
-    public async Task SecondaryFragmentReservesIndependentCaseDistinctScopes()
+    public async Task InsertRootAsync_SecondaryFragment_ReservesIndependentCaseDistinctScopes()
     {
         // Arrange
         await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -146,7 +146,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     /// <summary>Parent lookup uses the secondary fragment's binary key rather than its CI model default.</summary>
     /// <returns>A task that completes after verifying input, persisted values, registry, and tracker state.</returns>
     [Fact]
-    public async Task SecondaryFragmentRejectsBinaryParentAliasWithoutWrites()
+    public async Task InsertChildAsync_SecondaryFragment_RejectsBinaryParentAliasWithoutWrites()
     {
         // Arrange
         await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -238,7 +238,7 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
     /// <summary>An exact duplicate reservation preserves both fragments and all caller-owned input values.</summary>
     /// <returns>A task that completes after verifying rollback of the failed public root insertion.</returns>
     [Fact]
-    public async Task SecondaryFragmentRejectsDuplicateReservationWithoutWrites()
+    public async Task InsertRootAsync_SecondaryFragment_RejectsDuplicateReservationWithoutWrites()
     {
         // Arrange
         await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -353,56 +353,4 @@ public abstract class EntitySplitCollationTestBase : ProviderTest
         ) => (node.Id, node.Scope, node.TreeId, node.ParentId, node.Left, node.Right, node.Depth, node.Position,
         node.Name,
         node.Payload);
-
-    /// <summary>Reads complete persisted entity values without introducing tracked state.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="scope">The hierarchy scope used by the scenario.</param>
-    /// <param name="treeId">The hierarchy tree identity.</param>
-    private static async Task<(string Id, string Scope, Guid TreeId, string? Parent, long Left, long Right, int Depth,
-        long Position, string Name, string Payload)[]> TreeSnapshotsAsync(
-        EntitySplitCollationContext context,
-        string scope,
-        Guid treeId,
-        CancellationToken cancellationToken
-    )
-    {
-        var nodes = await context
-            .NestedSet<EntitySplitCollationNode>()
-            .ForScope(scope)
-            .InTree(treeId)
-            .Nodes
-            .ToArrayAsync(cancellationToken);
-
-        return nodes
-            .Select(Snapshot)
-            .ToArray();
-    }
-
-    /// <summary>Captures registry identity, revision, and lifecycle for exact failed-mutation comparison.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="treeId">The hierarchy tree identity.</param>
-    private static Task<(string Scope, Guid TreeId, long Revision, byte Lifecycle)[]> RegistrySnapshotsAsync(
-        EntitySplitCollationContext context,
-        Guid treeId,
-        CancellationToken cancellationToken
-    )
-    {
-        var hierarchy = context.Model.FindEntityType(typeof(EntitySplitCollationNode))!;
-        var registry = NestedSetTreeRegistryMapping.For(hierarchy)
-            .Registry;
-
-        return context
-            .Set<NestedSetTreeRegistry>(registry.Name)
-            .AsNoTracking()
-            .Where(row => EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId) == treeId)
-            .OrderBy(row => EF.Property<string>(row, NestedSetTreeRegistryMetadata.Scope))
-            .Select(row => new ValueTuple<string, Guid, long, byte>(
-                EF.Property<string>(row, NestedSetTreeRegistryMetadata.Scope),
-                EF.Property<Guid>(row, NestedSetTreeRegistryMetadata.TreeId),
-                EF.Property<long>(row, NestedSetTreeRegistryMetadata.Revision),
-                EF.Property<byte>(row, NestedSetTreeRegistryMetadata.Lifecycle)))
-            .ToArrayAsync(cancellationToken);
-    }
 }

@@ -5,6 +5,7 @@ global using System.IO;
 global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
+global using Doka.EntityFrameworkCore.NestedSet.Testing;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Diagnostics;
 global using Microsoft.EntityFrameworkCore.Metadata;

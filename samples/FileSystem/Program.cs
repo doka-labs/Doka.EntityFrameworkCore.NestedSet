@@ -23,7 +23,7 @@ internal static class Program
     )
     {
         using var cancellation = new SampleCancellation();
-        var token = cancellation.Token;
+        var cancellationToken = cancellation.Token;
 
         try
         {
@@ -31,46 +31,51 @@ internal static class Program
 
             if (command.Help)
             {
-                await PrintHelpAsync(token);
+                await PrintHelpAsync(cancellationToken);
 
                 return 0;
             }
 
             var configuration = SampleDatabaseConfiguration.Create("filesystem", command.Provider);
-            await SampleConsole.WriteLineAsync(configuration.Description, token);
+            await SampleConsole.WriteLineAsync(configuration.Description, cancellationToken);
 
             if (command.Inspect)
             {
                 await using var inspection = CreateContext(configuration, readOnly: true);
-                await SampleDatabase.EnsureAvailableForInspectionAsync(inspection, token);
-                await FolderDisplay.StoredTreesAsync(inspection, command.Details, token);
+                await SampleDatabase.EnsureAvailableForInspectionAsync(inspection, cancellationToken);
+                await FolderDisplay.StoredTreesAsync(inspection, command.Details, cancellationToken);
 
                 return 0;
             }
 
             await using (var preparation = CreateContext(configuration))
             {
-                await SampleDatabase.PrepareAsync(preparation, configuration, command.Reset, token);
+                await SampleDatabase.PrepareAsync(preparation, configuration, command.Reset, cancellationToken);
             }
 
             var selected = command.Scenario == "all"
                 ? Scenarios
                 : [command.Scenario];
 
-            foreach (var scenario in selected)
+            // WHY: The scenario list is indexable and runs in the documented introductory order.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var scenarioIndex = 0; scenarioIndex < selected.Count; scenarioIndex++)
             {
+                var scenario = selected[scenarioIndex];
+
                 // WHY: Each scenario owns its tracker and deterministic forest; all does not rely on previous state.
                 await using var context = CreateContext(configuration);
-                await RunScenarioAsync(context, scenario, command.Details, token);
+                await RunScenarioAsync(context, scenario, command.Details, cancellationToken);
             }
 
             await SampleConsole.WriteLineAsync(
                 "Selected FileSystem scenarios passed. Results remain stored; use --inspect to view them.",
-                token);
+                cancellationToken);
 
             return 0;
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             await Console.Error.WriteLineAsync(
                 "FileSystem canceled; persisted results remain available.".AsMemory(),

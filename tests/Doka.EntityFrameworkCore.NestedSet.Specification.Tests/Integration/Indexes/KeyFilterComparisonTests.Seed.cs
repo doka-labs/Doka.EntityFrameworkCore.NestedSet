@@ -4,7 +4,7 @@ public abstract partial class KeyFilterComparisonTests
 {
     /// <summary>Independent comparison contexts reuse the same fixture-owned immutable database.</summary>
     [Fact]
-    public async Task ComparisonSeedIsReusedAcrossContexts()
+    public async Task ComparisonAsync_ComparisonSeed_IsReusedAcrossContexts()
     {
         // Arrange
         var first = await _fixture.ComparisonAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -25,7 +25,7 @@ public abstract partial class KeyFilterComparisonTests
 
     /// <summary>A sibling reset cannot delete rows retained for independently discovered comparisons.</summary>
     [Fact]
-    public async Task ResettingSiblingRowsPreservesComparisonSeed()
+    public async Task ResetAsync_ResettingSiblingRows_PreservesComparisonSeed()
     {
         // Arrange
         var comparison = await _fixture.ComparisonAsync(

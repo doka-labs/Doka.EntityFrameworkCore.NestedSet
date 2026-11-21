@@ -149,15 +149,29 @@ internal static partial class NestedSetQueryEndpoint
     );
 
     /// <summary>Invalidates shortcuts for query-wide modifiers without resolving unrelated payload mappings.</summary>
-    /// <param name="boundSource">The exact hierarchy binding supplied by this operation.</param>
-    /// <param name="sourceBindingMethod">The validated statement-local query operator, if present.</param>
-    /// <param name="orderedJoinMethod">The validated provider inner-join operator, if present.</param>
-    private sealed class VisibilityProof(
-        Expression boundSource,
-        MethodInfo? sourceBindingMethod,
-        MethodInfo? orderedJoinMethod
-    ) : ExpressionVisitor
+    private sealed class VisibilityProof : ExpressionVisitor
     {
+        private readonly Expression _boundSource;
+        private readonly MethodInfo? _sourceBindingMethod;
+        private readonly MethodInfo? _orderedJoinMethod;
+
+        /// <summary>
+        /// Retains the exact hierarchy binding and recognized operators for one visibility proof.
+        /// </summary>
+        /// <param name="boundSource">The exact hierarchy binding supplied by this operation.</param>
+        /// <param name="sourceBindingMethod">The validated statement-local query operator, if present.</param>
+        /// <param name="orderedJoinMethod">The validated provider inner-join operator, if present.</param>
+        internal VisibilityProof(
+            Expression boundSource,
+            MethodInfo? sourceBindingMethod,
+            MethodInfo? orderedJoinMethod
+        )
+        {
+            _boundSource = boundSource;
+            _sourceBindingMethod = sourceBindingMethod;
+            _orderedJoinMethod = orderedJoinMethod;
+        }
+
         private bool _allowed = true;
         private bool _boundProved;
         private bool _canReuseBound = true;
@@ -188,7 +202,7 @@ internal static partial class NestedSetQueryEndpoint
                 return node;
             }
 
-            var bound = _canReuseBound && ReferenceEquals(node, boundSource);
+            var bound = _canReuseBound && ReferenceEquals(node, _boundSource);
 
             if (bound && _boundProved)
             {
@@ -338,8 +352,8 @@ internal static partial class NestedSetQueryEndpoint
             }
             else if (declaring != typeof(Queryable)
                 && typeof(IQueryable).IsAssignableFrom(node.Type)
-                && !IsValidatedProviderMethod(node, sourceBindingMethod)
-                && !IsValidatedProviderMethod(node, orderedJoinMethod))
+                && !IsValidatedProviderMethod(node, _sourceBindingMethod)
+                && !IsValidatedProviderMethod(node, _orderedJoinMethod))
             {
                 _allowed = false;
             }

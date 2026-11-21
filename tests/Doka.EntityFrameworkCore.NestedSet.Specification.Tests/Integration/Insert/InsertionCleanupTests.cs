@@ -19,7 +19,7 @@ public abstract partial class InsertionCleanupTests : ProviderTest
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedInsertionPreservesOperationAndDetachErrors(
+    public async Task InsertForestAsync_FailedInsertion_PreservesOperationAndDetachErrors(
         bool bulk,
         bool cancel
     )
@@ -121,7 +121,7 @@ public abstract partial class InsertionCleanupTests : ProviderTest
 
     /// <summary>A pre-detach callback failure aborts the bulk wave and restores every owned input.</summary>
     [Fact]
-    public async Task BulkWaveDetachFailureRollsBackAndRestoresAllInputs()
+    public async Task InsertForestAsync_BulkWaveDetachFailure_RollsBackAndRestoresAllInputs()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

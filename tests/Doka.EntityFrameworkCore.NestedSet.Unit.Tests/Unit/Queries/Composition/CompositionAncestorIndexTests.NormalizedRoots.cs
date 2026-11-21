@@ -17,7 +17,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("literal", false)]
     [InlineData("mapping", false)]
     [InlineData("model", false)]
-    public async Task NormalizedOwnedRootsPreserveEveryBindingIdentity(
+    public async Task Canonicalize_NormalizedOwnedRoots_PreserveEveryBindingIdentity(
         string difference,
         bool same
     )
@@ -92,7 +92,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("constructor-metadata")]
     [InlineData("index-metadata")]
     [InlineData("constant-type")]
-    public async Task NormalizedRootAdmissionNeverInvokesApplicationCallbacks(
+    public async Task Canonicalize_NormalizedRootAdmission_NeverInvokesApplicationCallbacks(
         string shape
     )
     {
@@ -216,14 +216,22 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Exposes equality callbacks that must never run while admitting a binding.</summary>
-    private sealed class UntrustedBindingLiteral(
-        MetadataReadProbe probe
-    )
+    private sealed class UntrustedBindingLiteral
     {
+        private readonly MetadataReadProbe _probe;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public UntrustedBindingLiteral(
+            MetadataReadProbe probe
+        )
+        {
+            _probe = probe;
+        }
+
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            probe.Read();
+            _probe.Read();
 
             return 0;
         }
@@ -233,7 +241,7 @@ public sealed partial class CompositionAncestorIndexTests
             object? obj
         )
         {
-            probe.Read();
+            _probe.Read();
 
             return ReferenceEquals(this, obj);
         }
@@ -242,14 +250,22 @@ public sealed partial class CompositionAncestorIndexTests
     /// <summary>
     /// Prevents value-type status alone from admitting an application-defined equality implementation.
     /// </summary>
-    private readonly struct UntrustedBindingValue(
-        MetadataReadProbe probe
-    )
+    private readonly struct UntrustedBindingValue
     {
+        private readonly MetadataReadProbe _probe;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public UntrustedBindingValue(
+            MetadataReadProbe probe
+        )
+        {
+            _probe = probe;
+        }
+
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            probe.Read();
+            _probe.Read();
 
             return 0;
         }
@@ -259,17 +275,25 @@ public sealed partial class CompositionAncestorIndexTests
             object? obj
         )
         {
-            probe.Read();
+            _probe.Read();
 
             return false;
         }
     }
 
     /// <summary>Rejects an extension before visiting children or requesting its reduction.</summary>
-    private sealed class UntrustedBindingExpression(
-        MetadataReadProbe probe
-    ) : Expression
+    private sealed class UntrustedBindingExpression : Expression
     {
+        private readonly MetadataReadProbe _probe;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public UntrustedBindingExpression(
+            MetadataReadProbe probe
+        )
+        {
+            _probe = probe;
+        }
+
         /// <inheritdoc />
         public override Type Type => typeof(bool);
 
@@ -282,7 +306,7 @@ public sealed partial class CompositionAncestorIndexTests
         /// <inheritdoc />
         public override Expression Reduce()
         {
-            probe.Read();
+            _probe.Read();
 
             return Constant(true);
         }
@@ -292,21 +316,29 @@ public sealed partial class CompositionAncestorIndexTests
             ExpressionVisitor visitor
         )
         {
-            probe.Read();
+            _probe.Read();
 
             return this;
         }
     }
 
     /// <summary>Shows that inheriting EF's parameter type cannot make application callbacks trusted.</summary>
-    private sealed class UntrustedBindingParameter(
-        MetadataReadProbe probe
-    ) : QueryParameterExpression("scope", typeof(int))
+    private sealed class UntrustedBindingParameter : QueryParameterExpression
     {
+        private readonly MetadataReadProbe _probe;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public UntrustedBindingParameter(
+            MetadataReadProbe probe
+        ) : base("scope", typeof(int))
+        {
+            _probe = probe;
+        }
+
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            probe.Read();
+            _probe.Read();
 
             return base.GetHashCode();
         }
@@ -316,7 +348,7 @@ public sealed partial class CompositionAncestorIndexTests
             object? obj
         )
         {
-            probe.Read();
+            _probe.Read();
 
             return base.Equals(obj);
         }

@@ -9,7 +9,7 @@ public sealed partial class ComplexPeerRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeSharedRowSaveDistinguishesRawJsonCardinalityFromScalarEdit(
+    public async Task SaveChangesAsync_NativeSharedRowSave_DistinguishesRawJsonCardinalityFromScalarEdit(
         bool addItem
     )
     {

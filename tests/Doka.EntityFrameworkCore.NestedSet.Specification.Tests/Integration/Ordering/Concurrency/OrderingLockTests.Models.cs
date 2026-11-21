@@ -150,171 +150,35 @@ public sealed class OrderingLockFixture : IAsyncLifetime
         switch (engine)
         {
             case "Sqlite":
-                options.UseSqlite(connection, provider => provider.UseNestedSets());
+                options.UseSqlite(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "PostgreSql":
-                options.UseNpgsql(connection, provider => provider.UseNestedSets());
+                options.UseNpgsql(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "SqlServer":
-                options.UseSqlServer(connection, provider => provider.UseNestedSets());
+                options.UseSqlServer(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "MySql":
-                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
+                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider
+                    .UseNestedSets());
                 break;
             case "MariaDb":
-                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
+                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider
+                    .UseNestedSets());
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
 
+        FunctionalTestContextPolicy.ConfigureOptions(options);
         options.AddInterceptors(interceptors);
 
         return new OrderingLockContext(options.Options);
     }
-}
-
-/// <summary>Maps multiple ordered hierarchies to shared integer, string, and binary scope anchors.</summary>
-public sealed class OrderingLockContext : NestedSetDbContext
-{
-    /// <summary>Creates the anchored test context with its real provider and optional observers.</summary>
-    /// <param name="options">The provider and observer configuration.</param>
-    public OrderingLockContext(
-        DbContextOptions<OrderingLockContext> options
-    ) : base(options) { }
-
-    /// <inheritdoc />
-    protected override void OnModelCreating(
-        ModelBuilder modelBuilder
-    )
-    {
-        ConfigureAnchor<int>(modelBuilder, "OrderingIntegerAnchors");
-        ConfigureAnchor<string>(modelBuilder, "OrderingStringAnchors");
-        ConfigureAnchor<byte[]>(modelBuilder, "OrderingBinaryAnchors");
-        ConfigureNode<int, FirstLockHierarchy>(modelBuilder, "OrderingFirstNodes");
-        ConfigureNode<int, SecondLockHierarchy>(modelBuilder, "OrderingSecondNodes");
-        ConfigureNode<string, FirstLockHierarchy>(modelBuilder, "OrderingStringNodes");
-        ConfigureNode<byte[], FirstLockHierarchy>(modelBuilder, "OrderingBinaryNodes");
-    }
-
-    /// <summary>Maps a stable application-owned scope key with matching native storage semantics.</summary>
-    private void ConfigureAnchor<TScope>(
-        ModelBuilder modelBuilder,
-        string table
-    )
-        where TScope : notnull
-    {
-        var anchor = modelBuilder.Entity<OrderingLockAnchor<TScope>>();
-        anchor.ToTable(table);
-        var key = anchor
-            .Property(row => row.Id)
-            .ValueGeneratedNever();
-
-        ConfigureScope(key);
-    }
-
-    /// <summary>Maps one standalone closed CLR type to the anchor shared by its scope type.</summary>
-    private void ConfigureNode<TScope, THierarchy>(
-        ModelBuilder modelBuilder,
-        string table
-    )
-        where TScope : notnull
-    {
-        var node = modelBuilder.Entity<OrderingLockNode<TScope, THierarchy>>();
-        node.ToTable(table);
-        node
-            .Property(row => row.Id)
-            .ValueGeneratedNever();
-
-        node
-            .Property(row => row.Name)
-            .HasMaxLength(64);
-
-        ConfigureScope(
-            node
-                .Property(row => row.Scope)
-                .IsRequired());
-
-        node.HasNestedSet(builder => builder
-            .HasTreeId(row => row.TreeId)
-            .HasScope(row => row.Scope)
-            .HasParent(row => row.ParentId)
-            .OrderBy(row => row.Name));
-    }
-
-    /// <summary>Preserves explicit string equality and identical bounded key types on anchors and nodes.</summary>
-    private void ConfigureScope<TScope>(
-        PropertyBuilder<TScope> property
-    )
-        where TScope : notnull
-    {
-        if (typeof(TScope) == typeof(string)
-            || typeof(TScope) == typeof(byte[]))
-        {
-            property.HasMaxLength(64);
-        }
-
-        if (typeof(TScope) == typeof(string))
-        {
-            // WHY: Aliases must resolve through the same explicit collation on the anchor and hierarchy scope.
-            var collation = Database.IsSqlite()
-                ? "NOCASE"
-                : Database.IsNpgsql()
-                    ? "C"
-                    : Database.IsSqlServer()
-                        ? "Latin1_General_100_CI_AS"
-                        : "utf8mb4_unicode_ci";
-
-            property.UseCollation(collation);
-        }
-    }
-}
-
-/// <summary>Marks the first independently mapped hierarchy without introducing EF inheritance.</summary>
-internal sealed class FirstLockHierarchy;
-
-/// <summary>Marks the second independently mapped hierarchy sharing integer scope anchors.</summary>
-internal sealed class SecondLockHierarchy;
-
-/// <summary>Stores a stable scope identity used by the application-owned lock protocol.</summary>
-/// <typeparam name="TScope">The anchor's native scope-key type.</typeparam>
-internal sealed class OrderingLockAnchor<TScope>
-    where TScope : notnull
-{
-    /// <summary>Gets or sets the immutable anchor key.</summary>
-    public required TScope Id { get; set; }
-}
-
-/// <summary>Stores an ordered hierarchy independent of another closed hierarchy type.</summary>
-/// <typeparam name="TScope">The scope-key type shared with an application-owned anchor.</typeparam>
-/// <typeparam name="THierarchy">The marker separating independent EF entity types.</typeparam>
-internal sealed class OrderingLockNode<TScope, THierarchy> : IScopedNestedSetNode<int, Guid, TScope>
-    where TScope : notnull
-{
-    /// <summary>Gets or sets the optional direct parent.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the domain value determining sibling order.</summary>
-    public string Name { get; set; } = "";
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the persisted scope value, which may be a database-equal alias.</summary>
-    public required TScope Scope { get; set; }
-
-    /// <inheritdoc />
-    public long Left { get; set; }
-
-    /// <inheritdoc />
-    public long Right { get; set; }
-
-    /// <inheritdoc />
-    public int Depth { get; set; }
-
-    /// <inheritdoc />
-    public long Position { get; set; }
 }

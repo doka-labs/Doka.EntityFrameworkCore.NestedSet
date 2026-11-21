@@ -10,7 +10,7 @@ public sealed partial class IndexConventionTests
     [InlineData("MariaDb", false)]
     [InlineData("MySql", true)]
     [InlineData("MariaDb", true)]
-    public void DokaBudgetsImplicitVariableLengthIndexProperties(
+    public void GenerateCreateScript_Doka_BudgetsImplicitVariableLengthIndexProperties(
         string engine,
         bool binary
     )
@@ -77,7 +77,7 @@ public sealed partial class IndexConventionTests
     [InlineData("gin")]
     [InlineData("operators")]
     [InlineData("collation")]
-    public void SpecializedPostgreSqlIndexDoesNotReplaceOrdinaryAccessPath(
+    public void FinalizeModel_SpecializedPostgreSqlIndex_DoesNotReplaceOrdinaryAccessPath(
         string facet
     )
     {
@@ -146,7 +146,7 @@ public sealed partial class IndexConventionTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
-    public void ExplicitStringPropertyFacetsArePreserved(
+    public void FinalizeModel_ExplicitStringPropertyFacets_ArePreserved(
         string engine
     )
     {

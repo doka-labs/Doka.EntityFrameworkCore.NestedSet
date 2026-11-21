@@ -1,7 +1,7 @@
 ---
 id: D-001
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -9,7 +9,7 @@ scope: "Decision format, ownership, approval integrity, and traceability"
 supersedes: []
 superseded-by: []
 amends: []
-amended-by: []
+amended-by: [D-023]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -54,7 +54,7 @@ the library while keeping decisions in the same repository as their consumers.
 ### Confirmation
 
 - Inspect the [profile](MADR-PROFILE.md) and [template](adr-template.md); expect the full section contract, explicit ownership, source provenance, legal status history, and reciprocal relationship rules.
-- Compare each admitted record's filename, front matter, heading, and both indexes; expect unique contiguous identifiers and navigation containing only records present in that revision.
+- Compare each admitted record's filename, front matter, heading, and manual index; expect unique contiguous identifiers and navigation containing only records present in that revision.
 - Reject missing alternatives, an empty confirmation, unsupported acceptance claims, unresolved local links, or a relationship without its reciprocal entry before admitting a record.
 
 ## Pros and Cons of the Options
@@ -80,7 +80,9 @@ Doka's metadata, status, relationship, and source rules extend the upstream
 template; they are not represented as mandatory upstream MADR features. The
 profile and template belong to repository initialization. Each subsequent
 decision belongs before or with the commit introducing its consumer, and each
-revision's indexes describe that revision's records.
+revision's manual index describes that revision's records. The
+[current maintenance policy](D-023-reproducible-engineering-contracts.md)
+keeps last-update dates in metadata and the original recording events in history.
 
 Reordering unpublished Git commits does not change actual recording, research,
 acceptance, or implementation dates. The designated informed audience does not
@@ -102,6 +104,10 @@ this contract separately; it cannot authorize a decision.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed the full profile, template, and repository governance against the implementation references.
 - 2026-09-29: At the maintainer's request, separated the foundational contract from mechanical enforcement and placed this record with repository initialization in the unpublished history. Actual recording and acceptance dates are preserved.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
 
 ### Implementation References
 

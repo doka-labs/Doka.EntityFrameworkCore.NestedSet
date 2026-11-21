@@ -4,14 +4,14 @@ public abstract partial class OrderingKeyTests
 {
     /// <summary>Places tied string identities by their database collation while accepting parent-key aliases.</summary>
     [Fact]
-    public async Task StringKeyInsertionUsesNativeOrderAndCollationAliases()
+    public async Task InsertChildAsync_StringKeyInsertion_UsesNativeOrderAndCollationAliases()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<string, string?>(
             Engine,
             StringKey,
             cancellationToken: TestContext.Current.CancellationToken,
-            static key => key.ToUpperInvariant());
+            alias: static key => key.ToUpperInvariant());
 
         var inserted = scenario.Node(6, "Same");
 
@@ -26,14 +26,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Moves a subtree using aliased string keys while preserving native tie order.</summary>
     [Fact]
-    public async Task StringKeyMoveUsesNativeOrderAndCollationAliases()
+    public async Task MoveToAsync_StringKeyMove_UsesNativeOrderAndCollationAliases()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<string, string?>(
             Engine,
             StringKey,
             cancellationToken: TestContext.Current.CancellationToken,
-            static key => key.ToUpperInvariant());
+            alias: static key => key.ToUpperInvariant());
 
         // Act
         await scenario.Tree.MoveToAsync(scenario.Reference(2), scenario.Reference(9), CancellationToken.None);
@@ -47,14 +47,14 @@ public abstract partial class OrderingKeyTests
 
     /// <summary>Reorders a renamed string-key subtree through an ordinary tracked save.</summary>
     [Fact]
-    public async Task StringKeyRenameRetainsNativeTieOrderAndScopeIsolation()
+    public async Task SaveChangesAsync_StringKeyRename_RetainsNativeTieOrderAndScopeIsolation()
     {
         // Arrange
         await using var scenario = await CreateScenarioAsync<string, string?>(
             Engine,
             StringKey,
             cancellationToken: TestContext.Current.CancellationToken,
-            static key => key.ToUpperInvariant());
+            alias: static key => key.ToUpperInvariant());
 
         var alias = scenario.Reference(2);
         var renamed = await scenario

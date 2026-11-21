@@ -1,1 +1,3 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.SqliteNestedSetOptionsBuilderExtensions.extension(Microsoft.EntityFrameworkCore.Infrastructure.SqliteDbContextOptionsBuilder!)
+Doka.EntityFrameworkCore.NestedSet.SqliteNestedSetOptionsBuilderExtensions.extension(Microsoft.EntityFrameworkCore.Infrastructure.SqliteDbContextOptionsBuilder!).UseNestedSets() -> Microsoft.EntityFrameworkCore.Infrastructure.SqliteDbContextOptionsBuilder!

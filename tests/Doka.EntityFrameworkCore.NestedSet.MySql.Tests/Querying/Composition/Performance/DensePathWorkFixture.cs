@@ -26,7 +26,8 @@ internal static class DensePathWorkFixture
             context,
             scenario.Nodes,
             deep: !scenario.Branches,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken,
+            corrupt: false);
 
         if (scenario.Branches)
         {

@@ -8,10 +8,10 @@ public sealed partial class DokaQueryFeaturesTests
 {
     /// <summary>The surviving schema-only fallback retains its exact ILogger template and EF LogTo message.</summary>
     [Fact]
-    public void AncestorFallbackUsesEfLoggerAndSimpleLogging()
+    public void AncestorIndexWithoutReader_AncestorFallback_UsesEfLoggerAndSimpleLogging()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         using var sink = new FallbackLoggerProvider();
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(sink));
         var options = DiagnosticOptions(events);
@@ -38,10 +38,10 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>EF's configured event level applies to both the typed delegate and the simple logger.</summary>
     [Fact]
-    public void AncestorFallbackHonorsConfiguredEventLevel()
+    public void AncestorIndexWithoutReader_AncestorFallback_HonorsConfiguredEventLevel()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         using var sink = new FallbackLoggerProvider();
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(sink));
         var options = new DbContextOptionsBuilder<CompositionGuardContext>(DiagnosticOptions(events))
@@ -83,11 +83,21 @@ public sealed partial class DokaQueryFeaturesTests
         public void Dispose() { }
 
         /// <summary>Observes ordinary ILogger dispatch without replacing EF services or warning behavior.</summary>
-        private sealed class FallbackLogger(
-            FallbackLoggerProvider owner,
-            string category
-        ) : ILogger
+        private sealed class FallbackLogger : ILogger
         {
+            private readonly FallbackLoggerProvider _owner;
+            private readonly string _category;
+
+            /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+            public FallbackLogger(
+                FallbackLoggerProvider owner,
+                string category
+            )
+            {
+                _owner = owner;
+                _category = category;
+            }
+
             /// <inheritdoc />
             public IDisposable? BeginScope<TState>(
                 TState state
@@ -115,7 +125,7 @@ public sealed partial class DokaQueryFeaturesTests
                             .Value as string
                         : null;
 
-                    owner.Events.Add((category, logLevel, eventId, formatter(state, exception), template));
+                    _owner.Events.Add((_category, logLevel, eventId, formatter(state, exception), template));
                 }
             }
         }

@@ -4,12 +4,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class SignalReportTests
 {
-    /// <summary>Shared projections retain each deferred report's independent scalar inputs and rejecting metadata.</summary>
+    /// <summary>
+    /// Shared projections retain each deferred report's independent scalar inputs and rejecting metadata.
+    /// </summary>
     /// <param name="nearest">Whether classifications select their nearest owner before testing metadata values.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InterleavedReportBuildsKeepSelectionsAndMetadataIsolated(
+    public async Task Build_InterleavedReports_KeepSelectionsAndMetadataIsolated(
         bool nearest
     )
     {
@@ -19,8 +21,18 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var first = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
-        var second = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
+        var first = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
+        var second = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .SweepRecords
             .Where(value => value.TenantId == second.TenantId)
@@ -85,12 +97,14 @@ public abstract partial class SignalReportTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Sharing day-specific path evidence never combines equal-valued facts, metrics, sources or anchors.</summary>
+    /// <summary>
+    /// Sharing day-specific path evidence never combines equal-valued facts, metrics, sources or anchors.
+    /// </summary>
     /// <param name="nearest">Whether metadata selects the nearest classification before checking its values.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalDeepOptimizationPreservesIndependentFactBagsAtSharedDays(
+    public async Task ReadAsync_SignalDeepOptimization_PreservesIndependentFactBagsAtSharedDays(
         bool nearest
     )
     {
@@ -100,7 +114,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .PulseRecords
             .Where(value => value.TenantId == data.TenantId)
@@ -152,14 +171,16 @@ public abstract partial class SignalReportTests
         AssertReportBoundary(context, probe);
     }
 
-    /// <summary>Rejected shared paths cannot leak any physical fact while a lower self-anchor keeps its own facts.</summary>
+    /// <summary>
+    /// Rejected shared paths cannot leak any physical fact while a lower self-anchor keeps its own facts.
+    /// </summary>
     /// <param name="failure">The missing structural or temporal evidence above the retained self-anchor.</param>
     [Theory]
     [InlineData("hidden")]
     [InlineData("skip-parent")]
     [InlineData("depth")]
     [InlineData("expired")]
-    public async Task SignalDeepOptimizationRejectsBrokenSharedPathsAndPreservesLowerAnchors(
+    public async Task ReadAsync_SignalDeepOptimization_RejectsBrokenSharedPathsAndPreservesLowerAnchors(
         string failure
     )
     {
@@ -169,7 +190,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .Nodes
             .Where(node => node.TenantId == data.TenantId && node.Id == SignalReportDataset.Id(5))
@@ -261,7 +287,7 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalDeepOptimizationRetainsNearestRejectionForEveryFact(
+    public async Task ReadAsync_SignalDeepOptimization_RetainsNearestRejectionForEveryFact(
         bool nearest
     )
     {
@@ -271,7 +297,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            8,
+            true,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request(
             nearest
                 ? TagOwnerMode.Nearest
@@ -304,9 +335,11 @@ public abstract partial class SignalReportTests
         AssertReportBoundary(context, probe);
     }
 
-    /// <summary>Shared node/day evidence cannot qualify a fact whose own metric requires another classification.</summary>
+    /// <summary>
+    /// Shared node/day evidence cannot qualify a fact whose own metric requires another classification.
+    /// </summary>
     [Fact]
-    public async Task SignalDeepOptimizationChecksEachMetricsOwnMeasurementTypeAfterSharedProof()
+    public async Task ReadAsync_SignalDeepOptimization_ChecksEachMetricsOwnMeasurementTypeAfterSharedProof()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -314,7 +347,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .SignalChannels
             .Where(signal => signal.TenantId == data.TenantId

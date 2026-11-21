@@ -34,8 +34,12 @@ public static class BenchmarkConfiguration
             ValidationParameters validationParameters
         )
         {
-            foreach (var benchmark in validationParameters.Benchmarks)
+            // WHY: BDN supplies a stable indexable validation snapshot; preserve its original diagnostic order.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var index = 0; index < validationParameters.Benchmarks.Count; index++)
             {
+                var benchmark = validationParameters.Benchmarks[index];
                 var job = benchmark.Job;
 
                 if (job.Infrastructure.HasValue(InfrastructureMode.ToolchainCharacteristic)
@@ -66,24 +70,5 @@ public static class BenchmarkConfiguration
                 }
             }
         }
-    }
-}
-
-/// <summary>Measures exactly one database operation against the state restored for each iteration.</summary>
-public sealed class DatabaseBenchmarkConfiguration : ManualConfig
-{
-    /// <summary>Creates the database default while permitting BenchmarkDotNet iteration and warmup overrides.</summary>
-    public DatabaseBenchmarkConfiguration()
-    {
-        AddJob(
-            Job
-                .Default
-                .WithRuntime(CoreRuntime.Core10_0)
-                .WithCustomBuildConfiguration("Release")
-                .WithStrategy(RunStrategy.Throughput)
-                .RunOncePerIteration()
-                .WithWarmupCount(3)
-                .WithIterationCount(12)
-                .AsDefault());
     }
 }

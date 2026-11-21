@@ -5,7 +5,7 @@ public abstract partial class NestedSetMutationFacadeTests
     /// <summary>Detach cannot adopt an active destination tree or alter either tree's registry lifecycle.</summary>
     /// <returns>A task that completes after verifying active trees and registry revisions remain unchanged.</returns>
     [Fact]
-    public async Task DetachRejectsActiveDestinationWithoutChangingEitherTree()
+    public async Task DetachAsTreeAsync_Detach_RejectsActiveDestinationWithoutChangingEitherTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

@@ -32,7 +32,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
     /// <param name="detectCallback">Whether EF observes the callback before recovery.</param>
     [Theory]
     [MemberData(nameof(CollectionCases))]
-    public async Task RuntimeStoragePreservesContainerAndScalarState(
+    public async Task Restore_RuntimeStorage_PreservesContainerAndScalarState(
         string storage,
         string callback,
         bool detectCallback
@@ -140,7 +140,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
     [InlineData("Remove", true)]
     [InlineData("Add", false)]
     [InlineData("Add", true)]
-    public async Task CopyingSetterIsNotCalledForCapturedContainer(
+    public async Task Restore_CopyingSetter_IsNotCalledForCapturedContainer(
         string mutation,
         bool detectCallback
     )

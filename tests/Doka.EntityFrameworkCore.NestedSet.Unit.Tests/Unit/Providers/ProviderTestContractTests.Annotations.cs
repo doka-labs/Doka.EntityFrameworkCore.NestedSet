@@ -4,7 +4,7 @@ public sealed partial class ProviderTestContractTests
 {
     /// <summary>Ordinary shared annotations are valid because the concrete fixture supplies engine coverage.</summary>
     [Fact]
-    public void SharedOrdinaryAnnotationsAreAccepted()
+    public void FindSharedAnnotationErrors_SharedOrdinaryAnnotations_AreAccepted()
     {
         // Arrange
         var theory = new CustomAttributeBuilder(
@@ -29,7 +29,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>A historical inline engine row cannot override the engine owned by the concrete fixture.</summary>
     [Fact]
-    public void SharedEngineArgumentIsRejected()
+    public void FindSharedAnnotationErrors_SharedEngineArgument_IsRejected()
     {
         // Arrange
         var method = CreateParameterProbe("engine", true);
@@ -46,7 +46,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>A deliberately foreign engine payload remains a valid provider-independent scenario argument.</summary>
     [Fact]
-    public void SharedForeignEnginePayloadArgumentIsAccepted()
+    public void FindSharedAnnotationErrors_SharedForeignEnginePayloadArgument_IsAccepted()
     {
         // Arrange
         var method = CreateParameterProbe("foreignEngine", true);
@@ -62,7 +62,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>A non-test helper may still accept an engine to operate on an explicitly selected resource.</summary>
     [Fact]
-    public void HelperEngineArgumentIsAccepted()
+    public void FindSharedAnnotationErrors_HelperEngineArgument_IsAccepted()
     {
         // Arrange
         var method = CreateParameterProbe("engine", false);
@@ -81,7 +81,7 @@ public sealed partial class ProviderTestContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedUnsupportedAnnotationsAreRejected(
+    public void FindSharedAnnotationErrors_SharedUnsupportedAnnotations_AreRejected(
         bool data
     )
     {
@@ -117,7 +117,7 @@ public sealed partial class ProviderTestContractTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task LocalUnsupportedAnnotationsAreRejected(
+    public async Task FindDeclaredOwnershipErrorsAsync_LocalUnsupportedAnnotations_AreRejected(
         bool data,
         bool inherited
     )
@@ -157,7 +157,7 @@ public sealed partial class ProviderTestContractTests
     [InlineData("Postgres", "This assertion requires a server execution plan.", true)]
     [InlineData("Sqlite", "", true)]
     [InlineData("Sqlite", " ", true)]
-    public void SharedExclusionsAreValidated(
+    public void FindSharedAnnotationErrors_SharedExclusions_AreValidated(
         string engine,
         string reason,
         bool invalid
@@ -190,7 +190,7 @@ public sealed partial class ProviderTestContractTests
     [InlineData(nameof(RawSources.ValidConditionalRows), false)]
     [InlineData(nameof(RawSources.UnknownConditionalRows), true)]
     [InlineData(nameof(RawSources.UnexplainedConditionalRows), true)]
-    public async Task SharedMemberVariantExclusionsAreValidated(
+    public async Task FindSharedDataErrorsAsync_SharedMemberVariantExclusions_AreValidated(
         string memberName,
         bool invalid
     )

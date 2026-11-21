@@ -12,7 +12,7 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ConfiguredProviderUsesItsActualMethodWithoutIo(
+    public async Task TryOrderedJoin_ConfiguredProvider_UsesItsActualMethodWithoutIo(
         string engine
     )
     {
@@ -87,7 +87,7 @@ public sealed partial class DokaStraightJoinTests
 
     /// <summary>Other selected adapters retain the portable path before any query execution.</summary>
     [Fact]
-    public void NonDokaAdapterKeepsPortableJoinBeforeIo()
+    public void TryOrderedJoin_NonDokaAdapter_KeepsPortableJoinBeforeIo()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -117,7 +117,7 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PublicDokaOperatorCannotExecuteThroughSqlite(
+    public async Task ToQueryString_PublicDokaOperator_CannotExecuteThroughSqlite(
         bool asynchronous
     )
     {
@@ -154,7 +154,7 @@ public sealed partial class DokaStraightJoinTests
     [InlineData("outerKey")]
     [InlineData("innerKey")]
     [InlineData("projection")]
-    public void NullInputsAreRejectedAtTheBoundary(
+    public void TryOrderedJoin_NullInputs_AreRejectedAtTheBoundary(
         string argument
     )
     {

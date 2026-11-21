@@ -39,7 +39,7 @@ public abstract class RootSiblingPlacementTests : ProviderTest
     /// </returns>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task RootSiblingPlacementPreservesEveryTreeAndInput(
+    public async Task ApplyAsync_RootSiblingPlacement_PreservesEveryTreeAndInput(
         string operation
     )
     {

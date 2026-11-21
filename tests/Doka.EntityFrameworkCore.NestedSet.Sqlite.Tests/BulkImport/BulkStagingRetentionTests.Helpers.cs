@@ -133,12 +133,12 @@ public sealed partial class BulkStagingRetentionTests
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<(WeakReference<StagingNode> Input, WeakReference<StagingPayload>? Payload,
         Exception? Error, bool Restored)> ImportWithoutRetainingInputAsync(
-        StagingContext context,
-        bool getter,
-        CancellationToken cancellationToken,
-        bool tracking = false,
-        bool payload = false
-    )
+            StagingContext context,
+            bool getter,
+            bool tracking,
+            bool payload,
+            CancellationToken cancellationToken
+        )
     {
         var input = new StagingNode
         {

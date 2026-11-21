@@ -19,12 +19,13 @@ public abstract class RegistryMigrationProviderTests : ProviderTest
 
     /// <summary>EF table renames retain active and tombstoned tree identities.</summary>
     [Fact]
-    public async Task LegacyRegistryRenamePreservesLifecycleRows()
+    public async Task RenameAsync_LegacyRegistryRename_PreservesLifecycleRows()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var hierarchy = context.Model.FindEntityType(typeof(OrderingNode))!;
         var registryName = (string)hierarchy.FindAnnotation(NestedSetAnnotationNames.TreeRegistryEntity)!.Value!;

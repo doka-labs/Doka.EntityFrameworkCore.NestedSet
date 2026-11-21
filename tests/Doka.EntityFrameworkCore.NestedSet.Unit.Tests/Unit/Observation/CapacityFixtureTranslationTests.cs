@@ -7,7 +7,7 @@ public sealed class CapacityFixtureTranslationTests
 {
     /// <summary>The actual batched topology update translates before reaching the intentional I/O boundary.</summary>
     [Fact]
-    public async Task BalancedTopologyTranslatesAtDefaultSqlServerCompatibility()
+    public async Task BalanceAsync_BalancedTopology_TranslatesAtDefaultSqlServerCompatibility()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -28,7 +28,7 @@ public sealed class CapacityFixtureTranslationTests
 
     /// <summary>The former minimum setter is rejected before I/O instead of silently evaluating client-side.</summary>
     [Fact]
-    public async Task UnsupportedMinimumSetterFailsBeforeDatabaseIo()
+    public async Task ExecuteUpdateAsync_UnsupportedMinimumSetter_FailsBeforeDatabaseIo()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -64,7 +64,7 @@ public sealed class CapacityFixtureTranslationTests
     [InlineData(1_002, 1_002, 2_003L)]
     [InlineData(1_003, 1_002, 2_005L)]
     [InlineData(2_001, 1_002, 4_001L)]
-    public async Task BalancedBranchPreservesExactEndpoint(
+    public async Task BalanceAsync_BalancedBranch_PreservesExactEndpoint(
         int nodes,
         int branch,
         long expectedRight
@@ -76,7 +76,8 @@ public sealed class CapacityFixtureTranslationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
-        await CapacitySeed.SeedAsync(context, nodes, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(context, nodes, deep: false, corrupt: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var changed = await CompositionCapacityProfiles.BalanceAsync(

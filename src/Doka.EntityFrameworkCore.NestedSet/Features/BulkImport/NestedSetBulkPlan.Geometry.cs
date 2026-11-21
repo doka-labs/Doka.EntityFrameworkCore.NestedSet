@@ -27,8 +27,13 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
             Roots.Sort(Compare);
             var comparer = Comparer<int>.Create(Compare);
 
-            foreach (var node in Nodes)
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int nodeIndex = 0, nodeCount = Nodes.Count; nodeIndex < nodeCount; nodeIndex++)
             {
+                var node = Nodes[nodeIndex];
+
                 SortChildren(node, comparer);
             }
         }

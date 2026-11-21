@@ -3,24 +3,13 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <PropertyGroup Label="Qualification transitive security floor"
-                 Condition="'$(MSBuildProjectName)' != 'Doka.NestedSet'
-                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet'
-                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.MySql'
-                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.Postgres'
-                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.Sqlite'
-                            and '$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.SqlServer'">
-    <!-- WHY: SQL Client still requests vulnerable PKCS 9.0.11. Pin its existing dependency without
-         promoting qualification-only packages into shipping package dependency contracts. -->
-    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-  </PropertyGroup>
-
   <ItemGroup Label="Production">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup Label="Production analyzers">
+    <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 

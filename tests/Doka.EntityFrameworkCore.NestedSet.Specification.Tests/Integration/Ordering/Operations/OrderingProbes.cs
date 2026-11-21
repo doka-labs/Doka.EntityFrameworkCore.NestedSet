@@ -173,6 +173,3 @@ public sealed class OrderingSaveProbe : DbCommandInterceptor
         || setters.Contains("Position", StringComparison.OrdinalIgnoreCase)
         || setters.Contains("ParentId", StringComparison.OrdinalIgnoreCase);
 }
-
-/// <summary>Identifies the deterministic late failure injected by ordering transaction tests.</summary>
-public sealed class OrderingInjectedException : Exception;

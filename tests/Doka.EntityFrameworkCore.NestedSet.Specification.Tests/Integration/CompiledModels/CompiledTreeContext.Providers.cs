@@ -10,7 +10,8 @@ public sealed class CompiledMySqlContext : CompiledTreeContext
             .UseMySql(
                 "Server=localhost;Database=compiled;User ID=unused",
                 DatabaseTestTargets.MySql,
-                provider => provider.UseNestedSets())
+                provider => provider
+                    .UseNestedSets())
             .Options,
         false) { }
 
@@ -19,72 +20,6 @@ public sealed class CompiledMySqlContext : CompiledTreeContext
     /// <param name="rejectModelBuilding">Whether rebuilding metadata must fail this test.</param>
     public CompiledMySqlContext(
         DbContextOptions<CompiledMySqlContext> options,
-        bool rejectModelBuilding
-    ) : base(options, rejectModelBuilding) { }
-}
-
-/// <summary>Generates and consumes the real MariaDb provider's compiled relational metadata.</summary>
-public sealed class CompiledMariaDbContext : CompiledTreeContext
-{
-    /// <summary>Creates a design-time context without opening a database connection.</summary>
-    public CompiledMariaDbContext() : this(
-        new DbContextOptionsBuilder<CompiledMariaDbContext>()
-            .ConfigureTestWarnings()
-            .UseMySql(
-                "Server=localhost;Database=compiled;User ID=unused",
-                DatabaseTestTargets.MariaDb,
-                provider => provider.UseNestedSets())
-            .Options,
-        false) { }
-
-    /// <summary>Creates a real-provider context with a guarded generated runtime model.</summary>
-    /// <param name="options">The provider connection and optional compiled model.</param>
-    /// <param name="rejectModelBuilding">Whether rebuilding metadata must fail this test.</param>
-    public CompiledMariaDbContext(
-        DbContextOptions<CompiledMariaDbContext> options,
-        bool rejectModelBuilding
-    ) : base(options, rejectModelBuilding) { }
-}
-
-/// <summary>Generates and consumes the real PostgreSql provider's compiled relational metadata.</summary>
-public sealed class CompiledPostgreSqlContext : CompiledTreeContext
-{
-    /// <summary>Creates a design-time context without opening a database connection.</summary>
-    public CompiledPostgreSqlContext() : this(
-        new DbContextOptionsBuilder<CompiledPostgreSqlContext>()
-            .ConfigureTestWarnings()
-            .UseNpgsql("Host=localhost;Database=compiled;Username=unused", provider => provider.UseNestedSets())
-            .Options,
-        false) { }
-
-    /// <summary>Creates a real-provider context with a guarded generated runtime model.</summary>
-    /// <param name="options">The provider connection and optional compiled model.</param>
-    /// <param name="rejectModelBuilding">Whether rebuilding metadata must fail this test.</param>
-    public CompiledPostgreSqlContext(
-        DbContextOptions<CompiledPostgreSqlContext> options,
-        bool rejectModelBuilding
-    ) : base(options, rejectModelBuilding) { }
-}
-
-/// <summary>Generates and consumes the real SqlServer provider's compiled relational metadata.</summary>
-public sealed class CompiledSqlServerContext : CompiledTreeContext
-{
-    /// <summary>Creates a design-time context without opening a database connection.</summary>
-    public CompiledSqlServerContext() : this(
-        new DbContextOptionsBuilder<CompiledSqlServerContext>()
-            .ConfigureTestWarnings()
-            .UseSqlServer(
-                "Server=localhost;Database=compiled;User ID=unused;Password=unused;"
-                + "TrustServerCertificate=True;MultipleActiveResultSets=False",
-                provider => provider.UseNestedSets())
-            .Options,
-        false) { }
-
-    /// <summary>Creates a real-provider context with a guarded generated runtime model.</summary>
-    /// <param name="options">The provider connection and optional compiled model.</param>
-    /// <param name="rejectModelBuilding">Whether rebuilding metadata must fail this test.</param>
-    public CompiledSqlServerContext(
-        DbContextOptions<CompiledSqlServerContext> options,
         bool rejectModelBuilding
     ) : base(options, rejectModelBuilding) { }
 }

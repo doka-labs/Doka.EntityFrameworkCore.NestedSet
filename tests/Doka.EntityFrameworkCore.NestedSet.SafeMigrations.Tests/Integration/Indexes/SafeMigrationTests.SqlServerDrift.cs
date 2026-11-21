@@ -11,7 +11,7 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SqlServerMissingIndexPreflightAppliesGeneratedAccessPath(
+    public async Task AnalyzeAsync_SqlServerMissingIndexPreflight_AppliesGeneratedAccessPath(
         bool qualifySchema
     )
     {
@@ -22,8 +22,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operation = GetIndexOperations(chain, context)
             .Single(candidate => ((EnsureIndexIntent)candidate.Intent)
@@ -37,7 +39,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var sql = context.GetService<ISqlGenerationHelper>();
         var drop = "DROP INDEX "
             + sql.DelimitIdentifier(definition.Name)
@@ -76,7 +80,8 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             nodesBefore,
             await database.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
     }
 
     /// <summary>Verifies identical SQL Server index columns cannot hide a changed sibling sort direction.</summary>
@@ -86,7 +91,7 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SqlServerWrongIndexDirectionFailsClosedAndPreservesData(
+    public async Task AnalyzeAsync_SqlServerWrongIndexDirection_FailsClosedAndPreservesData(
         bool qualifySchema
     )
     {
@@ -97,8 +102,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operation = GetIndexOperations(chain, context)
             .Single(candidate => ((EnsureIndexIntent)candidate.Intent)
@@ -134,7 +141,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Act
         var report = await context
@@ -163,7 +172,8 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             nodesBefore,
             await database.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
     }
 
     /// <summary>
@@ -180,7 +190,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SqlServerUnenforcedCheckFailsClosedWithoutRepair(
+    public async Task AnalyzeAsync_SqlServerUnenforcedCheck_FailsClosedWithoutRepair(
         bool qualifySchema,
         bool enabled
     )
@@ -192,7 +202,7 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = ScaffoldSqlServerCheckOperations(database);
         await DropSqlServerChecksAsync(context, operations, cancellationToken: TestContext.Current.CancellationToken);
@@ -201,7 +211,9 @@ public sealed partial class SafeMigrationTests
             operations,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var operation = operations
             .Single(candidate => candidate.Intent is EnsureCheckConstraintIntent check
                 && check.Definition.Name.Contains("LeftMin", StringComparison.Ordinal));
@@ -233,7 +245,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Act
         var report = await context
@@ -287,7 +301,8 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             nodesBefore,
             await database.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
     }
 
     /// <summary>

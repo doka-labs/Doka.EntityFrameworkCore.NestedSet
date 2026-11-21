@@ -14,9 +14,11 @@ public abstract class MalformedSubtreeTestBase : ProviderTest
         _fixture = fixture.Value;
     }
 
-    /// <summary>Inclusive subtrees keep self by identity and apply strict bounds without overflowing malformed anchors.</summary>
+    /// <summary>
+    /// Inclusive subtrees keep self by identity and apply strict bounds without overflowing malformed anchors.
+    /// </summary>
     [Fact]
-    public async Task SplitSubtreesRetainIdentitySelfAndStrictMalformedContainment()
+    public async Task SelectSubtrees_SplitSubtrees_RetainIdentitySelfAndStrictMalformedContainment()
     {
         // Arrange
         var first = MalformedIntervalTestSupport.NextIdentity();

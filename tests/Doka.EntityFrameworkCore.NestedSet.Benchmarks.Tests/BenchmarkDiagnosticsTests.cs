@@ -10,7 +10,7 @@ public sealed class BenchmarkDiagnosticsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PreparedCounterObservesOnlyEnabledOperation(
+    public async Task DeleteSubtreeAsync_PreparedCounter_ObservesOnlyEnabledOperation(
         bool diagnostics
     )
     {

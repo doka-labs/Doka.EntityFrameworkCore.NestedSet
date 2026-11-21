@@ -65,7 +65,9 @@ internal static partial class SignalReportValidation
             groups);
     }
 
-    /// <summary>Validates all requested anchors, channels and scalar choices against one batched catalog result.</summary>
+    /// <summary>
+    /// Validates all requested anchors, channels and scalar choices against one batched catalog result.
+    /// </summary>
     internal static void RequireCatalog(
         ValidatedSignalReport request,
         IReadOnlyCollection<SignalCatalogRow> catalog
@@ -153,8 +155,13 @@ internal static partial class SignalReportValidation
 
         var byType = new Dictionary<Guid, TagGroupBuilder>();
         var orderedGroups = new List<TagGroupBuilder>();
-        foreach (var criterion in criteria)
+        // WHY: The request criteria are indexable; each scalar retains its original validation precedence.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var criterionIndex = 0; criterionIndex < criteria.Count; criterionIndex++)
         {
+            var criterion = criteria[criterionIndex];
+
             if (criterion.TypeId == Guid.Empty
                 || !Enum.IsDefined(criterion.OwnerMode)
                 || criterion.Operator != TagOperator.Equal
@@ -195,13 +202,24 @@ internal static partial class SignalReportValidation
     }
 
     /// <summary>Accumulates one classification's exact scalar fields in their first-requested order.</summary>
-    private sealed class TagGroupBuilder(
-        Guid typeId,
-        TagOwnerMode mode
-    )
+    private sealed class TagGroupBuilder
     {
-        private readonly List<TagCriterion> _criteria = [];
-        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+        private readonly Guid _typeId;
+        private readonly TagOwnerMode _mode;
+        private readonly List<TagCriterion> _criteria;
+        private readonly Dictionary<string, string> _values;
+
+        /// <summary>Retains the exact group identity while accumulating its scalar criteria.</summary>
+        internal TagGroupBuilder(
+            Guid typeId,
+            TagOwnerMode mode
+        )
+        {
+            _typeId = typeId;
+            _mode = mode;
+            _criteria = [];
+            _values = new Dictionary<string, string>(StringComparer.Ordinal);
+        }
 
         /// <summary>Rejects inconsistent modes and scalar contradictions while dropping identical criteria.</summary>
         /// <param name="criterion">The scalar field selected by the original request.</param>
@@ -211,7 +229,7 @@ internal static partial class SignalReportValidation
             string parameterName
         )
         {
-            if (criterion.OwnerMode != mode)
+            if (criterion.OwnerMode != _mode)
             {
                 throw new ArgumentException(
                     "A metadata group requires one known owner mode and supported scalar fields.",
@@ -235,6 +253,6 @@ internal static partial class SignalReportValidation
         }
 
         /// <summary>Freezes a private array so later caller selection changes cannot alter this report.</summary>
-        internal TagGroup Build() => new(typeId, mode, _criteria.ToArray());
+        internal TagGroup Build() => new(_typeId, _mode, _criteria.ToArray());
     }
 }

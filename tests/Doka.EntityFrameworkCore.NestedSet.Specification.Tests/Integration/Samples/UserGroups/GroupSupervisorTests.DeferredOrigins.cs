@@ -4,13 +4,18 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class GroupSupervisorTests
 {
-    /// <summary>Two deferred candidate queries retain independent origins when their execution order is reversed.</summary>
+    /// <summary>
+    /// Two deferred candidate queries retain independent origins when their execution order is reversed.
+    /// </summary>
     [Fact]
-    public async Task DeferredCandidatesRetainIndependentRequestOrigins()
+    public async Task ParameterValues_DeferredCandidates_RetainIndependentRequestOrigins()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]);
@@ -58,14 +63,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("all", true)]
     [InlineData("single", false)]
     [InlineData("single", true)]
-    public async Task DeferredResolutionRowsRetainEmptyAndAmbiguousOriginSources(
+    public async Task ReadResolution_DeferredResolutionRows_RetainEmptyAndAmbiguousOriginSources(
         string mode,
         bool empty
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]) with
@@ -134,21 +142,26 @@ public abstract partial class GroupSupervisorTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Deferred authorized origins remain subject to current source visibility and membership validity.</summary>
+    /// <summary>
+    /// Deferred authorized origins remain subject to current source visibility and membership validity.
+    /// </summary>
     /// <param name="mode">The cached marker or single-group projection to execute.</param>
     /// <param name="rejection">The source or membership condition that must reject the first request.</param>
     [Theory]
     [InlineData("all", "hidden-source")]
     [InlineData("single", "expired-membership")]
     [InlineData("single", "missing-source")]
-    public async Task DeferredOriginsDoNotReuseAnotherRequestsAuthorization(
+    public async Task ReadResolution_DeferredOrigins_DoNotReuseAnotherRequestsAuthorization(
         string mode,
         string rejection
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var first = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var second = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var firstRequest = first.Request(group: first.Groups[5]);
@@ -253,7 +266,9 @@ public abstract partial class GroupSupervisorTests
         Assert.Equal(distance, row.Distance);
     }
 
-    /// <summary>Checks each actual command's independent scalar bindings without relying on SQL parameter names.</summary>
+    /// <summary>
+    /// Checks each actual command's independent scalar bindings without relying on SQL parameter names.
+    /// </summary>
     private static void AssertDeferredBindings(
         object?[] values,
         App.SupervisorRequest request,

@@ -14,14 +14,15 @@ public sealed class GroupSupervisorDiscoveryTests
     [InlineData("PostgreSql", true)]
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
-    public void InadequateChainTransactionUsesFactSelectionWithoutEmptyData(
+    public void AppliesToEngine_InadequateChainTransaction_UsesFactSelectionWithoutEmptyData(
         string engine,
         bool expected
     )
     {
         // Arrange
         var method = typeof(GroupSupervisorTests)
-            .GetMethod(nameof(GroupSupervisorTests.ReadUncommittedChainTransactionIsRejectedBeforeFirstReader))!;
+            .GetMethod(
+                nameof(GroupSupervisorTests.FollowOriginalPathAsync_ReadUncommitted_IsRejectedBeforeReading))!;
 
         var attribute = Assert.Single(method.GetCustomAttributes<FactAttribute>());
 

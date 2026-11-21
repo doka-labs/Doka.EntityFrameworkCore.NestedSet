@@ -12,7 +12,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("foreign-adapter")]
     [InlineData("opaque-factory")]
     [InlineData("unvalidated-singleton")]
-    public void AdapterServicesRejectUnvalidatedBindingWithoutChangingTheGraph(
+    public void ApplyServices_AdapterServices_RejectUnvalidatedBindingWithoutChangingTheGraph(
         string registration
     )
     {
@@ -52,7 +52,7 @@ public sealed partial class OptionsExtensionTests
     /// Repeated service registration preserves one validated scoped factory and one immutable adapter.
     /// </summary>
     [Fact]
-    public void RepeatedAdapterServicesPreserveTheScopedBindingDescriptor()
+    public void ApplyServices_RepeatedAdapterServices_PreserveTheScopedBindingDescriptor()
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("Sqlite");
@@ -89,7 +89,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void ScopedBindingValidatesOncePerScopeAndReusesTheImmutableAdapter(
+    public void GetRequiredService_ScopedBinding_ValidatesOncePerScopeAndReusesTheImmutableAdapter(
         string engine
     )
     {

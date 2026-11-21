@@ -30,7 +30,7 @@ public abstract partial class BulkStageGuardTests
     /// <param name="role">The managed geometry role changed after its payload row has been persisted.</param>
     [Theory]
     [MemberData(nameof(SavedGeometryCases))]
-    public async Task SavedCallbackGeometryChangeRestoresInputsAndEveryPersistedTree(
+    public async Task InsertSubtreeAsync_SavedCallbackGeometryChange_RestoresInputsAndEveryPersistedTree(
         string role
     )
     {
@@ -105,7 +105,7 @@ public abstract partial class BulkStageGuardTests
     /// <param name="role">The geometry role copied from its current saved value.</param>
     [Theory]
     [MemberData(nameof(SavedGeometryCases))]
-    public async Task EquivalentSavedCallbackGeometryKeepsExactImportedStructure(
+    public async Task InsertSubtreeAsync_EquivalentSavedCallbackGeometry_KeepsExactImportedStructure(
         string role
     )
     {

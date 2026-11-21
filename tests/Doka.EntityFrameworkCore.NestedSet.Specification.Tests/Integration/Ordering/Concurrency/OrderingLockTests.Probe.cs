@@ -70,7 +70,9 @@ internal sealed class OrderingLockProbe : DbCommandInterceptor
         || sql.Contains("FOR NO KEY UPDATE", StringComparison.OrdinalIgnoreCase)
         || sql.Contains("WITH (UPDLOCK, HOLDLOCK, ROWLOCK)", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Copies parameter values because command disposal and reuse must not alter the observed evidence.</summary>
+    /// <summary>
+    /// Copies parameter values because command disposal and reuse must not alter the observed evidence.
+    /// </summary>
     private void Record(
         DbCommand command
     )
@@ -86,44 +88,5 @@ internal sealed class OrderingLockProbe : DbCommandInterceptor
             .ToArray();
 
         Commands.Add(new OrderingLockCommand(command.CommandText, parameters));
-    }
-}
-
-/// <summary>Preserves one observed SQL command and its typed parameter values.</summary>
-/// <param name="Sql">The actual provider command text.</param>
-/// <param name="Parameters">Immutable snapshots of the parameters sent with this command.</param>
-internal sealed record OrderingLockCommand(
-    string Sql,
-    OrderingLockParameter[] Parameters
-);
-
-/// <summary>Preserves a provider parameter's value and relational data type.</summary>
-/// <param name="Value">The copied scalar or binary value.</param>
-/// <param name="Type">The provider-reported relational type.</param>
-internal sealed record OrderingLockParameter(
-    object? Value,
-    DbType Type
-);
-
-/// <summary>Proves both contexts reach a lock attempt before either is allowed to acquire its first anchor.</summary>
-internal sealed class OrderingLockBarrier
-{
-    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private int _arrivals;
-
-    /// <summary>Gets the observed number of competing first-lock attempts.</summary>
-    internal int Arrivals => Volatile.Read(ref _arrivals);
-
-    /// <summary>Releases both callers only after their command interceptors have reached the lock boundary.</summary>
-    internal async Task ArriveAsync(
-        CancellationToken cancellationToken
-    )
-    {
-        if (Interlocked.Increment(ref _arrivals) == 2)
-        {
-            _ready.SetResult();
-        }
-
-        await _ready.Task.WaitAsync(cancellationToken);
     }
 }

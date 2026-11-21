@@ -2,12 +2,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Forest owner equality follows the mapped case-sensitive converted tree column rather than broader CLR equality.</summary>
+    /// <summary>
+    /// Forest owner equality follows the mapped case-sensitive converted tree column rather than broader CLR equality.
+    /// </summary>
     /// <param name="includeSelf">Whether leaf owners participate.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedForestKeepsConvertedTreeAliasesDatabaseDistinct(
+    public async Task SelectAncestors_IndexedForest_KeepsConvertedTreeAliasesDatabaseDistinct(
         bool includeSelf
     )
     {

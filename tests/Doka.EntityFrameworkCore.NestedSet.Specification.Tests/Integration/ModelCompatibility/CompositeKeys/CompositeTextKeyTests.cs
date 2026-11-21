@@ -18,7 +18,7 @@ public abstract class CompositeTextKeyTests : ProviderTest
 
     /// <summary>Ordered refresh keeps equal text keys in their own tenant when both tenants change.</summary>
     [Fact]
-    public async Task OrderedSaveRefreshesEqualTextKeysByScopeAsync()
+    public async Task SaveNestedSetChangesAsync_OrderedSave_RefreshesEqualTextKeysByScope()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<CompositeTextKeyContext>(
@@ -133,7 +133,7 @@ public abstract class CompositeTextKeyTests : ProviderTest
 
     /// <summary>Tracked capture for a Parent save keeps each rowset statement within one key batch.</summary>
     [Fact]
-    public async Task ParentSaveCaptureKeepsRowsetStatementsBoundedAsync()
+    public async Task SaveNestedSetChangesAsync_ParentSaveCapture_KeepsRowsetStatementsBounded()
     {
         // Arrange
         var probe = new CommandTextProbe();

@@ -19,7 +19,7 @@ public abstract class LongCoordinateRoundTripTests : ProviderTest
     /// </summary>
     /// <returns>A task that completes when the provider contract has been verified.</returns>
     [Fact]
-    public async Task CoordinatesAboveInt32RoundTripThroughA64BitStoreType()
+    public async Task InsertRootAsync_CoordinatesAboveInt32_RoundTripThroughA64BitStoreType()
     {
         // Arrange
         var expectedStoreType = Engine == "Sqlite"

@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(3, true)]
     [InlineData(99, false)]
     [InlineData(99, true)]
-    public async Task EmptyOrInvisibleSeedCannotBeResurrected(
+    public async Task SelectAncestorsOrSelf_EmptyOrInvisibleSeed_CannotBeResurrected(
         int sourceId,
         bool includeSelf
     )
@@ -24,7 +24,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             hidden: 3,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -63,7 +65,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Hidden ancestors are not returned, and surviving strict ancestors keep their real distance.</summary>
     [Fact]
-    public async Task HiddenAncestorDoesNotCompressStrictDistance()
+    public async Task SelectAncestors_HiddenAncestor_DoesNotCompressStrictDistance()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -72,7 +74,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -100,7 +104,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UpwardPathRequiresUpperToLowerEndpointDirection(
+    public async Task WherePathEdges_UpwardPath_RequiresUpperToLowerEndpointDirection(
         bool reverseEndpoints
     )
     {
@@ -110,7 +114,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -157,7 +164,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task DescendantRadiusDoesNotCompressInvisibleLevels(
+    public async Task SelectSubtrees_DescendantRadius_DoesNotCompressInvisibleLevels(
         int radius
     )
     {
@@ -168,7 +175,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -204,7 +213,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LaterSelfExpansionCannotResurrectEarlierBlockedLeg(
+    public async Task WherePathEdges_LaterSelfExpansion_CannotResurrectEarlierBlockedLeg(
         bool firstAllowed
     )
     {
@@ -214,7 +223,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -270,7 +282,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HiddenCloserCandidateDoesNotExposeFartherMatchingOwner(
+    public async Task WhereNearestAncestorOrSelf_HiddenCloserCandidate_DoesNotExposeFartherMatchingOwner(
         bool nearest
     )
     {
@@ -281,7 +293,9 @@ public abstract partial class HierarchyCompositionSemanticTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -314,107 +328,5 @@ public abstract partial class HierarchyCompositionSemanticTests
 
         Assert.Equal(expected, actual);
         Assert.Equal(1, probe.CommandCount);
-    }
-
-    /// <summary>Visibility gaps retain raw, existential, and complete-path semantics across a turn.</summary>
-    /// <param name="filter">The explicit policy applied to the upward leg of the composed walk.</param>
-    /// <param name="accepted">Whether the policy permits visible endpoints across the hidden middle.</param>
-    [Theory]
-    [InlineData("Raw", true)]
-    [InlineData("Any", true)]
-    [InlineData("Path", false)]
-    [InlineData("Nearest", false)]
-    public async Task DirectionChangePreservesExplicitHiddenPathPolicy(
-        string filter,
-        bool accepted
-    )
-    {
-        // Arrange
-        var scope = Guid.NewGuid();
-        var probe = new CompositionCommandProbe();
-        await using var context = await CreateContextAsync(
-            scope,
-            probe,
-            hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var hierarchy = context
-            .NestedSet<CompositionNode>()
-            .ForScope(scope);
-
-        var up = hierarchy
-            .SelectAncestors(
-                source => source.Id == 3,
-                (source, pivot, distance) => new
-                {
-                    Source = source,
-                    Pivot = pivot,
-                    UpDistance = distance,
-                })
-            .Where(row => row.Pivot.Id == 1);
-
-        var down = hierarchy
-            .SelectSubtrees(
-                pivot => up.Any(row => row.Pivot == pivot),
-                (pivot, target, distance) => new
-                {
-                    Pivot = pivot,
-                    Target = target,
-                    DownDistance = distance,
-                })
-            .Where(row => row.Target.Id == 6);
-
-        var walks = up.Join(
-            down,
-            row => row.Pivot,
-            row => row.Pivot,
-            (first, second) => new
-            {
-                first.Source,
-                first.Pivot,
-                second.Target,
-                first.UpDistance,
-                second.DownDistance,
-            });
-
-        // Act
-        var query = filter switch
-        {
-            "Any" => hierarchy.WhereAnyAncestorOrSelf(walks, row => row.Source, (row, owner) => owner.Id == 1),
-            "Path" => hierarchy.WherePathEdges(
-                walks,
-                row => row.Pivot,
-                row => row.Source,
-                (row, parent, child) => true),
-            "Nearest" => hierarchy.WhereNearestAncestorOrSelf(
-                walks,
-                row => row.Source,
-                (row, owner) => owner.Id == 1,
-                (row, owner) => true),
-            _ => walks,
-        };
-
-        var actual = await query
-            .Select(row => new
-            {
-                Source = row.Source.Id,
-                Pivot = row.Pivot.Id,
-                Target = row.Target.Id,
-                row.UpDistance,
-                row.DownDistance,
-            })
-            .ToArrayAsync(CancellationToken.None);
-
-        // Assert
-        (int Source, int Pivot, int Target, int Up, int Down)[] expected = accepted
-            ? [(3, 1, 6, 2, 2)]
-            : [];
-
-        Assert.Equal(
-            expected,
-            actual.Select(row => (row.Source, row.Pivot, row.Target, row.UpDistance, row.DownDistance)));
-
-        Assert.Equal(1, probe.CommandCount);
-        Assert.Equal(0, probe.MaterializedNodes);
     }
 }

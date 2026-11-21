@@ -1,34 +1,5 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Execution;
 
-/// <summary>Defines how an acquired registry identity may transition.</summary>
-internal enum NestedSetTreeLockMode
-{
-    /// <summary>The tree must already have an active registry row.</summary>
-    Existing = 0,
-
-    /// <summary>The tree must never have existed and is reserved by this operation.</summary>
-    New = 1,
-
-    /// <summary>The tree must exist as a tombstone reserved by a completed delete.</summary>
-    Tombstoned = 2,
-}
-
-/// <summary>Exposes only the metadata and erased values required by heterogeneous native registry operations.</summary>
-internal interface INestedSetTreeLockRequest
-{
-    /// <summary>Gets the exact cached registry mapping shared by hierarchy aliases.</summary>
-    NestedSetTreeRegistryMapping Mapping { get; }
-
-    /// <summary>Gets the Scope at the native parameter boundary, or null only when no Scope is mapped.</summary>
-    object? ScopeValue { get; }
-
-    /// <summary>Gets the non-null TreeId at the native parameter boundary.</summary>
-    object TreeIdValue { get; }
-
-    /// <summary>Gets the required registry lifecycle transition.</summary>
-    NestedSetTreeLockMode Mode { get; }
-}
-
 /// <summary>Owns one immutable, complete typed tree identity and its required registry transition.</summary>
 /// <typeparam name="TTreeId">The exact mapped TreeId type.</typeparam>
 /// <typeparam name="TScope">The exact Scope type, or the internal scopeless marker.</typeparam>

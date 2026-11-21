@@ -15,7 +15,7 @@ public sealed class TrackedIdentityIterationAllocationTests
     [InlineData(63)]
     [InlineData(64)]
     [InlineData(65)]
-    public void VerifyUnchangedAvoidsPerTraversalAllocation(
+    public void VerifyUnchanged_RepeatedStableCandidates_AvoidPerTraversalAllocation(
         int candidates
     )
     {

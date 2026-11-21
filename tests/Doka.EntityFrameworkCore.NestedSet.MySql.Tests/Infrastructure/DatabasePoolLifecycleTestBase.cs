@@ -1,11 +1,68 @@
 using System.Data.Common;
 using System.Globalization;
+using MySqlConnector;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Verifies exact database-pool ownership on MySQL and MariaDB test servers.</summary>
 public abstract class DatabasePoolLifecycleTestBase : ProviderTest
 {
+    /// <summary>A changed native timeout cannot leave a reusable session in a disposed fixture's second pool.</summary>
+    /// <returns>A task that completes after a fresh session proves the exact former pool was cleared.</returns>
+    [Fact]
+    public async Task DisposeAsync_DerivedPoolAndDeletionFailure_DoesNotReuseCompletedSession()
+    {
+        // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
+        long completedSession = 0;
+        var poolString = string.Empty;
+        await using var database = await TestDatabase.CreateAsync(
+            Engine,
+            async (context, initializationCancellationToken) =>
+            {
+                var connection = context.Database.GetDbConnection();
+                var options = new MySqlConnectionStringBuilder(connection.ConnectionString)
+                {
+                    DefaultCommandTimeout = 0,
+                    ApplicationName = "NestedSet derived functional pool",
+                };
+
+                connection.ConnectionString = options.ConnectionString;
+                poolString = options.ConnectionString;
+                await context.Database.EnsureCreatedAsync(initializationCancellationToken);
+                await context.Database.OpenConnectionAsync(initializationCancellationToken);
+                completedSession = await ReadMySqlSessionIdAsync(context, initializationCancellationToken);
+            },
+            cancellationToken);
+
+        var expected = new InvalidOperationException("Injected database deletion failure.");
+
+        // Act
+        var actual = await Record.ExceptionAsync(async () => await database.DisposeAsync(
+            _ => Task.FromException(expected)));
+
+        long reusedSession;
+        await using (var probe = new MySqlConnection(poolString))
+        {
+            try
+            {
+                await probe.OpenAsync(cancellationToken);
+                reusedSession = await ReadMySqlSessionIdAsync(probe, cancellationToken);
+            }
+            finally
+            {
+                // WHY: The adversarial read owns this new connection and must release it even on assertion failure.
+                await probe.CloseAsync();
+                await MySqlConnection.ClearPoolAsync(probe, CancellationToken.None);
+            }
+        }
+
+        // Assert
+        Assert.Same(expected, actual);
+        Assert.NotEqual(0, completedSession);
+        Assert.NotEqual(completedSession, reusedSession);
+    }
+
     /// <summary>Uses the concrete provider fixture as the immutable engine owner.</summary>
     /// <param name="fixture">The neutral resource fixture bound to this provider suite.</param>
     protected DatabasePoolLifecycleTestBase(
@@ -15,14 +72,19 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
     /// <summary>Verifies completed MySQL-compatible databases release only their own pooled sessions.</summary>
     /// <param name="initializationFailure">Whether database initialization fails after opening its session.</param>
     /// <param name="deletionFailure">Whether deletion fails after reopening the owned database session.</param>
+    /// <param name="derivedPool">Whether initialization uses an independently keyed functional connection pool.</param>
     /// <returns>A task that completes after observing exact server sessions and the surviving fixture's data.</returns>
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task CompletedDatabaseReleasesOnlyOwnedPooledConnections(
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    public async Task CreateAsync_CompletedDatabase_ReleasesOnlyOwnedPooledConnections(
         bool initializationFailure,
-        bool deletionFailure
+        bool deletionFailure,
+        bool derivedPool
     )
     {
         // Arrange
@@ -73,7 +135,8 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
         {
             error = await Record.ExceptionAsync(async () => await completed!.DisposeAsync(async context =>
             {
-                await context.Database.OpenConnectionAsync(cancellationToken);
+                // WHY: The injected deletion failure belongs to protected resource cleanup.
+                await context.Database.OpenConnectionAsync(CancellationToken.None);
 
                 throw failure;
             }));
@@ -112,13 +175,11 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
             command.Parameters.Add(parameter);
         }
 
-        var observation = Stopwatch.StartNew();
         var sessions = await ReadSessionsAsync(command, cancellationToken);
 
         // WHY: ClearPool sends COM_QUIT and closes the socket without waiting for the server to remove
-        // its session. Observe that remote completion while keeping a real pool leak a bounded failure.
-        while (sessions.ContainsKey(completedSession)
-            && observation.Elapsed < TimeSpan.FromSeconds(5))
+        // its session. Await that acknowledgement using only the runner token; server load is not a contract.
+        while (sessions.ContainsKey(completedSession))
         {
             await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken);
             sessions = await ReadSessionsAsync(command, cancellationToken);
@@ -155,6 +216,17 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
             CancellationToken cancellationToken
         )
         {
+            if (derivedPool)
+            {
+                var connection = context.Database.GetDbConnection();
+                var options = new MySqlConnectionStringBuilder(connection.ConnectionString)
+                {
+                    ApplicationName = "NestedSet isolated lifecycle variant",
+                };
+
+                connection.ConnectionString = options.ConnectionString;
+            }
+
             await context.Database.EnsureCreatedAsync(cancellationToken);
             await context.Database.OpenConnectionAsync(cancellationToken);
             completedSession = await ReadMySqlSessionIdAsync(context, cancellationToken);
@@ -188,12 +260,15 @@ public abstract class DatabasePoolLifecycleTestBase : ProviderTest
     private static async Task<long> ReadMySqlSessionIdAsync(
         TreeContext context,
         CancellationToken cancellationToken
+    ) => await ReadMySqlSessionIdAsync(context.Database.GetDbConnection(), cancellationToken);
+
+    /// <summary>Reads an independently owned native probe without reusing the disposed fixture object.</summary>
+    private static async Task<long> ReadMySqlSessionIdAsync(
+        DbConnection connection,
+        CancellationToken cancellationToken
     )
     {
-        await using var command = context
-            .Database
-            .GetDbConnection()
-            .CreateCommand();
+        await using var command = connection.CreateCommand();
 
         command.CommandText = "SELECT CONNECTION_ID()";
 

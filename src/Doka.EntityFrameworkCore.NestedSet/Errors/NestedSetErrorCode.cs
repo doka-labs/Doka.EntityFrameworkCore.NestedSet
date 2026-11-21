@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Identifies a rejected hierarchy operation without parsing its human-readable message.</summary>
+[PublicAPI]
 public enum NestedSetErrorCode
 {
     /// <summary>The operation was rejected without a more specific classification.</summary>

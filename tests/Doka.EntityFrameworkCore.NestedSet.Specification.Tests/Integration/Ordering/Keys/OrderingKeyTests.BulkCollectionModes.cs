@@ -26,7 +26,7 @@ public abstract partial class OrderingKeyTests
     /// <param name="key">The native mapped key representation.</param>
     [Theory]
     [MemberData(nameof(BulkCollectionModeCases))]
-    public Task SortedBulkRefreshRetainsParameterizedNativeKeys(
+    public Task RefreshCollectionModeBulkAsync_SortedBulkRefresh_RetainsParameterizedNativeKeys(
         ParameterTranslationMode mode,
         string key
     ) => key switch
@@ -36,12 +36,13 @@ public abstract partial class OrderingKeyTests
             mode,
             CollectionStringKey,
             cancellationToken: TestContext.Current.CancellationToken,
-            static value => value.ToUpperInvariant()),
+            alias: static value => value.ToUpperInvariant()),
         "Binary" => RefreshCollectionModeBulkAsync<byte[], byte[]?>(
             Engine,
             mode,
             BinaryKey,
-            cancellationToken: TestContext.Current.CancellationToken),
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -52,7 +53,7 @@ public abstract partial class OrderingKeyTests
     /// <param name="key">The native mapped key representation.</param>
     [Theory]
     [MemberData(nameof(BulkCollectionModeCases))]
-    public Task SortedBulkRefreshIdentityEditRestoresInputsAndPersistedTrees(
+    public Task RejectCollectionModeIdentityEditAsync_SortedBulkRefreshIdentityEdit_RestoresInputsAndPersistedTrees(
         ParameterTranslationMode mode,
         string key
     ) => key switch
@@ -63,13 +64,14 @@ public abstract partial class OrderingKeyTests
             CollectionStringKey,
             static node => node.Id = "Edited-import-key",
             cancellationToken: TestContext.Current.CancellationToken,
-            static value => value.ToUpperInvariant()),
+            alias: static value => value.ToUpperInvariant()),
         "Binary" => RejectCollectionModeIdentityEditAsync<byte[], byte[]?>(
             Engine,
             mode,
             BinaryKey,
             static node => node.Id[1] = 0xFE,
-            cancellationToken: TestContext.Current.CancellationToken),
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -87,8 +89,8 @@ public abstract partial class OrderingKeyTests
         string engine,
         ParameterTranslationMode mode,
         Func<int, TKey> key,
-        CancellationToken cancellationToken,
-        Func<TKey, TKey>? alias = null
+        Func<TKey, TKey>? alias,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -97,7 +99,7 @@ public abstract partial class OrderingKeyTests
             engine,
             key,
             cancellationToken: cancellationToken,
-            alias);
+            alias: alias);
 
         var otherRootBefore = await SnapshotAsync(
             arranged.Tree.TreeContaining(arranged.Reference(9)),
@@ -201,8 +203,8 @@ public abstract partial class OrderingKeyTests
         ParameterTranslationMode mode,
         Func<int, TKey> key,
         Action<OrderingKeyNode<TKey, TParent>> edit,
-        CancellationToken cancellationToken,
-        Func<TKey, TKey>? alias = null
+        Func<TKey, TKey>? alias,
+        CancellationToken cancellationToken
     )
         where TKey : notnull
     {
@@ -211,7 +213,7 @@ public abstract partial class OrderingKeyTests
             engine,
             key,
             cancellationToken: cancellationToken,
-            alias);
+            alias: alias);
 
         var before = await SnapshotAsync(arranged.Nodes, cancellationToken: cancellationToken);
         var table = arranged.Context.Model.FindEntityType(typeof(OrderingKeyNode<TKey, TParent>))!.GetTableName()!;

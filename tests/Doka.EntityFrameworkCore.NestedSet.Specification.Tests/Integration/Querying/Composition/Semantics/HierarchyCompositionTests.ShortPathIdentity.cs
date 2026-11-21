@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ShortPathRequiresTreeIdentityOnBothDirectEdges(
+    public async Task SelectSubtrees_ShortPath_RequiresTreeIdentityOnBothDirectEdges(
         bool foreignMiddle,
         bool bindTree
     )

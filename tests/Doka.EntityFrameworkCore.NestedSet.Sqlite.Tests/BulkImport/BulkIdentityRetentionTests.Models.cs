@@ -5,9 +5,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 public sealed partial class BulkIdentityRetentionTests
 {
     /// <summary>Maps explicit shallow binary snapshots while keeping structural comparer semantics.</summary>
-    private sealed class ShallowBinaryContext(DbContextOptions<ShallowBinaryContext> options)
-        : NestedSetDbContext(options)
+    private sealed class ShallowBinaryContext
+        : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public ShallowBinaryContext(
+            DbContextOptions<ShallowBinaryContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder builder
@@ -57,8 +63,14 @@ public sealed partial class BulkIdentityRetentionTests
     }
 
     /// <summary>Maps generated, binary and converted-class identities with relational owned dependents.</summary>
-    private sealed class IdentityContext(DbContextOptions<IdentityContext> options) : NestedSetDbContext(options)
+    private sealed class IdentityContext : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public IdentityContext(
+            DbContextOptions<IdentityContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder builder
@@ -147,10 +159,19 @@ public sealed partial class BulkIdentityRetentionTests
     }
 
     /// <summary>Provides an independently cloned mutable converted key representation.</summary>
-    private sealed class MutableIdentity(string value)
+    private sealed class MutableIdentity
     {
+        /// <summary>Retains the supplied fixture values without changing their identity.</summary>
+        /// <param name="value">The model value retained by this fixture identity.</param>
+        public MutableIdentity(
+            string value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets or sets the observable mutable identity representation.</summary>
-        public string Value { get; set; } = value;
+        public string Value { get; set; }
     }
 
     /// <summary>Provides a conventional generated scalar identity and unscoped hierarchy.</summary>

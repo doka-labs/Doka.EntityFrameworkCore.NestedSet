@@ -17,7 +17,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
     /// Deletes a deep chain with the derived restrictive self foreign key using only necessary unlinks.
     /// </summary>
     [Fact]
-    public async Task ConventionOwnedRestrictiveForeignKeyRemainsSafe()
+    public async Task DeleteSubtreeAsync_ConventionOwnedRestrictiveForeignKey_RemainsSafe()
     {
         // Arrange
         var expectedUnlinks = Engine is "PostgreSql" or "SqlServer"
@@ -78,7 +78,7 @@ public abstract class SubtreeDeleteWriteTests : ProviderTest
     /// An exception after the set deletion restores every row and parent link inside a caller transaction.
     /// </summary>
     [Fact]
-    public async Task FailureAfterPhysicalDeleteRestoresConventionOwnedForeignKeys()
+    public async Task DeleteSubtreeAsync_FailureAfterPhysicalDelete_RestoresConventionOwnedForeignKeys()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

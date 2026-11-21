@@ -34,20 +34,20 @@ internal sealed partial class
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
         MoveOperationName(placement, automatic),
-        async token =>
+        async operationCancellationToken =>
         {
-            RequireNoPendingWrites(binding, token);
+            RequireNoPendingWrites(binding, operationCancellationToken);
             var sourceKey = SnapshotKey(binding, key);
             var anchorKey = SnapshotKey(binding, anchor);
-            var (source, target) = await ResolveTreeIdsAsync(binding, sourceKey, anchorKey, token)
+            var (source, target) = await ResolveTreeIdsAsync(binding, sourceKey, anchorKey, operationCancellationToken)
                 .ConfigureAwait(false);
 
             await ExecuteResolvedAsync(
                     binding,
                     [(sourceKey, source), (anchorKey, target)],
-                    async () =>
+                    async callbackCancellationToken =>
                     {
-                        if (!await SameTreeAsync(binding, anchorKey, source, target, token)
+                        if (!await SameTreeAsync(binding, anchorKey, source, target, callbackCancellationToken)
                             .ConfigureAwait(false))
                         {
                             if (placement is not NestedSetPlacement.LastChild
@@ -62,7 +62,7 @@ internal sealed partial class
                                     binding.Context,
                                     binding.EntityType,
                                     Scope(binding))
-                                .MoveToAsync(sourceKey, source, anchorKey, target, token)
+                                .MoveToAsync(sourceKey, source, anchorKey, target, callbackCancellationToken)
                                 .ConfigureAwait(false);
 
                             return;
@@ -86,10 +86,10 @@ internal sealed partial class
                                     automatic,
                                     lockedToken),
                                 [store.LockRequest(NestedSetTreeLockMode.Existing)],
-                                token)
+                                callbackCancellationToken)
                             .ConfigureAwait(false);
                     },
-                    token)
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);
@@ -115,9 +115,9 @@ internal sealed partial class
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
         "detach_as_tree",
-        async token =>
+        async operationCancellationToken =>
         {
-            RequireNoPendingWrites(binding, token);
+            RequireNoPendingWrites(binding, operationCancellationToken);
             var sourceKey = SnapshotKey(binding, key);
 
             // WHY: Resolving the source awaits database work. Snapshot mutable target identities first so the
@@ -131,17 +131,17 @@ internal sealed partial class
                 throw new ArgumentNullException(nameof(newTreeId));
             }
 
-            var sourceTreeId = await ResolveTreeIdAsync(binding, sourceKey, token)
+            var sourceTreeId = await ResolveTreeIdAsync(binding, sourceKey, operationCancellationToken)
                 .ConfigureAwait(false);
 
             await ExecuteResolvedAsync(
                     binding,
                     [(sourceKey, sourceTreeId)],
-                    () => new NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>(
+                    callbackCancellationToken => new NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>(
                         binding.Context,
                         binding.EntityType,
-                        Scope(binding)).DetachAsync(sourceKey, sourceTreeId, targetTreeId, token),
-                    token)
+                        Scope(binding)).DetachAsync(sourceKey, sourceTreeId, targetTreeId, callbackCancellationToken),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);

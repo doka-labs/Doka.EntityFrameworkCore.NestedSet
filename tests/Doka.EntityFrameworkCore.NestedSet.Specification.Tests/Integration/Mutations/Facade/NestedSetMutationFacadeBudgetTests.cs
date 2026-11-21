@@ -17,7 +17,7 @@ public abstract class NestedSetMutationFacadeBudgetTests : ProviderTest
 
     /// <summary>Child insertion stays within a fixed command and set-update budget on every provider.</summary>
     [Fact]
-    public async Task InsertChildHasBoundedCommandCount()
+    public async Task InsertChildAsync_InsertChild_HasBoundedCommandCount()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

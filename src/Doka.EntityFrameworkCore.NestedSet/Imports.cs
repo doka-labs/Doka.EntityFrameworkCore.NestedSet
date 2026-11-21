@@ -31,6 +31,7 @@ global using Doka.EntityFrameworkCore.NestedSet.Providers;
 global using Doka.EntityFrameworkCore.NestedSet.Shared.Structural;
 global using Doka.EntityFrameworkCore.NestedSet.Storage;
 global using Doka.NestedSet;
+global using JetBrains.Annotations;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.ChangeTracking;
 global using Microsoft.EntityFrameworkCore.Diagnostics;

@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(true, "hidden-leaf")]
     [InlineData(false, "missing-leaf")]
     [InlineData(true, "missing-leaf")]
-    public async Task SubtreeEntityProjectionPreservesOwnedNavigations(
+    public async Task SelectSubtrees_SubtreeEntityProjection_PreservesOwnedNavigations(
         bool composer,
         string selection
     )
@@ -99,7 +99,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(true, "hidden-leaf")]
     [InlineData(false, "missing-leaf")]
     [InlineData(true, "missing-leaf")]
-    public async Task SubtreeProjectionPreservesOwnedAndOrdinaryCollectionDtos(
+    public async Task SelectSubtrees_SubtreeProjection_PreservesOwnedAndOrdinaryCollectionDtos(
         bool composer,
         string selection
     )

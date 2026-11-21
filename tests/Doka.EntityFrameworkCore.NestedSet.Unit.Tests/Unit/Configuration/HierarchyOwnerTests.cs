@@ -5,7 +5,7 @@ public sealed class HierarchyOwnerTests
 {
     /// <summary>Shares one configured base owner and immutable ordering among concrete TPH descendants.</summary>
     [Fact]
-    public void DerivedTypesReuseCachedConfiguredOwner()
+    public void For_DerivedTypes_ReuseCachedConfiguredOwner()
     {
         // Arrange
         using var context = new OrderedTphContext(ModelCompatibilityDatabase.Options<OrderedTphContext>("Sqlite"));
@@ -42,7 +42,7 @@ public sealed class HierarchyOwnerTests
 
     /// <summary>Retains independently configured concrete TPC owners despite their shared CLR base.</summary>
     [Fact]
-    public void ConcreteTpcHierarchiesKeepSeparateOwners()
+    public void For_ConcreteTpcHierarchies_KeepSeparateOwners()
     {
         // Arrange
         using var context = new CollatedTpcContext(ModelCompatibilityDatabase.Options<CollatedTpcContext>("MySql"));
@@ -70,7 +70,7 @@ public sealed class HierarchyOwnerTests
 
     /// <summary>Retains the configured EF name when unrelated shared entities use the same CLR type.</summary>
     [Fact]
-    public void SharedTypeOwnerKeepsExactEntityName()
+    public void For_SharedTypeOwner_KeepsExactEntityName()
     {
         // Arrange
         using var context = new SharedTypeContext(ModelCompatibilityDatabase.Options<SharedTypeContext>("Sqlite"));

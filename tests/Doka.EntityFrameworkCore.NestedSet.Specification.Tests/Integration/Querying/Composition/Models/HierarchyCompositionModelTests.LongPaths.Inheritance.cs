@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongTptPathsRetainPolymorphicParentIdentity(
+    public async Task QueryLongDepths_LongTptPaths_RetainPolymorphicParentIdentity(
         string filter,
         bool missingParent
     )

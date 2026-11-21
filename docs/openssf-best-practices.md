@@ -35,7 +35,7 @@ the assessment. Do not select N/A merely because this is a new project.
 | `floss_license_osi` | SUGGESTED | Met: [MIT is OSI-approved](https://opensource.org/license/mit); the conduct document is not a software-license exception |
 | `license_location` | MUST | Met: root [LICENSE](../LICENSE) and shipping package license metadata |
 | `documentation_basics` | MUST | Met: [Getting Started](getting-started.md), samples, configuration, and operations |
-| `documentation_interface` | MUST | Met: [API Reference](api-reference.md), operation contracts, and package XML documentation |
+| `documentation_interface` | MUST | Met: [API contract ownership](README.md#api-contracts), operation guides, and package XML documentation |
 | `sites_https` | MUST | Met: GitHub, OpenSSF, and published NuGet package routes use HTTPS |
 | `discussion` | MUST | Met: public [issues](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/issues) and PR discussions have searchable, addressable browser access |
 | `english` | SHOULD | Met: public documentation and contribution/reporting paths accept US English |
@@ -77,10 +77,10 @@ the assessment. Do not select N/A merely because this is a new project.
 | `build_floss_tools` | SHOULD | Met: .NET SDK, MSBuild, and Roslyn build the shipping libraries; proprietary SQL Server is an integration-test dependency, not a compiler prerequisite |
 | `test` | MUST | Met: MIT-licensed [test source](../tests) and documented xUnit suites |
 | `test_invocation` | SHOULD | Met: standard `dotnet test` command |
-| `test_most` | SUGGESTED | Met: [regression matrix](regression-coverage.md) plus measured shipping-module branch coverage below |
+| `test_most` | SUGGESTED | Met: [regression selection and evidence boundaries](testing.md#choose-the-right-check) plus measured shipping-module branch coverage below |
 | `test_continuous_integration` | SUGGESTED | Met: [PR CI](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/actions/workflows/ci.yml) runs named parallel build, analysis, tests, and sample checks |
 | `test_policy` | MUST | Met: [test requirements](../CONTRIBUTING.md#tests) require coverage for new functionality and regressions |
-| `tests_are_added` | MUST | Met: typed-runtime and provider-structure changes include [positive/negative/adversarial regressions](regression-coverage.md) in source history |
+| `tests_are_added` | MUST | Met: typed-runtime and provider-structure changes include [positive/negative/adversarial regressions](testing.md#choose-the-right-check) in source history |
 | `tests_documented_added` | SUGGESTED | Met: Contributing documents the policy for change proposals |
 | `warnings` | MUST | Met: [build properties](../Directory.Build.props) enable nullable and recommended SDK analysis |
 | `warnings_fixed` | MUST | Met: warnings fail Release builds; proposed release must retain a clean build result |

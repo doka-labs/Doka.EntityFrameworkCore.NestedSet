@@ -226,7 +226,7 @@ public sealed class TestDatabaseServers : IAsyncDisposable
                 "PostgreSql" => ((PostgreSqlContainer)container).GetConnectionString(),
                 "SqlServer" => ((MsSqlContainer)container).GetConnectionString(),
                 "MariaDb" => $"Server={container.Hostname};Port={container.GetMappedPublicPort(3306)};"
-                    + "Database=nestedset;User ID=root;Password=nestedset-test-password;",
+                + "Database=nestedset;User ID=root;Password=nestedset-test-password;",
                 _ => throw new ArgumentOutOfRangeException(nameof(engine)),
             };
 
@@ -256,7 +256,9 @@ public sealed class TestDatabaseServers : IAsyncDisposable
         string ConnectionString
     );
 
-    /// <summary>Retains proof that a shared startup was canceled by its owning caller rather than the provider.</summary>
+    /// <summary>
+    /// Retains proof that a shared startup was canceled by its owning caller rather than the provider.
+    /// </summary>
     private readonly record struct Startup(
         Lazy<Task<Server>> Task,
         CancellationToken Owner

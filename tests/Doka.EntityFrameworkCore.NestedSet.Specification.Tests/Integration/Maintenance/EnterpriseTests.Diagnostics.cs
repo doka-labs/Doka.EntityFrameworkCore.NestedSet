@@ -5,7 +5,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies one structural read and no hierarchy write lock for native-key validation.</summary>
     /// <returns>A task that completes after query-count and lock-write checks.</returns>
     [Fact]
-    public async Task NativeKeyValidationUsesOneStructuralReadWithoutWriteLock()
+    public async Task ValidateAsync_NativeKeyValidation_UsesOneStructuralReadWithoutWriteLock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -13,7 +13,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -35,7 +36,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies public diagnostics identify each corrupt row while isolating another scope.</summary>
     /// <returns>A task that completes after node-specific diagnostic checks.</returns>
     [Fact]
-    public async Task DetailedValidationIdentifiesCorruptNodeInSelectedScope()
+    public async Task ValidateAsync_DetailedValidation_IdentifiesCorruptNodeInSelectedScope()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -43,7 +44,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         await setup
             .Set<TreeNode>()
@@ -81,7 +83,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies flat CASE expressions and mapping-derived parameters in a full repair batch.</summary>
     /// <returns>A task that completes after bounded SQL and native parameter checks.</returns>
     [Fact]
-    public async Task RebuildUsesFlatCasesWith322ParametersPerFullBatch()
+    public async Task RebuildAsync_Rebuild_UsesFlatCasesWith322ParametersPerFullBatch()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -90,7 +92,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(65),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);

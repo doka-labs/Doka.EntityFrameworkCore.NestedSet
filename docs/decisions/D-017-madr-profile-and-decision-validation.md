@@ -1,15 +1,15 @@
 ---
 id: D-017
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
-scope: "Mechanical profile validation and metadata-derived indexes"
+scope: "Optional read-only decision validation with independently maintained navigation"
 supersedes: []
 superseded-by: []
 amends: []
-amended-by: []
+amended-by: [D-023]
 madr-version: "4.0.0"
 doka-profile-version: "1.0"
 ---
@@ -27,6 +27,12 @@ package qualification so a prose or metadata error cannot block CI or RC.
 This decision covers that local validation. It does not replace human review,
 introduce a shipping dependency, or imply that pending engineering and
 workflow files have been committed or qualified as a hosted release.
+
+The original implementation generated navigation from metadata. The
+[2026-11-19 amendment](D-023-reproducible-engineering-contracts.md) retains the
+optional read-only check but replaces generated README/JSON navigation with a
+manually maintained record/decision index. The original alternatives and
+implementation events below remain historical evidence of that earlier choice.
 
 ## Decision Drivers
 
@@ -55,8 +61,8 @@ responsible for correctness and approval.
 
 ### Confirmation
 
-- Run `python3 -m unittest discover -s eng/quality/tests -p test_adrs.py` and expect malformed metadata, empty confirmation, source placement, invalid history, broken relationships, and index-drift fixtures to pass by rejecting invalid records.
-- Run `eng/validate-adrs.sh --write-index` twice and expect identical README and JSON bytes. Run `eng/validate-adrs.sh` afterward and expect a successful read-only validation. Inspect CI and RC qualification wiring and expect neither the validator nor its corpus test suite in a blocking stage.
+- Run `python3 -m unittest discover -s eng/quality/tests -p test_adrs.py` and expect malformed metadata, empty confirmation, source placement, invalid history, broken relationships, and incomplete manual navigation to be rejected.
+- Run `eng/validate-adrs.sh` and expect a read-only validation with metadata dates matching the final history events and every record linked once by the manual index. Expect `--write-index` to be rejected as an unsupported option. Inspect CI and RC qualification wiring and expect neither the validator nor its corpus test suite in a blocking stage.
 
 ## Pros and Cons of the Options
 
@@ -101,6 +107,10 @@ supersession when appropriate.
 
 - 2026-09-29: Separated mechanical enforcement from the foundational MADR decision during the maintainer-authorized correction of the unpublished history. The original recording and acceptance dates are preserved; engineering implementation and delivery wiring remain outside the admitted commits.
 - 2026-09-30: The maintainer removed ADR profile validation from blocking CI and RC qualification. The complete profile, validator, indexes, and fixtures remain available as a separate documentation check.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
 
 ### Implementation References
 

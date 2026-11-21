@@ -4,15 +4,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class QueryPlanReplayTests
 {
     /// <summary>
-    /// A plan-only watchdog honors explicit context settings without changing ordinary query options.
+    /// Plan replay honors explicit context settings without adding a diagnostic-only latency gate.
     /// </summary>
     /// <param name="configured">An explicit context timeout, or null for the untouched provider default.</param>
-    /// <param name="expected">The deadline applied only to the raw diagnostic command.</param>
+    /// <param name="expected">The timeout applied only to the raw diagnostic command.</param>
     [Theory]
-    [InlineData(null, 120)]
+    [InlineData(null, 0)]
     [InlineData(0, 0)]
     [InlineData(7, 7)]
-    public async Task DiagnosticTimeoutDoesNotMutateOrdinaryQueryOptions(
+    public async Task ExplainAsync_DiagnosticTimeout_DoesNotMutateOrdinaryQueryOptions(
         int? configured,
         int expected
     )
@@ -40,7 +40,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>Successful MySQL replay contains both plan documents but never warning metadata or notes.</summary>
     [Fact]
-    public async Task CompleteMySqlReplayExcludesWarningRows()
+    public async Task ExplainAsync_CompleteMySql_ReplayExcludesWarningRows()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(
@@ -70,7 +70,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>Warning 1317 prevents an interrupted TREE document from becoming accepted plan evidence.</summary>
     [Fact]
-    public async Task InterruptedMySqlReplayRejectsPartialPlan()
+    public async Task ExplainAsync_InterruptedMySql_ReplayRejectsPartialPlan()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(
@@ -99,7 +99,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>SQL Server's ordinary result values are drained before its separate XML plan is retained.</summary>
     [Fact]
-    public async Task SqlServerReplayDrainsDataBeforeXmlPlan()
+    public async Task ExplainAsync_SqlServer_ReplayDrainsDataBeforeXmlPlan()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(

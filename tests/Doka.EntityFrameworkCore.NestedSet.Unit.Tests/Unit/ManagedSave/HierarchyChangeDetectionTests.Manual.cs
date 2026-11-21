@@ -11,7 +11,7 @@ public sealed partial class HierarchyChangeDetectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ManualBoundaryPreservesUnmarkedPayloadAndNeverDetects(
+    public async Task SaveManualBoundaryAsync_ManualBoundary_PreservesUnmarkedPayloadAndNeverDetects(
         bool synchronous
     )
     {
@@ -68,7 +68,7 @@ public sealed partial class HierarchyChangeDetectionTests
     [InlineData(false, nameof(ProbeNode.Name))]
     [InlineData(true, nameof(ProbeNode.ParentId))]
     [InlineData(true, nameof(ProbeNode.Name))]
-    public async Task ManualBoundaryRejectsUnmarkedTriggerBeforeSql(
+    public async Task SaveManualBoundaryAsync_ManualBoundary_RejectsUnmarkedTriggerBeforeSql(
         bool synchronous,
         string propertyName
     )
@@ -135,7 +135,7 @@ public sealed partial class HierarchyChangeDetectionTests
         return NestedSetSaveChanges.ExecuteAsync(
             context,
             false,
-            token => context.SaveChangesAsync(false, token),
+            callbackCancellationToken => context.SaveChangesAsync(false, callbackCancellationToken),
             cancellationToken);
     }
 

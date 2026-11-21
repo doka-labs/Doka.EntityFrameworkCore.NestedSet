@@ -2,7 +2,9 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Qualifies the actual signal sample builder with scalar SQL, direct-edge periods and typed metadata.</summary>
+/// <summary>
+/// Qualifies the actual signal sample builder with scalar SQL, direct-edge periods and typed metadata.
+/// </summary>
 [Collection("Model compatibility")]
 public abstract partial class SignalReportTests : ProviderTest
 {
@@ -20,7 +22,7 @@ public abstract partial class SignalReportTests : ProviderTest
     /// The report scenario aggregates four overlapping anchors, two metrics and three physical sources.
     /// </summary>
     [Fact]
-    public async Task BundledReportPreservesSourcesAndMeasurementGrain()
+    public async Task ReadAsync_BundledReport_PreservesSourcesAndMeasurementGrain()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -28,7 +30,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request();
         probe.Reset();
 
@@ -51,7 +58,7 @@ public abstract partial class SignalReportTests : ProviderTest
     [Theory]
     [InlineData(0, 50, 40)]
     [InlineData(1, 20, 50)]
-    public async Task TemporalReportPrunesAtEachMeasurementDay(
+    public async Task ReadAsync_TemporalReport_PrunesAtEachMeasurementDay(
         int day,
         double rootTotal,
         double childTotal
@@ -63,7 +70,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request() with
         {
             AnchorIds = [SignalReportDataset.Id(1), SignalReportDataset.Id(5)],
@@ -99,7 +111,7 @@ public abstract partial class SignalReportTests : ProviderTest
     [InlineData(0, 70)]
     [InlineData(1, 60)]
     [InlineData(2, 40)]
-    public async Task TemporalReportHonorsTheInclusiveStartDay(
+    public async Task ReadAsync_TemporalReport_HonorsTheInclusiveStartDay(
         int firstAllowedDay,
         double expected
     )
@@ -110,7 +122,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var first = SignalReportDataset.FirstDay.AddDays(firstAllowedDay);
         await context
             .LinkAvailability
@@ -142,7 +159,7 @@ public abstract partial class SignalReportTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OpenAndMaximumStoredEndsRemainValid(
+    public async Task ReadAsync_OpenAndMaximumStoredEnds_RemainValid(
         bool maximumEnd
     )
     {
@@ -152,7 +169,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         DateOnly? end = maximumEnd
             ? DateOnly.MaxValue
             : null;
@@ -181,7 +203,7 @@ public abstract partial class SignalReportTests : ProviderTest
 
     /// <summary>Overlapping and reopened periods are existential evidence rather than extra fact rows.</summary>
     [Fact]
-    public async Task ReopenedAndOverlappingPeriodsDoNotMultiplyMeasurements()
+    public async Task ReadAsync_ReopenedAndOverlappingPeriods_DoNotMultiplyMeasurements()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -189,7 +211,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         context.LinkAvailability.AddRange(
             new LinkWindow
             {
@@ -227,7 +254,7 @@ public abstract partial class SignalReportTests : ProviderTest
 
     /// <summary>A retained ancestor shortcut cannot replace an expired exact direct edge.</summary>
     [Fact]
-    public async Task ShortcutCannotReopenAClosedBranch()
+    public async Task ReadAsync_Shortcut_CannotReopenAClosedBranch()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -235,7 +262,12 @@ public abstract partial class SignalReportTests : ProviderTest
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 6, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            6,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         context.LinkAvailability.Add(
             new LinkWindow
             {
@@ -261,157 +293,6 @@ public abstract partial class SignalReportTests : ProviderTest
                 .Value);
 
         AssertReportBoundary(context, probe);
-    }
-
-    /// <summary>
-    /// The nearest scenario selects by classification before checking values, so a failed nearby owner has no fallback.
-    /// </summary>
-    [Theory]
-    [InlineData(false, "Receiver", true)]
-    [InlineData(true, "Receiver", false)]
-    [InlineData(true, "Relay", true)]
-    public async Task NearestReportDoesNotFallbackToAFartherMatchingOwner(
-        bool nearest,
-        string moduleClass,
-        bool expected
-    )
-    {
-        // Arrange
-        var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(
-            probe,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
-        var request = data.Request(
-                nearest
-                    ? TagOwnerMode.Nearest
-                    : TagOwnerMode.Any,
-                moduleClass,
-                false) with
-            {
-                AnchorIds = [SignalReportDataset.Id(1)],
-                ChannelIds = [SignalReportDataset.PulseChannel],
-                Sources = [CapturePort.Pulse],
-            };
-
-        probe.Reset();
-
-        // Act
-        var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
-
-        // Assert
-        var cell = Assert.Single(cells);
-        Assert.Equal(expected, cell.HasData);
-        Assert.Equal(
-            expected
-                ? 10
-                : 0,
-            cell.Value);
-
-        AssertReportBoundary(context, probe);
-    }
-
-    /// <summary>Sensor fields on different ancestors cannot combine into a synthetic matching owner.</summary>
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, true)]
-    public async Task MetadataReportRequiresAllFieldsOnTheSameOwner(
-        bool matchingOwner,
-        bool expected
-    )
-    {
-        // Arrange
-        var probe = new SignalReportProbe();
-        await using var context = await CreateContextAsync(
-            probe,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var data = await SignalReportDataset.CreateAsync(context, 8, true, CancellationToken.None, Guid.NewGuid());
-
-        if (matchingOwner)
-        {
-            await context
-                .TagValues
-                .Where(value => value.TenantId == data.TenantId
-                    && value.NodeId == SignalReportDataset.Id(6)
-                    && value.FieldCode == "RackCode")
-                .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(
-                        value => value.Value,
-                        "R7"),
-                    CancellationToken.None);
-        }
-
-        var request = SingleAnchor(data) with
-        {
-            Criteria = data.Request(moduleClass: "Relay")
-                .Criteria,
-        };
-
-        probe.Reset();
-
-        // Act
-        var cells = await SignalReportBuilder.ReadAsync(context, request, CancellationToken.None);
-
-        // Assert
-        var cell = Assert.Single(cells);
-        Assert.Equal(expected, cell.HasData);
-        Assert.Equal(
-            expected
-                ? 10
-                : 0,
-            cell.Value);
-
-        AssertReportBoundary(context, probe);
-    }
-
-    /// <summary>
-    /// Runs one actual sample context in the provider's existing database without duplicating schema setup.
-    /// </summary>
-    private Task<SignalLabContext> CreateContextAsync(
-        SignalReportProbe probe,
-        CancellationToken cancellationToken
-    )
-        => CreateContextAsync<SignalLabContext>(
-            _fixture,
-            static options => new SignalLabContext(options),
-            probe,
-            cancellationToken: cancellationToken);
-
-    /// <summary>Creates every sample model with the same observation and snapshot prerequisites.</summary>
-    /// <typeparam name="TContext">The normal or indexed sample context.</typeparam>
-    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
-    /// <param name="database">The shared or case-owned fixture database.</param>
-    /// <param name="createContext">Creates the requested context using the fixture's provider options.</param>
-    /// <param name="probe">The context-specific materialization and command observer.</param>
-    /// <returns>The context with live entity observation and the required SQL Server snapshot option.</returns>
-    private async Task<TContext> CreateContextAsync<TContext>(
-        ModelCompatibilityDatabase database,
-        Func<DbContextOptions<TContext>, TContext> createContext,
-        SignalReportProbe probe,
-        CancellationToken cancellationToken
-    )
-        where TContext : SignalLabContext
-    {
-        var context = await database.CreateContextAsync(
-            Engine,
-            createContext,
-            cancellationToken: cancellationToken,
-            probe,
-            TestMaterializationObserver.Instance);
-
-        TestMaterializationObserver.Instance.Register(context, probe.Materialized);
-
-        if (Engine == "SqlServer")
-        {
-            // WHY: Snapshot is an application database prerequisite, explicitly enabled by this owned test setup only.
-            await context.Database.ExecuteSqlRawAsync(
-                "ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON",
-                cancellationToken);
-        }
-
-        return context;
     }
 
     /// <summary>Chooses one anchor, metric and source without changing metadata or temporal semantics.</summary>

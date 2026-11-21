@@ -12,7 +12,7 @@ public sealed partial class BulkIdentityRetentionTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task MutableKeyRejectionPreservesOwnedPayloadForRetry(
+    public async Task Import_MutableKeyRejection_PreservesOwnedPayloadForRetry(
         bool scope,
         bool binary
     )
@@ -25,10 +25,13 @@ public sealed partial class BulkIdentityRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -150,7 +153,7 @@ public sealed partial class BulkIdentityRetentionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RepeatedInPlaceIdentityMutationRequiresDiscardingTheContext(
+    public async Task ImportMutableAsync_RepeatedInPlaceIdentityMutation_RequiresDiscardingTheContext(
         bool scope
     )
     {
@@ -162,10 +165,13 @@ public sealed partial class BulkIdentityRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);

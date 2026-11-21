@@ -105,7 +105,9 @@ internal static partial class AncestorIndexHydrationJoins
             : "INNER JOIN";
     }
 
-    /// <summary>Finds the matching source boundary without confusing nested parentheses or quoted fixture identifiers.</summary>
+    /// <summary>
+    /// Finds the matching source boundary without confusing nested parentheses or quoted fixture identifiers.
+    /// </summary>
     private static int OpeningParenthesis(
         string sql,
         int end
@@ -152,7 +154,8 @@ internal static partial class AncestorIndexHydrationJoins
     private static partial Regex IdentifierRegex();
 
     [GeneratedRegex(
-        @"(?m)^SELECT\s+`(?<source>[^`]+)`\.`Id`(?:\s+AS\s+`Source`)?\s*,\s*`(?<owner>[^`]+)`\.`Id`(?:\s+AS\s+`Owner`)?(?:\s*,|\s*\r?\n)")]
+        @"(?m)^SELECT\s+`(?<source>[^`]+)`\.`Id`(?:\s+AS\s+`Source`)?\s*,"
+        + @"\s*`(?<owner>[^`]+)`\.`Id`(?:\s+AS\s+`Owner`)?(?:\s*,|\s*\r?\n)")]
     private static partial Regex ProjectionsRegex();
 
     [GeneratedRegex(@"\bFROM\s+`(?<table>[^`]+)`\s+AS\s+`[^`]+`")]

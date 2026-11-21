@@ -11,7 +11,7 @@ public sealed class CompositionSqlServerTranslationTests
     [InlineData("path")]
     [InlineData("nearest")]
     [InlineData("mixed")]
-    public void CompleteQueryTranslatesWithoutIo(
+    public void ToQueryString_CompleteQuery_TranslatesWithoutIo(
         string shape
     )
     {

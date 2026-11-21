@@ -34,10 +34,12 @@ unloading under instrumentation. The
 define the boundary; this tooling choice changes no shipping dependency or
 supported product contract.
 
-The six shipping package graphs are locked. Tests, samples, and tooling use
-the centrally reviewed dependency versions without additional committed
-lockfiles. Updating a package requires reviewing affected locks and rerunning
-the complete applicable matrix.
+Every solution project's dependency graph is recorded in a committed lockfile,
+including tests, samples, benchmarks, and tooling. Normal local restore may
+update locks; CI enforces the reviewed graph. The
+[adoption decision](decisions/D-023-reproducible-engineering-contracts.md)
+replaces the earlier shipping-only policy. Updating a package requires reviewing
+every affected graph and rerunning the complete applicable matrix.
 
 Non-shipping projects use NuGet's
 [transitive pinning](https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management#transitive-pinning)

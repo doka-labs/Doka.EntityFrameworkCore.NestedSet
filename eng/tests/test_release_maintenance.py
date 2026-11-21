@@ -907,6 +907,7 @@ class AuditTests(unittest.TestCase):
             self.assertIn("--locked-mode", calls[0][0])
             self.assertIn("--no-http-cache", calls[0][0])
             self.assertIn("-p:NuGetAuditMode=all", calls[0][0])
+            self.assertIn("-p:DokaAuditPipeline=true", calls[0][0])
             self.assertIn("-p:NoWarn=", calls[0][0])
             self.assertIn("--include-transitive", calls[1][0])
             self.assertEqual(str((output / "http-cache").resolve()), calls[0][1]["env"]["NUGET_HTTP_CACHE_PATH"])

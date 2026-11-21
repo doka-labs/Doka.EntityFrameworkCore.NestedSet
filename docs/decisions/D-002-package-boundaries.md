@@ -1,7 +1,7 @@
 ---
 id: D-002
 status: superseded
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -90,13 +90,15 @@ decision.
 - 2026-10-26: Status changed from implemented to superseded.
 - 2026-10-26: D-020 replaces the single-EF-package layout with four native integrations while retaining the ORM-independent core and common EF algorithms.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Pure core project](../../src/Doka.NestedSet/Doka.NestedSet.csproj)
 - [EF integration project](../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj)
 - [Core tests](../../tests/Doka.NestedSet.Tests)
 - [Package consumer gate](../../eng/verify-package-consumer.sh)
-- [Implementation design](../../docs/implementation-design.md)
+- [Implementation design](D-020-provider-owned-runtime-packages.md)
 
 ### Sources
 

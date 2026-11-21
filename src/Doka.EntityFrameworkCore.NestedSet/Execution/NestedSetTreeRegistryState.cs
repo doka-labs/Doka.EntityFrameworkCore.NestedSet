@@ -92,7 +92,8 @@ internal static class NestedSetTreeRegistryState
             : $"{revision} = {revision} + 1";
 
         var statement =
-            $"UPDATE {table} SET {assignment} WHERE {predicate} AND {lifecycle} = {NestedSetTreeRegistryMetadata.Active}";
+            $"UPDATE {table} SET {assignment} WHERE {predicate} "
+            + $"AND {lifecycle} = {NestedSetTreeRegistryMetadata.Active}";
 
         var affected = await context
             .Database

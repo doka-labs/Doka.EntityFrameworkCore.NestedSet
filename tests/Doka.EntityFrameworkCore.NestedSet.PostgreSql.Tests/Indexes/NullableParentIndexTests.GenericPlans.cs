@@ -11,7 +11,7 @@ public sealed partial class NullableParentIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GenericParentPlansUseDependentPartialIndex(
+    public async Task ExplainGenericAsync_ParentPlans_UseDependentPartialIndex(
         bool scoped
     )
     {
@@ -35,9 +35,13 @@ public sealed partial class NullableParentIndexTests
         var query = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {scope}x.{columns.Parent} = {parent}";
 
         // Act
-        var result = await ExplainGenericAsync(context, name, query, scoped, "1", CancellationToken.None);
+        var ordinary = await ExplainGenericAsync(
+            context, name, query, scoped, "1", false, TestContext.Current.CancellationToken);
+        var result = await ExplainGenericAsync(
+            context, PreparedName(), query, scoped, "1", true, TestContext.Current.CancellationToken);
 
         // Assert
+        AssertGenericPlan(ordinary, 19);
         AssertGenericPlan(result, 19);
         Assert.Contains(dependent.GetDatabaseName(), IndexNames(result.Plan));
     }
@@ -47,7 +51,7 @@ public sealed partial class NullableParentIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GenericRootPlansUseRootPartialIndex(
+    public async Task ExplainGenericAsync_RootPlans_UseRootPartialIndex(
         bool scoped
     )
     {
@@ -69,12 +73,16 @@ public sealed partial class NullableParentIndexTests
             : "$1";
 
         var query = $"SELECT x.{columns.Key} FROM {columns.Table} x "
-            + $"WHERE {scope}x.{columns.Key} >= {key} AND x.{columns.Parent} IS NULL";
+        + $"WHERE {scope}x.{columns.Key} >= {key} AND x.{columns.Parent} IS NULL";
 
         // Act
-        var result = await ExplainGenericAsync(context, name, query, scoped, "1", CancellationToken.None);
+        var ordinary = await ExplainGenericAsync(
+            context, name, query, scoped, "1", false, TestContext.Current.CancellationToken);
+        var result = await ExplainGenericAsync(
+            context, PreparedName(), query, scoped, "1", true, TestContext.Current.CancellationToken);
 
         // Assert
+        AssertGenericPlan(ordinary, 1000);
         AssertGenericPlan(result, 1000);
         Assert.Contains(roots.GetDatabaseName(), IndexNames(result.Plan));
     }
@@ -84,7 +92,7 @@ public sealed partial class NullableParentIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GenericPrincipalPlansExcludePartialIndexes(
+    public async Task ExplainGenericAsync_PrincipalPlans_ExcludePartialIndexes(
         bool scoped
     )
     {
@@ -104,28 +112,37 @@ public sealed partial class NullableParentIndexTests
             : "$1";
 
         var query = $"SELECT 1 FROM ONLY {columns.Table} x "
-            + $"WHERE {scope}x.{columns.Key} = {key} FOR KEY SHARE OF x";
+        + $"WHERE {scope}x.{columns.Key} = {key} FOR KEY SHARE OF x";
 
         // Act
-        var result = await ExplainGenericAsync(context, name, query, scoped, "1", CancellationToken.None);
+        var ordinary = await ExplainGenericAsync(
+            context, name, query, scoped, "1", false, TestContext.Current.CancellationToken);
+        var result = await ExplainGenericAsync(
+            context, PreparedName(), query, scoped, "1", true, TestContext.Current.CancellationToken);
 
         // Assert
+        AssertGenericPlan(ordinary, 1);
         AssertGenericPlan(result, 1);
         var used = IndexNames(result.Plan);
+        var ordinaryUsed = IndexNames(ordinary.Plan);
         Assert.NotEmpty(used);
         Assert.All(
             indexes.Where(index => index.GetFilter() is not null),
-            index => Assert.DoesNotContain(index.GetDatabaseName(), used));
+            index =>
+            {
+                Assert.DoesNotContain(index.GetDatabaseName(), used);
+                Assert.DoesNotContain(index.GetDatabaseName(), ordinaryUsed);
+            });
     }
 
     /// <summary>An execution error clears the aborted probe transaction before deallocating its statement.</summary>
     [Fact]
-    public async Task GenericPlanSqlFailureRestoresSession()
+    public async Task ExplainGenericAsync_GenericPlanSqlFailure_RestoresSession()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         var name = PreparedName();
         var before = await PreparedSessionAsync(
             context,
@@ -139,16 +156,10 @@ public sealed partial class NullableParentIndexTests
             "SELECT 1 / $1",
             false,
             "0",
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            PostgresErrorCodes.DivisionByZero,
-            Assert.IsType<PostgresException>(exception)
-                .SqlState);
+            false,
+            TestContext.Current.CancellationToken));
 
         var after = await PreparedSessionAsync(context, name, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(before, after);
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-generic-error-" + name,
             [
@@ -156,16 +167,24 @@ public sealed partial class NullableParentIndexTests
                 $"mode_before={before.Mode}\nmode_after={after.Mode}\nowned_statement_count={after.Count}",
             ],
             cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(
+            PostgresErrorCodes.DivisionByZero,
+            Assert.IsType<PostgresException>(exception)
+                .SqlState);
+
+        Assert.Equal(before, after);
     }
 
     /// <summary>Canceled execution restores a nondefault session mode without removing other statements.</summary>
     [Fact]
-    public async Task GenericPlanCancellationRestoresSession()
+    public async Task ExplainGenericAsync_GenericPlanCancellation_RestoresSession()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
-        await context.Database.OpenConnectionAsync(CancellationToken.None);
+        await context.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         var name = PreparedName();
         var retained = PreparedName();
         var original = await PreparedSessionAsync(
@@ -185,6 +204,7 @@ public sealed partial class NullableParentIndexTests
 
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
+        Exception? operationFailure = null;
 
         try
         {
@@ -195,49 +215,85 @@ public sealed partial class NullableParentIndexTests
                 "SELECT $1",
                 false,
                 "1",
+                true,
                 cancellation.Token));
-
-            // Assert
-            Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
 
             var after = await PreparedSessionAsync(
                 context,
                 name,
                 cancellationToken: TestContext.Current.CancellationToken);
 
-            Assert.Equal("force_custom_plan", after.Mode);
-            Assert.Equal(0, after.Count);
-
             var other = await PreparedSessionAsync(
                 context,
                 retained,
                 cancellationToken: TestContext.Current.CancellationToken);
 
-            Assert.Equal(1, other.Count);
             await QueryPlanTestSupport.WriteEvidenceAsync(
                 "PostgreSql-generic-cancel-" + name,
                 [
                     "query_cancelled=True",
-                    $"mode_after={after.Mode}\nowned_statement_count={after.Count}\nretained_statement_count={other.Count}",
+                    $"mode_after={after.Mode}\nowned_statement_count={
+                        after.Count}\nretained_statement_count={other.Count}",
                 ],
                 cancellationToken: TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.IsType<OperationCanceledException>(exception, exactMatch: false);
+            Assert.Equal("force_custom_plan", after.Mode);
+            Assert.Equal(0, after.Count);
+            Assert.Equal(1, other.Count);
+        }
+        catch (Exception failure)
+        {
+            operationFailure = failure;
         }
         finally
         {
-            try
+            await CleanupPreparedSessionAsync(context, retained, original.Mode, operationFailure);
+        }
+    }
+
+    /// <summary>A statement name owned by the caller cannot be acquired, changed, or removed by the probe.</summary>
+    [Fact]
+    public async Task ExplainGenericAsync_ExistingStatement_PreservesForeignSessionState()
+    {
+        // Arrange
+        var runnerToken = TestContext.Current.CancellationToken;
+        var database = await _fixture.ResetAsync(Engine, runnerToken);
+        await using var context = database.CreateContext();
+        await context.Database.OpenConnectionAsync(runnerToken);
+        var name = PreparedName();
+        await PreparedControlAsync(context, $"PREPARE {name} AS SELECT 17", runnerToken);
+        var before = await PreparedSessionAsync(context, name, runnerToken);
+        Exception? ownershipFailure = null;
+
+        try
+        {
+            // Act
+            var exception = await Record.ExceptionAsync(() => ExplainGenericAsync(
+                context, name, "SELECT $1", false, "99", false, runnerToken));
+            var after = await PreparedSessionAsync(context, name, runnerToken);
+            int? retainedValue = null;
+
+            if (after.Count != 0)
             {
-                await PreparedControlAsync(
-                    context,
-                    $"DEALLOCATE {retained}",
-                    cancellationToken: TestContext.Current.CancellationToken);
+                await using var command = context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = $"EXECUTE {name}";
+                retainedValue = (int)(await command.ExecuteScalarAsync(runnerToken))!;
             }
-            finally
-            {
-                await SetSessionModeAsync(
-                    context,
-                    original.Mode,
-                    cancellationToken: TestContext.Current.CancellationToken);
-            }
+
+            // Assert
+            Assert.Equal(before, after);
+            Assert.Equal(17, retainedValue);
+            Assert.IsType<InvalidOperationException>(exception);
+        }
+        catch (Exception failure)
+        {
+            ownershipFailure = failure;
+        }
+        finally
+        {
+            await CleanupPreparedSessionAsync(context, name, before.Mode, ownershipFailure);
         }
     }
 
@@ -265,7 +321,7 @@ public sealed partial class NullableParentIndexTests
         Assert.True(result.FromSql);
         Assert.Contains("$1", result.Plan, StringComparison.Ordinal);
         Assert.Equal(rows, ActualRows(result.Plan));
-        Assert.Equal(result.PreviousMode, result.After.Mode);
+        Assert.Equal(result.Before, result.After);
         Assert.Equal(0, result.After.Count);
     }
 }

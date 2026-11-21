@@ -12,7 +12,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData(9, "forward")]
     [InlineData(9, "reverse")]
     [InlineData(9, "interleaved")]
-    public async Task GridAdaptersPreserveIdentityAcrossIncomingOrders(
+    public async Task CreateGrid_GridAdapters_PreserveIdentityAcrossIncomingOrders(
         int axisSize,
         string ordering
     )
@@ -78,7 +78,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData(4)]
     [InlineData(9)]
     [InlineData(65)]
-    public async Task GridAdaptersPreserveMixedRepeatedSelectionPositions(
+    public async Task CreateGrid_GridAdapters_PreserveMixedRepeatedSelectionPositions(
         int axisSize
     )
     {
@@ -153,7 +153,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("anchor")]
     [InlineData("signal")]
     [InlineData("source")]
-    public async Task GridAdaptersPreserveRepeatedHeapAxisPositions(
+    public async Task CreateGrid_GridAdapters_PreserveRepeatedHeapAxisPositions(
         string axis
     )
     {
@@ -240,7 +240,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData(64, 37)]
     [InlineData(64, 38)]
     [InlineData(64, 64)]
-    public async Task GridReaderPreservesRowsAcrossCapacityBoundaries(
+    public async Task CreateGridAsync_GridReader_PreservesRowsAcrossCapacityBoundaries(
         int selected,
         int measured
     )
@@ -289,7 +289,7 @@ public sealed partial class SignalReportValidationTests
 
     /// <summary>A duplicate at a full boundary remains the first rejection across later foreign duplicates.</summary>
     [Fact]
-    public async Task GridReaderRetainsDuplicateIdentityAtCapacityBoundary()
+    public async Task CreateGridAsync_GridReader_RetainsDuplicateIdentityAtCapacityBoundary()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with

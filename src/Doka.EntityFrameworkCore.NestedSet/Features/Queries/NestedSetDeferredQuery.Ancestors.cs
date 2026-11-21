@@ -34,6 +34,7 @@ internal static partial class NestedSetDeferredQuery
     }
 
     /// <summary>Marks strict ancestor composition for expansion before relational translation.</summary>
+    [UsedImplicitly]
     private static IQueryable<TResult> Strict<TEntity, TResult>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -46,6 +47,7 @@ internal static partial class NestedSetDeferredQuery
         throw new InvalidOperationException("A deferred hierarchy marker must be expanded by UseNestedSets().");
 
     /// <summary>Marks inclusive ancestors without parameterizing strategy or exact mapping identity.</summary>
+    [UsedImplicitly]
     private static IQueryable<TResult> Inclusive<TEntity, TResult>(
         IQueryable<TEntity> visible,
         IQueryable<TEntity> unbound,
@@ -58,6 +60,7 @@ internal static partial class NestedSetDeferredQuery
         throw new InvalidOperationException("A deferred hierarchy marker must be expanded by UseNestedSets().");
 
     /// <summary>Chooses the existing provider strategy using only EF-normalized arguments.</summary>
+    [UsedImplicitly]
     private static Expression ExpandAncestors<TEntity, TResult>(
         DbContext context,
         MethodCallExpression marker

@@ -4,7 +4,9 @@ using ReadSnapshot = SignalSample::Doka.EntityFrameworkCore.NestedSet.Samples.Sa
 
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
-/// <summary>Measures the actual SignalLab sample and an equivalent explicit-LINQ report on identical prepared data.</summary>
+/// <summary>
+/// Measures the actual SignalLab sample and an equivalent explicit-LINQ report on identical prepared data.
+/// </summary>
 public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
 {
     private readonly CommandObservation _observation = new();
@@ -33,7 +35,9 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
     [Params(false, true)]
     public bool NearestMetadata { get; set; }
 
-    /// <summary>Gets or sets unused allowed values under one requested field to expose catalog transport cost.</summary>
+    /// <summary>
+    /// Gets or sets unused allowed values under one requested field to expose catalog transport cost.
+    /// </summary>
     [Params(0, 1000)]
     public int IrrelevantChoices { get; set; }
 
@@ -207,17 +211,17 @@ public class SignalReportingBenchmarks : IDatabaseBenchmark, IAsyncDisposable
         CancellationToken cancellationToken
     ) => ReadSnapshot.RunAsync(
         context,
-        async token =>
+        async operationCancellationToken =>
         {
             var catalog = await SignalReportBuilder
                 .Catalog(context, request)
-                .ToArrayAsync(token);
+                .ToArrayAsync(operationCancellationToken);
 
             SignalReportValidation.RequireCatalog(request, catalog);
 
             var totals = await SignalReportReference
                 .Build(context, request)
-                .ToArrayAsync(token);
+                .ToArrayAsync(operationCancellationToken);
 
             return SignalReportValidation.CreateGrid(request, totals);
         },

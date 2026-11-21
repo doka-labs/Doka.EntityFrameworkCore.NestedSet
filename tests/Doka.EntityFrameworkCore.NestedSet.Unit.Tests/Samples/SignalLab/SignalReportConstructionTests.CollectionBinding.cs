@@ -12,7 +12,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task TrackedKeyCollectionsBindToEnumerableBeforeProviderNormalization(
+    public async Task MatchTrackedKeyCollection_TrackedKeyCollections_BindToEnumerableBeforeProviderNormalization(
         string engine
     )
     {
@@ -63,7 +63,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task CollectionMembershipBindsToEnumerableBeforeProviderNormalization(
+    public async Task Catalog_CollectionMembership_BindsToEnumerableBeforeProviderNormalization(
         string engine,
         bool catalog
     )
@@ -116,7 +116,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("Sqlite", "missing", false)]
     [InlineData("Sqlite", "empty", false)]
     [InlineData("Sqlite", "duplicates", true)]
-    public async Task ActualAnchorMembershipSupportsInterpretation(
+    public async Task Visit_ActualAnchorMembership_SupportsInterpretation(
         string engine,
         string selection,
         bool expected

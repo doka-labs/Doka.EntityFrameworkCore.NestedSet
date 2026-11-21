@@ -8,14 +8,14 @@ public sealed class ResourceInitializationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SuccessfulInitializationKeepsCallerOwnership(
+    public async Task InitializeAsync_SuccessfulInitialization_KeepsCallerOwnership(
         bool cancellable
     )
     {
         // Arrange
         await using var resource = new StartupResource();
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable
+        var cancellationToken = cancellable
             ? cancellation.Token
             : CancellationToken.None;
 
@@ -32,17 +32,17 @@ public sealed class ResourceInitializationTests
 
                 return Task.CompletedTask;
             },
-            token);
+            cancellationToken);
 
         // Assert
         Assert.True(initialized);
-        Assert.Equal(token, observed);
+        Assert.Equal(cancellationToken, observed);
         Assert.Equal(0, resource.DisposeCalls);
     }
 
     /// <summary>A startup failure releases the owned resource and preserves the exact original error.</summary>
     [Fact]
-    public async Task FailedInitializationDisposesTheOwnedResource()
+    public async Task InitializeAsync_FailedInitialization_DisposesTheOwnedResource()
     {
         // Arrange
         var resource = new StartupResource();
@@ -61,7 +61,7 @@ public sealed class ResourceInitializationTests
 
     /// <summary>Cancellation during startup still disposes the resource without replacing cancellation.</summary>
     [Fact]
-    public async Task CanceledInitializationPreservesCancellationAndDisposes()
+    public async Task InitializeAsync_CanceledInitialization_PreservesCancellationAndDisposes()
     {
         // Arrange
         var resource = new StartupResource();
@@ -80,7 +80,7 @@ public sealed class ResourceInitializationTests
 
     /// <summary>A failing cleanup retains both failures rather than hiding the initialization error.</summary>
     [Fact]
-    public async Task FailedCleanupPreservesBothErrors()
+    public async Task InitializeAsync_FailedCleanup_PreservesBothErrors()
     {
         // Arrange
         var cleanup = new IOException("Injected cleanup failure.");
@@ -101,7 +101,7 @@ public sealed class ResourceInitializationTests
 
     /// <summary>Pre-cancellation skips startup but still releases the not-yet-transferred resource.</summary>
     [Fact]
-    public async Task PreCanceledInitializationSkipsActionAndReleasesResource()
+    public async Task InitializeAsync_PreCanceledInitialization_SkipsActionAndReleasesResource()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -129,7 +129,7 @@ public sealed class ResourceInitializationTests
 
     /// <summary>An interrupted startup waits for token-free cleanup before exposing its cancellation.</summary>
     [Fact]
-    public async Task CanceledInitializationWaitsForUninterruptibleCleanup()
+    public async Task InitializeAsync_CanceledInitialization_WaitsForUninterruptibleCleanup()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -140,12 +140,12 @@ public sealed class ResourceInitializationTests
         // Act
         var initialization = BenchmarkLifecycle.InitializeAsync(
             resource,
-            token =>
+            callbackCancellationToken =>
             {
-                observed = token;
+                observed = callbackCancellationToken;
                 cancellation.Cancel();
 
-                return Task.FromCanceled(token);
+                return Task.FromCanceled(callbackCancellationToken);
             },
             cancellation.Token);
 
@@ -193,8 +193,18 @@ public sealed class ResourceInitializationTests
     }
 
     /// <summary>Represents only the owned disposal boundary; no container or Docker mock is required.</summary>
-    private sealed class StartupResource(Exception? cleanup = null) : IAsyncDisposable
+    private sealed class StartupResource : IAsyncDisposable
     {
+        private readonly Exception? _cleanup;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public StartupResource(
+            Exception? cleanup = null
+        )
+        {
+            _cleanup = cleanup;
+        }
+
         /// <summary>Gets how many times startup attempted to release the owned resource.</summary>
         public int DisposeCalls { get; private set; }
 
@@ -203,9 +213,9 @@ public sealed class ResourceInitializationTests
         {
             DisposeCalls++;
 
-            return cleanup is null
+            return _cleanup is null
                 ? ValueTask.CompletedTask
-                : ValueTask.FromException(cleanup);
+                : ValueTask.FromException(_cleanup);
         }
     }
 }

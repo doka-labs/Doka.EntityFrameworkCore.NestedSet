@@ -21,7 +21,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("MariaDb", false, true)]
     [InlineData("MariaDb", true, false)]
     [InlineData("MariaDb", true, true)]
-    public async Task IndexedAncestorTranslationKeepsSourceEnvelopeDeferred(
+    public async Task Visit_IndexedAncestorTranslation_KeepsSourceEnvelopeDeferred(
         string engine,
         bool includeSelf,
         bool treeBound
@@ -154,7 +154,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("MariaDb", false, true)]
     [InlineData("MariaDb", true, false)]
     [InlineData("MariaDb", true, true)]
-    public async Task IndexedAncestorSelectionOccursExactlyOnce(
+    public async Task SelectAncestorsOrSelf_IndexedAncestorSelection_OccursExactlyOnce(
         string engine,
         bool includeSelf,
         bool queryBearing

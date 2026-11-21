@@ -23,8 +23,8 @@ public sealed class RowVersionFixture : IAsyncLifetime
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <param name="readCommittedSnapshot">Whether SQL Server read-committed snapshot isolation is enabled.</param>
     public async Task<RowVersionContext> ResetAsync(
-        CancellationToken cancellationToken,
-        bool readCommittedSnapshot = false
+        bool readCommittedSnapshot,
+        CancellationToken cancellationToken
     )
     {
         var initialize = _database is null;
@@ -41,7 +41,9 @@ public sealed class RowVersionFixture : IAsyncLifetime
         await source.Database.ExecuteSqlRawAsync(isolationSql, cancellationToken);
         var options = new DbContextOptionsBuilder<RowVersionContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlServer(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var context = new RowVersionContext(options);

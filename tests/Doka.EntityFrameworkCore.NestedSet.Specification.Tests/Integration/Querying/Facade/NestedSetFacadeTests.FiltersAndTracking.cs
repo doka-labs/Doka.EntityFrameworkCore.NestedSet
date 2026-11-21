@@ -4,7 +4,7 @@ public abstract partial class NestedSetFacadeTests
 {
     /// <summary>Scopeless tree queries preserve application filters and stable preorder.</summary>
     [Fact]
-    public async Task ScopelessTreeRespectsGlobalQueryFilter()
+    public async Task InTree_ScopelessTree_RespectsGlobalQueryFilter()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -25,7 +25,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>A hidden anchor cannot expose descendants through a public hierarchy query.</summary>
     [Fact]
-    public async Task FilteredAnchorReturnsEmptyQuery()
+    public async Task DescendantsOf_FilteredAnchor_ReturnsEmptyQuery()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -44,7 +44,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>Facade queries do not create tracked entries by default.</summary>
     [Fact]
-    public async Task QueriesAreNoTrackingByDefault()
+    public async Task InTree_Queries_AreNoTrackingByDefault()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -66,7 +66,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>Normal EF Core AsTracking explicitly opts a facade query into tracking.</summary>
     [Fact]
-    public async Task AsTrackingOptsIntoChangeTracking()
+    public async Task InTree_AsTracking_OptsIntoChangeTracking()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

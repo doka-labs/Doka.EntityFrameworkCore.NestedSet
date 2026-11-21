@@ -196,7 +196,7 @@ lines in all six shipping modules. The full MySQL/MariaDB suite passed 4,307
 cases before the isolated counter refinement; 70 affected native Unicode and
 compiled-model cases passed afterward. This local evidence establishes neither
 hosted release qualification nor native SQL Server execution on ARM. The
-[regression map](regression-coverage.md#provider-specific-identity-lengths)
+[qualified identity boundary](qualification/unicode-identities.md#contract)
 links the metadata, exhaustive range, rejection, and zero-allocation controls.
 These counts describe the cached-search source and earlier SDK, not the later
 measurement split or restored generic counter. The cached predicate and its
@@ -387,12 +387,27 @@ five total buffer hits, and no filter scan. Public tree-query plans also use
 the filtered structural path for native and converted TreeIds. These are
 observations of the qualified fixture, not a universal optimizer or latency
 guarantee. An application-owned unfiltered index can change plan eligibility.
-Separate native `PREPARE` tests force a generic plan and verify the server's
-generic/custom counters. Parent equality uses the dependent partial index,
-root selection uses its companion, and principal-only lookup excludes both.
-Error and cancellation controls restore the session mode and remove only the
-test-owned prepared statement. These plan controls do not replace the actual
-million-node import or change runtime planner settings.
+
+The nullable-parent regression records ordinary principal, dependent, and root
+plans without requiring one cost-based index choice. Separate eligibility
+controls use `SET LOCAL enable_seqscan = off` inside an owned transaction.
+They verify the root index's actual column order, predicate, validity,
+readiness, and nonunique definition, the available access paths, and unchanged
+row counts and root keys. Missing-index and wrong-predicate controls must fail
+that proof, and a session control verifies restoration after rollback. Those
+controlled plans establish eligibility; they are not ordinary-query performance
+evidence or runtime planner settings.
+
+Separate native `PREPARE` tests use `SET LOCAL plan_cache_mode = force_generic_plan`
+and verify the server's generic/custom counters. Their labeled eligibility
+controls also disable sequential scans locally: Parent equality admits the
+dependent partial index, root selection admits its companion, and principal-only
+lookup excludes both. Error and actual execution-cancellation controls restore
+both planner settings and remove only the test-owned prepared statement.
+A preexisting statement-name rejection must preserve the caller's statement
+and session state. Owned rollback and deallocation remain protected after
+caller cancellation. These plan controls do not replace the actual million-node
+import or change runtime planner settings.
 Review the [migration and index ownership contract](migrations.md#postgresql-index-predicates)
 and PostgreSQL's [partial-index rules](https://www.postgresql.org/docs/17/indexes-partial.html)
 and [plan invalidation](https://www.postgresql.org/docs/17/sql-prepare.html).
@@ -797,9 +812,10 @@ ceilings remain authoritative; lower sampled stack weights are not exact byte
 savings. Historical complex-capture comparisons without a verifiable raw-input
 manifest do not establish a current performance claim.
 
-The [regression inventory](regression-coverage.md#manual-detection-and-hierarchy-guards)
-names the native-membership, complex topology, sharing-peer, retry and allocation
-controls. Reproduce resource contracts through those existing tests with the
+The [tracker recovery contract](transactions-and-locking.md#tracker-and-complex-value-restoration)
+defines native membership, complex topology, sharing peers, and retry. The
+[test-selection guide](testing.md#choose-the-right-check) routes their checks.
+Reproduce resource contracts through the existing tests with the
 [uninstrumented allocation partition](#coverage-collector-18110-and-unloadability).
 No hardware-dependent timing becomes a CI or release gate.
 
@@ -813,7 +829,7 @@ enumeration cost. Complete native-entry and CLR-reference sets come from the
 successful save guard instead of being rebuilt here. The retained references
 add a bounded per-scope cost rather than a per-node buffer, and do not extend
 the managed-save bypass lifetime. The ordering and persistence authority are
-specified in the [implementation guide](implementation-design.md#ordering-and-coordinated-saves).
+specified in the [save and recovery contract](transactions-and-locking.md#tracking-and-coordinated-saves).
 
 Historical local .NET 10.0.14 ARM64 workstation-GC observations on 2026-11-03
 used five alternating before/after process pairs with fixed tiering, five
@@ -841,7 +857,7 @@ do not substitute for fresh measurements of a later source.
 Table resolution retains its required-property snapshot while avoiding an outer
 copy. Source/target identity selection scans the existing result list and keeps
 missing-before-ambiguous error precedence. The relevant source and controls are
-listed in the [regression inventory](regression-coverage.md#manual-detection-and-hierarchy-guards).
+listed in the [manual-detection contract](configuration.md#manual-change-detection).
 
 ## Qualification targets
 
@@ -914,8 +930,8 @@ Mapped payload deletion across TPT or split tables instead uses bounded key
 batches; its command count grows with the number of deleted rows. The
 single-table structural target does not promise constant command count for
 every mapping or for bulk import and rebuild.
-The [regression matrix](regression-coverage.md) names the positive, negative,
-and adversarial mechanisms behind these checks. Neither its entries nor these
+The [test-selection guide](testing.md#choose-the-right-check) identifies the
+positive, negative, and adversarial check families. Neither its entries nor these
 targets imply universal regression coverage or certification of a particular
 hardware throughput.
 
@@ -951,7 +967,7 @@ The oracle does not materialize entities or increase command timeouts. Its
 root/child branches explicitly check nullable Parent values, avoiding nullable
 inequality compensation inside a table-wide predicate. The range limit bounds
 each statement rather than reducing the total fixture checked. Oracle
-[regressions](regression-coverage.md#capacity-coordinate-oracle) cover wide and
+[regressions](performance.md#real-relational-capacity-cases) cover wide and
 deep fixtures, every structural field, missing/replacement keys, and damage on
 both sides of the 100,000-row boundary.
 
@@ -961,7 +977,7 @@ Root registration and every child batch share one transaction. Mapped parameters
 preserve provider representations, including binary Guid and converted enum
 values. This bounds client setup memory and insert cardinality without reducing
 the measured forest or changing command timeouts. It is a fixture control,
-not a production throughput measurement. The [seeding regressions](regression-coverage.md#ordering-refresh-fixture-setup)
+not a production throughput measurement. The [seeding regressions](testing.md#fixture-and-evidence-ownership)
 verify stored values, command counts and early/late failure rollback.
 
 Heap measurements warm the provider and model first, then collect a baseline
@@ -1087,8 +1103,8 @@ qualification, then restore your ordinary regression setting. The allocation
 collection serializes cases within an assembly; it does not serialize separate
 provider processes or reserve Docker memory for their servers.
 
-The persisted-capacity suite (`CapacityTests`, including its Oracle tests)
-imposes no per-command SQL or native undo latency
+Shared functional fixtures, including the persisted-capacity suite (`CapacityTests`
+and its Oracle tests), impose no per-command SQL or native undo latency
 target. Their contexts set EF command timeout to zero and remove the applicable
 native command/transaction limits. MySQL/MariaDB use zero connection command
 timeout, PostgreSQL zero command timeout, SQLite zero default timeout, and
@@ -1098,8 +1114,8 @@ keeps machine speed and transient load out of the correctness assertions.
 Caller cancellation and deliberately injected failure boundaries remain active;
 the outer test runner owns end-to-end stopping of a hung run. Dataset sizes,
 resource budgets and exact exception, data and registry-revision assertions are
-unchanged. Ordinary contexts retain their configured limits. These settings
-are specific to the functional capacity suite and are not a production
+unchanged. Explicit timeout-contract tests retain their deliberate overrides.
+These settings belong to functional test fixtures and are not a production
 configuration recommendation. Unexpected aggregate errors retain their inner
 exceptions in test output.
 
@@ -1130,7 +1146,7 @@ measurements, such as `SingleInsertScaleTests`, remain in their provider project
 Each provider assembly registers its own `Allocation measurements` collection
 with parallelization disabled. Containers remain shared per engine within that
 assembly, while databases keep their existing class or collection ownership.
-See [test project ownership](implementation-design.md#test-project-ownership).
+See [test project ownership](testing.md#test-project-ownership).
 The source layout does not change measurement methods, budgets, or dated results.
 
 GitHub CI does not gate on elapsed time, throughput, process working set, or CPU
@@ -1391,7 +1407,7 @@ The corrected route adds matched-pair completion only for positively identified
 MySQL, using the existing public engine API. MariaDB and unknown identification
 keep source-only binding, with ordinary source and directed owner hydration.
 The targeted corrected cohort passed 32 native cases, including all eight
-original `UpDownUpRetainsTheCompleteWalkBag` variants and 24 envelope/work/negative
+original `SelectAncestors_UpDownUp_RetainsTheCompleteWalkBag` variants and 24 envelope/work/negative
 cases. The actual three-sample SQLite/MariaDB cohort passed 33 child-process
 cases under the same recorded two-CPU/two-GiB MariaDB limits. These are targeted
 semantic and sample checks, not final full-suite, ten-million-node plan, or paired
@@ -1412,7 +1428,7 @@ nonleaf flag and an ascending `(Scope?, flag, TreeId, Right, Left, NodeKey)`
 index. Existing bounds/ordering indexes remain. It is opt-in because coordinate
 writes maintain another index and the index occupies database storage.
 The [capability table](configuration.md#current-query-capabilities) defines
-read eligibility; [implementation design](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+read eligibility; [current capability contract](configuration.md#current-query-capabilities)
 defines source sharing, narrow coordinates and late mapped hydration.
 A schema option or provider feature alone proves no workload benefit.
 
@@ -1577,10 +1593,10 @@ must all complete before that test passes.
 
 | Owning test | Persisted population | Measurement and assertion order |
 | --- | --- | --- |
-| `TenMillionPersistedNodesAreReadableAndFullyValid` | Ten million wide nodes | Stream and validate; run generic and actual consumer reads; assert all results. |
-| `MillionDirectChildrenImportWithinAdditionalHeapBudget` | One root plus one million children | Measure public import; run both read-profile families; retain the original import heap, save-count and parameter assertions. |
-| `MillionNodeRebuildWithinAdditionalHeapBudget` | One million nodes, temporarily balanced | Run both read-profile families before repair measurement; restore wide adjacency and corrupt bounds; measure rebuild and assert the original repair contract. |
-| `DepthOneHundredThousandValidatesAndRebuilds` | 100,001 nodes at depth 100,000 | Validate and measure rebuild; run generic deep and actual consumer profiles; assert all results. |
+| `AsAsyncEnumerable_TenMillionPersistedNodes_AreReadableAndFullyValid` | Ten million wide nodes | Stream and validate; run generic and actual consumer reads; assert all results. |
+| `InsertForestAsync_MillionDirectChildren_StayWithinAdditionalHeapBudget` | One root plus one million children | Measure public import; run both read-profile families; retain the original import heap, save-count and parameter assertions. |
+| `RebuildAsync_MillionNodeTree_StaysWithinAdditionalHeapBudget` | One million nodes, temporarily balanced | Run both read-profile families before repair measurement; restore wide adjacency and corrupt bounds; measure rebuild and assert the original repair contract. |
+| `RebuildAsync_DepthOneHundredThousand_ValidatesAndRebuilds` | 100,001 nodes at depth 100,000 | Validate and measure rebuild; run generic deep and actual consumer profiles; assert all results. |
 
 Record the owning test, population, read profile and measured phase with a
 failure. A composition or consumer failure can prevent later structural
@@ -1686,7 +1702,7 @@ declaration does not transfer an earlier private build's performance to the
 shipping package; fresh public-binary qualification remains separate.
 
 The subtree-pair work test,
-[`ConfiguredProviderPairsPreserveSemanticsAndQualifyAvailableNativeWork`](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Querying/Composition/Performance/HierarchyCompositionWorkTests.cs),
+[`ObservePairProfilesAsync_ConfiguredProviderPairs_PreserveSemanticsAndQualifyAvailableNativeWork`](../tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Querying/Composition/Performance/HierarchyCompositionWorkTests.cs),
 executes the same result, command, materialization and native-work observations
 for the actual provider installation. Its fixture does not configure
 `HasAncestorIndex`, and the test does not require source binding. The public
@@ -1850,7 +1866,7 @@ overlap or another provider. Retained plan row counts, loops, temporary
 relations and allocations qualify that tradeoff. Scalar results and zero CLR
 entities are not claims of zero server memory or constant database work.
 
-The [execution qualification](query-composition-regression-coverage.md#execution-qualification)
+The [execution qualification](testing.md#evidence-limits)
 distinguishes source coverage, the recorded execution boundary and remaining
 native-platform work. Timings describe their measured environment; later
 physical expressions require new evidence.

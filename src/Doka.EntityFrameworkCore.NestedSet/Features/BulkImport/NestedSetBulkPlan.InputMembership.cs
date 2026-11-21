@@ -80,8 +80,15 @@ internal sealed partial class NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>
         // ReSharper disable once PossibleMultipleEnumeration
         foreach (var plan in plans)
         {
-            foreach (var node in plan.Nodes)
+            var nodeItems = plan.Nodes;
+
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int nodeIndex = 0, nodeCount = nodeItems.Count; nodeIndex < nodeCount; nodeIndex++)
             {
+                var node = nodeItems[nodeIndex];
+
                 result.Add(node.Entity, (plan, node));
             }
         }

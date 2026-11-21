@@ -21,7 +21,7 @@ public sealed class CancellationContractTests
     [InlineData("Doka.EntityFrameworkCore.NestedSet.Postgres")]
     [InlineData("Doka.EntityFrameworkCore.NestedSet.Sqlite")]
     [InlineData("Doka.EntityFrameworkCore.NestedSet.SqlServer")]
-    public void OwnedPackageTokensAreRequired(
+    public void GetMethods_OwnedPackageOperations_RequireExplicitTokens(
         string assemblyName
     )
     {
@@ -58,7 +58,7 @@ public sealed class CancellationContractTests
     [InlineData("Doka.EntityFrameworkCore.NestedSet.Postgres")]
     [InlineData("Doka.EntityFrameworkCore.NestedSet.Sqlite")]
     [InlineData("Doka.EntityFrameworkCore.NestedSet.SqlServer")]
-    public void OwnedAsyncOperationsRequireTokensUnlessFinalizing(
+    public void Order_OwnedAsyncOperations_RequireTokensUnlessFinalizing(
         string assemblyName
     )
     {
@@ -96,7 +96,7 @@ public sealed class CancellationContractTests
 
     /// <summary>Caller cancellation cannot abandon an already-started write before its final accounting.</summary>
     [Fact]
-    public async Task CommandFinalizationWaitsForTerminalResultAfterCancellation()
+    public async Task ExecuteAsync_CommandFinalization_WaitsForTerminalResultAfterCancellation()
     {
         // Arrange
         await using var context = new TokenContext();
@@ -137,7 +137,7 @@ public sealed class CancellationContractTests
 
     /// <summary>Terminal provider cancellation is still observed with its exact exception and token.</summary>
     [Fact]
-    public async Task CommandFinalizationPreservesProviderCancellation()
+    public async Task ExecuteAsync_CommandFinalization_PreservesProviderCancellation()
     {
         // Arrange
         await using var context = new TokenContext();
@@ -175,7 +175,7 @@ public sealed class CancellationContractTests
     [Theory]
     [InlineData(typeof(NestedSetDbContext), nameof(DbContext.SaveChangesAsync))]
     [InlineData(typeof(ProviderQueryProbe), "ExecuteAsync")]
-    public void FrameworkContractsRetainOptionalTokens(
+    public void GetParameters_FrameworkContracts_RetainOptionalTokens(
         Type type,
         string methodName
     )
@@ -201,7 +201,7 @@ public sealed class CancellationContractTests
 
     /// <summary>Omission cannot fall back to an implicit token through reflection's optional-argument binder.</summary>
     [Fact]
-    public async Task OwnedSaveBoundaryRejectsAnOmittedToken()
+    public async Task SaveNestedSetChangesAsync_OmittedToken_IsRejected()
     {
         // Arrange
         var method = typeof(NestedSetDbContextExtensions)
@@ -225,14 +225,14 @@ public sealed class CancellationContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SaveBoundaryForwardsExplicitToken(
+    public async Task SaveNestedSetChangesAsync_SaveBoundary_ForwardsExplicitToken(
         bool cancellable
     )
     {
         // Arrange
         await using var context = new TokenContext();
         using var cancellation = new CancellationTokenSource();
-        var token = cancellable
+        var cancellationToken = cancellable
             ? cancellation.Token
             : CancellationToken.None;
 
@@ -249,17 +249,17 @@ public sealed class CancellationContractTests
 
                 return Task.FromResult(7);
             },
-            token);
+            cancellationToken);
 
         // Assert
         Assert.Equal(7, saved);
         Assert.Equal(1, calls);
-        Assert.Equal(token, observed);
+        Assert.Equal(cancellationToken, observed);
     }
 
     /// <summary>A canceled explicit token retains its identity and rejects before invoking the save delegate.</summary>
     [Fact]
-    public async Task CanceledTokenRejectsBeforeSaveDelegate()
+    public async Task SaveNestedSetChangesAsync_CanceledToken_RejectsBeforeSaveDelegate()
     {
         // Arrange
         await using var context = new TokenContext();

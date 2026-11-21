@@ -7,7 +7,7 @@ public sealed class DetachedRefreshValueTests
 {
     /// <summary>Comparer-equal database values replace the actual CLR representation without tracker state.</summary>
     [Fact]
-    public async Task ComparerEqualBinaryValueIsAssignedExactly()
+    public async Task SetClrValueUsingContainingEntity_ComparerEqualBinaryValue_IsAssignedExactly()
     {
         // Arrange
         await using var context = CreateContext();
@@ -27,7 +27,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Mapped backing fields receive the database value even when their public view is read-only.</summary>
     [Fact]
-    public async Task FieldAccessUsesTheConfiguredBackingField()
+    public async Task SetClrValueUsingContainingEntity_FieldAccess_UsesTheConfiguredBackingField()
     {
         // Arrange
         await using var context = CreateContext();
@@ -48,7 +48,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>A shared property bag receives its mapped indexer value using the exact named metadata.</summary>
     [Fact]
-    public async Task SharedIndexerValueUsesItsConfiguredName()
+    public async Task SetClrValueUsingContainingEntity_SharedIndexerValue_UsesItsConfiguredName()
     {
         // Arrange
         await using var context = CreateContext();
@@ -71,7 +71,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Shadow values have no detached CLR storage and require no context entry.</summary>
     [Fact]
-    public async Task ShadowValueDoesNotCreateADetachedEntry()
+    public async Task Get_ShadowValue_DoesNotCreateADetachedEntry()
     {
         // Arrange
         await using var context = CreateContext();
@@ -87,7 +87,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Nested value-complex leaves copy back through enclosing values while references stay stable.</summary>
     [Fact]
-    public async Task NestedValueComplexAssignmentCopiesBackToTheContainingEntity()
+    public async Task SetClrValueUsingContainingEntity_NestedValueComplexAssignment_CopiesBackToTheContainingEntity()
     {
         // Arrange
         await using var context = CreateContext();
@@ -112,7 +112,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Application setter failures retain their exact exception without a reflection wrapper.</summary>
     [Fact]
-    public async Task ApplicationSetterFailureKeepsItsOriginalException()
+    public async Task SetClrValueUsingContainingEntity_ApplicationSetterFailure_KeepsItsOriginalException()
     {
         // Arrange
         await using var context = CreateContext();
@@ -132,7 +132,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Supplied finalized models reuse metadata setters without retaining the creating context.</summary>
     [Fact]
-    public async Task SuppliedModelReusesTheSameSetter()
+    public async Task Get_SuppliedModel_ReusesTheSameSetter()
     {
         // Arrange
         await using var source = CreateContext();
@@ -158,7 +158,7 @@ public sealed class DetachedRefreshValueTests
 
     /// <summary>Generated runtime metadata supplies the same setter seam without rebuilding a design model.</summary>
     [Fact]
-    public async Task GeneratedCompiledModelUsesItsMetadataSetter()
+    public async Task SetClrValueUsingContainingEntity_GeneratedCompiledModel_UsesItsMetadataSetter()
     {
         // Arrange
         var model = CompiledTreeContextModel.Instance;

@@ -16,7 +16,7 @@ public abstract class OrderedStrongIdTests : ProviderTest
 
     /// <summary>Strict reorder handles more converted keys than SQL Server accepts as scalar parameters.</summary>
     [Fact]
-    public async Task StrictReorderBatchesManyConvertedKeysAsync()
+    public async Task SaveNestedSetChangesAsync_StrictReorder_BatchesManyConvertedKeys()
     {
         // Arrange
         const int children = 2200;
@@ -51,7 +51,7 @@ public abstract class OrderedStrongIdTests : ProviderTest
 
     /// <summary>Manual-placement reorder keeps rule order when one tree's changes span key batches.</summary>
     [Fact]
-    public async Task PlacedReorderKeepsRuleOrderAcrossKeyBatchesAsync()
+    public async Task SaveNestedSetChangesAsync_PlacedReorder_KeepsRuleOrderAcrossKeyBatches()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PlacedStrongIdContext>(

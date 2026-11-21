@@ -22,7 +22,7 @@ public abstract class TreeRegistryTableTests : ProviderTest
     /// <summary>Quotes a name that needs delimiters and leaves the neighboring default registry untouched.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ScriptCreatesTheConfiguredRegistryNextToTheDefaultOne()
+    public void GenerateCreateScript_Script_CreatesTheConfiguredRegistryNextToTheDefaultOne()
     {
         // Arrange
         using var context = new NamedRegistryContext(ModelCompatibilityDatabase.Options<NamedRegistryContext>(Engine));
@@ -39,7 +39,7 @@ public abstract class TreeRegistryTableTests : ProviderTest
 
     /// <summary>Reaches only the configured table for every structural and administrative operation.</summary>
     [Fact]
-    public async Task EveryRegistryOperationUsesTheConfiguredTable()
+    public async Task InsertRootAsync_EveryRegistryOperation_UsesTheConfiguredTable()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<NamedRegistryContext>(
@@ -137,7 +137,7 @@ public abstract class TreeRegistryTableTests : ProviderTest
 
     /// <summary>Renames forward and back, keeping active, revised and tombstoned identities each way.</summary>
     [Fact]
-    public async Task NamingAnExistingRegistryMigratesAsDataPreservingRename()
+    public async Task GetDifferences_NamingAnExistingRegistry_MigratesAsDataPreservingRename()
     {
         // Arrange
         await using var before = await _fixture.CreateContextAsync<RegistryMigrationBeforeContext>(

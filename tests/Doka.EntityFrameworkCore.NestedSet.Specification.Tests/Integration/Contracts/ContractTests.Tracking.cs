@@ -5,7 +5,7 @@ public abstract partial class ContractTests
     /// <summary>Checks persisted identity resolution before tracked-node rejection without hierarchy writes.</summary>
     /// <returns>A task that completes when the rejection has been verified.</returns>
     [Fact]
-    public async Task TrackedNodesAreRejectedWithoutClearingTracker()
+    public async Task DeleteSubtreeAsync_TrackedNodes_AreRejectedWithoutClearingTracker()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -51,7 +51,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that unrelated pending changes survive rejection without executing SQL.</summary>
     /// <returns>A task that completes when the pending-state contract has been verified.</returns>
     [Fact]
-    public async Task PendingChangesAreRejectedWithoutClearingTracker()
+    public async Task DeleteSubtreeAsync_PendingChanges_AreRejectedWithoutClearingTracker()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -86,7 +86,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that a caller can roll back a mutation without losing transaction ownership.</summary>
     /// <returns>A task that completes when caller ownership and persisted rollback have been verified.</returns>
     [Fact]
-    public async Task CallerTransactionRetainsOwnershipAndCanRollBackTreeMutation()
+    public async Task DeleteSubtreeAsync_CallerTransaction_RetainsOwnershipAndCanRollBackTreeMutation()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

@@ -7,7 +7,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ZeroNodeKeyDoesNotConfuseMissingAndSelectedOwner(
+    public async Task WhereNearestAncestorOrSelf_ZeroNodeKey_DoesNotConfuseMissingAndSelectedOwner(
         bool rootEligible
     )
     {
@@ -82,7 +82,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>A closed incoming edge prunes its complete branch while leaving the empty self path valid.</summary>
     [Fact]
-    public async Task ClosedDirectEdgePrunesCompleteBranch()
+    public async Task SelectSubtrees_ClosedDirectEdge_PrunesCompleteBranch()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -91,7 +91,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             closed: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -127,7 +131,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HiddenIntermediateIsNotSilentlySkippedByPathValidation(
+    public async Task SelectSubtrees_HiddenIntermediate_IsNotSilentlySkippedByPathValidation(
         bool requirePath
     )
     {
@@ -138,7 +142,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -178,7 +186,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NearestCandidateFailureDoesNotFallBackToMatchingAncestor(
+    public async Task WhereNearestAncestorOrSelf_NearestCandidateFailure_DoesNotFallBackToMatchingAncestor(
         bool nearest
     )
     {
@@ -188,7 +196,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -231,7 +244,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NearestRejectsHiddenIntermediateEvenWhenItIsNotACandidate(
+    public async Task WhereNearestAncestorOrSelf_Nearest_RejectsHiddenIntermediateEvenWhenItIsNotACandidate(
         bool nearest
     )
     {
@@ -242,7 +255,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             hidden: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -277,7 +294,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>A passing nearest owner is accepted without requiring a path above that selected owner.</summary>
     [Fact]
-    public async Task NearestStopsVisibilityCheckAtSelectedOwner()
+    public async Task WhereNearestAncestorOrSelf_Nearest_StopsVisibilityCheckAtSelectedOwner()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -286,7 +303,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             hidden: 1,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

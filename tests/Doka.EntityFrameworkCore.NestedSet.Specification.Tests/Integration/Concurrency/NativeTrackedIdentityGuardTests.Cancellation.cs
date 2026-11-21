@@ -5,7 +5,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 {
     /// <summary>Rolls back only the mutation savepoint and retains earlier application payload writes.</summary>
     [Fact]
-    public async Task CanceledNativeProbePreservesCallerWritesAndCleanTracker()
+    public async Task DeleteTreeAsync_CanceledNativeProbe_PreservesCallerWritesAndCleanTracker()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -74,7 +74,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 
     /// <summary>A new token can retry after cancellation without clearing or repairing the caller tracker.</summary>
     [Fact]
-    public async Task NativeProbeCanRetryAfterCancellationInTheSameCallerTransaction()
+    public async Task DeleteTreeAsync_NativeProbe_CanRetryAfterCancellationInTheSameCallerTransaction()
     {
         // Arrange
         var probe = new NativeGuardProbe();

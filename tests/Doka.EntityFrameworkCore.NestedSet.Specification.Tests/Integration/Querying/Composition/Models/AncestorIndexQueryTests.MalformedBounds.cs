@@ -2,12 +2,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Leaf equality preserves all four original bound comparisons even when a split table stores malformed intervals.</summary>
+    /// <summary>
+    /// Leaf equality preserves all four original bound comparisons even when a split table stores malformed intervals.
+    /// </summary>
     /// <param name="includeSelf">Whether the inclusive range comparisons are selected.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedSplitIntervalsRetainOriginalContainmentForMalformedWidths(
+    public async Task SelectAncestors_IndexedSplitIntervals_RetainOriginalContainmentForMalformedWidths(
         bool includeSelf
     )
     {

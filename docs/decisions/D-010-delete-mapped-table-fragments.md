@@ -1,7 +1,7 @@
 ---
 id: D-010
 status: implemented
-date: 2026-09-24
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -130,6 +130,8 @@ decision does not introduce domain cascades.
 - 2026-09-28: The maintainer accepted the current decision and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed mapping-aware physical deletion, typed captured keys, table-fragment ordering, and mapping and rollback regression specifications against the linked repository evidence.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

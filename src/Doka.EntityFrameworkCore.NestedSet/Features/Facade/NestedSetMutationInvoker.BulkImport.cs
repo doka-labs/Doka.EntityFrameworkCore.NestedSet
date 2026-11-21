@@ -28,11 +28,11 @@ internal sealed partial class
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
         "insert_subtree",
-        async token =>
+        async operationCancellationToken =>
         {
-            RequireNoPendingWrites(binding, token);
+            RequireNoPendingWrites(binding, operationCancellationToken);
             var parentKey = SnapshotKey(binding, parent);
-            var treeId = await ResolveTreeIdAsync(binding, parentKey, token)
+            var treeId = await ResolveTreeIdAsync(binding, parentKey, operationCancellationToken)
                 .ConfigureAwait(false);
 
             var store = Store(binding, treeId);
@@ -45,8 +45,11 @@ internal sealed partial class
             await ExecuteResolvedAsync(
                     binding,
                     [(parentKey, treeId)],
-                    () => insert.InsertSubtreeAsync(subtree, parentKey, token),
-                    token)
+                    callbackCancellationToken => insert.InsertSubtreeAsync(
+                        subtree,
+                        parentKey,
+                        callbackCancellationToken),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);
@@ -69,9 +72,9 @@ internal sealed partial class
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
         "insert_forest",
-        token => new NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>(
+        operationCancellationToken => new NestedSetForestInsert<TEntity, TKey, TTreeId, TScope>(
             binding.Context,
             binding.EntityType,
-            Scope(binding)).InsertAsync(trees, token),
+            Scope(binding)).InsertAsync(trees, operationCancellationToken),
         cancellationToken);
 }

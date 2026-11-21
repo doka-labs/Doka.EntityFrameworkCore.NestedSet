@@ -22,15 +22,18 @@ public sealed class MutationContextGuardTests : ProviderTest,
 
     /// <summary>Scans a large clean application tracker without allocating a wrapper for every entry.</summary>
     [Fact]
-    public async Task LargeCleanPrefixDoesNotAllocateEntryWrappers()
+    public async Task ExecuteAsync_Large_CleanPrefixDoesNotAllocateEntryWrappers()
     {
         // Arrange
         var options = new DbContextOptionsBuilder()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StrictOrderingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var entries = Enumerable
@@ -96,15 +99,18 @@ public sealed class MutationContextGuardTests : ProviderTest,
     ///     Detects an ordinary unrelated CLR edit before the structural operation can access the database.
     /// </summary>
     [Fact]
-    public async Task GuardDetectsPendingUnrelatedClrChangeExactlyOnce()
+    public async Task ExecuteAsync_Guard_DetectsPendingUnrelatedClrChangeExactlyOnce()
     {
         // Arrange
         var options = new DbContextOptionsBuilder()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StrictOrderingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var entity = new OrderingMarker { Id = 1 };

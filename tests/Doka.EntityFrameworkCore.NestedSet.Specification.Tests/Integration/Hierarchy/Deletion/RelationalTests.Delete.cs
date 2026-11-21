@@ -7,7 +7,7 @@ public abstract partial class RelationalTests
     /// <summary>Deleting a non-root promotes its children into its former sibling slot.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeletePromotesChildrenIntoRemovedSiblingPosition()
+    public async Task DeleteAsync_Delete_PromotesChildrenIntoRemovedSiblingPosition()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -57,7 +57,7 @@ public abstract partial class RelationalTests
     /// <summary>Deleting a subtree removes its descendants and compacts the surviving forest.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteSubtreeRemovesAllDescendants()
+    public async Task DeleteSubtreeAsync_DeleteSubtree_RemovesAllDescendants()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -100,7 +100,7 @@ public abstract partial class RelationalTests
     /// <summary>Promotion preserves child order, descendants and immediate-parent relations.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteDeepNodePromotesAllChildSubtrees()
+    public async Task DeleteAsync_DeleteDeepNode_PromotesAllChildSubtrees()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -140,7 +140,7 @@ public abstract partial class RelationalTests
     /// <summary>Subtree removal does not change the depth of surviving siblings.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteDeepSubtreePreservesSiblingDepths()
+    public async Task DeleteSubtreeAsync_DeleteDeepSubtree_PreservesSiblingDepths()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -165,7 +165,7 @@ public abstract partial class RelationalTests
     /// <summary>Removing a non-root ancestor rebases every surviving descendant depth.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteDeepAncestorRebasesEntireSurvivingSubtree()
+    public async Task DeleteAsync_DeleteDeepAncestor_RebasesEntireSurvivingSubtree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -213,7 +213,7 @@ public abstract partial class RelationalTests
     /// <summary>Subtree deletion breaks internal references before restrictive foreign-key checks.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteSubtreeSupportsRestrictiveSelfForeignKey()
+    public async Task DeleteSubtreeAsync_DeleteSubtree_SupportsRestrictiveSelfForeignKey()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -246,7 +246,7 @@ public abstract partial class RelationalTests
     /// <summary>Promotion updates the parent reference before deleting a referenced non-root.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeletePromotesChildWithRestrictiveSelfForeignKey()
+    public async Task DeleteAsync_Delete_PromotesChildWithRestrictiveSelfForeignKey()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -282,7 +282,7 @@ public abstract partial class RelationalTests
 
     /// <summary>Deleting the only root cannot promote children into several roots with the same TreeId.</summary>
     [Fact]
-    public async Task DeleteRootPromotionIsRejectedWithoutChangingItsTree()
+    public async Task DeleteAsync_DeleteRootPromotion_IsRejectedWithoutChangingItsTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

@@ -5,7 +5,7 @@ public sealed class ChangeTrackerClearRecoveryTests
 {
     /// <summary>Tracks every captured entry again, although Clear left them reporting their old state.</summary>
     [Fact]
-    public async Task ClearedTrackerRestoresPendingDependentAndItsMembership()
+    public async Task Restore_ClearedTracker_RestoresPendingDependentAndItsMembership()
     {
         // Arrange
         await using var context = new ClearContext();

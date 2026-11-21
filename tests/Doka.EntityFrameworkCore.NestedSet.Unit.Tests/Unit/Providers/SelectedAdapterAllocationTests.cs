@@ -27,7 +27,7 @@ public sealed class SelectedAdapterAllocationTests
     [InlineData("Sqlite", true)]
     [InlineData("SqlServer", false)]
     [InlineData("SqlServer", true)]
-    public void WarmSelectedAdapterResolutionDoesNotAllocate(
+    public void MeasureLookups_WarmSelectedAdapterResolution_DoesNotAllocate(
         string engine,
         bool collectBeforeMeasurement
     )

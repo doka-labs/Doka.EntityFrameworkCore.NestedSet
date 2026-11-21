@@ -16,7 +16,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData(1, false)]
     [InlineData(16, false)]
     [InlineData(1, true)]
-    public async Task MatchingRoutingRequestsReuseTheScopedCompiledQuery(
+    public async Task ResolveAsync_MatchingRoutingRequests_ReuseTheScopedCompiledQuery(
         int fields,
         bool varyCardinality
     )
@@ -25,7 +25,8 @@ public abstract partial class GroupSupervisorTests
         var commands = new SupervisorCommandProbe();
         await using var seeded = await CreateAsync(
             new SupervisorCommandProbe(),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
 
         var first = await App.SupervisorScenarioData.CreateAsync(seeded, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(

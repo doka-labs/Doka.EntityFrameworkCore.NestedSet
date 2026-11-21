@@ -7,14 +7,15 @@ public abstract partial class InheritanceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MixedSubtypeParentChangeQueriesConfiguredOwner(
+    public async Task SaveNestedSetChangesAsync_MixedSubtypeParentChange_QueriesConfiguredOwner(
         bool tpt
     )
     {
         // Arrange
         await using var context = await CreateInheritanceContextAsync(
             tpt,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            ordered: false);
 
         var rootId = tpt
             ? 4_001
@@ -57,14 +58,15 @@ public abstract partial class InheritanceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MixedSubtypeCrossTreeMovesShareDependenciesAndRefreshTracker(
+    public async Task SaveNestedSetChangesAsync_MixedSubtypeCrossTree_MovesShareDependenciesAndRefreshTracker(
         bool tpt
     )
     {
         // Arrange
         await using var context = await CreateInheritanceContextAsync(
             tpt,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            ordered: false);
 
         var rootId = tpt
             ? 6_001
@@ -137,7 +139,7 @@ public abstract partial class InheritanceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task BaseOrderingRefreshesMixedSubtypeSubtrees(
+    public async Task SaveNestedSetChangesAsync_BaseOrdering_RefreshesMixedSubtypeSubtrees(
         bool tpt,
         bool acceptAllChangesOnSuccess
     )
@@ -230,194 +232,12 @@ public abstract partial class InheritanceTests
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
     }
 
-    /// <summary>Rejects missing parents and mixed-subtype cycles without losing pending caller state.</summary>
-    /// <param name="tpt">Whether structural state uses a TPT base fragment.</param>
-    /// <param name="missing">Whether the requested parent is absent instead of a descendant.</param>
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task InvalidMixedSubtypeParentRestoresPendingState(
-        bool tpt,
-        bool missing
-    )
-    {
-        // Arrange
-        await using var context = await CreateInheritanceContextAsync(
-            tpt,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var rootId = (tpt
-                ? 10_001
-                : 11_001)
-            + (missing
-                ? 100
-                : 0);
-
-        var hierarchy = context.NestedSet<InheritanceNode>();
-        var treeId = Guid.NewGuid();
-        await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
-        await hierarchy.InsertChildAsync(Node(tpt, false, rootId + 1, "Branch"), rootId, CancellationToken.None);
-        await hierarchy.InsertChildAsync(Node(tpt, true, rootId + 2, "Descendant"), rootId + 1, CancellationToken.None);
-        var tracked = await context
-            .Set<InheritanceNode>()
-            .Where(node => node.TreeId == treeId)
-            .ToArrayAsync(CancellationToken.None);
-
-        var before = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        var changed = tracked.Single(node => node.Id == rootId + 1);
-        var requestedParent = missing
-            ? rootId + 99
-            : rootId + 2;
-
-        changed.ParentId = requestedParent;
-        changed.Name = "Pending";
-
-        // Act
-        var error = await Record.ExceptionAsync(() => context.SaveNestedSetChangesAsync(
-            true,
-            token => context.SaveChangesAsync(false, token),
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            missing
-                ? NestedSetErrorCode.NodeNotFound
-                : NestedSetErrorCode.CycleDetected,
-            Assert.IsType<NestedSetException>(error)
-                .Code);
-
-        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(before.Select(Snapshot), persisted.Select(Snapshot));
-        Assert.Equal(requestedParent, changed.ParentId);
-        Assert.Equal("Pending", changed.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(changed)
-                .State);
-
-        Assert.Equal(
-            rootId,
-            context
-                .Entry(changed)
-                .Property(node => node.ParentId)
-                .OriginalValue);
-
-        Assert.True(
-            context
-                .Entry(changed)
-                .Property(node => node.ParentId)
-                .IsModified);
-
-        Assert.Equal(
-            "Branch",
-            context
-                .Entry(changed)
-                .Property(node => node.Name)
-                .OriginalValue);
-
-        Assert.True(
-            context
-                .Entry(changed)
-                .Property(node => node.Name)
-                .IsModified);
-    }
-
-    /// <summary>Rolls back a completed mixed-subtype payload save when the enclosing delegate fails.</summary>
-    /// <param name="tpt">Whether structural state uses a TPT base fragment.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task MixedSubtypeSaveFailureRollsBackPayloadAndTracker(
-        bool tpt
-    )
-    {
-        // Arrange
-        await using var context = await CreateInheritanceContextAsync(
-            tpt,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var rootId = tpt
-            ? 12_001
-            : 13_001;
-
-        var hierarchy = context.NestedSet<InheritanceNode>();
-        var treeId = Guid.NewGuid();
-        await hierarchy.InsertRootAsync(Node(tpt, false, rootId, "Root"), treeId, CancellationToken.None);
-        await hierarchy.InsertChildAsync(Node(tpt, false, rootId + 1, "Folder"), rootId, CancellationToken.None);
-        await hierarchy.InsertChildAsync(Node(tpt, true, rootId + 2, "Metric"), rootId, CancellationToken.None);
-        var tracked = await context
-            .Set<InheritanceNode>()
-            .Where(node => node.TreeId == treeId)
-            .ToArrayAsync(CancellationToken.None);
-
-        var before = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        var changed = tracked.Single(node => node.Id == rootId + 2);
-        changed.ParentId = rootId + 1;
-        changed.Name = "Pending";
-
-        // Act
-        var error = await Record.ExceptionAsync(() => context.SaveNestedSetChangesAsync(
-            true,
-            async token =>
-            {
-                await context.SaveChangesAsync(false, token);
-
-                throw new InjectedCommandException();
-            },
-            CancellationToken.None));
-
-        // Assert
-        Assert.IsType<InjectedCommandException>(error);
-        var persisted = await PersistedAsync(context, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Equal(before.Select(Snapshot), persisted.Select(Snapshot));
-        Assert.Equal(rootId + 1, changed.ParentId);
-        Assert.Equal("Pending", changed.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(changed)
-                .State);
-
-        Assert.Equal(
-            rootId,
-            context
-                .Entry(changed)
-                .Property(node => node.ParentId)
-                .OriginalValue);
-
-        Assert.True(
-            context
-                .Entry(changed)
-                .Property(node => node.ParentId)
-                .IsModified);
-
-        Assert.Equal(
-            "Metric",
-            context
-                .Entry(changed)
-                .Property(node => node.Name)
-                .OriginalValue);
-
-        Assert.True(
-            context
-                .Entry(changed)
-                .Property(node => node.Name)
-                .IsModified);
-
-        Assert.Equal(
-            before.Select(node => (node.Id, node.Left, node.Right, node.Depth, node.Position)),
-            tracked
-                .OrderBy(node => node.Left)
-                .Select(node => (node.Id, node.Left, node.Right, node.Depth, node.Position)));
-    }
-
     /// <summary>Creates a provider context with a distinct table set for each inheritance contract.</summary>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     private async Task<DbContext> CreateInheritanceContextAsync(
         bool tpt,
-        CancellationToken cancellationToken,
-        bool ordered = false
+        bool ordered,
+        CancellationToken cancellationToken
     ) => (tpt, ordered) switch
     {
         (false, false) =>
@@ -479,74 +299,4 @@ public abstract partial class InheritanceTests
     private static (int, Guid, int?, long, long, int, long, string) Snapshot(
         InheritanceNode node
     ) => (node.Id, node.TreeId, node.ParentId, node.Left, node.Right, node.Depth, node.Position, node.Name);
-
-    /// <summary>Checks current and original structure for every tracked derived node after bulk updates.</summary>
-    private static void AssertTracked(
-        DbContext context,
-        InheritanceNode[] tracked,
-        InheritanceNode[] persisted
-    )
-    {
-        Assert.Equal(
-            persisted
-                .OrderBy(node => node.Id)
-                .Select(Snapshot),
-            tracked
-                .OrderBy(node => node.Id)
-                .Select(Snapshot));
-
-        foreach (var node in tracked)
-        {
-            var entry = context.Entry(node);
-            Assert.Equal(
-                node.TreeId,
-                entry.Property(value => value.TreeId)
-                    .OriginalValue);
-
-            Assert.Equal(
-                node.ParentId,
-                entry.Property(value => value.ParentId)
-                    .OriginalValue);
-
-            Assert.Equal(
-                node.Left,
-                entry.Property(value => value.Left)
-                    .OriginalValue);
-
-            Assert.Equal(
-                node.Right,
-                entry.Property(value => value.Right)
-                    .OriginalValue);
-
-            Assert.Equal(
-                node.Depth,
-                entry.Property(value => value.Depth)
-                    .OriginalValue);
-
-            Assert.Equal(
-                node.Position,
-                entry.Property(value => value.Position)
-                    .OriginalValue);
-
-            Assert.False(
-                entry.Property(value => value.ParentId)
-                    .IsModified);
-
-            Assert.False(
-                entry.Property(value => value.Left)
-                    .IsModified);
-
-            Assert.False(
-                entry.Property(value => value.Right)
-                    .IsModified);
-
-            Assert.False(
-                entry.Property(value => value.Depth)
-                    .IsModified);
-
-            Assert.False(
-                entry.Property(value => value.Position)
-                    .IsModified);
-        }
-    }
 }

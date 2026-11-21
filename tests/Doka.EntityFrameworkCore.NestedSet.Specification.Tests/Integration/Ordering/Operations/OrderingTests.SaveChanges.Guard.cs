@@ -4,12 +4,13 @@ public abstract partial class OrderingTests
 {
     /// <summary>Rejects a tracked sort change when an ordinary context omits the coordinated save wrapper.</summary>
     [Fact]
-    public async Task OptionsGuardRejectsUncoordinatedSortChange()
+    public async Task SaveChangesAsync_OptionsGuard_RejectsUncoordinatedSortChange()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
@@ -37,12 +38,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Allows an ordinary context to persist payload when no hierarchy coordination is required.</summary>
     [Fact]
-    public async Task OptionsGuardAllowsPayloadOnlySave()
+    public async Task SaveChangesAsync_OptionsGuard_AllowsPayloadOnlySave()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
@@ -69,12 +71,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Rejects direct insertion through DbSet before Entity Framework Core sends the row.</summary>
     [Fact]
-    public async Task OptionsGuardRejectsDirectAdd()
+    public async Task SaveChangesAsync_OptionsGuard_RejectsDirectAdd()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var options = (DbContextOptions)setup.GetService<IDbContextOptions>();
         await using var context = new MissingIntegrationOrderingContext(options);
@@ -94,12 +97,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Rejects direct deletion through DbSet before Entity Framework Core sends the command.</summary>
     [Fact]
-    public async Task OptionsGuardRejectsDirectDelete()
+    public async Task SaveChangesAsync_OptionsGuard_RejectsDirectDelete()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await Tree(setup)
             .InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -127,12 +131,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Rejects direct writes to hierarchy-owned coordinates before persistence.</summary>
     [Fact]
-    public async Task OptionsGuardRejectsDirectCoordinateChange()
+    public async Task SaveChangesAsync_OptionsGuard_RejectsDirectCoordinateChange()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await Tree(setup)
             .InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);

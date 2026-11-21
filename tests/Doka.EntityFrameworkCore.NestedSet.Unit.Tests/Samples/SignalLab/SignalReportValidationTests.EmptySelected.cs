@@ -12,7 +12,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("anchor")]
     [InlineData("signal")]
     [InlineData("source")]
-    public async Task EmptySelectedTotalsPreserveRepeatedOrderedGrain(
+    public async Task CreateGrid_EmptySelectedTotals_PreserveRepeatedOrderedGrain(
         string foreign
     )
     {
@@ -72,7 +72,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ForeignOnlyGridPreservesLateFailureWithoutPartialCells(
+    public async Task CreateGridAsync_ForeignOnlyGrid_PreservesLateFailureWithoutPartialCells(
         bool disposal
     )
     {

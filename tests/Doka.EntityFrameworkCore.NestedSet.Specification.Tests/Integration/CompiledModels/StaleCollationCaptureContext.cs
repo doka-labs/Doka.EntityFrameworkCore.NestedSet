@@ -1,9 +1,15 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Represents an old supplied model with property-only capture and no physical hierarchy ownership.</summary>
-internal sealed class StaleCollationCaptureContext(DbContextOptions<StaleCollationCaptureContext> options)
-    : DbContext(options)
+internal sealed class StaleCollationCaptureContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public StaleCollationCaptureContext(
+        DbContextOptions<StaleCollationCaptureContext> options
+    ) : base(options) { }
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder

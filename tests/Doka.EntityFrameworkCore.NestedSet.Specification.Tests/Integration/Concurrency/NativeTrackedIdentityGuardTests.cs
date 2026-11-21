@@ -18,7 +18,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeScopeAliasCannotLeaveAffectedTrackedStructureStale(
+    public async Task DeleteTreeAsync_NativeScopeAlias_CannotLeaveAffectedTrackedStructureStale(
         bool scopedKey
     )
     {
@@ -93,7 +93,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
 
     /// <summary>Rejects a converted TreeId alias using its native case-insensitive comparison.</summary>
     [Fact]
-    public async Task NativeTreeAliasCannotLeaveAffectedTrackedStructureStale()
+    public async Task DeleteTreeAsync_NativeTreeAlias_CannotLeaveAffectedTrackedStructureStale()
     {
         // Arrange
         await using var context = await CreateAliasContextAsync(
@@ -135,7 +135,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
 
     /// <summary>A broad model comparer cannot reject a tracked row in a distinct stored tree.</summary>
     [Fact]
-    public async Task BroadModelComparerAllowsAnUnaffectedProviderDistinctTree()
+    public async Task DeleteTreeAsync_BroadModelComparer_AllowsAnUnaffectedProviderDistinctTree()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadGuardTreeContext>(
@@ -182,7 +182,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
 
     /// <summary>Retains the zero-command rejection for a definite affected provider identity.</summary>
     [Fact]
-    public async Task DefiniteAffectedIdentityRejectsWithoutDatabaseCommands()
+    public async Task DeleteTreeAsync_DefiniteAffectedIdentity_RejectsWithoutDatabaseCommands()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -218,7 +218,7 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
 
     /// <summary>Transports an unaffected native tracked set beyond the former 64-key boundary in one probe.</summary>
     [Fact]
-    public async Task UnaffectedTrackedCandidatesUseBoundedNativeBatches()
+    public async Task DeleteTreeAsync_UnaffectedTrackedCandidates_UseBoundedNativeBatches()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -264,129 +264,9 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                     .State));
     }
 
-    /// <summary>Rechecks changes or new tracked aliases introduced while a native guard read is awaiting.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task NativeProbeCannotIntroduceUnplannedTrackerChanges(
-        bool attachAffectedAlias
-    )
-    {
-        // Arrange
-        var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
-        var affectedTree = $"guard-callback-{root}";
-        var otherTree = $"guard-unaffected-{root}";
-        await SeedTreeAsync(context, affectedTree, root, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await SeedTreeAsync(context, otherTree, root + 10, 1, cancellationToken: TestContext.Current.CancellationToken);
-        var affected = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
-        affected.TreeId = new BroadTreeId(affectedTree.ToUpperInvariant());
-        var other = await ReadNodeAsync(context, root + 11, cancellationToken: TestContext.Current.CancellationToken);
-        context.Attach(other);
-        probe.BeforeNativeRead = () =>
-        {
-            if (attachAffectedAlias)
-            {
-                context.Attach(affected);
-            }
-            else
-            {
-                other.Name = "Callback change";
-            }
-        };
-
-        probe.Armed = true;
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => context
-            .NestedSet<BroadTreeIdNode>()
-            .DeleteTreeAsync(new BroadTreeId(affectedTree), CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        Assert.Equal(1, probe.NativeReads);
-        Assert.Equal(
-            2,
-            await context
-                .Set<BroadTreeIdNode>()
-                .AsNoTracking()
-                .CountAsync(node => node.Id >= root && node.Id <= root + 1, CancellationToken.None));
-
-        Assert.Equal(
-            "Child-000",
-            (await ReadNodeAsync(
-                context,
-                root + 11,
-                cancellationToken: TestContext.Current.CancellationToken)).Name);
-
-        Assert.Equal(
-            attachAffectedAlias
-                ? EntityState.Unchanged
-                : EntityState.Modified,
-            context.Entry(other)
-                .State);
-    }
-
-    /// <summary>Rejects hierarchy attachments during registry locking when no hierarchy entries were tracked.</summary>
-    [Fact]
-    public async Task RegistryLockCannotAttachAnUnplannedAffectedHierarchyEntry()
-    {
-        // Arrange
-        var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        var root = NativeTrackedIdentityGuardTestSupport.NextRoot(1000);
-        var treeId = $"guard-lock-{root}";
-        await SeedTreeAsync(context, treeId, root, 1, cancellationToken: TestContext.Current.CancellationToken);
-        var alias = await ReadNodeAsync(context, root + 1, cancellationToken: TestContext.Current.CancellationToken);
-        probe.RegistryTable = NestedSetTreeRegistryMapping.For(context.Model.FindEntityType(typeof(BroadTreeIdNode))!)
-            .Store.Name;
-
-        probe.AfterRegistryRead = () => context.Attach(alias);
-        probe.Armed = true;
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => context
-            .NestedSet<BroadTreeIdNode>()
-            .DeleteTreeAsync(new BroadTreeId(treeId), CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.InvalidContext,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        Assert.Equal(1, probe.RegistryCallbacks);
-        Assert.Equal(0, probe.NativeReads);
-        Assert.Equal(
-            EntityState.Unchanged,
-            context.Entry(alias)
-                .State);
-
-        Assert.Equal(
-            2,
-            await context
-                .NestedSet<BroadTreeIdNode>()
-                .InTree(new BroadTreeId(treeId))
-                .Nodes
-                .CountAsync(CancellationToken.None));
-    }
-
     /// <summary>Protects a persisted affected row even when its tracked TreeId predates an external move.</summary>
     [Fact]
-    public async Task PersistedMembershipRejectsAnExternallyMovedTrackedNode()
+    public async Task DeleteTreeAsync_PersistedMembership_RejectsAnExternallyMovedTrackedNode()
     {
         // Arrange
         await using var context = await CreateAliasContextAsync(
@@ -443,289 +323,5 @@ public abstract partial class NativeTrackedIdentityGuardTests : ProviderTest
                 .InTree(new BroadTreeId(target))
                 .Nodes
                 .CountAsync(CancellationToken.None));
-    }
-
-    /// <summary>Validates all exact generic role types before a constructor can execute any database command.</summary>
-    [Theory]
-    [InlineData("key")]
-    [InlineData("scope")]
-    [InlineData("tree")]
-    public async Task ExecutorRejectsIncorrectGenericIdentityRoles(
-        string role
-    )
-    {
-        // Arrange
-        var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        var entityType = context.Model.FindEntityType(typeof(BroadTreeIdNode))!;
-        probe.Armed = true;
-
-        // Act
-        var failure = Record.Exception(() =>
-        {
-            switch (role)
-            {
-                case "key":
-                    _ = new NestedSetMutationExecutor<BroadTreeIdNode, long, BroadTreeId, NestedSetNoScope>(
-                        context,
-                        entityType);
-
-                    break;
-                case "scope":
-                    _ = new NestedSetMutationExecutor<BroadTreeIdNode, int, BroadTreeId, string>(context, entityType);
-                    break;
-                case "tree":
-                    _ = new NestedSetMutationExecutor<BroadTreeIdNode, int, string, NestedSetNoScope>(
-                        context,
-                        entityType);
-
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(role));
-            }
-        });
-
-        // Assert
-        Assert.IsType<InvalidOperationException>(failure);
-        Assert.Equal(0, probe.Commands);
-        Assert.Null(context.Database.CurrentTransaction);
-    }
-
-    /// <summary>Rejects foreign model lock requests on both consistent reads and explicit writes before SQL.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ExecutorRejectsForeignHierarchyRequests(
-        bool read
-    )
-    {
-        // Arrange
-        var probe = new NativeGuardProbe();
-        await using var context = await CreateAliasContextAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        await using var foreign = await _fixture.CreateContextAsync<BroadGuardTreeContext>(
-            Engine,
-            static options => new BroadGuardTreeContext(options),
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var executor = new NestedSetMutationExecutor<BroadTreeIdNode, int, BroadTreeId, NestedSetNoScope>(
-            context,
-            context.Model.FindEntityType(typeof(BroadTreeIdNode))!);
-
-        var requests = new[]
-        {
-            new NestedSetTreeLockRequest<BroadTreeId, NestedSetNoScope>(
-                foreign.Model.FindEntityType(typeof(BroadTreeIdNode))!,
-                default,
-                new BroadTreeId("foreign-request"),
-                NestedSetTreeLockMode.Existing),
-        };
-
-        probe.Armed = true;
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => read
-            ? executor.ExecuteReadAsync(_ => Task.CompletedTask, requests, CancellationToken.None)
-            : executor.ExecuteAsync(_ => Task.CompletedTask, requests, CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            "requests",
-            Assert.IsType<ArgumentException>(failure)
-                .ParamName);
-
-        Assert.Equal(0, probe.Commands);
-        Assert.Null(context.Database.CurrentTransaction);
-    }
-
-    /// <summary>Creates the case-insensitive TreeId model with observers local to this operation.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private Task<AliasGuardTreeContext> CreateAliasContextAsync(
-        string engine,
-        CancellationToken cancellationToken,
-        params IInterceptor[] interceptors
-    ) => _fixture.CreateContextAsync<AliasGuardTreeContext>(
-        engine,
-        static options => new AliasGuardTreeContext(options),
-        cancellationToken: cancellationToken,
-        interceptors);
-
-    /// <summary>Imports one root with independent keys and clears only arrangement-owned tracking.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private static async Task SeedTreeAsync(
-        DbContext context,
-        string treeId,
-        int root,
-        int children,
-        CancellationToken cancellationToken
-    )
-    {
-        var branches = Enumerable
-            .Range(0, children)
-            .Select(index => new NestedSetBranch<BroadTreeIdNode>(
-                new BroadTreeIdNode
-                {
-                    Id = root + index + 1,
-                    Name = $"Child-{index:D3}",
-                }))
-            .ToArray();
-
-        var branch = new NestedSetBranch<BroadTreeIdNode>(
-            new BroadTreeIdNode
-            {
-                Id = root,
-                Name = "Root",
-            },
-            branches);
-
-        await context
-            .NestedSet<BroadTreeIdNode>()
-            .InsertForestAsync(
-                [new NestedSetTreeImport<BroadTreeIdNode, BroadTreeId>(new BroadTreeId(treeId), branch)],
-                cancellationToken);
-
-        context.ChangeTracker.Clear();
-    }
-
-    /// <summary>Reads an independent entity snapshot without triggering identity-map alias handling.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private static Task<BroadTreeIdNode> ReadNodeAsync(
-        DbContext context,
-        int id,
-        CancellationToken cancellationToken
-    ) => context
-        .Set<BroadTreeIdNode>()
-        .AsNoTracking()
-        .SingleAsync(node => node.Id == id, cancellationToken);
-
-    /// <summary>Maps native identity equality independently from the model's value comparer.</summary>
-    private abstract class GuardTreeContext(DbContextOptions options) : DbContext(options)
-    {
-        /// <summary>Chooses the store's native case comparison for this concrete test model.</summary>
-        protected abstract bool CaseInsensitive { get; }
-
-        /// <summary>Chooses the intentionally broader model comparer for the positive control.</summary>
-        protected abstract bool BroadComparer { get; }
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            // WHY: Each concrete model creates its own tables in the shared fixture database. Distinct
-            // collation names preserve identical CI semantics without duplicate CREATE COLLATION statements.
-            var postgresCollation = GetType()
-                    .Name
-                    .ToLowerInvariant()
-                + "_tree_ci";
-
-            if (CaseInsensitive && Database.IsNpgsql())
-            {
-                modelBuilder.HasCollation(
-                    postgresCollation,
-                    locale: "und-u-ks-level2",
-                    provider: "icu",
-                    deterministic: false);
-            }
-
-            var collation = CaseInsensitive
-                ? Database.IsSqlite()
-                    ? "NOCASE"
-                    : Database.IsNpgsql()
-                        ? postgresCollation
-                        : Database.IsSqlServer()
-                            ? "Latin1_General_100_CI_AS"
-                            : "utf8mb4_general_ci"
-                : Database.IsSqlite()
-                    ? "BINARY"
-                    : Database.IsSqlServer()
-                        ? "Latin1_General_100_BIN2"
-                        : Database.IsNpgsql()
-                            ? null
-                            : "utf8mb4_bin";
-
-            var node = modelBuilder.Entity<BroadTreeIdNode>();
-            node.ToTable(
-                GetType()
-                    .Name
-                + "Nodes");
-
-            node.HasKey(value => value.Id);
-            node
-                .Property(value => value.Id)
-                .ValueGeneratedNever();
-
-            node
-                .Property(value => value.Name)
-                .HasMaxLength(100);
-
-            var tree = node
-                .Property(value => value.TreeId)
-                .HasConversion(value => value.Value, value => new BroadTreeId(value))
-                .HasMaxLength(40);
-
-            if (collation is not null)
-            {
-                tree.UseCollation(collation);
-            }
-
-            // WHY: The negative control needs narrow CLR equality over a native CI column; the positive control
-            // intentionally reverses that relationship. Neither comparer can stand in for database identity.
-            tree.Metadata.SetValueComparer(
-                BroadComparer
-                    ? new ValueComparer<BroadTreeId>(
-                        (first,
-                            second) => StringComparer.OrdinalIgnoreCase.Equals(first!.Value, second!.Value),
-                        value => StringComparer.OrdinalIgnoreCase.GetHashCode(value.Value),
-                        value => new BroadTreeId(value.Value))
-                    : new ValueComparer<BroadTreeId>(
-                        (first,
-                            second) => StringComparer.Ordinal.Equals(first!.Value, second!.Value),
-                        value => StringComparer.Ordinal.GetHashCode(value.Value),
-                        value => new BroadTreeId(value.Value)));
-
-            node
-                .HasOne<BroadTreeIdNode>()
-                .WithMany()
-                .HasForeignKey(value => value.ParentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            node.HasNestedSet(nestedSet => nestedSet
-                .HasNodeKey(value => value.Id)
-                .HasTreeId(value => value.TreeId)
-                .HasParent(value => value.ParentId)
-                .HasBounds(value => value.Left, value => value.Right)
-                .HasDepth(value => value.Depth)
-                .HasPosition(value => value.Position));
-        }
-    }
-
-    /// <summary>Stores case-insensitive TreeIds while retaining exact CLR value snapshots.</summary>
-    private sealed class AliasGuardTreeContext(DbContextOptions<AliasGuardTreeContext> options)
-        : GuardTreeContext(options)
-    {
-        /// <inheritdoc />
-        protected override bool CaseInsensitive => true;
-
-        /// <inheritdoc />
-        protected override bool BroadComparer => false;
-    }
-
-    /// <summary>Stores case-sensitive TreeIds despite a broad domain and metadata value comparer.</summary>
-    private sealed class BroadGuardTreeContext(DbContextOptions<BroadGuardTreeContext> options)
-        : GuardTreeContext(options)
-    {
-        /// <inheritdoc />
-        protected override bool CaseInsensitive => false;
-
-        /// <inheritdoc />
-        protected override bool BroadComparer => true;
     }
 }

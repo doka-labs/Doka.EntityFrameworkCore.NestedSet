@@ -4,7 +4,7 @@ public abstract partial class RelationalTests
 {
     /// <summary>Moves a deep branch without recursion or losing descendant depth changes.</summary>
     [Fact]
-    public async Task DeepSubtreeMoveUpdatesEveryDescendantDepth()
+    public async Task DetachAsTreeAsync_DeepSubtreeMove_UpdatesEveryDescendantDepth()
     {
         // Arrange
         const int count = 1024;

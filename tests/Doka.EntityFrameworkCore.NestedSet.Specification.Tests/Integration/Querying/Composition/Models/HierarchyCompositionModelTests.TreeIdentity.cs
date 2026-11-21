@@ -16,7 +16,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task ConvertedTreeIdentityKeepsDatabaseDistinctAliasesIsolated(
+    public async Task QueryDepths_ConvertedTreeIdentity_KeepsDatabaseDistinctAliasesIsolated(
         HierarchyCompositionOperation operation
     )
     {

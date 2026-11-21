@@ -16,7 +16,7 @@ public abstract class CommitOutcomeTests : ProviderTest
 
     /// <summary>An exception after commit preserves its cause while the committed node remains visible once.</summary>
     [Fact]
-    public async Task PostCommitFailureRequiresFreshContextReconciliation()
+    public async Task InsertRootAsync_PostCommitFailure_RequiresFreshContextReconciliation()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

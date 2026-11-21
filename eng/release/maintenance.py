@@ -416,7 +416,7 @@ def run_audit(root, output):
     environment = {**os.environ, "NUGET_HTTP_CACHE_PATH": str((output / "http-cache").resolve())}
     restore = ["dotnet", "restore", str(root / SOLUTION), "--locked-mode", "--force", "--no-http-cache",
                "--disable-build-servers", "-p:NuGetAudit=true", "-p:NuGetAuditMode=all", "-p:NuGetAuditLevel=low",
-               "-p:TreatWarningsAsErrors=true", "-p:NoWarn=", "-p:WarningsNotAsErrors=",
+               "-p:DokaAuditPipeline=true", "-p:TreatWarningsAsErrors=true", "-p:NoWarn=", "-p:WarningsNotAsErrors=",
                "--source", "https://api.nuget.org/v3/index.json"]
     stage = "restore"
     try:

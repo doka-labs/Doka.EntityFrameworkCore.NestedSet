@@ -4,7 +4,7 @@ public abstract partial class EnterpriseTests
 {
     /// <summary>Coordinates a tracked Parent change when TreeId alone identifies the hierarchy.</summary>
     [Fact]
-    public async Task ScopelessParentChangeUsesTreeIdentity()
+    public async Task SaveNestedSetChangesAsync_ScopelessParentChange_UsesTreeIdentity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

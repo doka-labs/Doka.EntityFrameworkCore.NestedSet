@@ -21,11 +21,11 @@ public abstract class ConcurrentCapacityTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite's database-wide writer lock prevents simultaneous independent write transactions.")]
-    public async Task IndependentExistingTreesHold64LocksInOneScope()
+    public async Task InsertIndependentChildAsync_IndependentExistingTrees_Hold64LocksInOneScope()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         await using (var setup = database.CreateContext())
         {
             var hierarchy = setup
@@ -34,7 +34,10 @@ public abstract class ConcurrentCapacityTests : ProviderTest
 
             for (var index = 1; index <= WriterCount; index++)
             {
-                await hierarchy.InsertRootAsync(new ConcurrentNode { Id = index }, TreeId(index), deadline.Token);
+                await hierarchy.InsertRootAsync(
+                    new ConcurrentNode { Id = index },
+                    TreeId(index),
+                    operationCancellationToken);
             }
         }
 
@@ -45,7 +48,8 @@ public abstract class ConcurrentCapacityTests : ProviderTest
 
         // Act
         var acquiredLocks = await Task.WhenAll(
-            writerIndexes.Select(index => InsertIndependentChildAsync(database, index, barrier, deadline.Token)));
+            writerIndexes.Select(
+                index => InsertIndependentChildAsync(database, index, barrier, operationCancellationToken)));
 
         // Assert
         Assert.Equal(WriterCount, barrier.Arrivals);
@@ -56,7 +60,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
             .Set<ConcurrentNode>()
             .AsNoTracking()
             .OrderBy(node => node.Id)
-            .ToArrayAsync(deadline.Token);
+            .ToArrayAsync(operationCancellationToken);
 
         Assert.Equal(WriterCount * 2, nodes.Length);
         Assert.All(nodes, node => Assert.Equal(Scope, node.Tree));
@@ -86,7 +90,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                     .NestedSet<ConcurrentNode>()
                     .ForScope(Scope)
                     .InTree(root.TreeId)
-                    .ValidateAsync(NestedSetValidationLevel.Full, deadline.Token)).Issues);
+                    .ValidateAsync(NestedSetValidationLevel.Full, operationCancellationToken)).Issues);
         }
     }
 
@@ -95,18 +99,18 @@ public abstract class ConcurrentCapacityTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite's database-wide writer lock prevents a second caller from saving prior application writes.")]
-    public async Task CanceledBlockedContenderPreservesBothCallerTransactions()
+    public async Task InsertChildAsync_CanceledBlockedContender_PreservesBothCallerTransactions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var treeId = TreeId(1);
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         await using (var setup = database.CreateContext())
         {
             await setup
                 .NestedSet<ConcurrentNode>()
                 .ForScope(Scope)
-                .InsertRootAsync(new ConcurrentNode { Id = 1 }, treeId, deadline.Token);
+                .InsertRootAsync(new ConcurrentNode { Id = 1 }, treeId, operationCancellationToken);
 
             setup.AddRange(
                 new UnrelatedRow
@@ -120,14 +124,16 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                     Value = "Initial contender value",
                 });
 
-            await setup.SaveChangesAsync(deadline.Token);
+            await setup.SaveChangesAsync(operationCancellationToken);
         }
 
         await using var owner = database.CreateContext();
         var isolation = NestedSetProviderCapabilities.Resolve(owner)
             .RequiredIsolation;
 
-        await using var ownerTransaction = await owner.Database.BeginTransactionAsync(isolation, deadline.Token);
+        await using var ownerTransaction = await owner.Database.BeginTransactionAsync(
+            isolation,
+            operationCancellationToken);
         var hierarchy = owner.Model.FindEntityType(typeof(ConcurrentNode))!;
 
         // WHY: Lock the registry before changing coordinates so the contender's parent-identity lookup
@@ -135,29 +141,29 @@ public abstract class ConcurrentCapacityTests : ProviderTest
         await NestedSetTreeLocks.AcquireAsync(
             owner,
             [new NestedSetTreeLockRequest<Guid, int>(hierarchy, Scope, treeId, NestedSetTreeLockMode.Existing)],
-            deadline.Token);
+            operationCancellationToken);
 
         var ownerRow = await owner
             .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 1, deadline.Token);
+            .SingleAsync(row => row.Id == 1, operationCancellationToken);
 
         ownerRow.Value = "Preserved owner write";
-        await owner.SaveChangesAsync(deadline.Token);
+        await owner.SaveChangesAsync(operationCancellationToken);
         var probe = new ConcurrentCapacityCancellationProbe();
         await using var contender = database.CreateContext(probe);
         await using var contenderTransaction = await contender.Database.BeginTransactionAsync(
             isolation,
-            deadline.Token);
+            operationCancellationToken);
 
         var contenderRow = await contender
             .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 2, deadline.Token);
+            .SingleAsync(row => row.Id == 2, operationCancellationToken);
 
         contenderRow.Value = "Preserved contender write";
-        await contender.SaveChangesAsync(deadline.Token);
+        await contender.SaveChangesAsync(operationCancellationToken);
         probe.Armed = true;
         var canceledChild = new ConcurrentNode { Id = 3 };
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(operationCancellationToken);
 
         // Act
         var blocked = Record.ExceptionAsync(() => contender
@@ -165,7 +171,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
             .ForScope(Scope)
             .InsertChildAsync(canceledChild, 1, cancellation.Token));
 
-        await probe.Attempted.Task.WaitAsync(deadline.Token);
+        await probe.Attempted.Task.WaitAsync(operationCancellationToken);
 
         // WHY: Let the provider dispatch its lock query before canceling; the other caller retains that exact
         // registry row throughout this bounded wait, and no interceptor simulates or delays the lock itself.
@@ -179,10 +185,10 @@ public abstract class ConcurrentCapacityTests : ProviderTest
         await owner
             .NestedSet<ConcurrentNode>()
             .ForScope(Scope)
-            .InsertChildAsync(new ConcurrentNode { Id = 2 }, 1, deadline.Token);
+            .InsertChildAsync(new ConcurrentNode { Id = 2 }, 1, operationCancellationToken);
 
-        await ownerTransaction.CommitAsync(deadline.Token);
-        await contenderTransaction.CommitAsync(deadline.Token);
+        await ownerTransaction.CommitAsync(operationCancellationToken);
+        await contenderTransaction.CommitAsync(operationCancellationToken);
 
         // Assert
         Assert.IsAssignableFrom<OperationCanceledException>(failure);
@@ -213,7 +219,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                 .Set<UnrelatedRow>()
                 .OrderBy(row => row.Id)
                 .Select(row => row.Value)
-                .ToArrayAsync(deadline.Token),
+                .ToArrayAsync(operationCancellationToken),
             value => Assert.Equal("Preserved owner write", value),
             value => Assert.Equal("Preserved contender write", value));
 
@@ -222,7 +228,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                 .Set<ConcurrentNode>()
                 .OrderBy(node => node.Id)
                 .Select(node => node.Id)
-                .ToArrayAsync(deadline.Token),
+                .ToArrayAsync(operationCancellationToken),
             id => Assert.Equal(1, id),
             id => Assert.Equal(2, id));
 
@@ -231,7 +237,7 @@ public abstract class ConcurrentCapacityTests : ProviderTest
                 .NestedSet<ConcurrentNode>()
                 .ForScope(Scope)
                 .InTree(treeId)
-                .ValidateAsync(NestedSetValidationLevel.Full, deadline.Token)).Issues);
+                .ValidateAsync(NestedSetValidationLevel.Full, operationCancellationToken)).Issues);
     }
 
     /// <summary>Appends one child after acquiring its exact existing registry row with 63 other writers.</summary>

@@ -12,7 +12,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnedSnapshotCommitsAndDisposesWithoutSavingTrackedChanges(
+    public async Task RunAsync_OwnedSnapshot_CommitsAndDisposesWithoutSavingTrackedChanges(
         bool alreadyOpen
     )
     {
@@ -39,10 +39,10 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         var result = await SampleReadSnapshot.RunAsync(
             context,
-            async token =>
+            async callbackCancellationToken =>
             {
                 reads++;
-                readToken = token;
+                readToken = callbackCancellationToken;
                 actualIsolation = context.Database.CurrentTransaction?.GetDbTransaction()
                     .IsolationLevel;
 
@@ -50,7 +50,7 @@ public sealed partial class SampleReadSnapshotTests
                     .Sentinels
                     .AsNoTracking()
                     .Select(row => row.Value)
-                    .SingleAsync(token);
+                    .SingleAsync(callbackCancellationToken);
             },
             stop.Token);
 
@@ -99,7 +99,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedOwnedSnapshotIsDisposedWithoutCommit(
+    public async Task RunAsync_FailedOwnedSnapshot_IsDisposedWithoutCommit(
         bool cancel,
         bool alreadyOpen
     )
@@ -124,21 +124,21 @@ public sealed partial class SampleReadSnapshotTests
         // Act
         var error = await Record.ExceptionAsync(() => SampleReadSnapshot.RunAsync<int>(
             context,
-            async token =>
+            async callbackCancellationToken =>
             {
                 native = (SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction();
                 _ = await context
                     .Sentinels
                     .AsNoTracking()
                     .Select(row => row.Id)
-                    .SingleAsync(token);
+                    .SingleAsync(callbackCancellationToken);
 
                 reads++;
 
                 if (cancel)
                 {
                     await stop.CancelAsync();
-                    token.ThrowIfCancellationRequested();
+                    callbackCancellationToken.ThrowIfCancellationRequested();
                 }
 
                 throw failure;
@@ -194,7 +194,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("success")]
     [InlineData("failure")]
     [InlineData("cancellation")]
-    public async Task CallerTransactionRemainsOwnedByCaller(
+    public async Task RunAsync_CallerTransaction_RemainsOwnedByCaller(
         string completion
     )
     {
@@ -224,14 +224,14 @@ public sealed partial class SampleReadSnapshotTests
         {
             result = await SampleReadSnapshot.RunAsync(
                 context,
-                async token =>
+                async callbackCancellationToken =>
                 {
-                    readToken = token;
+                    readToken = callbackCancellationToken;
                     valueRead = await context
                         .Sentinels
                         .AsNoTracking()
                         .Select(row => row.Value)
-                        .SingleAsync(token);
+                        .SingleAsync(callbackCancellationToken);
 
                     reads++;
 
@@ -243,7 +243,7 @@ public sealed partial class SampleReadSnapshotTests
                     if (completion == "cancellation")
                     {
                         await stop.CancelAsync();
-                        token.ThrowIfCancellationRequested();
+                        callbackCancellationToken.ThrowIfCancellationRequested();
                     }
 
                     return valueRead;

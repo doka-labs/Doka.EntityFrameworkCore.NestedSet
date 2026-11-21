@@ -1,7 +1,3 @@
-using Doka.EntityFrameworkCore.NestedSet.Providers;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using PostgresOptionsBuilder = Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
@@ -16,7 +12,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackSelectsItsExactAdapter(
+    public void FindExtension_NativeCallback_SelectsItsExactAdapter(
         string engine
     )
     {
@@ -47,7 +43,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackReturnsTheSameBuilder(
+    public void UseNestedSets_NativeCallback_ReturnsTheSameBuilder(
         string engine
     )
     {
@@ -86,7 +82,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void NativeCallbackRejectsANullBuilder(
+    public void UseNestedSets_NullProviderBuilder_IsRejected(
         string engine
     )
     {
@@ -109,7 +105,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>A second adapter cannot silently replace the first callback's context contract.</summary>
     [Fact]
-    public void ConflictingAdapterRegistrationIsRejected()
+    public void UseSqlServer_ConflictingAdapterRegistration_IsRejected()
     {
         // Arrange
         var builder = new DbContextOptionsBuilder<EnabledContext>()
@@ -130,7 +126,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>The common options identity includes its selected adapter, not only the extension CLR type.</summary>
     [Fact]
-    public void DifferentAdaptersHaveDifferentServiceProviderIdentities()
+    public void ShouldUseSameServiceProvider_DifferentAdapters_HaveDifferentServiceProviderIdentities()
     {
         // Arrange
         var sqlite = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
@@ -159,7 +155,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
     [InlineData("SqlServer")]
-    public void AdapterRejectsMissingNativeProvider(
+    public void ValidateOptions_Adapter_RejectsMissingNativeProvider(
         string engine
     )
     {
@@ -183,7 +179,7 @@ public sealed partial class OptionsExtensionTests
     [InlineData("MySql")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void AdapterRejectsAnotherNativeProvider(
+    public void ValidateOptions_Adapter_RejectsAnotherNativeProvider(
         string engine
     )
     {
@@ -199,172 +195,6 @@ public sealed partial class OptionsExtensionTests
         // Assert
         Assert.IsType<InvalidOperationException>(error);
         Assert.Contains("actual native provider assembly", error.Message, StringComparison.Ordinal);
-    }
-
-    /// <summary>A manually assembled graph may repeat exactly the selected immutable adapter.</summary>
-    [Fact]
-    public void ExternalServiceGraphAcceptsTheSameAdapter()
-    {
-        // Arrange
-        var options = new DbContextOptionsBuilder<EnabledContext>()
-            .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", sqlite => sqlite.UseNestedSets())
-            .Options;
-
-        using var provider = NestedSetTestAdapters.BuildServices(options);
-        var isolated = new DbContextOptionsBuilder<EnabledContext>(options)
-            .UseInternalServiceProvider(provider)
-            .Options;
-
-        using var context = new EnabledContext(isolated);
-
-        // Act
-        var actual = NestedSetProviderCapabilities.Resolve(context);
-        var persistence = context.GetService<IDatabase>();
-
-        // Assert
-        Assert.Same(NestedSetTestAdapters.ForEngine("Sqlite"), actual);
-        Assert.IsType<NestedSetRelationalDatabase>(persistence);
-        Assert.Equal(
-            ConnectionState.Closed,
-            context.Database.GetDbConnection()
-                .State);
-    }
-
-    /// <summary>Applying an adapter cannot preserve a conflicting or opaque preexisting service descriptor.</summary>
-    /// <param name="factory">Whether ownership is hidden behind a factory rather than another actual adapter.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AdapterServicesRejectConflictingOrOpaqueRegistration(
-        bool factory
-    )
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var attempts = 0;
-
-        if (factory)
-        {
-            services.AddSingleton<NestedSetProviderCapabilities>(_ =>
-            {
-                attempts++;
-
-                return NestedSetTestAdapters.ForEngine("Sqlite");
-            });
-        }
-        else
-        {
-            services.AddSingleton(NestedSetTestAdapters.ForEngine("MySql"));
-        }
-
-        IDbContextOptionsExtension extension = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine("Sqlite"));
-
-        // Act
-        var error = Record.Exception(() => extension.ApplyServices(services));
-
-        // Assert
-        Assert.IsType<InvalidOperationException>(error);
-        Assert.Contains("conflicting NestedSet provider", error.Message, StringComparison.Ordinal);
-        Assert.Equal(0, attempts);
-        Assert.Single(services, descriptor => descriptor.ServiceType == typeof(NestedSetProviderCapabilities));
-    }
-
-    /// <summary>Model use rejects a missing or wrong external adapter even when conventions are bypassed.</summary>
-    /// <param name="missing">Whether the external graph lacks the adapter rather than holding a different one.</param>
-    /// <param name="suppliedModel">Whether an already initialized runtime model bypasses model conventions.</param>
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void ExternalAdapterMismatchIsRejectedBeforeModelOrIo(
-        bool missing,
-        bool suppliedModel
-    )
-    {
-        // Arrange
-        var boundary = new CompositionIoBoundary();
-        var options = ProbeOptions(boundary);
-        using var modelServices = OwnedModelTestServices<InitializationProbeContext>.Create(options);
-        using var modelContext = new InitializationProbeContext(modelServices.Options);
-        var model = suppliedModel
-            ? modelContext.Model
-            : null;
-
-        using var provider = NestedSetTestAdapters.BuildServices(
-            options,
-            services =>
-            {
-                services.RemoveAll<NestedSetProviderCapabilities>();
-
-                if (!missing)
-                {
-                    services.AddSingleton(NestedSetTestAdapters.ForEngine("MySql"));
-                }
-            });
-
-        var builder =
-            new DbContextOptionsBuilder<InitializationProbeContext>(options).UseInternalServiceProvider(provider);
-
-        if (model is not null)
-        {
-            builder.UseModel(model);
-        }
-
-        using var modelBuilds = InitializationProbeContext.ObserveModelCreation();
-
-        // Act
-        var error = Record.Exception(() =>
-        {
-            using var context = new InitializationProbeContext(builder.Options);
-            _ = context.Model;
-        });
-
-        // Assert
-        Assert.IsType<InvalidOperationException>(error);
-        Assert.Contains("external EF service provider", error.Message, StringComparison.Ordinal);
-        Assert.Equal(0, modelBuilds.Count);
-        Assert.Equal(0, boundary.ConnectionStarts);
-        Assert.Equal(0, boundary.Commands.Created);
-    }
-
-    /// <summary>
-    /// Native-only translator plugins are registered by MySql and absent from all other adapter graphs.
-    /// </summary>
-    /// <param name="engine">The selected actual adapter.</param>
-    [Theory]
-    [InlineData("MySql")]
-    [InlineData("PostgreSql")]
-    [InlineData("Sqlite")]
-    [InlineData("SqlServer")]
-    public void OnlyMySqlRegistersTheNativeHierarchyTranslator(
-        string engine
-    )
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        IDbContextOptionsExtension extension = new NestedSetOptionsExtension(NestedSetTestAdapters.ForEngine(engine));
-
-        // Act
-        extension.ApplyServices(services);
-        var translators = services
-            .Where(descriptor => descriptor.ServiceType == typeof(IMethodCallTranslatorPlugin))
-            .ToArray();
-
-        // Assert
-        if (engine == "MySql")
-        {
-            var translator = Assert.Single(translators);
-
-            Assert.Equal(
-                typeof(MySqlNestedSetOptionsBuilderExtensions).Assembly,
-                translator.ImplementationType!.Assembly);
-        }
-        else
-        {
-            Assert.Empty(translators);
-        }
     }
 
     /// <summary>Creates actual callback options with a fail-fast I/O observer.</summary>

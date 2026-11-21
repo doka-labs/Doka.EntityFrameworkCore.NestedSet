@@ -18,7 +18,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
 
     /// <summary>A local move updates the traversed interval once and never rewrites distant subtrees.</summary>
     [Fact]
-    public async Task LocalMoveWritesOnlyTheCrossedInterval()
+    public async Task MoveAfterAsync_LocalMove_WritesOnlyTheCrossedInterval()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -61,7 +61,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     /// A cross-parent append retains ordinal zero without an empty target shift or unchanged position write.
     /// </summary>
     [Fact]
-    public async Task CrossParentMoveSkipsKnownPositionNoOps()
+    public async Task MoveToAsync_CrossParentMove_SkipsKnownPositionNoOps()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -95,7 +95,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
 
     /// <summary>Promotion combines descendant depth repair and both boundary shifts into one row pass.</summary>
     [Fact]
-    public async Task PromotedDeleteRewritesEachAffectedBoundaryOnce()
+    public async Task DeleteAsync_PromotedDelete_RewritesEachAffectedBoundaryOnce()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -140,7 +140,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
 
     /// <summary>Appending a root does not issue hierarchy updates whose result is already known to be empty.</summary>
     [Fact]
-    public async Task RootAppendAvoidsEmptyUpdates()
+    public async Task InsertRootAsync_RootAppend_AvoidsEmptyUpdates()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -185,7 +185,7 @@ public abstract partial class WriteAmplificationTests : ProviderTest
     /// A child append shifts both coordinates in one pass and skips its empty sibling-position shift.
     /// </summary>
     [Fact]
-    public async Task ChildAppendUsesOneBoundaryUpdate()
+    public async Task InsertChildAsync_ChildAppend_UsesOneBoundaryUpdate()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

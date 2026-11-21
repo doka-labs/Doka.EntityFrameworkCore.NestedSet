@@ -9,7 +9,7 @@ public sealed class BenchmarkScenarioTests
     [InlineData(BenchmarkShape.Wide)]
     [InlineData(BenchmarkShape.Deep)]
     [InlineData(BenchmarkShape.Balanced)]
-    public void ForestHasIndependentDeterministicTopology(
+    public void Build_Forest_HasIndependentDeterministicTopology(
         BenchmarkShape shape
     )
     {
@@ -25,6 +25,9 @@ public sealed class BenchmarkScenarioTests
         Assert.Equal(3, forest.Imports.Length);
         var actualParents = ReadParents(forest);
         var offset = 0;
+        // WHY: Tree ordinals independently determine root identities and the remainder partition.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var tree = 0; tree < scenario.Trees; tree++)
         {
             var size = scenario.Nodes / scenario.Trees
@@ -36,6 +39,9 @@ public sealed class BenchmarkScenarioTests
             Assert.Equal(new Guid(tree + 1, 0, 0, new byte[8]), import.TreeId);
             Assert.Equal(101 + offset, import.Root.Entity.Id);
 
+            // WHY: Local ordinals independently derive the expected keys, parents and sibling positions.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var local = 0; local < size; local++)
             {
                 var key = offset + local + 101;
@@ -63,7 +69,7 @@ public sealed class BenchmarkScenarioTests
 
     /// <summary>Repeated generation retains keys and tree identity without reusing mutable entities.</summary>
     [Fact]
-    public void RepeatedForestsHaveStableIdentityAndDistinctEntities()
+    public void Build_RepeatedForests_HaveStableIdentityAndDistinctEntities()
     {
         // Arrange
         var scenario = new BenchmarkScenario(30, BenchmarkShape.Balanced, 2, 0);
@@ -81,7 +87,7 @@ public sealed class BenchmarkScenarioTests
 
     /// <summary>A one-hundred-thousand-node chain builds and can be traversed without recursive setup.</summary>
     [Fact]
-    public void DeepForestSupportsOneHundredThousandNodes()
+    public void Build_DeepForest_SupportsOneHundredThousandNodes()
     {
         // Arrange
         const int nodes = 100000;
@@ -114,7 +120,7 @@ public sealed class BenchmarkScenarioTests
     [InlineData(20, -1, 0, BenchmarkShape.Balanced)]
     [InlineData(20, 1, -1, BenchmarkShape.Balanced)]
     [InlineData(20, 1, 0, (BenchmarkShape)99)]
-    public void InvalidScenarioCannotBuildForest(
+    public void Build_InvalidScenario_CannotBuildForest(
         int nodes,
         int trees,
         int tracked,

@@ -7,7 +7,7 @@ public abstract partial class EnterpriseTests
     /// </summary>
     /// <returns>A task that completes after verifying both failures and the caller's final rollback.</returns>
     [Fact]
-    public async Task SavepointRollbackFailurePreservesBothExceptions()
+    public async Task RebuildAsync_SavepointRollbackFailure_PreservesBothExceptions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -16,7 +16,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe { FailSecondNodeUpdate = true };
@@ -55,7 +55,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that owned-transaction rollback failure does not hide the operation error.</summary>
     /// <returns>A task that completes after checking aggregated failures and disposal rollback.</returns>
     [Fact]
-    public async Task OwnedRollbackFailurePreservesBothExceptionsAndDisposesTransaction()
+    public async Task RebuildAsync_OwnedRollbackFailure_PreservesBothExceptionsAndDisposesTransaction()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -64,7 +64,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var commands = new EnterpriseProbe { FailSecondNodeUpdate = true };

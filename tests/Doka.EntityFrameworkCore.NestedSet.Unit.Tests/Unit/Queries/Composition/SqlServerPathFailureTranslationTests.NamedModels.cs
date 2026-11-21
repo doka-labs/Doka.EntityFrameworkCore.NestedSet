@@ -9,7 +9,7 @@ public sealed partial class SqlServerPathFailureTranslationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NamedShadowRolesKeepOneCompletedFailureRelation(
+    public async Task FencedRelations_NamedShadowRoles_KeepOneCompletedFailureRelation(
         bool scoped
     )
     {
@@ -56,7 +56,7 @@ public sealed partial class SqlServerPathFailureTranslationTests
             .ToQueryString();
 
         var fenced = FencedRelations(sql);
-        output.WriteLine(sql);
+        _output.WriteLine(sql);
 
         // Assert
         AssertUncorrelated(Assert.Single(fenced));
@@ -77,10 +77,13 @@ public sealed partial class SqlServerPathFailureTranslationTests
     /// <summary>
     /// Maps two independent property bags with renamed shadow roles and native converted tree storage.
     /// </summary>
-    private sealed class NamedPathContext(
-        DbContextOptions<NamedPathContext> options
-    ) : DbContext(options)
+    private sealed class NamedPathContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public NamedPathContext(
+            DbContextOptions<NamedPathContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

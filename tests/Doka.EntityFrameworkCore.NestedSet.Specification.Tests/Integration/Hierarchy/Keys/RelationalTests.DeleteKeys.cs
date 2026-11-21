@@ -7,7 +7,7 @@ public abstract partial class RelationalTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GuidDeletionPreservesTypedParentSemantics(
+    public async Task DeleteSubtreeAsync_GuidDeletion_PreservesTypedParentSemantics(
         bool subtree
     )
     {
@@ -98,7 +98,7 @@ public abstract partial class RelationalTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StringDeletionResolvesTheCanonicalParent(
+    public async Task DeleteSubtreeAsync_StringDeletion_ResolvesTheCanonicalParent(
         bool subtree
     )
     {

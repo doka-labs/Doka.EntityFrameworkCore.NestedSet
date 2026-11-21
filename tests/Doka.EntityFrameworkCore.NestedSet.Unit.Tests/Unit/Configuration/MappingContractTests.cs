@@ -5,7 +5,7 @@ public sealed class MappingContractTests
 {
     /// <summary>Verifies that a failing callback leaves neither partial annotations nor indexes behind.</summary>
     [Fact]
-    public void FailedBuilderCallbackLeavesAnnotationsUnchanged()
+    public void HasNestedSet_FailedBuilderCallback_LeavesAnnotationsUnchanged()
     {
         // Arrange
         var model = new ModelBuilder();
@@ -42,7 +42,7 @@ public sealed class MappingContractTests
 
     /// <summary>Verifies that incomplete configuration leaves existing annotations and indexes unchanged.</summary>
     [Fact]
-    public void IncompleteBuilderConfigurationLeavesAnnotationsUnchanged()
+    public void HasNestedSet_IncompleteBuilderConfiguration_LeavesAnnotationsUnchanged()
     {
         // Arrange
         var model = new ModelBuilder();
@@ -74,7 +74,7 @@ public sealed class MappingContractTests
     /// Verifies structural sibling predicates use the model key collation for stored parent comparisons.
     /// </summary>
     [Fact]
-    public void StructuralSiblingPredicateUsesModelKeyCollation()
+    public void Siblings_StructuralSiblingPredicate_UsesModelKeyCollation()
     {
         // Arrange
         using var context = ContractModels.CreateVariantContext("model-collation");
@@ -95,7 +95,7 @@ public sealed class MappingContractTests
 
     /// <summary>Verifies that a global query filter remains a supported composable result boundary.</summary>
     [Fact]
-    public void GlobalQueryFilterIsAccepted()
+    public void ForScope_GlobalQueryFilter_IsAccepted()
     {
         // Arrange
         using var context = ContractModels.CreateVariantContext("filter");
@@ -115,7 +115,7 @@ public sealed class MappingContractTests
     [InlineData("converted-scope")]
     [InlineData("inheritance")]
     [InlineData("shared-table")]
-    public void SupportedAdvancedMappingIsAccepted(
+    public void ForScope_SupportedAdvancedMapping_IsAccepted(
         string variant
     )
     {
@@ -153,7 +153,7 @@ public sealed class MappingContractTests
     [InlineData("required-parent")]
     [InlineData("cascade")]
     [InlineData("split")]
-    public async Task UnsupportedIntegerKeyMappingIsRejected(
+    public async Task InsertRootAsync_UnsupportedIntegerKeyMapping_IsRejected(
         string variant
     )
     {
@@ -177,7 +177,7 @@ public sealed class MappingContractTests
     [Theory]
     [InlineData("nullable-scope")]
     [InlineData("parent-collation-without-key-collation")]
-    public async Task UnsupportedStringKeyMappingIsRejected(
+    public async Task InsertRootAsync_UnsupportedStringKeyMapping_IsRejected(
         string variant
     )
     {
@@ -196,7 +196,7 @@ public sealed class MappingContractTests
 
     /// <summary>Verifies that keyless entity types fail with an identity-specific diagnostic.</summary>
     [Fact]
-    public async Task KeylessMappingHasActionableDiagnostic()
+    public async Task InsertRootAsync_KeylessMapping_HasActionableDiagnostic()
     {
         // Arrange
         await using var context = ContractModels.CreateVariantContext("keyless");
@@ -214,7 +214,7 @@ public sealed class MappingContractTests
 
     /// <summary>Verifies that structural columns split across tables fail with a storage-specific diagnostic.</summary>
     [Fact]
-    public async Task DistributedStructureHasActionableDiagnostic()
+    public async Task InsertRootAsync_DistributedStructure_HasActionableDiagnostic()
     {
         // Arrange
         await using var context = ContractModels.CreateVariantContext("split");

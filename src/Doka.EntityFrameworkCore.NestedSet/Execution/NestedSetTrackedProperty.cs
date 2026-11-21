@@ -77,6 +77,7 @@ internal static class NestedSetTrackedProperty
     }
 
     /// <summary>Keeps scalar reads typed while retaining EF's member/model conversion semantics.</summary>
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     private sealed class ChangeReader<TValue> : ChangeReader
     {
         private readonly ValueComparer _comparer;

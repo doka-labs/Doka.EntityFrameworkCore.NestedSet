@@ -15,12 +15,13 @@ public abstract class BulkOrderingTests : ProviderTest
 
     /// <summary>Imported sibling groups merge with persisted siblings while retaining hierarchical preorder.</summary>
     [Fact]
-    public async Task StrictForestMergesSubtreesInConfiguredOrder()
+    public async Task InsertSubtreeAsync_StrictForest_MergesSubtreesInConfiguredOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = context
             .NestedSet<OrderingNode>()
@@ -105,13 +106,13 @@ public abstract class BulkOrderingTests : ProviderTest
 
     /// <summary>Flexible import follows native predecessors without reversing existing manual placements.</summary>
     [Fact]
-    public async Task FlexibleForestPreservesExistingManualRelativeOrder()
+    public async Task InsertSubtreeAsync_FlexibleForest_PreservesExistingManualRelativeOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible");
+            mode: "Flexible");
 
         var tree = context
             .NestedSet<OrderingNode>()
@@ -177,13 +178,13 @@ public abstract class BulkOrderingTests : ProviderTest
 
     /// <summary>Converted sort values use storage order rather than incompatible CLR enum ordinals.</summary>
     [Fact]
-    public async Task ConvertedDomainRuleUsesDatabaseRepresentation()
+    public async Task InsertForestAsync_ConvertedDomainRule_UsesDatabaseRepresentation()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Converted");
+            mode: "Converted");
 
         var tree = context
             .NestedSet<OrderingNode>()

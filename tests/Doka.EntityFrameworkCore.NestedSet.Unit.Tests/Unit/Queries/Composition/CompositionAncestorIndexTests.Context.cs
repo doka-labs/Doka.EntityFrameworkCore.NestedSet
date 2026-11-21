@@ -3,10 +3,13 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class CompositionAncestorIndexTests
 {
     /// <summary>Configures the same exact mapped roles with an explicitly named optional generated Boolean.</summary>
-    private sealed class IndexCompositionContext(
-        DbContextOptions<IndexCompositionContext> options
-    ) : DbContext(options)
+    private sealed class IndexCompositionContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public IndexCompositionContext(
+            DbContextOptions<IndexCompositionContext> options
+        ) : base(options) { }
+
         /// <summary>Gets the number of ordinary fact-property evaluations performed by EF at execution.</summary>
         internal int FactGetterCalls { get; private set; }
 

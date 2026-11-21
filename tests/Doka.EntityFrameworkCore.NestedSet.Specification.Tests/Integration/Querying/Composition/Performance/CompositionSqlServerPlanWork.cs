@@ -5,7 +5,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Retains cumulative SQL Server iterator output and reads before residual filtering.</summary>
 /// <param name="MaximumOperatorTuples">The largest actual output summed across one operator's threads.</param>
-/// <param name="MaximumOperatorRowsRead">The largest reported pre-filter read count across one operator's threads.</param>
+/// <param name="MaximumOperatorRowsRead">
+/// The largest reported pre-filter read count across one operator's threads.
+/// </param>
 /// <param name="ExecutedOperators">The number of operators with at least one actual execution.</param>
 internal readonly record struct CompositionSqlServerPlanWork(
     double MaximumOperatorTuples,
@@ -15,7 +17,9 @@ internal readonly record struct CompositionSqlServerPlanWork(
 {
     /// <summary>Rejects population replay using the existing independent path-work allowance.</summary>
     /// <param name="plan">The actual native XML plan of the measured statement.</param>
-    /// <param name="budget">The unchanged cardinality-derived allowance for one population pass and path evidence.</param>
+    /// <param name="budget">
+    /// The unchanged cardinality-derived allowance for one population pass and path evidence.
+    /// </param>
     /// <param name="profile">The synthetic profile retained with its native plan.</param>
     internal static void AssertWithinBudget(
         string plan,
@@ -31,7 +35,8 @@ internal readonly record struct CompositionSqlServerPlanWork(
             work.MaximumOperatorTuples <= budget.OperatorTuples
             && work.MaximumOperatorRowsRead <= budget.OperatorTuples,
             FormattableString.Invariant(
-                $"{profile}: output={work.MaximumOperatorTuples}; reads={work.MaximumOperatorRowsRead}; maximum={budget.OperatorTuples}."));
+                $"{profile}: output={work.MaximumOperatorTuples}; reads={
+                    work.MaximumOperatorRowsRead}; maximum={budget.OperatorTuples}."));
     }
 
     /// <summary>Reads actual Showplan counters without mistaking estimates or repeated executions for rows.</summary>

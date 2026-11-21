@@ -28,7 +28,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
     [InlineData(128)]
     [InlineData(2_048)]
     [InlineData(20_000)]
-    public async Task FullCaptureAndExceptionalRestoreHaveLinearGraphAllocation(
+    public async Task Capture_FullCaptureAndExceptionalRestore_HaveLinearGraphAllocation(
         int rows
     )
     {
@@ -199,7 +199,7 @@ public sealed partial class ComplexTopologyRollbackAllocationTests
         EntityEntry<TopologyPayload> entry
     )
     {
-        var result = new List<ScalarObservation>();
+        List<ScalarObservation> result = [];
 
         void Add(
             PropertyEntry property

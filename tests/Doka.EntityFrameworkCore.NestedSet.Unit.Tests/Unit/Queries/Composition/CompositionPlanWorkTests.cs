@@ -5,7 +5,7 @@ public sealed class CompositionPlanWorkTests
 {
     /// <summary>Rejects the actual selective UNION population materialization from the ten-million fixture.</summary>
     [Fact]
-    public void SelectivePopulationMaterializationExceedsIndependentPairBudget()
+    public void ReadMySqlTree_SelectivePopulationMaterialization_ExceedsIndependentPairBudget()
     {
         // Arrange
         const string plan = "-> Union materialize with deduplication (cost=437246 rows=33653) "
@@ -23,7 +23,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Rejects the actual broad range join's hundred-million candidate amplification.</summary>
     [Fact]
-    public void BroadCartesianCandidateWorkExceedsIndependentPairBudget()
+    public void ReadMySqlTree_BroadCartesianCandidateWork_ExceedsIndependentPairBudget()
     {
         // Arrange
         const string plan = "-> Inner hash join (no condition) (cost=1.13e+6 rows=0.0418) "
@@ -43,7 +43,7 @@ public sealed class CompositionPlanWorkTests
     [Theory]
     [InlineData(1, 100, 100, 100)]
     [InlineData(1_000, 100_000, 100_999, 100_999)]
-    public void BoundedRequestedWorkFitsIndependentPairBudget(
+    public void ReadMySqlTree_BoundedRequestedWork_FitsIndependentPairBudget(
         int anchors,
         int facts,
         long contributions,
@@ -64,7 +64,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Counts repeated invalid-set scans rather than only its once-built population.</summary>
     [Fact]
-    public void DenseInvalidSetRescansExceedSelectedPathEvidenceBudget()
+    public void ReadMySqlTree_DenseInvalidSet_RescansExceedSelectedPathEvidenceBudget()
     {
         // Arrange
         const string plan = "-> Table scan on bad (actual time=1..2 rows=50000 loops=100)\n"
@@ -83,7 +83,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Uses actual averaged rows and ignores estimates and iterators that never ran.</summary>
     [Fact]
-    public void ActualFractionalRowsAreMultipliedByLoops()
+    public void ReadMySqlTree_ActualFractionalRows_AreMultipliedByLoops()
     {
         // Arrange
         const string plan = "-> Lookup (cost=1e+20 rows=1e+20) (actual time=1..2 rows=0.25 loops=40)\n"
@@ -98,7 +98,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Invalidation signals do not misreport their driving rows as newly materialized tuples.</summary>
     [Fact]
-    public void InvalidationIteratorIsNotCountedAsMaterialization()
+    public void ReadMySqlTree_InvalidationIterator_IsNotCountedAsMaterialization()
     {
         // Arrange
         const string plan = "-> Invalidate materialized tables (row from t) "
@@ -115,7 +115,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>All executed iterator outputs contribute their displayed average rows multiplied by loops.</summary>
     [Fact]
-    public void IteratorOutputSumIncludesEveryExecutedStageAndItsLoops()
+    public void ReadMySqlTree_IteratorOutputSum_IncludesEveryExecutedStageAndItsLoops()
     {
         // Arrange
         const string plan = """
@@ -136,7 +136,7 @@ public sealed class CompositionPlanWorkTests
     /// Individually finite observations cannot silently produce an infinite aggregate allowance check.
     /// </summary>
     [Fact]
-    public void FiniteIteratorOutputsCannotOverflowTheirAggregate()
+    public void ReadMySqlTree_FiniteIteratorOutputs_CannotOverflowTheirAggregate()
     {
         // Arrange
         const string plan = """
@@ -156,7 +156,7 @@ public sealed class CompositionPlanWorkTests
     [Theory]
     [InlineData(0, false)]
     [InlineData(1_000, true)]
-    public void ReplayCompletionUsesRootOutputInsteadOfLargestChildOutput(
+    public void ReadMySqlTree_ReplayCompletion_UsesRootOutputInsteadOfLargestChildOutput(
         int rootRows,
         bool completed
     )
@@ -176,7 +176,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Rejects repeated full-tree prefixes even when ICP conceals rejected index entries.</summary>
     [Fact]
-    public void RepeatedScopeOnlyLookupsExposeSearchDomainAmplification()
+    public void FullTreePrefixLoops_RepeatedScopeOnlyLookups_ExposeSearchDomainAmplification()
     {
         // Arrange
         const string plan = "-> Index lookup on t0 using IX_NestedSet_123 (Tree=1, TreeId=0x00), "
@@ -195,7 +195,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Permits finite range access, keyed lookup, and a once-read whole-tree prefix.</summary>
     [Fact]
-    public void FiniteAndOnceReadAccessPathsAreNotRejectedAsRepeatedFullPrefixes()
+    public void FullTreePrefixLoops_FiniteAndOnceReadAccessPaths_AreNotRejectedAsRepeatedFullPrefixes()
     {
         // Arrange
         const string plan = "-> Index range scan on t using IX_NestedSet_123 "
@@ -215,7 +215,7 @@ public sealed class CompositionPlanWorkTests
 
     /// <summary>Scope-only range access cannot masquerade as a finite coordinate seek through ICP.</summary>
     [Fact]
-    public void EqualityOnlyRangeWithIndexConditionStillExposesWholePrefixDomain()
+    public void FullTreePrefixLoops_EqualityOnlyRangeWithIndexConditionStill_ExposesWholePrefixDomain()
     {
         // Arrange
         const string plan = "-> Index range scan on t2 using IX_NestedSet_123 "
@@ -239,7 +239,7 @@ public sealed class CompositionPlanWorkTests
     [InlineData("-> Materialize (cost=1 rows=100) (never executed)")]
     [InlineData("-> Scan (actual time=1..2 rows=NaN loops=1)")]
     [InlineData("-> Scan (actual time=1..2 rows=100)")]
-    public void MissingOrMalformedRuntimeEvidenceIsRejected(
+    public void ReadMySqlTree_MissingOrMalformedRuntimeEvidence_IsRejected(
         string plan
     )
     {

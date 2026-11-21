@@ -9,7 +9,7 @@ public sealed partial class QueryPlanReplayTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailureEvidenceRetainsOriginalQueryAfterFixtureCommands(
+    public async Task RetainFailureAsync_FailureEvidence_RetainsOriginalQueryAfterFixtureCommands(
         bool diagnosticFails
     )
     {
@@ -42,7 +42,6 @@ public sealed partial class QueryPlanReplayTests
                 profile,
                 probe,
                 original,
-                cancellationToken: TestContext.Current.CancellationToken,
                 1);
 
             var evidence = await File.ReadAllTextAsync(path, CancellationToken.None);

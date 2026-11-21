@@ -6,7 +6,7 @@ public sealed partial class SignalReportValidationTests
 {
     /// <summary>Catalog validation retains compact scalar evidence instead of every materialized DTO.</summary>
     [Fact]
-    public async Task CatalogReaderReleasesConsumedRowsBeforeEof()
+    public async Task RequireCatalogAsync_CatalogReader_ReleasesConsumedRowsBeforeEof()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request() with { Criteria = [] });
@@ -33,7 +33,7 @@ public sealed partial class SignalReportValidationTests
 
     /// <summary>Aggregate indexing keeps only tuple identities and scalar sums until the final grid exists.</summary>
     [Fact]
-    public async Task GridReaderReleasesConsumedRowsBeforeEof()
+    public async Task CreateGridAsync_GridReader_ReleasesConsumedRowsBeforeEof()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -52,11 +52,19 @@ public sealed partial class SignalReportValidationTests
     }
 
     /// <summary>Generates fresh DTOs and observes retention only after clearing the reader's current row.</summary>
-    private sealed class RetentionReader<T>(
-        Func<int, T> create
-    ) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
+    private sealed class RetentionReader<T> : IAsyncEnumerable<T>, IAsyncEnumerator<T>
         where T : class
     {
+        private readonly Func<int, T> _create;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public RetentionReader(
+            Func<int, T> create
+        )
+        {
+            _create = create;
+        }
+
         private readonly WeakReference<T>[] _rows = new WeakReference<T>[256];
         private int _index;
 
@@ -93,7 +101,7 @@ public sealed partial class SignalReportValidationTests
                 return ValueTask.FromResult(false);
             }
 
-            Current = create(_index);
+            Current = _create(_index);
             _rows[_index++] = new WeakReference<T>(Current);
 
             return ValueTask.FromResult(true);

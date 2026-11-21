@@ -19,13 +19,13 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task OwnerPredicatesKeepWarmShapeForEqualAndDistinctScalars(
+    public async Task Build_OwnerPredicates_KeepWarmShapeForEqualAndDistinctScalars(
         string engine,
         bool nearest
     )
     {
         // Arrange
-        var compilations = new List<string>();
+        List<string> compilations = [];
         var boundary = new CompositionIoBoundary();
         var options = ContextOptions(engine, boundary)
             .LogTo(compilations.Add, [CoreEventId.QueryCompilationStarting]);

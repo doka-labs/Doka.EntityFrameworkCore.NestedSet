@@ -72,8 +72,13 @@ internal static partial class UserGroupChainReference
 
         var origins = new List<SupervisorResolution>(summaries.Count);
 
-        foreach (var summary in summaries)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var summaryIndex = 0; summaryIndex < summaries.Count; summaryIndex++)
         {
+            var summary = summaries[summaryIndex];
+
             if (selection.Kind != SupervisorSelectionKind.All
                 && summary.Count > 1)
             {
@@ -112,9 +117,8 @@ internal static partial class UserGroupChainReference
         selection.Validate();
         var candidates = SupervisorQueries.Candidates(context, tenantId, request);
         var pool = SelectPeople(candidates, selection);
+        var people = CountPeople(pool);
         var source = request.SourceUserId;
-        var start = request.StartGroupId;
-        var day = request.OnDay;
         var role = request.Roles switch
         {
             MembershipRoleFilter local => (Guid?)local.RoleId,
@@ -195,48 +199,17 @@ internal static partial class UserGroupChainReference
                 LeadershipPriority = 0,
             });
 
-        var origins = context
-            .UserGroupMemberships
-            .Where(member => member.TenantId == tenantId
-                && member.UserId == source
-                && (start == null || member.UserGroupId == start)
-                && context.Users.Any(user => user.TenantId == tenantId && user.Id == source)
-                && (day == null
-                    || ((member.FromDate == null || member.FromDate <= day)
-                        && (member.ToDate == null || member.ToDate >= day))))
-            .Join(
-                context.Groups.Where(group => group.TenantId == tenantId),
-                member => member.UserGroupId,
-                group => group.Id,
-                (member, group) => new ReferenceRow
-                {
-                    Kind = 1,
-                    CatalogValid = false,
-                    StartGroupId = group.Id,
-                    StartTreeId = group.TreeId,
-                    Count = pool
-                        .Where(person => person.StartGroupId == group.Id)
-                        .Select(person => person.CandidateUserId)
-                        .Distinct()
-                        .LongCount(),
-                    FoundGroupId = 0,
-                    CandidateUserId = 0,
-                    Distance = 0,
-                    LeadershipPriority = 0,
-                });
+        var origins = OriginRows(context, tenantId, request, people);
 
         // WHY: Reusing the All reader and reducing after materialization changes both memory behavior and
         // low-budget ambiguity into overflow. Reduce distinct people on the server before any evidence is read.
         var selected = selection.Kind == SupervisorSelectionKind.All
             ? candidates
-            : candidates.Where(row => pool
-                    .Where(person => person.StartGroupId == row.StartGroupId)
-                    .Select(person => person.CandidateUserId)
-                    .Distinct()
-                    .LongCount()
-                == 1
-                && pool.Any(person => person.StartGroupId == row.StartGroupId
-                    && person.CandidateUserId == row.CandidateUserId));
+            : candidates.Join(
+                people.Where(person => person.Count == 1),
+                row => new { row.StartGroupId, row.CandidateUserId },
+                person => new { person.StartGroupId, CandidateUserId = person.PersonId },
+                (row, person) => row);
 
         var evidence = selected.Select(row => new ReferenceRow
         {

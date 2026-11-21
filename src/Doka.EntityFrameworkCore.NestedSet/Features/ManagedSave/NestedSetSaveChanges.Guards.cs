@@ -63,8 +63,13 @@ internal static partial class NestedSetSaveChanges
     {
         var result = new Dictionary<IUpdateEntry, CandidatePlan>(candidates.Count, ReferenceEqualityComparer.Instance);
 
-        foreach (var entry in candidates)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int entryIndex = 0, entryCount = candidates.Count; entryIndex < entryCount; entryIndex++)
         {
+            var entry = candidates[entryIndex];
+
             var update = NestedSetInsertionContract.Instance.Entry(entry);
 
             result.Add(update, CandidatePlan.Capture(update, entry.Entity));

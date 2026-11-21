@@ -20,7 +20,7 @@ public sealed class TrackerMembershipDeltaAllocationTests
     [Theory]
     [InlineData(1)]
     [InlineData(8192)]
-    public async Task RecordingOneNativeAdditionHasFixedAllocation(
+    public async Task RecordPersistedAddition_RecordingOneNativeAddition_HasFixedAllocation(
         int width
     )
     {

@@ -12,9 +12,11 @@ public sealed class QueryPlanReplayTests : ProviderTest,
         ProviderFixture<RelationalFixture, MySqlEngine> fixture
     ) : base(fixture) { }
 
-    /// <summary>Successful instrumented execution retains JSON and actual TREE evidence without changing EF options.</summary>
+    /// <summary>
+    /// Successful instrumented execution retains JSON and actual TREE evidence without changing EF options.
+    /// </summary>
     [Fact]
-    public async Task CompletedReplayRetainsActualExecutionEvidence()
+    public async Task ExplainAsync_Completed_ReplayRetainsActualExecutionEvidence()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -39,9 +41,11 @@ public sealed class QueryPlanReplayTests : ProviderTest,
         Assert.Equal(originalTimeout, context.Database.GetCommandTimeout());
     }
 
-    /// <summary>An explicit short observation budget cannot turn interrupted TREE output into complete evidence.</summary>
+    /// <summary>
+    /// An explicit short observation budget cannot turn interrupted TREE output into complete evidence.
+    /// </summary>
     [Fact]
-    public async Task InterruptedReplayCannotReturnPartialExecutionEvidence()
+    public async Task ExplainAsync_Interrupted_ReplayCannotReturnPartialExecutionEvidence()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(

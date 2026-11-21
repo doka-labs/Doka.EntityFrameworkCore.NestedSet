@@ -6,7 +6,9 @@ public abstract partial class AncestorIndexQueryTests
     // prevent one mapping probe from changing the rows another case will later query.
     private static int s_mappingIdentity = 500_000;
 
-    /// <summary>Opted-in mapped variants execute the indexed source strategy without CLR property or equality assumptions.</summary>
+    /// <summary>
+    /// Opted-in mapped variants execute the indexed source strategy without CLR property or equality assumptions.
+    /// </summary>
     /// <param name="shape">The finalized EF mapping whose exact alias must be retained.</param>
     /// <param name="includeSelf">Whether equal-bound leaf owners participate.</param>
     [Theory]
@@ -30,7 +32,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData("table-split", true)]
     [InlineData("entity-split", false)]
     [InlineData("entity-split", true)]
-    public async Task IndexedAncestorsExecuteAgainstExactMappedRoles(
+    public async Task OrderBy_IndexedAncestors_ExecuteAgainstExactMappedRoles(
         string shape,
         bool includeSelf
     )
@@ -55,7 +57,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new CompositionShadowNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "converted" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -63,7 +66,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new CompositionConvertedNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "binary" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -71,7 +75,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new BinaryNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "alternate" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -79,7 +84,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 depth => new CompositeKeyNode { RowId = first + 100 + depth },
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "fields" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -87,7 +93,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new FieldNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "named" => await SeedNamedQueriesAsync(
                 context,
                 tree,
@@ -104,7 +111,8 @@ public abstract partial class AncestorIndexQueryTests
                 static depth => depth == 1
                     ? new TphMetricNode()
                     : new TphFolderNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "tpc" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -112,7 +120,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new TpcFolderNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "table-split" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -120,7 +129,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new TableSplitNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             "entity-split" => await SeedMappedQueryAsync(
                 context,
                 tree,
@@ -128,7 +138,8 @@ public abstract partial class AncestorIndexQueryTests
                 first,
                 includeSelf,
                 static _ => new EntitySplitNode(),
-                cancellationToken: TestContext.Current.CancellationToken),
+                cancellationToken: TestContext.Current.CancellationToken,
+                name: null),
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
 
@@ -155,7 +166,7 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsExecuteAgainstTptBaseOwner(
+    public async Task OrderBy_IndexedAncestors_ExecuteAgainstTptBaseOwner(
         bool includeSelf
     )
     {
@@ -179,7 +190,8 @@ public abstract partial class AncestorIndexQueryTests
             static depth => depth == 1
                 ? new TptMetricNode()
                 : new TptFolderNode(),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            name: null);
 
         int[] expected = includeSelf
             ? [0, 1, 2]
@@ -217,7 +229,7 @@ public abstract partial class AncestorIndexQueryTests
             includeSelf,
             static _ => new Dictionary<string, object?>(),
             cancellationToken: cancellationToken,
-            AncestorIndexMappedContext.Second);
+            name: AncestorIndexMappedContext.Second);
 
         // WHY: Equal keys, TreeId and coordinates challenge exact named mapping identity. Different
         // stored depths make accidentally reading the other physical table observable in the result.
@@ -238,10 +250,12 @@ public abstract partial class AncestorIndexQueryTests
             includeSelf,
             static _ => new Dictionary<string, object?>(),
             cancellationToken: cancellationToken,
-            AncestorIndexMappedContext.First);
+            name: AncestorIndexMappedContext.First);
     }
 
-    /// <summary>Assigns exact finalized mapped roles, including shadow and converter-backed values, before tracking.</summary>
+    /// <summary>
+    /// Assigns exact finalized mapped roles, including shadow and converter-backed values, before tracking.
+    /// </summary>
     private static async Task<IQueryable<int>> SeedMappedQueryAsync<TEntity>(
         DbContext context,
         Guid tree,
@@ -249,8 +263,8 @@ public abstract partial class AncestorIndexQueryTests
         int first,
         bool includeSelf,
         Func<int, TEntity> create,
-        CancellationToken cancellationToken,
-        string? name = null
+        string? name,
+        CancellationToken cancellationToken
     )
         where TEntity : class
     {
@@ -344,7 +358,9 @@ public abstract partial class AncestorIndexQueryTests
                 (source, owner, distance) => EF.Property<int>(owner, depthName));
     }
 
-    /// <summary>Creates independent but database-equal parent/principal arrays and an actual converted key zero.</summary>
+    /// <summary>
+    /// Creates independent but database-equal parent/principal arrays and an actual converted key zero.
+    /// </summary>
     private static object MappedKey(
         Type type,
         int first,

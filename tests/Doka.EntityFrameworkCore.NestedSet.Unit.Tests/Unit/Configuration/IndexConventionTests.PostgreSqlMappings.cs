@@ -12,7 +12,7 @@ public sealed partial class IndexConventionTests
     [InlineData("Tpt", "TptNodes")]
     [InlineData("TableSplit", "TableSplitNodes")]
     [InlineData("EntitySplit", "EntitySplitStructure")]
-    public void PostgreSqlRootIndexesStayInStructuralTable(
+    public void GetDifferences_PostgreSqlRootIndexes_StayInStructuralTable(
         string mapping,
         string table
     )

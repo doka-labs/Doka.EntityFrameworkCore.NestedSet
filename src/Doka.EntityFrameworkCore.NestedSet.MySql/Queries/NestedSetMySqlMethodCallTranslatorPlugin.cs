@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.MySql;
 
 /// <summary>Composes native hierarchy comparisons with the provider's existing SQL translators.</summary>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTranslatorPlugin
 {
     /// <summary>Creates a translator using the provider's SQL expression and type mapping services.</summary>
@@ -21,8 +22,18 @@ internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTran
     public IEnumerable<IMethodCallTranslator> Translators { get; }
 
     /// <summary>Keeps dynamic point ranges available to MariaDB for each completed source envelope.</summary>
-    private sealed class NativePointRangeTranslator(ISqlExpressionFactory sql) : IMethodCallTranslator
+    private sealed class NativePointRangeTranslator : IMethodCallTranslator
     {
+        private readonly ISqlExpressionFactory _sql;
+
+        /// <summary>Retains the provider SQL factory used for dynamic point-range comparisons.</summary>
+        internal NativePointRangeTranslator(
+            ISqlExpressionFactory sql
+        )
+        {
+            _sql = sql;
+        }
+
         /// <inheritdoc />
         public SqlExpression? Translate(
             SqlExpression? instance,
@@ -43,18 +54,30 @@ internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTran
             // WHY: An equality or constant prefix makes MariaDB fix a broad ref/index plan before
             // the source-derived bounds are available. Both native comparisons retain a closed
             // point while allowing dynamic range planning, including native collations/converters.
-            var point = sql.ApplyTypeMapping(arguments[1], mapping);
+            var point = _sql.ApplyTypeMapping(arguments[1], mapping);
 
-            return sql.AndAlso(sql.GreaterThanOrEqual(arguments[0], point), sql.LessThanOrEqual(arguments[0], point));
+            return _sql.AndAlso(
+                _sql.GreaterThanOrEqual(arguments[0], point),
+                _sql.LessThanOrEqual(arguments[0], point));
         }
     }
 
     /// <summary>Preserves column collation while isolating candidate equality from constant folding.</summary>
-    private sealed class NativeScopeTranslator(
-        ISqlExpressionFactory sql,
-        RelationalTypeMapping integerMapping
-    ) : IMethodCallTranslator
+    private sealed class NativeScopeTranslator : IMethodCallTranslator
     {
+        private readonly ISqlExpressionFactory _sql;
+        private readonly RelationalTypeMapping _integerMapping;
+
+        /// <summary>Retains the SQL factory and integer mapping needed by native string comparisons.</summary>
+        internal NativeScopeTranslator(
+            ISqlExpressionFactory sql,
+            RelationalTypeMapping integerMapping
+        )
+        {
+            _sql = sql;
+            _integerMapping = integerMapping;
+        }
+
         /// <inheritdoc />
         public SqlExpression? Translate(
             SqlExpression? instance,
@@ -76,15 +99,15 @@ internal sealed class NestedSetMySqlMethodCallTranslatorPlugin : IMethodCallTran
             // WHY: MySQL merges repeated column equalities and may compare their parameters under the connection
             // collation. STRCMP retains the column's native comparison, including inherited collations and padding,
             // while the separate request equality remains available for indexed lookup.
-            var comparison = sql.Function(
+            var comparison = _sql.Function(
                 "STRCMP",
-                [arguments[0], sql.ApplyTypeMapping(arguments[1], mapping)],
+                [arguments[0], _sql.ApplyTypeMapping(arguments[1], mapping)],
                 nullable: true,
                 argumentsPropagateNullability: [true, true],
                 typeof(int),
-                integerMapping);
+                _integerMapping);
 
-            return sql.Equal(comparison, sql.Constant(0, integerMapping));
+            return _sql.Equal(comparison, _sql.Constant(0, _integerMapping));
         }
     }
 }

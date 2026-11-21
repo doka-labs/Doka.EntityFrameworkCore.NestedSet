@@ -4,7 +4,7 @@ public abstract partial class OrderingQueryShapeTests
 {
     /// <summary>Excludes stale same-scope and foreign aliases according to their persisted scope and bounds.</summary>
     [Fact]
-    public async Task PersistedIntervalsExcludeStaleTrackedAliases()
+    public async Task SaveChangesAsync_PersistedIntervals_ExcludeStaleTrackedAliases()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(

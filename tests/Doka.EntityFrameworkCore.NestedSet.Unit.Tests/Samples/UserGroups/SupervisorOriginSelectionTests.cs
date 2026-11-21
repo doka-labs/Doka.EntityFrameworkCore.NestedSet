@@ -3,13 +3,13 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 /// <summary>
 /// Checks explicit cross-origin person reduction without discarding provenance or inventing fallback.
 /// </summary>
-public sealed class SupervisorOriginSelectionTests
+public sealed partial class SupervisorOriginSelectionTests
 {
     /// <summary>
     /// The same person on separate paths remains one person with all origins and no invented single cursor.
     /// </summary>
     [Fact]
-    public void GlobalUniquePersonRetainsEverySupportingOrigin()
+    public void Across_GlobalUniquePerson_RetainsEverySupportingOrigin()
     {
         // Arrange
         var first = Candidate(7, 21);
@@ -35,7 +35,7 @@ public sealed class SupervisorOriginSelectionTests
     [InlineData(0, "NotFound")]
     [InlineData(1, "Found")]
     [InlineData(2, "Ambiguous")]
-    public void GlobalSelectionDistinguishesPersonCardinality(
+    public void Across_GlobalSelection_DistinguishesPersonCardinality(
         int people,
         string expected
     )
@@ -63,7 +63,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>An ambiguous evaluated path blocks a falsely unique global answer from another origin.</summary>
     [Fact]
-    public void AmbiguousOriginCannotBeHiddenByAnotherUniqueOrigin()
+    public void Across_AmbiguousOrigin_CannotBeHiddenByAnotherUniqueOrigin()
     {
         // Arrange
         var batch = Batch(
@@ -80,7 +80,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>An explicit origin order overrides collection order and technical group identities.</summary>
     [Fact]
-    public void PrioritizedOriginUsesTheApplicationOrder()
+    public void Across_PrioritizedOrigin_UsesTheApplicationOrder()
     {
         // Arrange
         var selected = Candidate(99, 21);
@@ -99,7 +99,7 @@ public sealed class SupervisorOriginSelectionTests
     /// A preferred group absent from the evaluated own memberships does not block the next allowed origin.
     /// </summary>
     [Fact]
-    public void PrioritizedOriginSkipsAbsentMemberships()
+    public void Across_PrioritizedOrigin_SkipsAbsentMemberships()
     {
         // Arrange
         var selected = Candidate(9, 21);
@@ -121,7 +121,7 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData("NotFound")]
     [InlineData("Ambiguous")]
-    public void PreferredPresentOriginDoesNotFallBackAfterFailure(
+    public void Across_PreferredPresentOrigin_DoesNotFallBackAfterFailure(
         string status
     )
     {
@@ -139,7 +139,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>All is not a unique-person proof: multiple people in the preferred origin stay ambiguous.</summary>
     [Fact]
-    public void PreferredAllOriginStillRequiresOneDistinctPerson()
+    public void Across_PreferredAllOriginStill_RequiresOneDistinctPerson()
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21), Candidate(7, 22)), Found(9, Candidate(9, 23)));
@@ -157,7 +157,7 @@ public sealed class SupervisorOriginSelectionTests
     /// Repeated evidence in a preferred All origin stays unique and retains its nearest continuation.
     /// </summary>
     [Fact]
-    public void PreferredAllOriginDeduplicatesPeopleAndRetainsOccurrences()
+    public void Across_PreferredAllOrigin_DeduplicatesPeopleAndRetainsOccurrences()
     {
         // Arrange
         var near = Candidate(7, 21);
@@ -185,7 +185,7 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IncompleteBatchIsNeverReducedToSuccessfulUniqueness(
+    public void Across_IncompleteBatch_IsNeverReducedToSuccessfulUniqueness(
         bool prioritize
     )
     {
@@ -209,7 +209,7 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData("SourceNotFound")]
     [InlineData("NoVisibleMemberships")]
-    public void MissingRequestStatusIsPreserved(
+    public void Across_MissingRequestStatus_IsPreserved(
         string status
     )
     {
@@ -227,7 +227,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>An origin priority permits only explicitly listed own memberships.</summary>
     [Fact]
-    public void NoAllowedOwnMembershipIsNotANotFoundPerson()
+    public void Across_NoAllowed_OwnMembershipIsNotANotFoundPerson()
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21)));
@@ -245,7 +245,7 @@ public sealed class SupervisorOriginSelectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void InvalidOriginPriorityIsRejected(
+    public void Across_InvalidOriginPriority_IsRejected(
         bool repeated
     )
     {
@@ -265,7 +265,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>A null origin priority does not stand for all visible memberships.</summary>
     [Fact]
-    public void MissingOriginPriorityIsRejected()
+    public void Across_MissingOriginPriority_IsRejected()
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21)));
@@ -280,7 +280,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>Unrecognized origin selection cannot silently act like global uniqueness.</summary>
     [Fact]
-    public void UnknownOriginSelectionIsRejected()
+    public void Across_UnknownOriginSelection_IsRejected()
     {
         // Arrange
         var batch = Batch(Found(7, Candidate(7, 21)));
@@ -296,7 +296,7 @@ public sealed class SupervisorOriginSelectionTests
     /// Origin prioritization preserves a previously selected business-priority continuation occurrence.
     /// </summary>
     [Fact]
-    public void PrioritizedOriginPreservesTheSelectedContinuationOccurrence()
+    public void Across_PrioritizedOrigin_PreservesTheSelectedContinuationOccurrence()
     {
         // Arrange
         var nearest = Candidate(7, 21) with
@@ -327,7 +327,7 @@ public sealed class SupervisorOriginSelectionTests
 
     /// <summary>An invalid origin priority is rejected even when the source does not exist.</summary>
     [Fact]
-    public void InvalidPriorityIsRejectedBeforeSourceAbsenceIsReduced()
+    public void Across_InvalidPriority_IsRejectedBeforeSourceAbsenceIsReduced()
     {
         // Arrange
         var batch = new SupervisorResolutionBatch(SupervisorBatchStatus.SourceNotFound, []);
@@ -344,7 +344,7 @@ public sealed class SupervisorOriginSelectionTests
     /// A limited origin cannot become a unique global person even when the batch flag is inconsistent.
     /// </summary>
     [Fact]
-    public void LimitedOriginCannotBecomeAUniquePerson()
+    public void Across_LimitedOrigin_CannotBecomeAUniquePerson()
     {
         // Arrange
         var limited = new SupervisorResolution(SupervisorResolutionStatus.LimitExceeded, 8, [], null);
@@ -357,47 +357,4 @@ public sealed class SupervisorOriginSelectionTests
         Assert.Equal(SupervisorResolutionStatus.LimitExceeded, selected.Status);
         Assert.Empty(selected.Evidence);
     }
-
-    /// <summary>Constructs a completed batch with every explicitly evaluated origin.</summary>
-    /// <param name="origins">The origins retained in their explicit application order.</param>
-    private static SupervisorResolutionBatch Batch(
-        params SupervisorResolution[] origins
-    )
-        => new(SupervisorBatchStatus.Completed, origins);
-
-    /// <summary>Constructs an All-style found origin without asserting unique person selection in advance.</summary>
-    /// <param name="group">The own-membership origin group.</param>
-    /// <param name="evidence">Every candidate occurrence retained for this origin.</param>
-    private static SupervisorResolution Found(
-        int group,
-        params SupervisorCandidate[] evidence
-    ) => new(SupervisorResolutionStatus.Found, group, evidence, null);
-
-    /// <summary>Constructs an evaluated origin that has no supervisor candidates.</summary>
-    /// <param name="group">The evaluated own-membership origin group.</param>
-    private static SupervisorResolution Missing(
-        int group
-    )
-        => new(SupervisorResolutionStatus.NotFound, group, [], null);
-
-    /// <summary>Builds one candidate occurrence with a complete source identity.</summary>
-    /// <param name="group">The own-membership origin group.</param>
-    /// <param name="person">The candidate user identity.</param>
-    private static SupervisorCandidate Candidate(
-        int group,
-        int person
-    ) => new()
-    {
-        TenantId = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-        SourceUserId = 42,
-        StartGroupId = group,
-        StartTreeId = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-        FoundGroupId = group - 1,
-        CandidateUserId = person,
-        Distance = 1,
-        LeadershipPriority = 2,
-    };
-
-    /// <summary>Ensures an unsupported alternative is rejected explicitly.</summary>
-    private sealed record UnknownSelection : AcrossOriginsSelection;
 }

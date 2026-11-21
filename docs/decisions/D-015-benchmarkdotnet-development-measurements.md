@@ -1,7 +1,7 @@
 ---
 id: D-015
 status: implemented
-date: 2026-09-28
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -245,6 +245,8 @@ by recording this decision or its run procedures.
 - 2026-09-29: Limited the Debug launcher rejection to actual measurements; untimed diagnostics and their regression suite also run in Debug for Rider diagnosis.
 - 2026-11-03: Status changed from accepted to implemented.
 - 2026-11-03: Reconciled status with the existing BenchmarkDotNet implementation and the successful benchmark contract job in RC run 41014625971. Recorded the status correction today without changing the original acceptance date or claiming new benchmark measurements.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

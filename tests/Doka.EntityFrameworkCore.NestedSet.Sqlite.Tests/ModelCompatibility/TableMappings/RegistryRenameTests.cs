@@ -17,17 +17,21 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
 
     /// <summary>Equivalent physical mappings retain one registry table across a CLR type rename.</summary>
     [Fact]
-    public void ClrRenamePreservesPhysicalRegistryName()
+    public void GetEntityTypes_ClrRename_PreservesPhysicalRegistryName()
     {
         // Arrange
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         using var before = new RegistryRenameContext<PreviousFolder>(beforeOptions);
@@ -54,19 +58,23 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
 
     /// <summary>Changing the CLR entity keeps both active and tombstoned registry rows readable.</summary>
     [Fact]
-    public async Task ClrRenameRetainsRegistryLifecycleRows()
+    public async Task GetEntityTypes_ClrRename_RetainsRegistryLifecycleRows()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection, provider => provider.UseNestedSets())
+            .UseSqlite(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection, provider => provider.UseNestedSets())
+            .UseSqlite(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var activeTree = Guid.NewGuid();
@@ -110,19 +118,23 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
 
     /// <summary>An EF table rename preserves active rows and tombstones from the earlier hash rule.</summary>
     [Fact]
-    public async Task LegacyRegistryNameMigratesWithoutLosingLifecycleRows()
+    public async Task RenameTable_LegacyRegistryName_MigratesWithoutLosingLifecycleRows()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(CancellationToken.None);
         var beforeOptions = new DbContextOptionsBuilder<RegistryRenameContext<PreviousFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection, provider => provider.UseNestedSets())
+            .UseSqlite(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var afterOptions = new DbContextOptionsBuilder<RegistryRenameContext<RenamedFolder>>()
             .ConfigureTestWarnings()
-            .UseSqlite(connection, provider => provider.UseNestedSets())
+            .UseSqlite(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         var activeTree = Guid.NewGuid();
@@ -242,10 +254,16 @@ public sealed class RegistryRenameTests : ProviderTest, IClassFixture<ProviderFi
     }
 
     /// <summary>Maps two independently named CLR types to the same physical hierarchy table.</summary>
-    public sealed class RegistryRenameContext<TNode>(DbContextOptions<RegistryRenameContext<TNode>> options)
-        : DbContext(options)
+    public sealed class RegistryRenameContext<TNode>
+        : DbContext
         where TNode : RegistryRenameNode
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public RegistryRenameContext(
+            DbContextOptions<RegistryRenameContext<TNode>> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

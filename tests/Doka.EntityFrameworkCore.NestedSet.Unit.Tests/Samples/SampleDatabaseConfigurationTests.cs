@@ -16,7 +16,7 @@ public sealed class SampleDatabaseConfigurationTests
     [InlineData("signal-lab", "MySql", "nestedset_sample_signal_lab")]
     [InlineData("usergroups", "MariaDb", "nestedset_sample_usergroups")]
     [InlineData("usergroups", "MySql", "nestedset_sample_usergroups")]
-    public async Task ServerEndpointReceivesOnlyTheOwnedDatabase(
+    public async Task Create_ServerEndpoint_ReceivesOnlyTheOwnedDatabase(
         string sample,
         string provider,
         string database
@@ -53,7 +53,7 @@ public sealed class SampleDatabaseConfigurationTests
     [Theory]
     [InlineData("MariaDb")]
     [InlineData("MySql")]
-    public void ExactDatabaseOverrideIsAccepted(
+    public void Create_ExactDatabaseOverride_IsAccepted(
         string provider
     )
     {
@@ -75,7 +75,7 @@ public sealed class SampleDatabaseConfigurationTests
     [InlineData("application")]
     [InlineData("nestedset_sample_signal_lab")]
     [InlineData("NESTEDSET_SAMPLE_FILESYSTEM")]
-    public void ForeignDatabaseOverrideIsRejected(
+    public void Create_ForeignDatabaseOverride_IsRejected(
         string database
     )
     {
@@ -98,7 +98,7 @@ public sealed class SampleDatabaseConfigurationTests
     [InlineData("filesystem", "nestedset_sample_filesystem")]
     [InlineData("signal-lab", "nestedset_sample_signal_lab")]
     [InlineData("usergroups", "nestedset_sample_usergroups")]
-    public async Task SqliteUsesOnlyTheOwnedFilename(
+    public async Task Create_Sqlite_UsesOnlyTheOwnedFilename(
         string sample,
         string database
     )
@@ -135,7 +135,7 @@ public sealed class SampleDatabaseConfigurationTests
 
     /// <summary>Inspection options prevent SQLite from creating or writing the fixed sample file.</summary>
     [Fact]
-    public async Task SqliteInspectionOptionsOpenOnlyAnExistingReadOnlyFile()
+    public async Task CreateOptions_SqliteInspectionOptions_OpenOnlyAnExistingReadOnlyFile()
     {
         // Arrange
         var directory = Path.Combine(Path.GetTempPath(), "nestedset-sample-configuration");
@@ -170,7 +170,7 @@ public sealed class SampleDatabaseConfigurationTests
     [InlineData("Filesystem")]
     [InlineData("../filesystem")]
     [InlineData("application")]
-    public void UnknownSampleIsRejected(
+    public void Create_UnknownSample_IsRejected(
         string sample
     )
     {
@@ -188,7 +188,7 @@ public sealed class SampleDatabaseConfigurationTests
 
     /// <summary>An undefined provider value fails before any connection is created.</summary>
     [Fact]
-    public void UndefinedProviderIsRejected()
+    public void Create_UndefinedProvider_IsRejected()
     {
         // Arrange
         var provider = (SampleProvider)int.MaxValue;

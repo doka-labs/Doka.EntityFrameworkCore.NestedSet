@@ -5,7 +5,7 @@ public sealed class TypedTreeStoreTests
 {
     /// <summary>A mismatched generic tree type fails before any database connection can open.</summary>
     [Fact]
-    public void TreeTypeMismatchIsRejectedBeforeDatabaseAccess()
+    public void Construct_TreeTypeMismatch_IsRejectedBeforeDatabaseAccess()
     {
         // Arrange
         using var context = new BinaryStoreContext();
@@ -27,7 +27,7 @@ public sealed class TypedTreeStoreTests
 
     /// <summary>Cached metadata from another model cannot be bound to the caller's context.</summary>
     [Fact]
-    public void ForeignModelMetadataIsRejectedBeforeDatabaseAccess()
+    public void Construct_ForeignModelMetadata_IsRejectedBeforeDatabaseAccess()
     {
         // Arrange
         using var source = new BinaryStoreContext();
@@ -50,7 +50,7 @@ public sealed class TypedTreeStoreTests
 
     /// <summary>Caller mutation cannot change binary store identities, lock requests, or SQL parameters.</summary>
     [Fact]
-    public void BinaryIdentitiesAreSnapshottedForQueriesAndRegistryLocks()
+    public void LockRequest_BinaryIdentities_AreSnapshottedForQueriesAndRegistryLocks()
     {
         // Arrange
         using var context = new BinaryStoreContext();
@@ -84,7 +84,7 @@ public sealed class TypedTreeStoreTests
 
     /// <summary>A named shared mapping binds its own table and typed property-bag identities.</summary>
     [Fact]
-    public void NamedSharedStoreUsesTheSelectedMapping()
+    public void Construct_NamedSharedStore_UsesTheSelectedMapping()
     {
         // Arrange
         using var context = new BinaryStoreContext();
@@ -109,7 +109,7 @@ public sealed class TypedTreeStoreTests
 
     /// <summary>Same-model metadata cannot select another hierarchy with an incompatible entity type.</summary>
     [Fact]
-    public void DifferentHierarchyMetadataIsRejectedAfterCacheWarmup()
+    public void Construct_DifferentHierarchyMetadata_IsRejectedAfterCacheWarmup()
     {
         // Arrange
         using var context = new BinaryStoreContext();

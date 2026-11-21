@@ -6,7 +6,7 @@ public sealed class CompositionIoBoundaryTests
     /// <summary>The connection observer stops an actual asynchronous connection attempt.</summary>
     /// <returns>A task that completes after the deliberate connection failure is observed.</returns>
     [Fact]
-    public async Task ConnectionObserverRejectsExecution()
+    public async Task OpenConnectionAsync_ConnectionObserver_RejectsExecution()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -24,7 +24,7 @@ public sealed class CompositionIoBoundaryTests
     /// <summary>The command observer also stops execution when the caller already owns an open connection.</summary>
     /// <returns>A task that completes after the deliberate command failure is observed.</returns>
     [Fact]
-    public async Task CommandObserverRejectsExecutionOnOpenConnection()
+    public async Task ExecuteSqlRawAsync_CommandObserver_RejectsExecutionOnOpenConnection()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");

@@ -8,7 +8,7 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TrailingValueSpacesDoNotMatchAKnownTagChoice(
+    public async Task ReadAsync_TrailingValueSpaces_DoNotMatchAKnownTagChoice(
         bool nearest
     )
     {
@@ -18,7 +18,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .TagValues
             .Where(value => value.TenantId == data.TenantId
@@ -62,7 +67,7 @@ public abstract partial class SignalReportTests
             + "through their exact-text definition FK.")]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TrailingFieldSpacesDoNotAliasAKnownMetadataField(
+    public async Task ReadAsync_TrailingFieldSpaces_DoNotAliasAKnownMetadataField(
         bool nearest
     )
     {
@@ -72,7 +77,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 7, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            7,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await context
             .TagValues
             .Where(value => value.TenantId == data.TenantId

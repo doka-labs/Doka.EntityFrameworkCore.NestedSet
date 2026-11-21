@@ -12,7 +12,9 @@ internal static class ContractModels
     {
         var optionsBuilder = new DbContextOptionsBuilder<InvalidContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .ReplaceService<IModelCacheKeyFactory, TestModelCacheKeyFactory>();
 
         return new InvalidContext(optionsBuilder.Options, variant);

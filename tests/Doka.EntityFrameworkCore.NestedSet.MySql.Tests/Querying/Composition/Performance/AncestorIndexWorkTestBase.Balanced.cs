@@ -6,13 +6,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 /// <summary>Guards mapped-owner hydration after selective strict matching in a broad balanced tree.</summary>
 public abstract partial class AncestorIndexWorkTestBase
 {
-    /// <summary>Checks exact parent occurrences while rejecting millions of premature owner primary-key reads.</summary>
+    /// <summary>
+    /// Checks exact parent occurrences while rejecting millions of premature owner primary-key reads.
+    /// </summary>
     /// <param name="treeBound">Whether the same hierarchy is explicitly restricted to its selected tree.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task BalancedStrictAncestorsFilterBeforeOwnerHydration(
+    public async Task SelectAncestors_BalancedStrictAncestors_FilterBeforeOwnerHydration(
         bool treeBound
     )
     {
@@ -37,7 +39,10 @@ public abstract partial class AncestorIndexWorkTestBase
             tree,
             forest: false,
             balanced: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            dense: false,
+            branching: false,
+            nodes: Nodes);
 
         var selected = Enumerable
             .Range(0, sources)
@@ -198,7 +203,7 @@ public abstract partial class AncestorIndexWorkTestBase
             - traversalsBefore;
 
         var completed = $"CompletedRows={count}; expected={expected}; commands={commandCount}; "
-            + $"sourceBinding={hasBinding}; indexAttempts={indexAttempts}; traversals={traversals}.";
+        + $"sourceBinding={hasBinding}; indexAttempts={indexAttempts}; traversals={traversals}.";
 
         // WHY: Actual-plan replay is a separate execution. Preserve the fully drained result
         // before instrumentation can fail independently or expose only a partial replay.

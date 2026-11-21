@@ -8,7 +8,7 @@ public sealed class KeyComparerTests
 {
     /// <summary>Verifies hot dictionary operations use the generic EF comparer without boxed keys.</summary>
     [Fact]
-    public void TypedIntegerComparisonsDoNotAllocatePerLookup()
+    public void ContainsKey_TypedIntegerComparisons_DoNotAllocatePerLookup()
     {
         // Arrange
         var comparer = new NestedSetKeyComparer<int>(
@@ -41,7 +41,7 @@ public sealed class KeyComparerTests
 
     /// <summary>Verifies a comparer with a different generic shape still controls the fallback equality path.</summary>
     [Fact]
-    public void CustomNullableComparerFallbackRetainsItsSemantics()
+    public void GetItem_CustomNullableComparer_RetainsConfiguredEquality()
     {
         // Arrange
         var comparer = new NestedSetKeyComparer<int>(

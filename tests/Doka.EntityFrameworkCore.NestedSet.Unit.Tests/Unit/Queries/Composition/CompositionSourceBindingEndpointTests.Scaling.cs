@@ -16,7 +16,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [InlineData(12, 65_536)]
     [InlineData(24, 131_072)]
     [InlineData(48, 262_144)]
-    public void SharedSourceDagDoesNotExpandEndpointResolution(
+    public void Require_SharedSourceDag_DoesNotExpandEndpointResolution(
         int depth,
         long maximumBytes
     )
@@ -44,7 +44,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
         var before = GC.GetAllocatedBytesForCurrentThread();
         var actual = NestedSetQueryEndpoint.Require(query, node => node, mapping, nodes.Expression, "node", s_binding);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Shared-source depth={depth}; allocated={allocated} B; budget={maximumBytes} B.");
+        _output.WriteLine($"Shared-source depth={depth}; allocated={allocated} B; budget={maximumBytes} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
@@ -60,7 +60,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IndependentIdentitySelectorsShareTheLexicalResolution(
+    public void Require_IndependentIdentitySelectors_ShareTheLexicalResolution(
         bool projected
     )
     {
@@ -99,7 +99,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
             NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Independent selectors projected={projected}; depth=24; allocated={allocated} B.");
+        _output.WriteLine($"Independent selectors projected={projected}; depth=24; allocated={allocated} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
@@ -115,7 +115,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AlternatingEndpointPathsPreserveTheirMapping(
+    public void Require_AlternatingEndpointPaths_PreserveTheirMapping(
         bool foreignMapping
     )
     {
@@ -182,8 +182,8 @@ public sealed partial class CompositionSourceBindingEndpointTests
             s_binding));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Alternating endpoints foreignMapping={foreignMapping}; depth=24; allocated={allocated} B.");
-        output.WriteLine(
+        _output.WriteLine($"Alternating endpoints foreignMapping={foreignMapping}; depth=24; allocated={allocated} B.");
+        _output.WriteLine(
             $"First complete guard call allocated={firstCallAllocated} B; measurement owns a fresh operation cache.");
 
         // Assert
@@ -209,7 +209,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MutableQueryCaptureDoesNotReuseAnEarlierMapping(
+    public void Require_MutableQueryCapture_DoesNotReuseAnEarlierMapping(
         bool throughObjectField
     )
     {
@@ -254,7 +254,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
 
     /// <summary>Ordinary captured object payloads preserve bounded shared-source endpoint work.</summary>
     [Fact]
-    public void StableObjectPayloadRetainsSharedSourceReuse()
+    public void Require_StableObjectPayload_RetainsSharedSourceReuse()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -299,7 +299,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
             NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Stable object payload; shared-source depth=16; allocated={allocated} B.");
+        _output.WriteLine($"Stable object payload; shared-source depth=16; allocated={allocated} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
@@ -310,15 +310,21 @@ public sealed partial class CompositionSourceBindingEndpointTests
     }
 
     /// <summary>Hides a captured query's runtime identity behind an ordinary object-valued field.</summary>
-    private sealed class ObjectQueryCapture(
-        object query
-    )
+    private sealed class ObjectQueryCapture
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ObjectQueryCapture(
+            object query
+        )
+        {
+            Query = query;
+        }
+
         /// <summary>Retains an opaque static capture for serialized cases in this test class.</summary>
         public static object? StaticQuery;
 
         /// <summary>Retains the caller's query without exposing IQueryable in the field's declared type.</summary>
-        public readonly object Query = query;
+        public readonly object Query;
 
         /// <summary>Gets the number of application getter invocations during metadata inspection.</summary>
         internal int GetterReads { get; private set; }
@@ -336,24 +342,34 @@ public sealed partial class CompositionSourceBindingEndpointTests
     }
 
     /// <summary>Exposes application-owned expression metadata that deliberately changes between references.</summary>
-    private sealed class ChangingQuery(
-        IQueryable<CompositionGuardNode> first,
-        IQueryable<CompositionGuardNode> second
-    )
+    private sealed class ChangingQuery
         : IQueryable<CompositionGuardNode>
     {
+        private readonly IQueryable<CompositionGuardNode> _first;
+        private readonly IQueryable<CompositionGuardNode> _second;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ChangingQuery(
+            IQueryable<CompositionGuardNode> first,
+            IQueryable<CompositionGuardNode> second
+        )
+        {
+            _first = first;
+            _second = second;
+        }
+
         internal int Reads { get; private set; }
 
         /// <inheritdoc />
         public Type ElementType => typeof(CompositionGuardNode);
 
         /// <inheritdoc />
-        public IQueryProvider Provider => first.Provider;
+        public IQueryProvider Provider => _first.Provider;
 
         /// <inheritdoc />
         public Expression Expression => ++Reads == 1
-            ? first.Expression
-            : second.Expression;
+            ? _first.Expression
+            : _second.Expression;
 
         /// <inheritdoc />
         public IEnumerator<CompositionGuardNode> GetEnumerator()

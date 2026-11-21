@@ -31,7 +31,7 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     [InlineData(5000, false, false)]
     [InlineData(100000, true, false)]
     [InlineData(5000, false, true)]
-    public async Task NativeRefreshReadsOnlyTrackedRowsWithBoundedCommands(
+    public async Task SaveChangesAsync_NativeRefresh_ReadsOnlyTrackedRowsWithBoundedCommands(
         int nodes,
         bool sparse,
         bool adjacent
@@ -48,8 +48,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var query = context
             .Set<OrderingNode>()
@@ -144,7 +144,7 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
     ///     Executes changing key cardinalities through one collection parameter and observes real cache misses.
     /// </summary>
     [Fact]
-    public async Task NativeTrackedKeyCollectionKeepsOneShapeBeyondProviderScalarLimit()
+    public async Task ReadParameterizedAsync_NativeTrackedKeyCollection_KeepsOneShapeBeyondProviderScalarLimit()
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(
@@ -155,7 +155,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
 
         await using var template = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();
@@ -238,7 +239,7 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
 
     /// <summary>Records actual ordinal fallback cache behavior before considering any padding policy.</summary>
     [Fact]
-    public async Task OrdinalFallbackReportsActualCompilationCardinalities()
+    public async Task Match_OrdinalFallback_ReportsActualCompilationCardinalities()
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(
@@ -249,7 +250,8 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
 
         await using var template = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = CacheTestServices.Create(template.GetService<IDbContextOptions>());
         using var probe = new ScaleProbe();

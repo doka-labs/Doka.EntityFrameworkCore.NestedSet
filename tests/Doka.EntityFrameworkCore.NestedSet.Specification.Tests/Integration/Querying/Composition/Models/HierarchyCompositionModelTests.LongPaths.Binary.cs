@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongBinaryPathsRetainDatabaseParentValueEquality(
+    public async Task QueryLongDepths_LongBinaryPaths_RetainDatabaseParentValueEquality(
         string filter,
         bool missingParent
     )

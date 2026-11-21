@@ -16,7 +16,9 @@ internal sealed class NestedSetModelDescriptor
     /// <param name="orderDescending">The direction matching every domain sort property.</param>
     /// <param name="orderNullSort">The explicit null placement matching every domain sort property.</param>
     /// <param name="orderMode">The configured automatic sibling-order policy.</param>
-    /// <param name="ancestorIndexProperty">The optional generated nonleaf scalar, separate from writable structure.</param>
+    /// <param name="ancestorIndexProperty">
+    /// The optional generated nonleaf scalar, separate from writable structure.
+    /// </param>
     internal NestedSetModelDescriptor(
         IReadOnlyProperty nodeKey,
         IReadOnlyProperty? scope,
@@ -114,7 +116,9 @@ internal sealed class NestedSetModelDescriptor
     /// <summary>Gets the Int64 sibling position.</summary>
     internal NestedSetPropertyDescriptor Position { get; }
 
-    /// <summary>Gets the optional generated nonleaf scalar without treating it as writable hierarchy structure.</summary>
+    /// <summary>
+    /// Gets the optional generated nonleaf scalar without treating it as writable hierarchy structure.
+    /// </summary>
     internal NestedSetPropertyDescriptor? AncestorIndexProperty { get; }
 
     /// <summary>Gets every structural property, with Scope present only for scoped entities.</summary>

@@ -42,7 +42,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("SqlServer", "path", true)]
     [InlineData("SqlServer", "any", true)]
     [InlineData("SqlServer", "nearest", true)]
-    public async Task NormalizedFiltersRetainExplicitSourceSql(
+    public async Task TranslateNormalizedFilterSql_Normalized_FiltersRetainExplicitSourceSql(
         string engine,
         string operation,
         bool ignoreFilters
@@ -83,7 +83,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("MariaDb", "path", true)]
     [InlineData("MariaDb", "any", true)]
     [InlineData("MariaDb", "nearest", true)]
-    public async Task NormalizedNonIndexedDokaFiltersRetainExplicitSourceSql(
+    public async Task TranslateNormalizedFilterSql_NormalizedNonIndexedDoka_FiltersRetainExplicitSourceSql(
         string engine,
         string operation,
         bool ignoreFilters
@@ -213,11 +213,14 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Uses a distinct real EF model identity with the same roles and no ancestor-index annotation.</summary>
-    private sealed class NonIndexedCompositionContext(
-        DbContextOptions<NonIndexedCompositionContext> options
-    )
-        : DbContext(options)
+    private sealed class NonIndexedCompositionContext
+        : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public NonIndexedCompositionContext(
+            DbContextOptions<NonIndexedCompositionContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

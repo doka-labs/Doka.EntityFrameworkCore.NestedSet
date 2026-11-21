@@ -14,8 +14,17 @@ internal static class NestedSetTreeRegistryTables
         NestedSetProviderCapabilities provider
     )
     {
-        foreach (var hierarchy in hierarchies)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (
+            int hierarchyIndex = 0, hierarchyCount = hierarchies.Count;
+            hierarchyIndex < hierarchyCount;
+            hierarchyIndex++
+        )
         {
+            var hierarchy = hierarchies[hierarchyIndex];
+
             if (Explicit(hierarchy) is not { } name)
             {
                 continue;

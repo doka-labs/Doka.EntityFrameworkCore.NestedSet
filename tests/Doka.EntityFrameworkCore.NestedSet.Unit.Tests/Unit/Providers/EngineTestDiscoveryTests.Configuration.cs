@@ -10,7 +10,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("MySql", nameof(DiscoveryProbe.MixedInline), 2)]
     [InlineData("Sqlite", nameof(DiscoveryProbe.MixedMember), 1)]
     [InlineData("MySql", nameof(DiscoveryProbe.MixedMember), 2)]
-    public async Task ConfiguredDiscoveryRetainsMixedSources(
+    public async Task Discover_ConfiguredDiscovery_RetainsMixedSources(
         string engine,
         string methodName,
         int expectedCount
@@ -41,7 +41,7 @@ public sealed partial class EngineTestDiscoveryTests
     [Theory]
     [InlineData(nameof(DiscoveryProbe.Empty))]
     [InlineData(nameof(DiscoveryProbe.OverFiltered))]
-    public async Task ConfiguredDiscoveryRejectsMissingData(
+    public async Task Discover_ConfiguredDiscovery_RejectsMissingData(
         string methodName
     )
     {
@@ -64,7 +64,7 @@ public sealed partial class EngineTestDiscoveryTests
     private static TestAssemblyConfiguration LoadRunnerConfiguration()
     {
         var configuration = new TestAssemblyConfiguration();
-        var warnings = new List<string>();
+        List<string> warnings = [];
         var path = Path.Combine(AppContext.BaseDirectory, "xunit.runner.json");
 
         var loaded = ConfigReader_Json.Load(

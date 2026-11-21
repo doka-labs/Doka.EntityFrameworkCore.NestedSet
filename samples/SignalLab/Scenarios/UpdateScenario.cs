@@ -76,7 +76,8 @@ internal static class UpdateScenario
             $"The updated station tree should total 275 pulses, found {totalCount}.");
 
         await SampleConsole.WriteLineAsync(
-            $"Saved through context.Instruments and SaveChangesAsync: ReceiverArray={receiverCount}, total={totalCount}.",
+            $"Saved through context.Instruments and SaveChangesAsync: ReceiverArray={receiverCount}, "
+            + $"total={totalCount}.",
             cancellationToken);
 
         await InstrumentScenarioSupport.ValidateAsync(context, data, cancellationToken);

@@ -1,41 +1,32 @@
 namespace Doka.EntityFrameworkCore.NestedSet;
 
-/// <summary>Identifies a structural violation and the node whose stored data requires attention.</summary>
-/// <typeparam name="TKey">The mapped node primary key type.</typeparam>
-/// <param name="Code">The stable, machine-readable violation category.</param>
-/// <param name="NodeKey">The offending node's primary key in the selected scope.</param>
-/// <param name="Message">A human-readable explanation without application payload or scope values.</param>
-internal sealed record NestedSetValidationIssue<TKey>(
-    NestedSetValidationCode Code,
-    TKey NodeKey,
-    string Message
-)
-    where TKey : notnull;
-
-/// <summary>Classifies violations reported by detailed hierarchy validation.</summary>
-public enum NestedSetValidationCode
+/// <summary>Identifies one structural violation in a tree-bound validation report.</summary>
+[PublicAPI]
+public sealed class NestedSetValidationIssue
 {
-    /// <summary>A node has a negative sibling position.</summary>
-    NegativePosition = 0,
+    /// <summary>Initializes one immutable structural issue.</summary>
+    /// <param name="code">The stable machine-readable violation category.</param>
+    /// <param name="nodeKey">The offending node key, or <see langword="null" /> for a tree-wide issue.</param>
+    /// <param name="message">A payload-free explanation suitable for diagnostics and operator reports.</param>
+    internal NestedSetValidationIssue(
+        NestedSetValidationCode code,
+        object? nodeKey,
+        string message
+    )
+    {
+        ArgumentException.ThrowIfNullOrEmpty(message);
 
-    /// <summary>A node references a parent absent from the selected scope.</summary>
-    MissingParent = 1,
+        Code = code;
+        NodeKey = nodeKey;
+        Message = message;
+    }
 
-    /// <summary>Two siblings share a position, making their intended order ambiguous.</summary>
-    DuplicatePosition = 2,
+    /// <summary>Gets the stable machine-readable violation category.</summary>
+    public NestedSetValidationCode Code { get; }
 
-    /// <summary>A node belongs to a cycle or cannot be reached from a root.</summary>
-    CycleOrUnreachableNode = 3,
+    /// <summary>Gets the offending node key, or <see langword="null" /> for a tree-wide issue.</summary>
+    public object? NodeKey { get; }
 
-    /// <summary>One or both interval boundaries differ from ordered adjacency.</summary>
-    InvalidBounds = 4,
-
-    /// <summary>The stored depth differs from the node's number of ancestors.</summary>
-    InvalidDepth = 5,
-
-    /// <summary>The stored position is not the node's expected dense sibling index.</summary>
-    InvalidPosition = 6,
-
-    /// <summary>The selected TreeId does not contain exactly one root.</summary>
-    InvalidRootCount = 7,
+    /// <summary>Gets the payload-free explanation suitable for diagnostics and operator reports.</summary>
+    public string Message { get; }
 }

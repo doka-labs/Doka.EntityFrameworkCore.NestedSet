@@ -16,12 +16,13 @@ public abstract class PostCommitOutcomeTests : ProviderTest
 
     /// <summary>Payload and repaired order can be committed even though SaveChangesAsync reports failure.</summary>
     [Fact]
-    public async Task PostCommitSaveFailureDoesNotUndoPersistedOrder()
+    public async Task SaveChangesAsync_PostCommitSaveFailure_DoesNotUndoPersistedOrder()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = setup
             .NestedSet<OrderingNode>()
@@ -59,8 +60,8 @@ public abstract class PostCommitOutcomeTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var renamed = await context
             .Set<OrderingNode>()
@@ -89,7 +90,8 @@ public abstract class PostCommitOutcomeTests : ProviderTest
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var nodes = await verification
             .Set<OrderingNode>()

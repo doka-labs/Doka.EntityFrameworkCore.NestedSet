@@ -5,7 +5,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that a generated root key is returned on the entity without leaving it tracked.</summary>
     /// <returns>A task that completes when the generated root has been verified.</returns>
     [Fact]
-    public async Task DatabaseGeneratedRootKeyIsReturnedAndDetached()
+    public async Task InsertRootAsync_DatabaseGeneratedRootKey_IsReturnedAndDetached()
     {
         // Arrange
         await using var context = await _fixture.CreateGeneratedContextAsync(
@@ -36,7 +36,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that generated child keys retain the correct parent and leave no tracked entity.</summary>
     /// <returns>A task that completes when the generated child has been verified.</returns>
     [Fact]
-    public async Task DatabaseGeneratedChildKeyIsReturnedAndDetached()
+    public async Task InsertChildAsync_DatabaseGeneratedChildKey_IsReturnedAndDetached()
     {
         // Arrange
         await using var context = await _fixture.CreateGeneratedContextAsync(
@@ -69,7 +69,7 @@ public abstract partial class ContractTests
     /// <summary>Verifies that generated parent and child identities form a valid persisted hierarchy.</summary>
     /// <returns>A task that completes when the generated-key hierarchy has been validated.</returns>
     [Fact]
-    public async Task DatabaseGeneratedKeysSupportValidation()
+    public async Task ValidateAsync_DatabaseGeneratedKeys_SupportValidation()
     {
         // Arrange
         await using var context = await _fixture.CreateGeneratedContextAsync(

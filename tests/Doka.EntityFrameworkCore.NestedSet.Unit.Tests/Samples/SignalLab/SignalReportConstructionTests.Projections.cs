@@ -16,7 +16,7 @@ public sealed partial class SignalReportConstructionTests
 
     /// <summary>Reusable report graphs cannot retain a context, query root or mutable request binding.</summary>
     [Fact]
-    public void FixedReportProjectionsContainOnlyTheirParametersAndScalarConstants()
+    public void Visit_FixedReportProjections_ContainOnlyTheirParametersAndScalarConstants()
     {
         // Arrange
         var projections = ReportProjectionFields();
@@ -35,7 +35,7 @@ public sealed partial class SignalReportConstructionTests
 
     /// <summary>The ownership inspector rejects captures instead of merely accepting every expression graph.</summary>
     [Fact]
-    public void FixedProjectionCaptureInspectorRejectsRequestAndQueryRoots()
+    public void Visit_FixedProjectionCaptureInspector_RejectsRequestAndQueryRoots()
     {
         // Arrange
         var request = Request(false);
@@ -67,7 +67,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public async Task ReportsReuseFixedGraphsAcrossIndependentRequests(
+    public async Task Build_Reports_ReuseFixedGraphsAcrossIndependentRequests(
         string engine
     )
     {
@@ -110,7 +110,7 @@ public sealed partial class SignalReportConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReportRetainsScalarProofBoundaryBeforeRestoringTheFactBag(
+    public async Task Build_Report_RetainsScalarProofBoundaryBeforeRestoringTheFactBag(
         bool nearest
     )
     {

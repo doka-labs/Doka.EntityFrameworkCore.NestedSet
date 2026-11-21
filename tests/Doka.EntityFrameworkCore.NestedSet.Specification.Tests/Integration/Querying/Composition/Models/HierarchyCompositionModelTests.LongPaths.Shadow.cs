@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongShadowPathsRetainRenamedStructuralIdentity(
+    public async Task QueryLongDepths_LongShadowPaths_RetainRenamedStructuralIdentity(
         string filter,
         bool missingParent
     )

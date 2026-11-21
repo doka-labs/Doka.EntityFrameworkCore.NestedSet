@@ -7,18 +7,20 @@ public sealed class ProviderFixtureIsolationTests
 {
     /// <summary>Concurrent provider contexts retain separate fixture owners when one assembly is disposed.</summary>
     [Fact]
-    public async Task ProviderFixtureChainsRemainIsolatedDuringConcurrentDisposal()
+    public async Task SetForTestClass_ProviderFixtureChains_RemainIsolatedDuringConcurrentDisposal()
     {
         // Arrange
-        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
+        var firstClass = CreateTestMethod("MySql", nameof(FixtureContextProbe.OwnedEngines_ContextAssembly_HasAnOwner))
             .TestClass;
 
-        var secondClass = CreateTestMethod("PostgreSql", nameof(FixtureContextProbe.ContextAssemblyHasAnOwner))
+        var secondClass = CreateTestMethod(
+                "PostgreSql",
+                nameof(FixtureContextProbe.OwnedEngines_ContextAssembly_HasAnOwner))
             .TestClass;
 
         await using var firstAssembly = new FixtureMappingManager("Assembly");
         await using var secondAssembly = new FixtureMappingManager("Assembly");
-        var fixtureTypes = new[] { typeof(TestDatabaseServers), typeof(FixtureDisposalProbe) };
+        Type[] fixtureTypes = [ typeof(TestDatabaseServers), typeof(FixtureDisposalProbe) ];
 
         // WHY: Public registration creates separate lazy owners; containers start only when a database is requested.
         await firstAssembly.InitializeAsync(fixtureTypes, createInstances: true);
@@ -122,7 +124,7 @@ public sealed class ProviderFixtureIsolationTests
 
     /// <summary>Unit cases resolve named collections locally and preserve allocation isolation.</summary>
     [Fact]
-    public void UnitNamedCollectionsResolveToLocalDefinitions()
+    public void GetCustomAttributes_UnitNamedCollections_ResolveToLocalDefinitions()
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
@@ -179,7 +181,7 @@ public sealed class ProviderFixtureIsolationTests
 
     /// <summary>The actual xUnit metadata path propagates the measurement collection's filter trait.</summary>
     [Fact]
-    public void AllocationCollectionTraitsReachConcreteTestMethods()
+    public void Construct_AllocationCollectionTraits_ReachConcreteTestMethods()
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
@@ -192,7 +194,7 @@ public sealed class ProviderFixtureIsolationTests
 
         var testClass = new XunitTestClass(typeof(TypedPropertyReadTests), collection);
         var method = typeof(TypedPropertyReadTests)
-            .GetMethod(nameof(TypedPropertyReadTests.IntegerParentReadsLiveNullablePresence))!;
+            .GetMethod(nameof(TypedPropertyReadTests.Read_IntegerParent_ReadsLiveNullablePresence))!;
 
         // Act
         var metadata = new XunitTestMethod(testClass, method, []);
@@ -203,7 +205,7 @@ public sealed class ProviderFixtureIsolationTests
 
     /// <summary>Unicode validation remains instrumented while only its fixed allocation budget is separated.</summary>
     [Fact]
-    public void UnicodeValidationRemainsCoveredWhileBudgetRunsUninstrumented()
+    public void Construct_UnicodeValidation_RemainsCoveredWhileBudgetRunsUninstrumented()
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
@@ -211,10 +213,10 @@ public sealed class ProviderFixtureIsolationTests
         var collection = new XunitTestCollection(testAssembly, null, false, "Unicode semantics");
         var testClass = new XunitTestClass(typeof(UnicodeIdentityLengthTests), collection);
         var allocation = typeof(UnicodeIdentityLengthTests)
-            .GetMethod(nameof(UnicodeIdentityLengthTests.WarmCharacterCountingDoesNotAllocate))!;
+            .GetMethod(nameof(UnicodeIdentityLengthTests.CountUnicodeScalars_WarmCharacterCounting_DoesNotAllocate))!;
 
         var validation = typeof(UnicodeIdentityLengthTests)
-            .GetMethod(nameof(UnicodeIdentityLengthTests.EveryUnpairedSurrogateCodeUnitIsRejected))!;
+            .GetMethod(nameof(UnicodeIdentityLengthTests.ConvertAll_EveryUnpairedSurrogateCodeUnit_IsRejected))!;
 
         // Act
         var budgetMetadata = new XunitTestMethod(testClass, allocation, []);
@@ -232,9 +234,9 @@ public sealed class ProviderFixtureIsolationTests
     /// </summary>
     /// <param name="methodName">The released-root or intentionally live-root registration control.</param>
     [Theory]
-    [InlineData(nameof(OptionsExtensionTests.RegistrationDoesNotRetainACollectibleAdapter))]
-    [InlineData(nameof(OptionsExtensionTests.LiveRegistrationRetainsItsCollectibleAdapter))]
-    public void RegistrationLifetimeControlsRunWithoutCoverage(
+    [InlineData(nameof(OptionsExtensionTests.UseNestedSets_CollectibleAdapterRegistration_DoesNotRetainAdapter))]
+    [InlineData(nameof(OptionsExtensionTests.UseNestedSets_LiveCollectibleAdapterRegistration_RetainsAdapter))]
+    public void Construct_RegistrationLifetime_ControlsRunWithoutCoverage(
         string methodName
     )
     {
@@ -296,7 +298,7 @@ public sealed class ProviderFixtureIsolationTests
     {
         /// <summary>Represents an ordinary fact inherited by either emitted provider owner.</summary>
         [Fact]
-        public void ContextAssemblyHasAnOwner()
+        public void OwnedEngines_ContextAssembly_HasAnOwner()
         {
             // Arrange
             var assembly = GetType()

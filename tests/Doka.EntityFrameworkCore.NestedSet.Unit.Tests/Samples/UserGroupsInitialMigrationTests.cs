@@ -7,7 +7,7 @@ public sealed class UserGroupsInitialMigrationTests
 {
     /// <summary>The additive migration preserves the visibility and memberships of released-schema rows.</summary>
     [Fact]
-    public async Task FeatureMigrationPreservesExistingVisibleApplicationRows()
+    public async Task MigrateAsync_FeatureMigration_PreservesExistingVisibleApplicationRows()
     {
         // Arrange
         var options = SqliteOptions();
@@ -92,7 +92,7 @@ public sealed class UserGroupsInitialMigrationTests
     /// Both provider contexts preserve the released initial migration and add exactly one query feature migration.
     /// </summary>
     [Fact]
-    public void EachProviderPreservesInitialAndAddsOneFeatureMigration()
+    public void GetMigrations_EachProvider_PreservesInitialAndAddsOneFeatureMigration()
     {
         // Arrange
         var dokaOptions = new DbContextOptionsBuilder<UserGroupContext>()
@@ -140,7 +140,7 @@ public sealed class UserGroupsInitialMigrationTests
 
     /// <summary>The fresh SQLite migration supports both nested sets and multiple memberships in one tenant.</summary>
     [Fact]
-    public async Task InitialMigrationCreatesBothHierarchiesAndMembershipsAsync()
+    public async Task InsertRootAsync_InitialMigration_CreatesBothHierarchiesAndMemberships()
     {
         // Arrange
         var options = SqliteOptions();
@@ -226,7 +226,7 @@ public sealed class UserGroupsInitialMigrationTests
 
     /// <summary>The migrated join table rejects a group belonging to another tenant.</summary>
     [Fact]
-    public async Task MigratedMembershipRejectsForeignTenantGroupAsync()
+    public async Task SaveChangesAsync_MigratedMembership_RejectsForeignTenantGroup()
     {
         // Arrange
         var options = SqliteOptions();

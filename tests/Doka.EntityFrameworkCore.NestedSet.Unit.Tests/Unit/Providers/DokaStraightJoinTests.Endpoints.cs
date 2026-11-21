@@ -12,7 +12,7 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void VerifiedPublicJoinRetainsBothMappedEndpointIdentities(
+    public void Require_VerifiedPublicJoin_RetainsBothMappedEndpointIdentities(
         bool selectInner
     )
     {
@@ -54,7 +54,7 @@ public sealed partial class DokaStraightJoinTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void EitherSourceFilterModifierRetainsMembership(
+    public void Require_EitherSourceFilterModifier_RetainsMembership(
         bool modifiedInner,
         bool selectInner
     )
@@ -103,7 +103,7 @@ public sealed partial class DokaStraightJoinTests
     [InlineData("field")]
     [InlineData("property")]
     [InlineData("static-field")]
-    public void OpaquePayloadInputRetainsMembershipWithoutEvaluatingGetters(
+    public void Require_OpaquePayloadInput_RetainsMembershipWithoutEvaluatingGetters(
         string carrier
     )
     {
@@ -151,7 +151,7 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnverifiedOrSameNameForeignJoinCannotSupplyEndpointProvenance(
+    public void Require_UnverifiedOrSameNameForeignJoin_CannotSupplyEndpointProvenance(
         bool provideTrustedMethod
     )
     {
@@ -189,7 +189,7 @@ public sealed partial class DokaStraightJoinTests
 
     /// <summary>A verified join cannot make a different named hierarchy a valid selected endpoint.</summary>
     [Fact]
-    public void InnerAliasFromAnotherNamedMappingIsRejected()
+    public void Require_InnerAliasFromAnotherNamedMapping_IsRejected()
     {
         // Arrange
         using var context = CompositionGuardContext.Create();

@@ -8,7 +8,7 @@ public sealed partial class SqliteQueryPlanTests
 {
     /// <summary>Seeks composite alternate keys without modifying repeated keys in another scope or tree.</summary>
     [Fact]
-    public async Task CompositeRepairBatchUsesPointKeysAndExactMembership()
+    public async Task WriteAsync_CompositeRepairBatch_UsesPointKeysAndExactMembership()
     {
         // Arrange
         await using var models = new ModelCompatibilityDatabase();
@@ -91,7 +91,7 @@ public sealed partial class SqliteQueryPlanTests
 
     /// <summary>Seeks converted unscoped keys while rejecting keys that belong to another tree.</summary>
     [Fact]
-    public async Task ConvertedUnscopedRepairBatchUsesPointKeysAndExactTree()
+    public async Task WriteAsync_ConvertedUnscopedRepairBatch_UsesPointKeysAndExactTree()
     {
         // Arrange
         await using var models = new ModelCompatibilityDatabase();
@@ -178,7 +178,7 @@ public sealed partial class SqliteQueryPlanTests
 
     /// <summary>Preserves exact membership when a mapped table collides with the internal query alias.</summary>
     [Fact]
-    public async Task MembershipAliasCannotShadowTheMappedTable()
+    public async Task WriteAsync_MembershipAlias_CannotShadowTheMappedTable()
     {
         // Arrange
         await using var models = new ModelCompatibilityDatabase();

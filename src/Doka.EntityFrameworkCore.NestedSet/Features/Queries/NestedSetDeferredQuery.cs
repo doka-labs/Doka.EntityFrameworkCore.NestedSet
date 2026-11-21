@@ -103,7 +103,9 @@ internal static partial class NestedSetDeferredQuery
         return new NestedSetQuery<TEntity>(context, entityType, visible, unbound, treeBound);
     }
 
-    /// <summary>Weakly owns one typed factory delegate, without a context, model, query, or application value.</summary>
+    /// <summary>
+    /// Weakly owns one typed factory delegate, without a context, model, query, or application value.
+    /// </summary>
     private sealed class Expansion
     {
         private readonly Func<DbContext, MethodCallExpression, Expression> _expand;

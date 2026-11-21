@@ -1,10 +1,5 @@
-using System.Globalization;
-using System.IO;
-using System.Linq.Expressions;
-using System.Security.Cryptography;
 using System.Text.Json;
 using Doka.EntityFrameworkCore.NestedSet.Providers;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
@@ -26,7 +21,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
     [Trait("Category", "Capacity")]
-    public async Task FactSelectedAncestorsRetainBoundedNativeWork(
+    public async Task ObserveConsumerFactsAsync_FactSelectedAncestors_RetainBoundedNativeWork(
         bool chain,
         bool inclusive,
         bool matches
@@ -53,7 +48,10 @@ public abstract partial class AncestorIndexWorkTestBase
             tree,
             forest: false,
             dense: chain,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            branching: false,
+            balanced: false,
+            nodes: Nodes);
 
         var selected = chain
             ? new[] { 1_001, 1_002 }
@@ -63,7 +61,8 @@ public abstract partial class AncestorIndexWorkTestBase
             context,
             scope,
             selected,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            unrelatedNode: 99);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         var label = matches
@@ -84,7 +83,11 @@ public abstract partial class AncestorIndexWorkTestBase
             Build,
             expected,
             profile,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            population: Nodes,
+            readWarmups: 3,
+            measuredReads: 5,
+            factRows: 12);
 
         // Assert
         AssertConsumerFacts(
@@ -137,7 +140,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task UnionFactSelectedAncestorsRetainBoundedNativeWork(
+    public async Task ObserveConsumerFactsAsync_UnionFactSelectedAncestors_RetainBoundedNativeWork(
         bool inclusive
     )
     {
@@ -156,13 +159,23 @@ public abstract partial class AncestorIndexWorkTestBase
             commands,
             capture);
 
-        await SeedAsync(context, scope, tree, forest: false, cancellationToken: TestContext.Current.CancellationToken);
+        await SeedAsync(
+            context,
+            scope,
+            tree,
+            forest: false,
+            cancellationToken: TestContext.Current.CancellationToken,
+            dense: false,
+            branching: false,
+            balanced: false,
+            nodes: Nodes);
         int[] selected = [20, 30];
         await SeedConsumerFactsAsync(
             context,
             scope,
             selected,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            unrelatedNode: 99);
 
         context.AddRange(
             new CompositionNavigationItem
@@ -198,7 +211,10 @@ public abstract partial class AncestorIndexWorkTestBase
             expected,
             profile,
             factRows: 14,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            population: Nodes,
+            readWarmups: 3,
+            measuredReads: 5);
 
         // Assert
         AssertConsumerFacts(observation, selected.Length);
@@ -247,7 +263,7 @@ public abstract partial class AncestorIndexWorkTestBase
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task LargeFactSelectionRemainsBounded(
+    public async Task ObserveConsumerFactsAsync_LargeFactSelection_RemainsBounded(
         bool inclusive
     )
     {
@@ -283,7 +299,10 @@ public abstract partial class AncestorIndexWorkTestBase
             tree,
             forest: false,
             nodes: nodes,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            dense: false,
+            branching: false,
+            balanced: false);
 
         var selected = Enumerable
             .Range(2, sources)
@@ -293,7 +312,8 @@ public abstract partial class AncestorIndexWorkTestBase
             context,
             scope,
             selected,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            unrelatedNode: 99);
 
         await context.Database.OpenConnectionAsync(CancellationToken.None);
 
@@ -354,593 +374,4 @@ public abstract partial class AncestorIndexWorkTestBase
             return WithConsumerOccurrences(queryContext, scope, pairs);
         }
     }
-
-    /// <summary>Selects the source with ordinary captured fact LINQ that EF normalizes at execution.</summary>
-    private static Expression<Func<CompositionNavigationNode, bool>> FactSelection(
-        AncestorIndexQueryContext context,
-        Guid scope,
-        string label
-    )
-    {
-        var facts = context
-            .Set<CompositionNavigationItem>()
-            .AsNoTracking()
-            .Where(fact => fact.Scope == scope && fact.Label == label);
-
-        // WHY: Native work evidence must cover ordinary consumer LINQ, including EF's deferred
-        // capture expansion, rather than a manually embedded root that bypasses that public spelling.
-        return source => facts.Any(fact => fact.NodeId == source.Id);
-    }
-
-    /// <summary>Selects through three captured projected fact roots using the sample's UNION ALL shape.</summary>
-    private static Expression<Func<CompositionNavigationNode, bool>> UnionFactSelection(
-        AncestorIndexQueryContext context,
-        Guid scope
-    )
-    {
-        var selected = context
-            .Set<CompositionNavigationItem>()
-            .AsNoTracking()
-            .Where(fact => fact.Scope == scope && fact.Label == "selected")
-            .Select(fact => new ConsumerFactKey { Node = fact.NodeId });
-
-        var occurrences = context
-            .Set<CompositionNavigationItem>()
-            .AsNoTracking()
-            .Where(fact => fact.Scope == scope && fact.Label == "occurrence")
-            .Select(fact => new ConsumerFactKey { Node = fact.NodeId });
-
-        var extra = context
-            .Set<CompositionNavigationItem>()
-            .AsNoTracking()
-            .Where(fact => fact.Scope == scope && fact.Label == "union-extra")
-            .Select(fact => new ConsumerFactKey { Node = fact.NodeId });
-
-        var facts = selected
-            .Concat(occurrences)
-            .Concat(extra);
-
-        // WHY: UNION ALL retains duplicate facts, while Any selects each hierarchy source once.
-        // The unchanged work oracle now also guards EF-normalized projected captures.
-        return source => facts.Any(fact => fact.Node == source.Id);
-    }
-
-    /// <summary>Retains independent application occurrences after the hierarchy has selected source nodes.</summary>
-    private static IQueryable<ConsumerFactPair> WithConsumerOccurrences(
-        AncestorIndexQueryContext context,
-        Guid scope,
-        IQueryable<ConsumerHierarchyPair> pairs
-    ) => pairs.Join(
-        context
-            .Set<CompositionNavigationItem>()
-            .AsNoTracking()
-            .Where(fact => fact.Scope == scope && fact.Label == "occurrence"),
-        pair => pair.Source,
-        fact => fact.NodeId,
-        (pair, fact) => new ConsumerFactPair(fact.Id, pair.Source, pair.Owner, pair.Distance));
-
-    /// <summary>Seeds duplicate selection facts and distinct output occurrences without hierarchy payload.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="scope">The hierarchy scope used by the scenario.</param>
-    /// <param name="selected">The selected synthetic node identifiers.</param>
-    /// <param name="unrelatedNode">The unrelated node used to seed decoy facts.</param>
-    private static async Task SeedConsumerFactsAsync(
-        AncestorIndexQueryContext context,
-        Guid scope,
-        int[] selected,
-        CancellationToken cancellationToken,
-        int unrelatedNode = 99
-    )
-    {
-        for (var index = 0; index < selected.Length; index++)
-        {
-            var node = selected[index];
-            var offset = 4 * index;
-            context.AddRange(
-                new CompositionNavigationItem
-                {
-                    Scope = scope,
-                    Id = offset + 1,
-                    NodeId = node,
-                    Label = "selected",
-                },
-                new CompositionNavigationItem
-                {
-                    Scope = scope,
-                    Id = offset + 2,
-                    NodeId = node,
-                    Label = "selected",
-                },
-                new CompositionNavigationItem
-                {
-                    Scope = scope,
-                    Id = offset + 3,
-                    NodeId = node,
-                    Label = "occurrence",
-                },
-                new CompositionNavigationItem
-                {
-                    Scope = scope,
-                    Id = offset + 4,
-                    NodeId = node,
-                    Label = "occurrence",
-                });
-        }
-
-        var end = 4 * selected.Length;
-        context.AddRange(
-            new CompositionNavigationItem
-            {
-                Scope = scope,
-                Id = end + 1,
-                NodeId = unrelatedNode,
-                Label = "unrelated",
-            },
-            new CompositionNavigationItem
-            {
-                Scope = scope,
-                Id = end + 2,
-                NodeId = 1,
-                Label = "owner",
-            },
-            new CompositionNavigationItem
-            {
-                Scope = scope,
-                Id = end + 3,
-                NodeId = 1,
-                Label = "owner",
-            },
-            new CompositionNavigationItem
-            {
-                Scope = scope,
-                Id = end + 4,
-                NodeId = selected[0],
-                Label = "owner",
-            });
-
-        await context.SaveChangesAsync(cancellationToken);
-        context.ChangeTracker.Clear();
-        const string analyze = "ANALYZE TABLE `AncestorIndexQueryItems`";
-        await context.Database.ExecuteSqlRawAsync(analyze, cancellationToken);
-    }
-
-    /// <summary>Derives occurrences and distances from the parent rule rather than stored bounds.</summary>
-    private static ConsumerFactPair[] ExpectedConsumerPairs(
-        int[] selected,
-        bool chain,
-        bool inclusive
-    )
-    {
-        var pairs = selected.SelectMany((source, index) =>
-        {
-            var owners = chain
-                ? Enumerable.Range(
-                    1,
-                    inclusive
-                        ? source
-                        : source - 1)
-                : inclusive
-                    ? [1, source]
-                    : Enumerable.Range(1, 1);
-
-            return owners.SelectMany(owner => Enumerable
-                .Range(3 + 4 * index, 2)
-                .Select(occurrence => new ConsumerFactPair(
-                    occurrence,
-                    source,
-                    owner,
-                    chain
-                        ? source - owner
-                        : source == owner
-                            ? 0
-                            : 1)));
-        });
-
-        return OrderConsumerPairs(pairs);
-    }
-
-    /// <summary>Compares occurrence bags without imposing an undocumented SQL ordering contract.</summary>
-    private static ConsumerFactPair[] OrderConsumerPairs(
-        IEnumerable<ConsumerFactPair> pairs
-    ) => pairs
-        .OrderBy(pair => pair.Occurrence)
-        .ThenBy(pair => pair.Source)
-        .ThenBy(pair => pair.Owner)
-        .ThenBy(pair => pair.Distance)
-        .ToArray();
-
-    /// <summary>Observes fixed warmup and complete reads; elapsed values are evidence, never gates.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="commands">The command observation counters.</param>
-    /// <param name="capture">The command and materialization capture.</param>
-    /// <param name="build">The query factory used for construction and execution observations.</param>
-    /// <param name="expected">The independently derived expected results.</param>
-    /// <param name="profile">The selected synthetic workload profile.</param>
-    /// <param name="population">The expected physical hierarchy population.</param>
-    /// <param name="readWarmups">The fixed number of unmeasured warmup reads.</param>
-    /// <param name="measuredReads">The fixed number of complete reads inside the observation window.</param>
-    /// <param name="factRows">The expected number of synthetic consumer fact rows.</param>
-    private async Task<ConsumerFactObservation> ObserveConsumerFactsAsync(
-        AncestorIndexQueryContext context,
-        CompositionCommandProbe commands,
-        EnterpriseProbe capture,
-        Func<AncestorIndexQueryContext, IQueryable<ConsumerFactPair>> build,
-        ConsumerFactPair[] expected,
-        string profile,
-        CancellationToken cancellationToken,
-        int population = Nodes,
-        int readWarmups = 3,
-        int measuredReads = 5,
-        int factRows = 12
-    )
-    {
-        var profiling = ConsumerAllocationProfilingEnabled();
-
-        // WHY: Allocation-stack sampling needs more than five reads. Only the separate diagnostic
-        // runner enables this switch; ordinary CI/Rider windows and single-read large cases stay unchanged.
-        var profileReadWindow = profiling && readWarmups == 3 && measuredReads == 5;
-
-        if (profileReadWindow)
-        {
-            measuredReads = 512;
-        }
-
-        await using var versionCommand = context
-            .Database
-            .GetDbConnection()
-            .CreateCommand();
-
-        versionCommand.CommandText = "SELECT VERSION()";
-        var nativeVersion = (string)(await versionCommand.ExecuteScalarAsync(cancellationToken))!;
-        var providerAssembly = context
-            .GetService<IRelationalConnection>()
-            .GetType()
-            .Assembly;
-
-        var nestedSetAssembly = typeof(NestedSetProviderCapabilities).Assembly;
-        var adapterAssembly = NestedSetProviderCapabilities
-            .Resolve(context)
-            .GetType()
-            .Assembly;
-
-        var providerBytes = await File.ReadAllBytesAsync(providerAssembly.Location, cancellationToken);
-        var nestedSetBytes = await File.ReadAllBytesAsync(nestedSetAssembly.Location, cancellationToken);
-        var adapterBytes = await File.ReadAllBytesAsync(adapterAssembly.Location, cancellationToken);
-        var providerHash = Convert.ToHexStringLower(SHA256.HashData(providerBytes));
-        var nestedSetHash = Convert.ToHexStringLower(SHA256.HashData(nestedSetBytes));
-        var adapterHash = Convert.ToHexStringLower(SHA256.HashData(adapterBytes));
-
-        // WHY: Exact physical counts and native checksums expose contamination even if a scope-filtered
-        // oracle would still pass. Paired binaries receive the same deterministic rows and table definitions.
-        var physicalNodes = await context
-            .Set<CompositionNavigationNode>()
-            .IgnoreQueryFilters()
-            .LongCountAsync(cancellationToken);
-
-        var physicalFacts = await context
-            .Set<CompositionNavigationItem>()
-            .LongCountAsync(cancellationToken);
-
-        Assert.Equal(population, physicalNodes);
-        Assert.Equal(factRows, physicalFacts);
-        var physicalTables = await ConsumerPhysicalTablesAsync(context, cancellationToken: cancellationToken);
-        Assert.Equal(physicalNodes, physicalTables[0].LogicalRowCount);
-        Assert.Equal(physicalFacts, physicalTables[1].LogicalRowCount);
-        var observedUtc = DateTimeOffset.UtcNow;
-
-        var profileEvents = NativeReadProfileEvents.Log;
-
-        for (var warmup = 0; warmup < 8; warmup++)
-        {
-            GC.KeepAlive(MeasuredBuild());
-        }
-
-        commands.Reset();
-        var constructionStart = Stopwatch.GetTimestamp();
-        var constructionBytes = QueryConstructionAllocation.Measure((Func<IQueryable<ConsumerFactPair>>)MeasuredBuild);
-        var constructionNanoseconds = Stopwatch.GetElapsedTime(constructionStart)
-                .TotalNanoseconds
-            / 100;
-
-        var constructionCommands = commands.CommandCount;
-        var query = MeasuredBuild();
-        ConsumerFactPair[] actual = [];
-
-        ClearConsumerCapture(commands, capture);
-
-        for (var warmup = 0; warmup < readWarmups; warmup++)
-        {
-            actual = await ReadConsumerFactsAsync(
-                context,
-                capture,
-                query,
-                profile,
-                cancellationToken: cancellationToken);
-
-            RequireConsumerOracle(actual, expected);
-            ClearConsumerCapture(commands, capture);
-        }
-
-        var hasBinding = NestedSetProviderCapabilities.Resolve(context)
-            .CompletedSourceMethod is not null;
-
-        var hasOrderedJoin = NestedSetProviderCapabilities.Resolve(context)
-            .OrderedJoinMethod is not null;
-
-        var traversalsBefore = await NativeTraversalCounterAsync(context, cancellationToken: cancellationToken);
-        var indexAttemptsBefore = await MariaSessionCounterAsync(
-            context,
-            "Handler_icp_attempts",
-            cancellationToken: cancellationToken);
-
-        var reads = new ConsumerReadSample[measuredReads];
-
-        // WHY: Process-wide allocation includes provider, reader, materialization and observers across async
-        // continuations. Isolated measurement runs make it comparable; it is not a pure NestedSet allocation metric.
-        for (var sample = 0; sample < reads.Length; sample++)
-        {
-            profileEvents.BeginRead(Engine, profile, "observed", sample);
-            var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
-            var started = Stopwatch.GetTimestamp();
-            actual = await ReadConsumerFactsAsync(
-                context,
-                capture,
-                query,
-                profile,
-                cancellationToken: cancellationToken);
-
-            var elapsed = Stopwatch.GetElapsedTime(started);
-            var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
-            profileEvents.EndRead(Engine, profile, "observed", sample);
-            RequireConsumerOracle(actual, expected);
-            reads[sample] = new ConsumerReadSample(elapsed.TotalMilliseconds, allocated);
-        }
-
-        var commandCount = commands.CommandCount;
-        var sql = capture.Commands[0];
-        var traversals = await NativeTraversalCounterAsync(
-                context,
-                cancellationToken: cancellationToken)
-            - traversalsBefore;
-
-        var indexAttempts = await MariaSessionCounterAsync(
-                context,
-                "Handler_icp_attempts",
-                cancellationToken: cancellationToken)
-            - indexAttemptsBefore;
-
-        var summary = new
-        {
-            Engine,
-            NativeVersion = nativeVersion,
-            ProviderVersion = providerAssembly.GetName()
-                .Version!.ToString(),
-            ProviderSha256 = providerHash,
-            NestedSetSha256 = nestedSetHash,
-            NestedSetAdapterSha256 = adapterHash,
-            Profile = profile,
-            CaseNodes = population,
-            CaseFactRows = factRows,
-            PhysicalNodes = physicalNodes,
-            PhysicalFactRows = physicalFacts,
-            PhysicalTables = physicalTables,
-            ObservedUtc = observedUtc,
-            HasBinding = hasBinding,
-            HasOrderedJoin = hasOrderedJoin,
-            ConstructionBytes = constructionBytes,
-            ConstructionNanoseconds = constructionNanoseconds,
-            ConstructionCommands = constructionCommands,
-            ConstructionOperations = 100,
-            ReadWarmups = readWarmups,
-            MeasuredReads = measuredReads,
-            AllocationStackProfiling = profileReadWindow,
-            ResultRows = actual.Length,
-            ExpectedRows = expected.Length,
-            CommandCount = commandCount,
-            Reads = reads,
-            Traversals = traversals,
-            IndexAttempts = indexAttempts,
-        };
-
-        // WHY: Persist the complete-read oracle and session work before the separate executed-plan query.
-        // A plan timeout must not erase evidence from reads that already reached EOF successfully.
-        var serialized = JsonSerializer.Serialize(summary, s_consumerEvidenceJson);
-        await QueryPlanTestSupport.WriteEvidenceAsync(
-            Engine + "-ancestor-consumer-" + profile + "-completed",
-            [serialized, sql],
-            cancellationToken: cancellationToken);
-
-        var plan = await QueryPlanTestSupport.ExplainAsync(
-            context,
-            capture,
-            0,
-            Engine,
-            cancellationToken: cancellationToken);
-
-        await QueryPlanTestSupport.WriteEvidenceAsync(
-            Engine + "-ancestor-consumer-" + profile,
-            [serialized, sql, plan],
-            cancellationToken: cancellationToken);
-
-        var work = Engine == "MySql"
-            ? DensePathNativeWork.MySql(plan)
-            : DensePathNativeWork.MariaDb(plan);
-
-        await ObserveConsumerReadsWithoutCaptureAsync(
-            context,
-            capture,
-            build,
-            expected,
-            profile,
-            readWarmups,
-            measuredReads,
-            cancellationToken: cancellationToken);
-
-        return new ConsumerFactObservation(
-            profile,
-            OrderConsumerPairs(actual),
-            expected,
-            hasBinding && hasOrderedJoin,
-            constructionBytes,
-            constructionCommands,
-            commandCount,
-            traversals,
-            indexAttempts,
-            work,
-            context
-                .ChangeTracker
-                .Entries()
-                .Count(),
-            population,
-            measuredReads);
-
-        IQueryable<ConsumerFactPair> MeasuredBuild() => build(context);
-    }
-
-    /// <summary>Preserves the actual command and planning diagnostic if a complete native read fails.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="capture">The command and materialization capture.</param>
-    /// <param name="query">The composed provider query to execute.</param>
-    /// <param name="profile">The selected synthetic workload profile.</param>
-    private async Task<ConsumerFactPair[]> ReadConsumerFactsAsync(
-        AncestorIndexQueryContext context,
-        EnterpriseProbe capture,
-        IQueryable<ConsumerFactPair> query,
-        string profile,
-        CancellationToken cancellationToken
-    )
-    {
-        try
-        {
-            return await query.ToArrayAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            await QueryPlanTestSupport.WriteEvidenceAsync(
-                Engine + "-ancestor-consumer-" + profile + "-failure",
-                [
-                    exception.ToString(), .. capture.Commands, await FailurePlanAsync(
-                        context,
-                        capture,
-                        cancellationToken: cancellationToken),
-                ],
-                cancellationToken: cancellationToken);
-
-            throw;
-        }
-    }
-
-    /// <summary>Fails immediately when a timed read changes identity, multiplicity, distance or completeness.</summary>
-    private static void RequireConsumerOracle(
-        ConsumerFactPair[] actual,
-        ConsumerFactPair[] expected
-    )
-    {
-        if (!OrderConsumerPairs(actual)
-            .SequenceEqual(expected))
-        {
-            throw new InvalidOperationException("The consumer occurrence bag differs from the adjacency oracle.");
-        }
-    }
-
-    /// <summary>Separates warmup statements from the fixed complete-read sample window.</summary>
-    private static void ClearConsumerCapture(
-        CompositionCommandProbe commands,
-        EnterpriseProbe capture
-    )
-    {
-        commands.Reset();
-        capture.Commands.Clear();
-        capture.ParameterValues.Clear();
-        capture.ParameterNames.Clear();
-        capture.ParameterBindings.Clear();
-    }
-
-    /// <summary>Applies deterministic work and construction budgets without gating elapsed timings.</summary>
-    private void AssertConsumerFacts(
-        ConsumerFactObservation observation,
-        int sourceCount
-    )
-    {
-        var tuples = Math.Max(
-            observation.Work.OperatorTuples,
-            Math.Max(
-                observation.Traversals / (double)observation.Reads,
-                observation.IndexAttempts / (double)observation.Reads));
-
-        // WHY: The typed adapter requires the qualified binding and ordered join. Work must scale
-        // with selected source occurrences and result rows, even as the stored population grows.
-        var budget = 64L * (sourceCount + observation.Expected.Length + 1);
-
-        _output.WriteLine(
-            string.Create(
-                CultureInfo.InvariantCulture,
-                $"{observation.Profile}; population={observation.Population}; "
-                + $"boundedPathRequired={observation.BoundedPathRequired}; "
-                + $"actualRows={observation.Actual.Length}; "
-                + $"nativeTuples={tuples}; budget={budget}; construction={observation.ConstructionBytes} B/op."));
-
-        Assert.True(observation.BoundedPathRequired);
-        Assert.Equal(observation.Expected, observation.Actual);
-        Assert.Equal(0, observation.ConstructionCommands);
-        Assert.Equal(observation.Reads, observation.Commands);
-        Assert.Equal(0, observation.Tracked);
-        Assert.InRange(observation.ConstructionBytes, 1, 256 * 1_024);
-        Assert.True(observation.Work.ExecutedOperators > 0);
-        Assert.InRange(tuples, 0, budget);
-    }
-
-    /// <summary>Retains stable consumer occurrence identity separately from hierarchy endpoints.</summary>
-    private sealed record ConsumerFactPair(
-        int Occurrence,
-        int Source,
-        int Owner,
-        int Distance
-    );
-
-    /// <summary>Keeps SQL-composable hierarchy projection members available to consumer predicates.</summary>
-    private sealed record ConsumerHierarchyPair
-    {
-        /// <summary>Gets the selected hierarchy source identity.</summary>
-        public int Source { get; init; }
-
-        /// <summary>Gets the matching ancestor identity.</summary>
-        public int Owner { get; init; }
-
-        /// <summary>Gets the structural distance from source to ancestor.</summary>
-        public int Distance { get; init; }
-    }
-
-    /// <summary>Projects independent fact sources to one union-compatible node key.</summary>
-    private sealed record ConsumerFactKey
-    {
-        /// <summary>Gets the hierarchy node referenced by the fact.</summary>
-        public int Node { get; init; }
-    }
-
-    /// <summary>Retains one complete asynchronous read's elapsed time and process-wide managed allocation.</summary>
-    private sealed record ConsumerReadSample(
-        double Milliseconds,
-        long ProcessAllocatedBytes
-    );
-
-    /// <summary>Retains deterministic observations until the test's single assertion phase.</summary>
-    private sealed record ConsumerFactObservation(
-        string Profile,
-        ConsumerFactPair[] Actual,
-        ConsumerFactPair[] Expected,
-        bool BoundedPathRequired,
-        long ConstructionBytes,
-        int ConstructionCommands,
-        int Commands,
-        long Traversals,
-        long IndexAttempts,
-        DensePathNativeWork Work,
-        int Tracked,
-        int Population,
-        int Reads
-    );
 }

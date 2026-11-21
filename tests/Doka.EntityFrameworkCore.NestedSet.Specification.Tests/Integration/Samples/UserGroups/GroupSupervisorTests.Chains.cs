@@ -13,14 +13,17 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false, 3)]
     [InlineData(true, 4)]
-    public async Task OriginalPathAdvancesCursorAndRetainsExplicitRouting(
+    public async Task FollowOriginalPathAsync_OriginalPath_AdvancesCursorAndRetainsExplicitRouting(
         bool currentSubject,
         int expectedIndex
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, currentSubject);
@@ -56,14 +59,17 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 2)]
-    public async Task ReExpansionIsExplicitAndPreservesConvergentOrigins(
+    public async Task FollowAllMembershipsAsync_ReExpansion_IsExplicitAndPreservesConvergentOrigins(
         bool expanded,
         int expectedBranches
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context.UserGroupMemberships.AddAsync(
             new App.UserGroupMembership
@@ -131,13 +137,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HiddenInitialSourceCannotProduceAChain(
+    public async Task FollowAllMembershipsAsync_HiddenInitialSource_CannotProduceAChain(
         bool expanded
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .Users
@@ -170,11 +179,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>A tiny result budget stops the actual reader before a full candidate list is buffered (U69).</summary>
     [Fact]
-    public async Task ReaderBudgetReturnsAnExplicitIncompleteChain()
+    public async Task FollowOriginalPathAsync_ReaderBudget_ReturnsAnExplicitIncompleteChain()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var request = ChainRequest(data, false) with { MaxResultRows = 1 };
@@ -204,11 +216,14 @@ public abstract partial class GroupSupervisorTests
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite rejects inadequate non-shared-cache transactions before a consumer can receive one; "
             + "the isolation helper is unit-tested separately.")]
-    public async Task ReadUncommittedChainTransactionIsRejectedBeforeFirstReader()
+    public async Task FollowOriginalPathAsync_ReadUncommitted_IsRejectedBeforeReading()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var isolation = Engine == "Sqlite"
             ? IsolationLevel.ReadUncommitted

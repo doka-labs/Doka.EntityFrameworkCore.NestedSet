@@ -51,6 +51,7 @@ public sealed partial class EngineTestDiscoveryTests
     }
 
     /// <summary>Keeps deliberately failing metadata controls abstract and outside normal Unit discovery.</summary>
+    // WHY: These literal method names are discovery input data, not executable regression-test names.
     public abstract partial class DiscoveryProbe
     {
         private static readonly AsyncLocal<SourceCounter?> s_sourceCalls = new();

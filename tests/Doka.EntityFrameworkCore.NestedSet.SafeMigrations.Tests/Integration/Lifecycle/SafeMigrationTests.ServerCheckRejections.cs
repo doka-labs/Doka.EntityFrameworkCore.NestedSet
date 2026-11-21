@@ -19,7 +19,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("PostgreSql", "RightAfterLeft")]
     [InlineData("PostgreSql", "DepthMin")]
     [InlineData("PostgreSql", "PositionMin")]
-    public async Task InvalidLegacyCoordinatesRejectSupportedChecksWithoutMutation(
+    public async Task AnalyzeAsync_InvalidLegacy_CoordinatesRejectSupportedChecksWithoutMutation(
         string engine,
         string checkName
     )
@@ -31,8 +31,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Baseline);
 
         // WHY: The historical model has no checks. Direct insertion represents corrupt pre-adoption data
         // without weakening either managed hierarchy writes or the new migration's predicates.
@@ -59,7 +61,7 @@ public sealed partial class SafeMigrationTests
         var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var rowsBefore = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var columnsBefore = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
@@ -94,7 +96,7 @@ public sealed partial class SafeMigrationTests
         var checksAfter = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var rowsAfter = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var columnsAfter = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);

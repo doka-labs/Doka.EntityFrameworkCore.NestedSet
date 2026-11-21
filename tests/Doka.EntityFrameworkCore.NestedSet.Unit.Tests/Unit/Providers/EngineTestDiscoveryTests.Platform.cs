@@ -16,7 +16,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("PostgreSql", true)]
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", true)]
-    public void PlatformHookUsesConcreteEngineWithoutActivatingResources(
+    public void ResolveDatabaseEngine_PlatformHook_UsesConcreteEngineWithoutActivatingResources(
         string engine,
         bool databaseIndependent
     )
@@ -40,7 +40,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>An identity-only fixture is not evidence that a test body avoids the database.</summary>
     [Fact]
-    public void ProviderResourcesDoesNotBypassSqlServerPlatformCheck()
+    public void ResolveDatabaseEngine_ProviderResources_DoesNotBypassSqlServerPlatformCheck()
     {
         // Arrange
         var method = CreateTestMethod(
@@ -59,7 +59,7 @@ public sealed partial class EngineTestDiscoveryTests
     /// The shared root registers xUnit's normal execution hook and metadata guards explicitly opt out.
     /// </summary>
     [Fact]
-    public void SharedRootOwnsPlatformHookAndMetadataMarker()
+    public void GetCustomAttribute_SharedRoot_OwnsPlatformHookAndMetadataMarker()
     {
         // Arrange
         var root = typeof(ProviderTest);
@@ -79,10 +79,10 @@ public sealed partial class EngineTestDiscoveryTests
     /// Database-free lifecycle methods run while the neighboring database isolation case stays guarded.
     /// </summary>
     [Theory]
-    [InlineData(nameof(DatabaseLifecycleTests.SharedLibraryResolvesExecutingAssemblyFixture), true)]
-    [InlineData(nameof(DatabaseLifecycleTests.AssemblyFixtureRejectsForeignServer), true)]
-    [InlineData(nameof(DatabaseLifecycleTests.ServerDatabasesShareEngineWithoutSharingRows), false)]
-    public void DatabaseIndependentMethodDoesNotDisableItsWholeSuite(
+    [InlineData(nameof(DatabaseLifecycleTests.GetCurrentAsync_SharedLibrary_ResolvesExecutingAssemblyFixture), true)]
+    [InlineData(nameof(DatabaseLifecycleTests.NewConnectionStringAsync_AssemblyFixture_RejectsForeignServer), true)]
+    [InlineData(nameof(DatabaseLifecycleTests.SaveChangesAsync_ServerDatabases_ShareEngineWithoutSharingRows), false)]
+    public void ResolveDatabaseEngine_DatabaseIndependentMethod_DoesNotDisableItsWholeSuite(
         string methodName,
         bool databaseIndependent
     )
@@ -109,10 +109,10 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>SQL Server compiled-model metadata remains available without starting a server.</summary>
     [Theory]
-    [InlineData(nameof(CompiledModelTests.DesignModelUsesTypedTreeRegistries))]
-    [InlineData(nameof(CompiledModelTests.CompiledRegistryNamesMatchDesignModel))]
-    [InlineData(nameof(CompiledModelTests.CompiledStringIdentityCapturesMatchDesignModel))]
-    public void CompiledModelMetadataDoesNotRequireSqlServer(
+    [InlineData(nameof(CompiledModelTests.GetEntityTypes_DesignModel_UsesTypedTreeRegistries))]
+    [InlineData(nameof(CompiledModelTests.GetEntityTypes_CompiledRegistryNames_MatchDesignModel))]
+    [InlineData(nameof(CompiledModelTests.FindAnnotation_CompiledStringIdentity_CapturesMatchDesignModel))]
+    public void ResolveDatabaseEngine_CompiledModelMetadata_DoesNotRequireSqlServer(
         string methodName
     )
     {
@@ -131,29 +131,41 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Connection-free binding, model, and value-comparer cases stay runnable on every local host.</summary>
     [Theory]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.ScopedHierarchyRequiresForScope))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.ScopeTypeMustMatchFinalizedModel))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.ScopelessHierarchyRejectsForScope))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.NonHierarchyEntityIsRejectedImmediately))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.TreeIdTypeMustMatchFinalizedModel))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.NodeKeyTypeMustMatchFinalizedModel))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.MutationRequiresConfiguredScopeBinding))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.MutationTreeIdTypeMustMatchFinalizedModel))]
-    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.MutationNodeKeyTypeMustMatchFinalizedModel))]
-    [InlineData(typeof(BulkInputTests), nameof(BulkInputTests.BranchCopiesItsChildCollection))]
-    [InlineData(typeof(TableMappingTests), nameof(TableMappingTests.EntitySplittingPlacesIndexesOnStructureFragment))]
+    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.InTree_ScopedHierarchy_RequiresForScope))]
+    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.ForScope_ScopeType_MustMatchFinalizedModel))]
+    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.ForScope_ScopelessHierarchy_RejectsForScope))]
+    [InlineData(
+        typeof(NestedSetFacadeTests),
+        nameof(NestedSetFacadeTests.NestedSet_NonHierarchyEntity_IsRejectedImmediately))]
+    [InlineData(typeof(NestedSetFacadeTests), nameof(NestedSetFacadeTests.InTree_TreeIdType_MustMatchFinalizedModel))]
+    [InlineData(
+        typeof(NestedSetFacadeTests),
+        nameof(NestedSetFacadeTests.AncestorsOf_NodeKeyType_MustMatchFinalizedModel))]
+    [InlineData(
+        typeof(NestedSetFacadeTests),
+        nameof(NestedSetFacadeTests.InsertRootAsync_Mutation_RequiresConfiguredScopeBinding))]
+    [InlineData(
+        typeof(NestedSetFacadeTests),
+        nameof(NestedSetFacadeTests.InsertRootAsync_MutationTreeIdType_MustMatchFinalizedModel))]
+    [InlineData(
+        typeof(NestedSetFacadeTests),
+        nameof(NestedSetFacadeTests.DeleteAsync_MutationNodeKeyType_MustMatchFinalizedModel))]
+    [InlineData(typeof(BulkInputTests), nameof(BulkInputTests.Construct_Branch_CopiesItsChildCollection))]
+    [InlineData(
+        typeof(TableMappingTests),
+        nameof(TableMappingTests.GenerateCreateScript_EntitySplitting_PlacesIndexesOnStructureFragment))]
     [InlineData(
         typeof(TpcSharedCollationTests),
-        nameof(TpcSharedCollationTests.ScopedConcreteParentKeyBelongsToInheritanceRoot))]
-    [InlineData(typeof(TpcTests), nameof(TpcTests.PolymorphicTpcHierarchyIsRejected))]
-    [InlineData(typeof(SharedTypeTests), nameof(SharedTypeTests.SharedTypeWithoutEntityNameIsRejected))]
-    [InlineData(typeof(BroadScopeTests), nameof(BroadScopeTests.ProviderComparerSeparatesReferenceAliases))]
-    [InlineData(typeof(BroadNodeKeyTests), nameof(BroadNodeKeyTests.ProviderComparerSeparatesKeyAliases))]
-    [InlineData(typeof(BroadTreeIdTests), nameof(BroadTreeIdTests.ProviderComparerSeparatesTreeAliases))]
+        nameof(TpcSharedCollationTests.FinalizeModel_ScopedConcreteParentKey_BelongsToInheritanceRoot))]
+    [InlineData(typeof(TpcTests), nameof(TpcTests.NestedSet_PolymorphicTpcHierarchy_IsRejected))]
+    [InlineData(typeof(SharedTypeTests), nameof(SharedTypeTests.NestedSet_SharedTypeWithoutEntityName_IsRejected))]
+    [InlineData(typeof(BroadScopeTests), nameof(BroadScopeTests.Equals_ProviderComparer_SeparatesReferenceAliases))]
+    [InlineData(typeof(BroadNodeKeyTests), nameof(BroadNodeKeyTests.Matches_ProviderComparer_SeparatesKeyAliases))]
+    [InlineData(typeof(BroadTreeIdTests), nameof(BroadTreeIdTests.Equals_ProviderComparer_SeparatesTreeAliases))]
     [InlineData(
         typeof(ConvertedTextCollationTests),
-        nameof(ConvertedTextCollationTests.ImplicitIdentityCaptureMatchesRegistryAndSuppliedModel))]
-    public void ConnectionFreeMethodsBypassOnlyTheDatabaseHostCheck(
+        nameof(ConvertedTextCollationTests.UseModel_ImplicitIdentityCapture_MatchesRegistryAndSuppliedModel))]
+    public void ResolveDatabaseEngine_ConnectionFreeMethods_BypassOnlyTheDatabaseHostCheck(
         Type declaringSuite,
         string methodName
     )

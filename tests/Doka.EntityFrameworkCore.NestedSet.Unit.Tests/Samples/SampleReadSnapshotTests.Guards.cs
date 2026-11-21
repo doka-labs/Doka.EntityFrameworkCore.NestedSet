@@ -10,7 +10,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>A failed owned connection open neither starts a read nor acquires a transaction reference.</summary>
     /// <returns>A task completing after the actual snapshot helper's open failure has been checked.</returns>
     [Fact]
-    public async Task OwnedConnectionOpenFailureDoesNotStartTheRead()
+    public async Task RunAsync_OwnedConnection_OpenFailureDoesNotStartTheRead()
     {
         // Arrange
         var boundary = new BeforeSnapshotReadBoundary();
@@ -45,7 +45,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData("context")]
     [InlineData("read")]
-    public async Task RequiredArgumentsAreRejected(
+    public async Task RunAsync_RequiredArguments_AreRejected(
         string parameter
     )
     {
@@ -74,7 +74,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>An already canceled request neither opens a connection nor invokes the report delegate.</summary>
     /// <returns>A task that completes after cancellation is observed.</returns>
     [Fact]
-    public async Task CancellationIsObservedBeforeIo()
+    public async Task RunAsync_Cancellation_IsObservedBeforeIo()
     {
         // Arrange
         var boundary = new BeforeSnapshotReadBoundary();
@@ -108,7 +108,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>An ambient transaction is rejected before any EF read or database connection attempt.</summary>
     /// <returns>A task that completes after the unsupported transaction boundary is observed.</returns>
     [Fact]
-    public async Task AmbientTransactionsAreRejectedBeforeIo()
+    public async Task RunAsync_AmbientTransactions_AreRejectedBeforeIo()
     {
         // Arrange
         var boundary = new BeforeSnapshotReadBoundary();
@@ -137,7 +137,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>The early-boundary observer rejects an actual connection attempt.</summary>
     /// <returns>A task completing after the deliberate connection failure is observed.</returns>
     [Fact]
-    public async Task BeforeReadBoundaryRejectsActualConnectionAttempts()
+    public async Task OpenConnectionAsync_BeforeReadBoundary_RejectsActualConnectionAttempts()
     {
         // Arrange
         var boundary = new BeforeSnapshotReadBoundary();

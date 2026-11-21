@@ -1,1 +1,8 @@
 #nullable enable
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!)
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).NestedSet<TEntity>() -> Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).NestedSet<TEntity>(string! entityTypeName) -> Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).SaveNestedSetChanges(bool acceptAllChangesOnSuccess, System.Func<int>! saveChanges) -> int
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).SaveNestedSetChangesAsync(bool acceptAllChangesOnSuccess, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<int>!>! saveChanges, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions.extension<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!)
+Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions.extension<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!).HasNestedSet(System.Action<Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!>! configure) -> Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!

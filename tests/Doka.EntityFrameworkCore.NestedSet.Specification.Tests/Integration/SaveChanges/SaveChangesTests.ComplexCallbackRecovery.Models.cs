@@ -3,8 +3,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Combines the hierarchy with an ordinary, independently versioned complex payload row.</summary>
-    private sealed class ComplexCallbackContext(DbContextOptions options) : NestedSetDbContext(options)
+    private sealed class ComplexCallbackContext : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public ComplexCallbackContext(
+            DbContextOptions options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

@@ -9,12 +9,12 @@ internal static class CompositionTestData
         string engine,
         Guid scope,
         CompositionCommandProbe probe,
-        CancellationToken cancellationToken,
-        int? hidden = null,
-        int? closed = null,
-        EnterpriseProbe? planProbe = null,
-        int? chainNodes = null,
-        ChainOwnerMode ownerMode = ChainOwnerMode.RootValue
+        int? hidden,
+        int? closed,
+        EnterpriseProbe? planProbe,
+        int? chainNodes,
+        ChainOwnerMode ownerMode,
+        CancellationToken cancellationToken
     )
     {
         var context = await fixture.CreateContextAsync<CompositionContext>(

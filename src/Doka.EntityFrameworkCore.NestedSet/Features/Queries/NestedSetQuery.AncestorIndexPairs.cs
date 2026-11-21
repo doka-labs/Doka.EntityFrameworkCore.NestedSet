@@ -261,6 +261,7 @@ internal sealed partial class NestedSetQuery<TEntity>
     }
 
     /// <summary>Retains only the mapped roles used by the optional indexed source and candidate relations.</summary>
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     private sealed class IndexedAncestorCoordinates
     {
         /// <summary>Gets the exact scope-local mapped identity.</summary>

@@ -6,6 +6,48 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Writes query-plan and command evidence for independent shared and provider-local suites.</summary>
 internal static class QueryPlanTestSupport
 {
+    /// <summary>Releases every table owned by a native-key fixture after successful, failed or canceled work.</summary>
+    /// <param name="context">The still-live context whose relational model contains only case-owned tables.</param>
+    /// <param name="operationFailure">The original work failure, retained alongside any cleanup failures.</param>
+    /// <returns>A protected completion that attempts each independent owned table exactly once.</returns>
+    internal static async Task DropOwnedTablesAsync(
+        DbContext context,
+        Exception? operationFailure
+    )
+    {
+        var sql = context.GetService<ISqlGenerationHelper>();
+        List<Exception>? failures = null;
+
+        foreach (var table in context.Model.GetRelationalModel().Tables)
+        {
+            try
+            {
+                // WHY: The operation's token may already be canceled. Every independent owned table must
+                // still be released, including tables following a failing DROP.
+                // Only provider-delimited model identifiers enter this statement; application values do not.
+                var statement = "DROP TABLE IF EXISTS " + sql.DelimitIdentifier(table.Name, table.Schema);
+                await context.Database.ExecuteSqlRawAsync(statement, CancellationToken.None);
+            }
+            catch (Exception failure)
+            {
+                failures ??= operationFailure is null ? [] : [operationFailure];
+                failures.Add(failure);
+            }
+        }
+
+        if (failures is null)
+        {
+            return;
+        }
+
+        if (failures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        throw new AggregateException("Native-key comparison and owned table cleanup failed.", failures);
+    }
+
     /// <summary>Completes fixture evidence and cleanup without losing either operation's failures.</summary>
     /// <param name="writeEvidence">The class-owned evidence writer, invoked before resource cleanup.</param>
     /// <param name="cleanup">
@@ -96,10 +138,14 @@ internal static class QueryPlanTestSupport
         return context.Database.ExecuteSqlRawAsync(statement, cancellationToken);
     }
 
-    /// <summary>Refreshes every statistic on one owned SQL Server table with its unchanged command watchdog.</summary>
-    /// <param name="context">The fixture context whose ordinary provider command settings remain authoritative.</param>
+    /// <summary>Refreshes each statistic on one owned SQL Server table as an independent operation.</summary>
+    /// <param name="context">
+    /// The fixture context whose explicitly configured command settings remain authoritative.
+    /// </param>
     /// <param name="sql">The configured provider's identifier delimiter.</param>
-    /// <param name="table">The fully delimited mapped table, bound as a value when resolving its object identity.</param>
+    /// <param name="table">
+    /// The fully delimited mapped table, bound as a value when resolving its object identity.
+    /// </param>
     /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
     /// <returns>A task completing after every owned statistic has been refreshed using FULLSCAN.</returns>
     private static async Task RefreshSqlServerStatisticsAsync(
@@ -109,8 +155,8 @@ internal static class QueryPlanTestSupport
         CancellationToken cancellationToken
     )
     {
-        // WHY: One all-statistics FULLSCAN accumulated every index/column scan under one command watchdog.
-        // Enumerating the same objects preserves exact distributions while bounding each independent refresh.
+        // WHY: Enumerating the same objects preserves exact FULLSCAN distributions while keeping each
+        // independent refresh observable instead of combining every index and column scan in one statement.
         var statistics = await context
             .Database
             .SqlQueryRaw<string>(
@@ -152,9 +198,9 @@ internal static class QueryPlanTestSupport
             .GetDbConnection()
             .CreateCommand();
 
-        // WHY: An instrumented plan returns its first row only after completing the observed query,
-        // unlike the streamed read. Bound that separate diagnostic wait without changing EF query options.
-        command.CommandTimeout = context.Database.GetCommandTimeout() ?? 120;
+        // WHY: Actual-plan replay completes the observed query before returning its first row. An inherited
+        // diagnostic timeout would impose a machine-speed gate; explicit caller settings remain authoritative.
+        command.CommandTimeout = context.Database.GetCommandTimeout() ?? 0;
         var sql = probe.Commands[index];
         command.CommandText = engine switch
         {
@@ -199,7 +245,8 @@ internal static class QueryPlanTestSupport
                     if (reader.GetInt32(1) == 1317)
                     {
                         throw new InvalidOperationException(
-                            "MySQL query-plan replay was interrupted (warning 1317); partial execution is not complete evidence.");
+                            "MySQL query-plan replay was interrupted (warning "
+                            + "1317); partial execution is not complete evidence.");
                     }
 
                     continue;

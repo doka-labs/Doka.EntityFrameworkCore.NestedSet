@@ -21,7 +21,7 @@ public abstract partial class BulkIntervalRefreshTests
     /// <summary>Every expected key must occur once in the interval, even when row count is unchanged.</summary>
     [Theory]
     [MemberData(nameof(InvalidRowCases))]
-    public async Task UnexpectedPhysicalRowsFailAndRestoreTheEntireImport(
+    public async Task InsertSubtreeAsync_UnexpectedPhysicalRows_FailAndRestoreTheEntireImport(
         string failure
     )
     {
@@ -79,7 +79,7 @@ public abstract partial class BulkIntervalRefreshTests
 
     /// <summary>A refresh failure rolls back only the import savepoint and retains the caller's earlier work.</summary>
     [Fact]
-    public async Task CallerTransactionRetainsEarlierWorkWhenRefreshFindsAnUnexpectedRow()
+    public async Task InsertSubtreeAsync_CallerTransaction_RetainsEarlierWorkWhenRefreshFindsAnUnexpectedRow()
     {
         // Arrange
         var database = await _assigned.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -147,7 +147,7 @@ public abstract partial class BulkIntervalRefreshTests
 
     /// <summary>Cancellation after all writes restores generated identities, defaults and complex values.</summary>
     [Fact]
-    public async Task CanceledGeneratedRefreshRestoresEveryInput()
+    public async Task InsertForestAsync_CanceledGeneratedRefresh_RestoresEveryInput()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();

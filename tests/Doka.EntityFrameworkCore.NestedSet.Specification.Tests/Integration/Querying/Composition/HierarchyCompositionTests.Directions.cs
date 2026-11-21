@@ -4,7 +4,7 @@ public abstract partial class HierarchyCompositionTests
 {
     /// <summary>Direction changes retain each source occurrence and both source-relative distances.</summary>
     [Fact]
-    public async Task UpThenDownPreservesPerSourceBagAndDistances()
+    public async Task SelectAncestorsOrSelf_UpThenDown_PreservesPerSourceBagAndDistances()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -12,7 +12,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -89,7 +94,7 @@ public abstract partial class HierarchyCompositionTests
 
     /// <summary>An open destination branch cannot bypass a rejected first leg through a shared pivot.</summary>
     [Fact]
-    public async Task ClosedUpwardLegCannotReappearThroughOpenDownwardLeg()
+    public async Task SelectAncestors_ClosedUpwardLeg_CannotReappearThroughOpenDownwardLeg()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -98,7 +103,11 @@ public abstract partial class HierarchyCompositionTests
             scope,
             probe,
             closed: 2,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -161,7 +170,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task DownThenUpPreservesTurnMultiplicityAndExplicitOriginFence(
+    public async Task SelectSubtrees_DownThenUp_PreservesTurnMultiplicityAndExplicitOriginFence(
         bool fenceOrigin
     )
     {
@@ -171,7 +180,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -239,7 +253,7 @@ public abstract partial class HierarchyCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnerFiltersPreserveDuplicateOuterRowsWithoutMultiplyingThem(
+    public async Task WhereNearestAncestorOrSelf_Owner_FiltersPreserveDuplicateOuterRowsWithoutMultiplyingThem(
         bool nearest
     )
     {
@@ -249,7 +263,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

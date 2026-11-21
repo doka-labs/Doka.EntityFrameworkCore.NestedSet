@@ -17,7 +17,7 @@ public abstract partial class HierarchyCompositionTests
     [InlineData(1_000, "RootOwner")]
     [InlineData(10_000, "RootOwner")]
     [Trait("Category", "Capacity")]
-    public async Task SelectiveDeepCompositionHasBoundedResultsAndInspectablePlans(
+    public async Task RetainFailureAsync_SelectiveDeepComposition_HasBoundedResultsAndInspectablePlans(
         int nodes,
         string shape
     )
@@ -40,7 +40,9 @@ public abstract partial class HierarchyCompositionTests
             planProbe: planProbe,
             chainNodes: nodes,
             ownerMode: ownerMode,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null);
 
         await QueryPlanTestSupport.RefreshStatisticsAsync<CompositionNode>(
             context,
@@ -124,7 +126,6 @@ public abstract partial class HierarchyCompositionTests
                 $"deep-{shape}-{nodes}",
                 planProbe,
                 error,
-                CancellationToken.None,
                 commandIndex);
 
             throw;

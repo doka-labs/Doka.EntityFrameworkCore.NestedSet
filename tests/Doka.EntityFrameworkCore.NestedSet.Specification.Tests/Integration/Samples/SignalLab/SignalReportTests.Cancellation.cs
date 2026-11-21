@@ -6,7 +6,7 @@ public abstract partial class SignalReportTests
 {
     /// <summary>Cancellation after the catalog prevents aggregate I/O and releases the owned snapshot.</summary>
     [Fact]
-    public async Task CancellationAfterCatalogPreventsAggregateAndReleasesSnapshot()
+    public async Task ReadAsync_CancellationAfterCatalog_PreventsAggregateAndReleasesSnapshot()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -14,7 +14,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request();
         using var cancellation = new CancellationTokenSource();
         probe.Reset();

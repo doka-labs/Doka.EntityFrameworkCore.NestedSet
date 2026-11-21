@@ -12,7 +12,7 @@ public abstract partial class SignalReportTests
     [InlineData(8, true)]
     [InlineData(64, false)]
     [InlineData(64, true)]
-    public async Task IndexedFactFirstReportPreservesTemporalAndMetadataContracts(
+    public async Task ReadAsync_IndexedFactFirstReport_PreservesTemporalAndMetadataContracts(
         int scenario,
         bool nearest
     )
@@ -33,8 +33,8 @@ public abstract partial class SignalReportTests
             context,
             scenario,
             false,
-            CancellationToken.None,
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
 
         var request = data.Request(
             nearest
@@ -68,9 +68,11 @@ public abstract partial class SignalReportTests
         AssertReportBoundary(context, probe);
     }
 
-    /// <summary>Proves that indexed report setup detects entity materialization instead of leaving its guard inert.</summary>
+    /// <summary>
+    /// Proves that indexed report setup detects entity materialization instead of leaving its guard inert.
+    /// </summary>
     [Fact]
-    public async Task IndexedReportSetupObservesMaterialization()
+    public async Task TenantId_IndexedReportSetup_ObservesMaterialization()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -81,7 +83,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         probe.Reset();
 
         // Act
@@ -98,9 +105,15 @@ public abstract partial class SignalReportTests
     }
 
     /// <summary>Opts the real sample model into the index without changing its default schema.</summary>
-    private sealed class IndexedSignalLabContext(DbContextOptions<IndexedSignalLabContext> options)
-        : SignalLabContext(options)
+    private sealed class IndexedSignalLabContext
+        : SignalLabContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public IndexedSignalLabContext(
+            DbContextOptions<IndexedSignalLabContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

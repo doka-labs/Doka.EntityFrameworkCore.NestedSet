@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 internal static partial class SignalReportValidation
 {
     /// <summary>Retains only exact scalar catalog evidence until the complete reader has been disposed.</summary>
-    private struct CatalogAccumulator()
+    private struct CatalogAccumulator
     {
         private readonly HashSet<Guid> _anchors = [];
         private readonly HashSet<Guid> _channels = [];
@@ -11,6 +11,11 @@ internal static partial class SignalReportValidation
         private readonly HashSet<(Guid TypeId, string FieldCode, string Value)> _choices = [];
         private string? _unit;
         private bool _invalidUnit;
+
+        /// <summary>
+        /// Initializes the owned catalog sets; default struct storage is never used as an accumulator.
+        /// </summary>
+        public CatalogAccumulator() { }
 
         /// <summary>Collects evidence without rejecting catalog rows before successful EOF and disposal.</summary>
         internal void Add(
@@ -60,9 +65,11 @@ internal static partial class SignalReportValidation
                     nameof(request));
             }
 
+            // WHY: Validate groups in request order so the first invalid scalar keeps its existing error precedence.
             // ReSharper disable once LoopCanBeConvertedToQuery
             foreach (var group in request.Groups)
             {
+                // WHY: Each criterion checks both catalog witnesses before proceeding to the next scalar.
                 // ReSharper disable once LoopCanBeConvertedToQuery
                 foreach (var criterion in group.Criteria)
                 {

@@ -9,13 +9,18 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     /// <summary>Attempts exact lifecycle cleanup for every introduced entry without abandoning owned payload.</summary>
     /// <param name="entries">Only the entries introduced for this bounded insertion aggregate.</param>
     private static void DetachInsertionGraph(
-        IReadOnlyList<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> entries
+        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> entries
     )
     {
         List<Exception>? failures = null;
 
-        foreach (var (_, identity) in entries)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int itemIndex = 0, itemCount = entries.Count; itemIndex < itemCount; itemIndex++)
         {
+            var (_, identity) = entries[itemIndex];
+
             try
             {
                 // WHY: Mutable principal keys must match their installed identities before public detachment
@@ -62,10 +67,10 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
     /// <param name="insertionValues">The independent generated-leaf and owned-identity snapshots.</param>
     private static void Restore(
         EntityEntry entry,
-        IReadOnlyList<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> insertionEntries,
-        IReadOnlyList<(EntityEntry Owner, INavigationBase Navigation, object Entity)> insertionRelationships,
+        List<(EntityEntry Entry, NestedSetInsertionTracking.Identity? Identity)> insertionEntries,
+        List<(EntityEntry Owner, INavigationBase Navigation, object Entity)> insertionRelationships,
         Dictionary<IProperty, object?> original,
-        IReadOnlyList<NestedSetInsertionValues.Snapshot> insertionValues
+        List<NestedSetInsertionValues.Snapshot> insertionValues
     )
     {
         List<Exception>? failures = null;
@@ -74,7 +79,7 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
         {
             DetachInsertionGraph(insertionEntries);
 
-            if (!insertionEntries.Any(candidate => ReferenceEquals(candidate.Entry.Entity, entry.Entity))
+            if (insertionEntries.All(candidate => !ReferenceEquals(candidate.Entry.Entity, entry.Entity))
                 || entry.State != EntityState.Detached)
             {
                 NestedSetInsertionTracking.Detach(entry);
@@ -87,8 +92,17 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
 
         // WHY: PrepareDetachedInsertion completes graph validation before the operation's try/catch begins;
         // malformed initial graphs use its separate initialization cleanup and never enter this restoration path.
-        foreach (var candidate in insertionEntries)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (
+            int candidateIndex = 0, candidateCount = insertionEntries.Count;
+            candidateIndex < candidateCount;
+            candidateIndex++
+        )
         {
+            var candidate = insertionEntries[candidateIndex];
+
             try
             {
                 NestedSetInputNavigations.RestoreEmpty(
@@ -134,8 +148,13 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             }
         }
 
-        foreach (var (owner, navigation, entity) in insertionRelationships)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int itemIndex2 = 0, itemCount2 = insertionRelationships.Count; itemIndex2 < itemCount2; itemIndex2++)
         {
+            var (owner, navigation, entity) = insertionRelationships[itemIndex2];
+
             try
             {
                 // WHY: Detaching a mutable-key aggregate can sever its owned CLR relationships. Restore the
@@ -148,8 +167,17 @@ internal sealed partial class NestedSetInsert<TEntity, TKey, TTreeId, TScope>
             }
         }
 
-        foreach (var snapshot in insertionValues)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (
+            int snapshotIndex = 0, snapshotCount = insertionValues.Count;
+            snapshotIndex < snapshotCount;
+            snapshotIndex++
+        )
         {
+            var snapshot = insertionValues[snapshotIndex];
+
             try
             {
                 snapshot.Restore();

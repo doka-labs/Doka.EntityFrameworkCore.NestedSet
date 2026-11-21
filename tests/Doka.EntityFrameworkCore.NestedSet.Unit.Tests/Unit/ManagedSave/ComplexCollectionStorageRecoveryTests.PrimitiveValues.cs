@@ -37,7 +37,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
     /// <param name="detectCallback">Whether EF observes callback scalar changes before recovery.</param>
     [Theory]
     [MemberData(nameof(PrimitiveCases))]
-    public async Task StructPrimitiveValuesRestoreComparerSnapshotsAndFlags(
+    public async Task Restore_StructPrimitiveValues_RestoresComparerSnapshotsAndFlags(
         string mutation,
         bool detectPending,
         bool detectCallback

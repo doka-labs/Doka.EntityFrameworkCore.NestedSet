@@ -7,7 +7,7 @@ public abstract partial class SignalReportTests
 {
     /// <summary>Proves the same callback used by scalar profiles sees actual node materialization.</summary>
     [Fact]
-    public async Task MaterializationCounterObservesAnActualNode()
+    public async Task Id_MaterializationCounter_ObservesAnActualNode()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -15,7 +15,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         probe.Reset();
 
         // Act
@@ -36,7 +41,7 @@ public abstract partial class SignalReportTests
 
     /// <summary>Already-bound tree and tenant isolation cannot be widened by lookalike fact identities.</summary>
     [Fact]
-    public async Task LookalikeTreesAndTenantsDoNotContributeToTheSelectedReport()
+    public async Task ReadAsync_LookalikeTreesAndTenants_DoNotContributeToTheSelectedReport()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -44,7 +49,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = SingleAnchor(data) with { Criteria = [] };
         var rootBounds = await context
             .Nodes
@@ -82,7 +92,7 @@ public abstract partial class SignalReportTests
 
     /// <summary>A caller's serializable boundary stays open and owns the report's complete shared view.</summary>
     [Fact]
-    public async Task ReportPreservesAnExistingSerializableTransaction()
+    public async Task ReadAsync_Report_PreservesAnExistingSerializableTransaction()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -90,7 +100,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = SingleAnchor(data);
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
@@ -117,7 +132,7 @@ public abstract partial class SignalReportTests
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "SQLite exposes Serializable or ReadUncommitted rather than a ReadCommitted transaction.")]
-    public async Task ReportRejectsAReadCommittedCallerBeforeReading()
+    public async Task ReadAsync_Report_RejectsAReadCommittedCallerBeforeReading()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -125,7 +140,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = SingleAnchor(data);
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.ReadCommitted,
@@ -149,7 +169,7 @@ public abstract partial class SignalReportTests
     /// Catalog and aggregate never combine old classification data with a newly moved and updated branch.
     /// </summary>
     [Fact]
-    public async Task ReportSnapshotKeepsStructurePeriodsMetadataAndFactsFromOneView()
+    public async Task ReadAsync_ReportSnapshot_KeepsStructurePeriodsMetadataAndFactsFromOneView()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -157,7 +177,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         await using var writer = await _fixture.CreateContextAsync<SignalLabContext>(
             Engine,
             static options => new SignalLabContext(options),
@@ -250,7 +275,7 @@ public abstract partial class SignalReportTests
     /// Deferred report construction never opens the connection, loads anchors or materializes measurements.
     /// </summary>
     [Fact]
-    public async Task BuildPerformsNoIoAndDoesNotMaterializeDomainEntities()
+    public async Task Build_DeferredQueryConstruction_PerformsNoIoOrEntityMaterialization()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -258,7 +283,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = SignalReportValidation.Snapshot(data.Request());
         probe.Reset();
 

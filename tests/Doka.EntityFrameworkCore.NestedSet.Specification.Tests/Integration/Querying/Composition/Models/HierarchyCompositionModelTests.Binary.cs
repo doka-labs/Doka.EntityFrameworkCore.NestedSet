@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task BinaryKeysRetainDatabaseValueEqualityInEveryComposer(
+    public async Task QueryDepths_BinaryKeys_RetainDatabaseValueEqualityInEveryComposer(
         HierarchyCompositionOperation operation
     )
     {

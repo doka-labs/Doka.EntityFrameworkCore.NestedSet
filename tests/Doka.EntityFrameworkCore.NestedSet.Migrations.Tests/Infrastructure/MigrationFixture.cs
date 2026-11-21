@@ -30,10 +30,10 @@ public sealed class MigrationFixture : IAsyncLifetime
     /// <returns>An isolated database owned by the caller and this engine fixture.</returns>
     public async Task<MigrationDatabase> CreateDatabaseAsync(
         string engine,
-        CancellationToken cancellationToken,
-        Action<DbContextOptionsBuilder>? configureOptions = null,
-        Action<IServiceCollection, DbContext>? configureDesignServices = null,
-        bool qualifySchema = true
+        Action<DbContextOptionsBuilder>? configureOptions,
+        Action<IServiceCollection, DbContext>? configureDesignServices,
+        bool qualifySchema,
+        CancellationToken cancellationToken
     )
     {
         cancellationToken.ThrowIfCancellationRequested();

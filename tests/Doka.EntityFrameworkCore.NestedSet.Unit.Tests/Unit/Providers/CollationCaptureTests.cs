@@ -5,7 +5,7 @@ public sealed class CollationCaptureTests
 {
     /// <summary>Verifies an unspecified string collation remains explicitly captured in the runtime model.</summary>
     [Fact]
-    public async Task DatabaseDefaultCollationIsCapturedWithoutGuessing()
+    public async Task Resolve_DatabaseDefaultCollation_IsCapturedWithoutGuessing()
     {
         // Arrange
         await using var context = new DefaultCollationContext();

@@ -10,7 +10,7 @@ public sealed partial class ComplexRecoveryCompositionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task DeepCallbackOnlyOwnersRestoreAbsentCapturedMembership(
+    public async Task Restore_DeepCallbackOnlyOwners_RestoreAbsentCapturedMembership(
         bool capturedNull,
         bool removeRoot
     )
@@ -77,7 +77,7 @@ public sealed partial class ComplexRecoveryCompositionTests
             payload.Rows.Clear();
         }
 
-        output.WriteLine($"Callback complex depth=4; capturedNull={capturedNull}; removeRoot={removeRoot}.");
+        _output.WriteLine($"Callback complex depth=4; capturedNull={capturedNull}; removeRoot={removeRoot}.");
 
         // Act
         snapshot.Restore();
@@ -127,7 +127,7 @@ public sealed partial class ComplexRecoveryCompositionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task DeepCallbackOnlyOwnersAllowActualSqliteRetry(
+    public async Task Restore_DeepCallbackOnlyOwners_AllowActualSqliteRetry(
         bool capturedNull,
         bool removeRoot
     )
@@ -196,7 +196,7 @@ public sealed partial class ComplexRecoveryCompositionTests
             payload.Rows.Clear();
         }
 
-        output.WriteLine($"Actual SQLite retry; complex depth=4; capturedNull={capturedNull}; null={removeRoot}.");
+        _output.WriteLine($"Actual SQLite retry; complex depth=4; capturedNull={capturedNull}; null={removeRoot}.");
 
         // Act
         snapshot.Restore();
@@ -247,7 +247,7 @@ public sealed partial class ComplexRecoveryCompositionTests
         EntityEntry<CallbackOnlyPayload> entry
     )
     {
-        var native = new List<NativeObservation>();
+        List<NativeObservation> native = [];
         var root = s_memberOwner.GetValue(entry.Property(value => value.Id))!;
         ReadNative(
             root,

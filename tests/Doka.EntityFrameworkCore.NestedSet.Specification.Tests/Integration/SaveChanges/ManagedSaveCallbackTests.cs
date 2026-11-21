@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks application callbacks that inspect the tracker after a managed insertion.</summary>
-public abstract class ManagedSaveCallbackTests : ProviderTest
+public abstract partial class ManagedSaveCallbackTests : ProviderTest
 {
     private readonly RelationalFixture _fixture;
 
@@ -19,7 +19,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task PostSaveTrackerInspectionDoesNotRejectManagedInsert(
+    public async Task InsertForestAsync_PostSaveTrackerInspection_DoesNotRejectManagedInsert(
         bool bulk,
         bool interceptor
     )
@@ -77,7 +77,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
 
     /// <summary>Every supported provider routes saves through the nested-set persistence boundary.</summary>
     [Fact]
-    public async Task PersistenceHookIsInstalledForEveryProvider()
+    public async Task GetService_PersistenceHook_IsInstalledForEveryProvider()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -94,7 +94,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RolledBackManagedInsertRestoresAcceptedCallbackWrites(
+    public async Task InsertForestAsync_RolledBackManagedInsert_RestoresAcceptedCallbackWrites(
         bool bulk
     )
     {
@@ -183,7 +183,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RolledBackCallbackWritesCanBeSavedAgain(
+    public async Task SaveChangesAsync_RolledBackCallback_WritesCanBeSavedAgain(
         bool bulk
     )
     {
@@ -246,63 +246,12 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
                 .AnyAsync(row => row.Id == 702, CancellationToken.None));
     }
 
-    /// <summary>Seeds and tracks callback writes shared by the rollback and retry checks.</summary>
-    private static async Task<(UnrelatedRow Changed, UnrelatedRow Removed, GeneratedAuditRow Audit)>
-        PrepareCallbackWritesAsync(
-            TestDatabase database,
-            TreeContext context,
-            SaveBoundaryCallback callback,
-            CancellationToken cancellationToken
-        )
-    {
-        await using (var setup = database.CreateContext())
-        {
-            await setup.AddRangeAsync(
-                [
-                    new UnrelatedRow
-                    {
-                        Id = 701,
-                        Value = "stored",
-                    },
-                    new UnrelatedRow
-                    {
-                        Id = 702,
-                        Value = "removed",
-                    },
-                ],
-                cancellationToken);
-
-            await setup.SaveChangesAsync(cancellationToken);
-        }
-
-        var changed = await context
-            .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 701, cancellationToken);
-
-        var removed = await context
-            .Set<UnrelatedRow>()
-            .SingleAsync(row => row.Id == 702, cancellationToken);
-
-        var audit = new GeneratedAuditRow { Value = "inserted" };
-        callback.OnSaving = current =>
-        {
-            // WHY: This synchronous SavingChanges callback must finish attaching the audit before it returns.
-            // The configured identity generator does not query the database during Add.
-            // ReSharper disable once MethodHasAsyncOverload
-            current.Add(audit);
-            changed.Value = "changed";
-            current.Remove(removed);
-        };
-
-        return (changed, removed, audit);
-    }
-
     /// <summary>A later bulk-batch failure restores every tree input and generated callback key.</summary>
     /// <param name="independentTrees">Whether both batches span distinct trees instead of one wide subtree.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LaterBatchFailureRestoresEarlierCallbackWrites(
+    public async Task InsertForestAsync_LaterBatchFailure_RestoresEarlierCallbackWrites(
         bool independentTrees
     )
     {
@@ -394,7 +343,7 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SuppressedManagedSaveRejectsInsertion(
+    public async Task InsertForestAsync_SuppressedManagedSave_RejectsInsertion(
         bool bulk
     )
     {
@@ -429,61 +378,5 @@ public abstract class ManagedSaveCallbackTests : ProviderTest
             await verification
                 .Set<TreeNode>()
                 .ToArrayAsync(CancellationToken.None));
-    }
-
-    /// <summary>Runs an application inspection at the asynchronous SavedChanges interceptor boundary.</summary>
-    private sealed class PostSaveInspector : SaveChangesInterceptor
-    {
-        internal Action<DbContext>? OnSaved { get; set; }
-
-        /// <inheritdoc />
-        public override ValueTask<int> SavedChangesAsync(
-            SaveChangesCompletedEventData eventData,
-            int result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            OnSaved?.Invoke(eventData.Context!);
-
-            return ValueTask.FromResult(result);
-        }
-    }
-
-    /// <summary>Fails once after EF persisted and accepted a save, while the transaction can still roll back.</summary>
-    private sealed class PostSaveFailure : SaveChangesInterceptor
-    {
-        private int _savedCount;
-
-        /// <summary>Gets the one-based save invocation that raises the injected failure.</summary>
-        internal int FailOnSave { get; init; } = 1;
-
-        /// <summary>Gets the exact failure raised after the first successful persistence step.</summary>
-        internal Exception Error { get; } = new InvalidOperationException("Injected post-save failure.");
-
-        /// <inheritdoc />
-        public override ValueTask<int> SavedChangesAsync(
-            SaveChangesCompletedEventData eventData,
-            int result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            if (++_savedCount != FailOnSave)
-            {
-                return ValueTask.FromResult(result);
-            }
-
-            throw Error;
-        }
-    }
-
-    /// <summary>Replaces the save with a result so EF never reaches its persistence step.</summary>
-    private sealed class SuppressingSave : SaveChangesInterceptor
-    {
-        /// <inheritdoc />
-        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
-            DbContextEventData eventData,
-            InterceptionResult<int> result,
-            CancellationToken cancellationToken = default
-        ) => ValueTask.FromResult(InterceptionResult<int>.SuppressWithResult(0));
     }
 }

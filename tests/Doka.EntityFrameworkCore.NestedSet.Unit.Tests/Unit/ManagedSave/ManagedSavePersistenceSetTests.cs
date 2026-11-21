@@ -8,7 +8,7 @@ public sealed class ManagedSavePersistenceSetTests
 {
     /// <summary>No save result can be inferred from an entered scope before its native validation boundary.</summary>
     [Fact]
-    public async Task PersistenceSetsRejectReadsBeforeTheNativeBoundary()
+    public async Task RequirePersisted_Persistence_SetsRejectReadsBeforeTheNativeBoundary()
     {
         // Arrange
         await using var context = CreateContext();
@@ -44,7 +44,7 @@ public sealed class ManagedSavePersistenceSetTests
 
     /// <summary>The successful boundary publishes exactly the native identity and object already validated.</summary>
     [Fact]
-    public async Task PersistenceSetsRetainTheValidatedNativeAndObjectIdentity()
+    public async Task ValidateManagedPersistence_Persistence_SetsRetainTheValidatedNativeAndObjectIdentity()
     {
         // Arrange
         await using var context = CreateContext();
@@ -73,7 +73,7 @@ public sealed class ManagedSavePersistenceSetTests
 
     /// <summary>A nested save starts unauthorized and restores the exact outer sets on disposal.</summary>
     [Fact]
-    public async Task NestedScopeRestoresTheExactOuterPersistenceSets()
+    public async Task EnterManagedSave_NestedScope_RestoresTheExactOuterPersistenceSets()
     {
         // Arrange
         await using var context = CreateContext();
@@ -118,7 +118,7 @@ public sealed class ManagedSavePersistenceSetTests
 
     /// <summary>Disposal keeps the authorization sets unavailable even after a successful native boundary.</summary>
     [Fact]
-    public async Task DisposedScopeCannotExposePersistenceSets()
+    public async Task Dispose_DisposedScope_CannotExposePersistenceSets()
     {
         // Arrange
         await using var context = CreateContext();
@@ -142,7 +142,7 @@ public sealed class ManagedSavePersistenceSetTests
 
     /// <summary>A missing planned write never publishes a partial native insertion set.</summary>
     [Fact]
-    public async Task RejectedNativeWriteSetCannotPublishPersistenceSets()
+    public async Task ValidateManagedPersistence_RejectedNativeWriteSet_CannotPublishPersistenceSets()
     {
         // Arrange
         await using var context = CreateContext();

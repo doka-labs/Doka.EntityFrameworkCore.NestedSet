@@ -1,18 +1,5 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
-/// <summary>The historical and current models used to exercise a complete hierarchy-schema upgrade.</summary>
-public enum MigrationStage
-{
-    /// <summary>The populated schema before Int64 coordinates and tree-scoped access paths were introduced.</summary>
-    Baseline,
-
-    /// <summary>The model configured through the current nested-set convention.</summary>
-    Current,
-
-    /// <summary>The current model with a user-owned filtered index and late relational name configuration.</summary>
-    Specialized,
-}
-
 /// <summary>Maps historical and current hierarchy schemas for generated migration tests.</summary>
 public sealed class MigrationContext : NestedSetDbContext
 {
@@ -233,87 +220,4 @@ public sealed class MigrationContext : NestedSetDbContext
             .Property(x => x.Category)
             .HasColumnName("entry_category");
     }
-}
-
-/// <summary>Separates historical models and schemas while retaining EF's ordinary model-building services.</summary>
-public sealed class MigrationModelCacheKeyFactory : IModelCacheKeyFactory
-{
-    /// <inheritdoc />
-    public object Create(
-        DbContext context,
-        bool designTime
-    )
-    {
-        var migrationContext = (MigrationContext)context;
-
-        return (context.GetType(), migrationContext.Stage, migrationContext.Schema, designTime);
-    }
-}
-
-/// <summary>The pre-upgrade persisted hierarchy shape retained for migration compatibility tests.</summary>
-public sealed class BaselineMigrationNode
-{
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public int NodeId { get; set; }
-
-    /// <summary>Gets or sets the historical forest identifier.</summary>
-    public int Scope { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity retained through the upgrade.</summary>
-    public int TreeId { get; set; }
-
-    /// <summary>Gets or sets the direct parent identifier.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the historical Int32 left interval boundary.</summary>
-    public int Left { get; set; }
-
-    /// <summary>Gets or sets the historical Int32 right interval boundary.</summary>
-    public int Right { get; set; }
-
-    /// <summary>Gets or sets the depth below the root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the historical Int32 sibling position.</summary>
-    public int Position { get; set; }
-
-    /// <summary>Gets or sets data unrelated to hierarchy structure.</summary>
-    public string Payload { get; set; } = "";
-
-    /// <summary>Gets or sets an application-owned secondary sibling-order value.</summary>
-    public int Category { get; set; }
-}
-
-/// <summary>A current persisted hierarchy row using stable tree identity and Int64 coordinates.</summary>
-public sealed class MigrationNode
-{
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public int NodeId { get; set; }
-
-    /// <summary>Gets or sets the application scope that partitions tree identities.</summary>
-    public int Scope { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public int TreeId { get; set; }
-
-    /// <summary>Gets or sets the direct parent identifier.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the Int64 left interval boundary.</summary>
-    public long Left { get; set; }
-
-    /// <summary>Gets or sets the Int64 right interval boundary.</summary>
-    public long Right { get; set; }
-
-    /// <summary>Gets or sets the depth below the root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the Int64 sibling position.</summary>
-    public long Position { get; set; }
-
-    /// <summary>Gets or sets data unrelated to the hierarchy's structural coordinates.</summary>
-    public string Payload { get; set; } = "";
-
-    /// <summary>Gets or sets an application-owned secondary sibling-order value.</summary>
-    public int Category { get; set; }
 }

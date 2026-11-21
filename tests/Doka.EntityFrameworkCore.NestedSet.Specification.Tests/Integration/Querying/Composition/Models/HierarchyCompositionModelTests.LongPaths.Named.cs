@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class HierarchyCompositionModelTests
 {
-    /// <summary>A complete foreign named mapping cannot repair an interrupted path with equal stored identities.</summary>
+    /// <summary>
+    /// A complete foreign named mapping cannot repair an interrupted path with equal stored identities.
+    /// </summary>
     /// <param name="filter">The independent, endpoint-correlated, or nearest path contract.</param>
     /// <param name="missingParent">Whether only the selected mapping lacks an intermediate Parent.</param>
     [Theory]
@@ -12,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongNamedPathsPreserveExactMappingIdentity(
+    public async Task QueryLongDepths_LongNamedPaths_PreserveExactMappingIdentity(
         string filter,
         bool missingParent
     )

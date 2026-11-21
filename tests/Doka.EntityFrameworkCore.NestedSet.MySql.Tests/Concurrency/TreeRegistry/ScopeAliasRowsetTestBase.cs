@@ -18,7 +18,7 @@ public abstract class ScopeAliasRowsetTestBase : ProviderTest
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task RowsetRejectsDatabaseEqualScopeAliases(
+    public async Task RequireDistinctAsync_Rowset_RejectsDatabaseEqualScopeAliases(
         int count
     )
     {

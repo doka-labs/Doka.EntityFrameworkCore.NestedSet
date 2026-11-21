@@ -231,8 +231,19 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Cancels between the completed first batch and the next staging wave.</summary>
-    private sealed class PreparedOwnerBatchCancellation(CancellationTokenSource cancellation) : SaveChangesInterceptor
+    private sealed class PreparedOwnerBatchCancellation : SaveChangesInterceptor
     {
+        private readonly CancellationTokenSource _cancellation;
+
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="cancellation">The owned source canceled at the observed save boundary.</param>
+        public PreparedOwnerBatchCancellation(
+            CancellationTokenSource cancellation
+        )
+        {
+            _cancellation = cancellation;
+        }
+
         /// <summary>Gets the native completion count at the cancellation boundary.</summary>
         internal int CompletedSaves { get; private set; }
 
@@ -244,7 +255,7 @@ public abstract partial class SaveChangesTests
         )
         {
             CompletedSaves++;
-            cancellation.Cancel();
+            _cancellation.Cancel();
 
             return ValueTask.FromResult(result);
         }

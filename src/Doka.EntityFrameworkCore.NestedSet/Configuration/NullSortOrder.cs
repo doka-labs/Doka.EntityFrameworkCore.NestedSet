@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Controls where null values appear within one sibling-order criterion.</summary>
+[PublicAPI]
 public enum NullSortOrder
 {
     /// <summary>Places null values before non-null values.</summary>

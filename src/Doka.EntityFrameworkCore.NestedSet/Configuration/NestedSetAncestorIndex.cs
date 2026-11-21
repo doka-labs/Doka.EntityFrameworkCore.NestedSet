@@ -6,9 +6,13 @@ internal static class NestedSetAncestorIndex
     /// <summary>Tracks only properties introduced by this library while their mutable model remains alive.</summary>
     private static readonly ConditionalWeakTable<IConventionEntityType, List<IConventionProperty>> s_owned = new();
 
-    /// <summary>Creates a convention-owned shadow flag without requiring provider services during configuration.</summary>
+    /// <summary>
+    /// Creates a convention-owned shadow flag without requiring provider services during configuration.
+    /// </summary>
     /// <param name="entity">The mutable hierarchy metadata.</param>
-    /// <param name="finalizing">Whether inheritance and table selections have finished application configuration.</param>
+    /// <param name="finalizing">
+    /// Whether inheritance and table selections have finished application configuration.
+    /// </param>
     internal static void EnsureProperty(
         IConventionEntityType entity,
         bool finalizing = false
@@ -157,7 +161,9 @@ internal static class NestedSetAncestorIndex
         }
     }
 
-    /// <summary>Preserves application fragment choices before provider finalizers normalize redundant overrides.</summary>
+    /// <summary>
+    /// Preserves application fragment choices before provider finalizers normalize redundant overrides.
+    /// </summary>
     /// <param name="entity">The completed application hierarchy mapping.</param>
     /// <param name="mapping">The scalar role and optional flag descriptors.</param>
     /// <returns>The one writable fragment containing the structural roles.</returns>
@@ -274,7 +280,8 @@ internal static class NestedSetAncestorIndex
             throw Invalid(
                 entity,
                 property.Name,
-                "requires a separate required Boolean without conversion, identity, ordering, or concurrency-token semantics");
+                "requires a separate required Boolean without conversion, identity, ordering, "
+                + "or concurrency-token semantics");
         }
     }
 

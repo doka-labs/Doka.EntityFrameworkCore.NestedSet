@@ -23,11 +23,11 @@ internal static class NestedSetTreeRegistryPurger<TEntity, TKey, TTreeId, TScope
             store.Map.EntityType);
 
         return executor.ExecuteAsync(
-            async token =>
+            async operationCancellationToken =>
             {
                 if (await store
                     .Nodes
-                    .AnyAsync(token)
+                    .AnyAsync(operationCancellationToken)
                     .ConfigureAwait(false))
                 {
                     // WHY: A tombstone with live nodes proves out-of-protocol database damage. Removing its
@@ -38,7 +38,7 @@ internal static class NestedSetTreeRegistryPurger<TEntity, TKey, TTreeId, TScope
                 }
 
                 await NestedSetTreeRegistryState
-                    .PurgeAsync(store.Context, request, token)
+                    .PurgeAsync(store.Context, request, operationCancellationToken)
                     .ConfigureAwait(false);
             },
             [request],

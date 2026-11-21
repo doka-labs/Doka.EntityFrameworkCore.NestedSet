@@ -10,7 +10,7 @@ public sealed partial class DokaQueryFeaturesTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ActualConfiguredProviderChoosesItsTypedStrategyWithoutIo(
+    public async Task Resolve_ActualConfiguredProvider_ChoosesItsTypedStrategyWithoutIo(
         string engine
     )
     {
@@ -55,7 +55,7 @@ public sealed partial class DokaQueryFeaturesTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task OtherAdaptersDoNotExposeDokaQueryPrimitives(
+    public async Task Resolve_OtherAdapters_DoNotExposeDokaQueryPrimitives(
         string engine
     )
     {
