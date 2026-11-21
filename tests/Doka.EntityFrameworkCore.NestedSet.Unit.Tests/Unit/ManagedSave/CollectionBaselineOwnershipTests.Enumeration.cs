@@ -10,7 +10,7 @@ public sealed partial class CollectionBaselineOwnershipTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SavedRelationshipsAcceptAOneShotSource(
+    public async Task RecordSavedRelationships_SavedRelationships_AcceptAOneShotSource(
         bool withRelationship
     )
     {
@@ -44,7 +44,7 @@ public sealed partial class CollectionBaselineOwnershipTests
     [InlineData("values")]
     [InlineData("projection")]
     [InlineData("flattened")]
-    public async Task SavedRelationshipSourceShapesPreserveExternalOwner(
+    public async Task RecordSavedRelationships_SavedRelationshipSourceShapes_PreserveExternalOwner(
         string shape
     )
     {
@@ -84,7 +84,7 @@ public sealed partial class CollectionBaselineOwnershipTests
 
     /// <summary>Completes no-op navigation receipts before the no-relationship return releases a saved wave.</summary>
     [Fact]
-    public async Task NoRelationshipReturnStillCompletesInputNavigationReceipts()
+    public async Task RecordSavedRelationships_NoRelationship_ReturnStillCompletesInputNavigationReceipts()
     {
         // Arrange
         await using var context = new BaselineContext();
@@ -127,7 +127,7 @@ public sealed partial class CollectionBaselineOwnershipTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IntroducedPrincipalIsExcludedInEitherSourceOrder(
+    public async Task RecordSavedRelationships_IntroducedPrincipal_IsExcludedInEitherSourceOrder(
         bool principalFirst
     )
     {
@@ -325,10 +325,18 @@ public sealed partial class CollectionBaselineOwnershipTests
     );
 
     /// <summary>Rejects a second traversal rather than silently replaying a projected source.</summary>
-    private sealed class SinglePassIdentities(
-        NestedSetInsertionTracking.Identity[] identities
-    ) : IEnumerable<NestedSetInsertionTracking.Identity>
+    private sealed class SinglePassIdentities : IEnumerable<NestedSetInsertionTracking.Identity>
     {
+        private readonly NestedSetInsertionTracking.Identity[] _identities;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SinglePassIdentities(
+            NestedSetInsertionTracking.Identity[] identities
+        )
+        {
+            _identities = identities;
+        }
+
         /// <summary>Gets how often completion requested the original sequence.</summary>
         internal int Enumerations { get; private set; }
 
@@ -352,7 +360,7 @@ public sealed partial class CollectionBaselineOwnershipTests
         /// <summary>Counts actual elements independently of the caller's retained native authority set.</summary>
         private IEnumerable<NestedSetInsertionTracking.Identity> Enumerate()
         {
-            foreach (var identity in identities)
+            foreach (var identity in _identities)
             {
                 Visits++;
 

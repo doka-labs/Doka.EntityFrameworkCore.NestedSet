@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
-    <Compile Update="Registry/SqlServerNestedSetProvider.Rowsets.cs">
-      <DependentUpon>SqlServerNestedSetProvider.Registry.cs</DependentUpon>
+    <Compile Update="**/SqlServerNestedSetProvider.*.cs">
+      <DependentUpon>../SqlServerNestedSetProvider.cs</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

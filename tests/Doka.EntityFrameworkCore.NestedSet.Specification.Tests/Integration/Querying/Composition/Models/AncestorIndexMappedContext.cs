@@ -2,9 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Qualifies the optional physical index against the existing supported mapping entity shapes.</summary>
 /// <param name="options">The fixture-owned provider options.</param>
-internal sealed partial class AncestorIndexMappedContext(DbContextOptions<AncestorIndexMappedContext> options)
-    : DbContext(options)
+internal sealed partial class AncestorIndexMappedContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public AncestorIndexMappedContext(
+        DbContextOptions<AncestorIndexMappedContext> options
+    ) : base(options) { }
+
     /// <summary>Names the selected property-bag hierarchy independently of its shared CLR type.</summary>
     internal const string First = "AncestorIndexFirstBag";
 
@@ -74,7 +80,9 @@ internal sealed partial class AncestorIndexMappedContext(DbContextOptions<Ancest
         });
     }
 
-    /// <summary>Keeps every structural value shadow-backed and every physical name independent of the role name.</summary>
+    /// <summary>
+    /// Keeps every structural value shadow-backed and every physical name independent of the role name.
+    /// </summary>
     private static void ConfigureShadow(
         ModelBuilder modelBuilder
     )
@@ -177,7 +185,9 @@ internal sealed partial class AncestorIndexMappedContext(DbContextOptions<Ancest
         Configure(node, nameof(FieldNode.Tree));
     }
 
-    /// <summary>Creates independently identified public shared-type mappings with colliding keys and coordinates.</summary>
+    /// <summary>
+    /// Creates independently identified public shared-type mappings with colliding keys and coordinates.
+    /// </summary>
     private static void ConfigureNamed(
         ModelBuilder modelBuilder,
         string name
@@ -210,7 +220,9 @@ internal sealed partial class AncestorIndexMappedContext(DbContextOptions<Ancest
             .HasAncestorIndex());
     }
 
-    /// <summary>Maps the same structural owner through TPH or TPT with an explicit unambiguous parent relationship.</summary>
+    /// <summary>
+    /// Maps the same structural owner through TPH or TPT with an explicit unambiguous parent relationship.
+    /// </summary>
     internal static void ConfigureInheritance(
         ModelBuilder modelBuilder,
         bool tpt
@@ -325,7 +337,9 @@ internal sealed partial class AncestorIndexMappedContext(DbContextOptions<Ancest
             .OnDelete(DeleteBehavior.Cascade);
     }
 
-    /// <summary>Places every structural role in a secondary fragment, leaving application payload in its primary table.</summary>
+    /// <summary>
+    /// Places every structural role in a secondary fragment, leaving application payload in its primary table.
+    /// </summary>
     private static void ConfigureEntitySplit(
         ModelBuilder modelBuilder
     )

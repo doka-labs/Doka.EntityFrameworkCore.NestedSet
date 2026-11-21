@@ -7,7 +7,7 @@ public sealed partial class ComplexPeerRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OptionalOnlyElementPreservesNullAndStoredOriginalAfterPromotion(
+    public async Task Restore_OptionalOnlyElement_PreservesNullAndStoredOriginalAfterPromotion(
         bool originalPresent
     )
     {

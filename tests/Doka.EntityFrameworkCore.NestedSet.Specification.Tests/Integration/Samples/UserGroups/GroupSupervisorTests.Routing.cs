@@ -18,14 +18,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData(2, 3)]
     [InlineData(2, 4)]
     [InlineData(2, 5)]
-    public async Task ExactMetadataOwnersSupportDifferentFieldCodes(
+    public async Task ResolveAsync_ExactMetadataOwners_SupportDifferentFieldCodes(
         int sourceOwner,
         int candidateOwner
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
             context,
@@ -95,13 +98,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("KEY-ABC123")]
     [InlineData("key-other")]
     [InlineData("lane-blue ")]
-    public async Task InvalidRoutingValuesCannotMatch(
+    public async Task ResolveAsync_InvalidRoutingValues_CannotMatch(
         string? value
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
             context,
@@ -163,13 +169,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MetadataAndConditionsCannotMixDifferentPeople(
+    public async Task ResolveAsync_MetadataAndConditions_CannotMixDifferentPeople(
         bool matchingPerson
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await AddMetadataAsync(
             context,

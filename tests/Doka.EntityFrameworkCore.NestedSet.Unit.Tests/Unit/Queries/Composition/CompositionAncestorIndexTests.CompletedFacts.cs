@@ -14,7 +14,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("SqlServer", "plain", false)]
     [InlineData("PostgreSql", "facts", false)]
     [InlineData("Sqlite", "facts", false)]
-    public async Task InclusiveAncestorsCompleteOnlyIndependentFactSelections(
+    public async Task ToQueryString_InclusiveAncestors_CompleteOnlyIndependentFactSelections(
         string engine,
         string shape,
         bool completed

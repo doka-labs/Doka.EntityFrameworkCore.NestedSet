@@ -8,7 +8,7 @@ public abstract partial class OrderingRefreshScaleTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InterruptedStreamingRefreshClosesReaderBeforeRollback(
+    public async Task SaveChangesAsync_InterruptedStreamingRefresh_ClosesReaderBeforeRollback(
         bool cancel
     )
     {
@@ -24,9 +24,8 @@ public abstract partial class OrderingRefreshScaleTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe,
-            rollback);
+            mode: "Strict",
+            interceptors: [probe, rollback]);
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -104,7 +103,8 @@ public abstract partial class OrderingRefreshScaleTests
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var persisted = await verification
             .Set<OrderingNode>()

@@ -6,7 +6,7 @@ public sealed partial class AncestorIndexTests
     /// Absent generated indexer entries remain safe through ordinary EF tracking and change detection.
     /// </summary>
     [Fact]
-    public void MissingGeneratedBagEntryUsesNaturalSentinel()
+    public void Add_MissingGeneratedBagEntry_UsesNaturalSentinel()
     {
         // Arrange
         using var context = new AncestorContext(
@@ -50,7 +50,7 @@ public sealed partial class AncestorIndexTests
     /// An application sentinel cannot silently invalidate missing-key access for a generated Boolean indexer.
     /// </summary>
     [Fact]
-    public void ExplicitNonNullBagSentinelIsRejected()
+    public void FinalizeModel_ExplicitNonNullBagSentinel_IsRejected()
     {
         // Arrange
         using var context = new AncestorContext(

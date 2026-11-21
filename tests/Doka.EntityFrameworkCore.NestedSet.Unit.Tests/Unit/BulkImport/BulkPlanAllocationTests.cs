@@ -1,9 +1,5 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Isolates process-wide heap measurements from other unit test collections.</summary>
-[Trait("Category", "Allocation")]
-[CollectionDefinition("BulkPlanAllocation", DisableParallelization = true)]
-public sealed class BulkPlanAllocationIsolation;
 
 /// <summary>Verifies the deterministic client-side memory shape of large bulk plans.</summary>
 [Collection("BulkPlanAllocation")]
@@ -29,7 +25,7 @@ public sealed class BulkPlanAllocationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task WidePlanStaysWithinMemoryBudget(
+    public async Task CollectedBytes_WidePlan_StaysWithinMemoryBudget(
         bool prefilled
     )
     {

@@ -12,7 +12,7 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
 
     /// <summary>Passes the exact caller token through database creation into its initializer.</summary>
     [Fact]
-    public async Task InitializationReceivesTheCallerToken()
+    public async Task CreateAsync_Initialization_ReceivesTheCallerToken()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -34,7 +34,7 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
 
     /// <summary>Cancellation during initialization still removes every file owned by the failed creation.</summary>
     [Fact]
-    public async Task CanceledInitializationReleasesItsDatabaseFile()
+    public async Task CreateAsync_CanceledInitialization_ReleasesItsDatabaseFile()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -65,7 +65,7 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
 
     /// <summary>Removes a created SQLite file while preserving the exact initialization exception.</summary>
     [Fact]
-    public async Task InitializationFailureReleasesItsDatabaseFile()
+    public async Task CreateAsync_InitializationFailure_ReleasesItsDatabaseFile()
     {
         // Arrange
         var failure = new InvalidOperationException("Injected fixture initialization failure.");
@@ -117,7 +117,7 @@ public sealed class DatabaseFileLifecycleTests : ProviderTest,
 
     /// <summary>Reports both failures if cleanup itself cannot delete the owned resource path.</summary>
     [Fact]
-    public async Task CleanupFailurePreservesTheInitializationCause()
+    public async Task CreateAsync_CleanupFailure_PreservesTheInitializationCause()
     {
         // Arrange
         var failure = new InvalidOperationException("Injected fixture initialization failure.");

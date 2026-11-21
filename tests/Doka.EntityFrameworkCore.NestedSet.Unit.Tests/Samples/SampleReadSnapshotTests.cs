@@ -14,7 +14,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("Npgsql.EntityFrameworkCore.PostgreSQL", IsolationLevel.RepeatableRead)]
     [InlineData("Microsoft.EntityFrameworkCore.SqlServer", IsolationLevel.Snapshot)]
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite", IsolationLevel.Serializable)]
-    public void OwnedIsolationMatchesProviderContract(
+    public void RequiredIsolation_OwnedIsolation_MatchesProviderContract(
         string provider,
         IsolationLevel expected
     )
@@ -41,7 +41,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("Microsoft.EntityFrameworkCore.SqlServer", IsolationLevel.Snapshot)]
     [InlineData("Microsoft.EntityFrameworkCore.SqlServer", IsolationLevel.Serializable)]
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite", IsolationLevel.Serializable)]
-    public void AdequateCallerIsolationIsAccepted(
+    public void RequireIsolation_AdequateCallerIsolation_IsAccepted(
         string provider,
         IsolationLevel actual
     )
@@ -78,7 +78,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite", IsolationLevel.ReadCommitted)]
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite", IsolationLevel.RepeatableRead)]
     [InlineData("Microsoft.EntityFrameworkCore.Sqlite", IsolationLevel.Snapshot)]
-    public void InadequateCallerIsolationIsRejected(
+    public void RequireIsolation_InadequateCallerIsolation_IsRejected(
         string provider,
         IsolationLevel actual
     )
@@ -102,7 +102,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData("", true)]
     [InlineData("Other.Relational.Provider", false)]
     [InlineData("Other.Relational.Provider", true)]
-    public void UnknownProvidersAreRejected(
+    public void RequireIsolation_UnknownProviders_AreRejected(
         string? provider,
         bool caller
     )

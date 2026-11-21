@@ -33,7 +33,7 @@ public sealed class UnchangedForeignKeyRollbackAllocationTests
     [InlineData(128, false, false)]
     [InlineData(2048, false, false)]
     [InlineData(20000, false, false)]
-    public async Task CompleteForeignKeyCaptureHasLinearAllocation(
+    public async Task Capture_CompleteForeignKeyCapture_HasLinearAllocation(
         int nodes,
         bool allEntries,
         bool warmNativeMaps

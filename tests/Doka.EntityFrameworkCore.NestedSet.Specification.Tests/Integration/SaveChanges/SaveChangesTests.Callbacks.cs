@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task CallbackCannotIntroduceUnlockedOrderingChanges(
+    public async Task SaveChangesAsync_Callback_CannotIntroduceUnlockedOrderingChanges(
         bool interceptor,
         bool disableAutomaticDetection
     )
@@ -18,7 +18,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
@@ -73,14 +74,15 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CallbackCannotAlterPlannedOrderingChange(
+    public async Task SaveChangesAsync_Callback_CannotAlterPlannedOrderingChange(
         bool sameProperty
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new SaveBoundaryProbe();
@@ -131,7 +133,7 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SaveRunsOnePlanningAndOneCallbackDetectionPass(
+    public async Task SaveChangesAsync_Save_RunsOnePlanningAndOneCallbackDetectionPass(
         bool orderedChange,
         bool automaticDetection
     )
@@ -139,7 +141,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = new SaveBoundaryContext(

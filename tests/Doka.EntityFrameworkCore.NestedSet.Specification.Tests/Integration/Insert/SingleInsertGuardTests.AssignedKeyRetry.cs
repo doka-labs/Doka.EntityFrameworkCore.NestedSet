@@ -10,7 +10,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task AssignedScalarKeyFailureAllowsSingleInsertRetry(
+    public async Task InsertRootAsync_AssignedScalarKeyFailure_AllowsSingleInsertRetry(
         bool afterSave,
         bool callerTransaction
     )
@@ -86,7 +86,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task AssignedBinaryKeyFailureAllowsSingleInsertRetry(
+    public async Task InsertRootAsync_AssignedBinaryKeyFailure_AllowsSingleInsertRetry(
         bool afterSave,
         bool callerTransaction
     )

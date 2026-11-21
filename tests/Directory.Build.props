@@ -1,15 +1,29 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
+  <PropertyGroup Label="Test project roles">
+    <!-- WHY: The inherited contract library also ends in .Tests, but must never acquire an executable runner. -->
+    <DokaTestApplication Condition="'$(MSBuildProjectName)' != 'Doka.EntityFrameworkCore.NestedSet.Specification.Tests'">$(MSBuildProjectName.EndsWith('.Tests'))</DokaTestApplication>
+    <DokaTestApplication Condition="'$(MSBuildProjectName)' == 'Doka.EntityFrameworkCore.NestedSet.Specification.Tests'">false</DokaTestApplication>
+    <!-- WHY: Qualification pins existing transitive dependencies without promoting them into shipping packages. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Executable test defaults" Condition="'$(DokaTestApplication)' == 'true'">
     <IsTestProject>true</IsTestProject>
     <!-- WHY: xUnit v3 runs tests in executable projects while the VSTest adapter preserves Rider discovery. -->
     <OutputType>Exe</OutputType>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <PropertyGroup Label="Shared specification defaults" Condition="'$(DokaTestApplication)' != 'true'">
+    <IsTestProject>false</IsTestProject>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup Label="Executable test tooling" Condition="'$(DokaTestApplication)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3.mtp-off" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <!-- WHY: Independent collections own their databases, while shared fixtures explicitly use one collection.
          Keep xUnit's CPU-based default instead of imposing a repository-wide concurrency limit. -->
     <Content Include="$(MSBuildThisFileDirectory)Shared/xunit.runner.json"

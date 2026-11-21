@@ -21,7 +21,7 @@ Review changes against [Security Policy](../../SECURITY.md), the
 | Queries and diagnostics | Preserve query-filter contracts; avoid leaking keys, scopes, payloads, SQL parameters, or credentials through telemetry |
 | Package and dependency updates | Review upstream advisories, actual API changes, locked graphs, native key behavior, and supported provider regressions |
 
-The [regression matrix](../regression-coverage.md) links positive, negative, and
+The [test-selection guide](../testing.md#choose-the-right-check) links positive, negative, and
 adversarial tests to these mechanisms. Keep one Arrange/Act/Assert sequence per
 test. A security fix needs a reproducer that fails before the fix and a positive
 control for legitimate use. Correct the owning implementation; do not bypass a
@@ -69,9 +69,12 @@ and [NativeInterop 0.20.6](https://www.nuget.org/packages/Microsoft.Identity.Cli
 These are license files, not MIT expressions. The exceptions apply to the test
 dependency graph; neither shipping NestedSet package gains these dependencies.
 The existing action continues checking other licenses and vulnerabilities. Since
-its pinned v5.0.0 PURL exclusion compares identities without enforcing versions,
+the pinned action's PURL exclusion compares identities without enforcing versions,
 the following workflow step verifies the exact reviewed versions against the
-action's complete comparison output. A package update requires a new license
+action's complete comparison output. The runner transfers that output through
+a JSON-encoded file instead of one environment variable: large comparisons
+must reach the guard in full without exceeding process argument limits, and
+dependency metadata must remain data. A package update requires a new license
 review. Null license metadata and Scorecard results are separate inputs.
 
 The 2026-10-15 update rechecked the published SNI.runtime 6.0.3 license against
@@ -105,7 +108,7 @@ instrumentation.
 
 The existing unit projects also run FsCheck properties for bounds, complete
 tree identity, generated bulk geometry, native sibling ordering, and rejected
-imports. [Generated coverage](../regression-coverage.md#generated-invariant-coverage)
+imports. [Generated coverage](../testing.md#property-based-regressions)
 names the positive and negative cases. FsCheck reports a replay seed and shrinks
 failures to smaller inputs. The pinned Scorecard version recognizes the actual
 `FsCheck.Xunit` imports; detection alone does not establish a successful test run
@@ -186,8 +189,8 @@ Retrieved 2026-10-09:
 - [FsCheck property testing and shrinking](https://fscheck.github.io/FsCheck/).
 - [Scorecard 5.5.0 C# detection](https://github.com/ossf/scorecard/blob/v5.5.0/checks/raw/fuzzing.go).
 - [Pinned Scorecard action version](https://github.com/ossf/scorecard-action/blob/2d1146689b8cda280b9bc96326124645441f03bc/go.mod).
-- [Dependency Review v5.0.0 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/licenses.ts).
-- [Dependency Review v5.0.0 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.0/src/purl.ts).
+- [Dependency Review v5.0.1 license handling](https://github.com/actions/dependency-review-action/blob/v5.0.1/src/licenses.ts).
+- [Dependency Review v5.0.1 PURL comparison](https://github.com/actions/dependency-review-action/blob/v5.0.1/src/purl.ts).
 
 Retrieved 2026-10-26:
 

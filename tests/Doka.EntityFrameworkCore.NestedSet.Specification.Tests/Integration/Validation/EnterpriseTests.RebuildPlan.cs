@@ -5,7 +5,7 @@ public abstract partial class EnterpriseTests
     /// <summary>A valid tree produces an empty rebuild plan without changing rows or registry state.</summary>
     /// <returns>A task that completes after the dry-run and persisted-state checks.</returns>
     [Fact]
-    public async Task ValidTreePlanHasNoRepairsOrWrites()
+    public async Task PlanRebuildAsync_ValidTreePlan_HasNoRepairsOrWrites()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -13,7 +13,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -53,7 +54,7 @@ public abstract partial class EnterpriseTests
     /// <summary>A repairable tree reports the exact changed nodes, write batch, roles, and typed issues.</summary>
     /// <returns>A task that completes after the dry-run and persisted-state checks.</returns>
     [Fact]
-    public async Task RepairableTreePlanReportsExactWorkWithoutWrites()
+    public async Task PlanRebuildAsync_RepairableTreePlan_ReportsExactWorkWithoutWrites()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -62,7 +63,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -107,7 +108,7 @@ public abstract partial class EnterpriseTests
     /// <summary>A parent cycle is reported without changing tree rows or registry state.</summary>
     /// <returns>A task that completes after typed issue and persisted-state checks.</returns>
     [Fact]
-    public async Task ParentCyclePlanReportsUnrepairableStructureWithoutWrites()
+    public async Task PlanRebuildAsync_ParentCyclePlan_ReportsUnrepairableStructureWithoutWrites()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -115,7 +116,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         await setup
             .Set<TreeNode>()

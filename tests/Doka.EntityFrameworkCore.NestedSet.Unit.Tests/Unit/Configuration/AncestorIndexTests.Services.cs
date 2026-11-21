@@ -7,7 +7,7 @@ public sealed partial class AncestorIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task VariantModelsOwnServicesAndReleaseThemWithContext(
+    public async Task DisposeAsync_VariantModels_OwnServicesAndReleaseThemWithContext(
         bool asynchronous
     )
     {

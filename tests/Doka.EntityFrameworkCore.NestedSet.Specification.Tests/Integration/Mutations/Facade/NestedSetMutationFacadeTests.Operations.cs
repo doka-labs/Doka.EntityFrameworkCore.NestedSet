@@ -4,7 +4,7 @@ public abstract partial class NestedSetMutationFacadeTests
 {
     /// <summary>Manual sibling insertion preserves dense positions and preorder.</summary>
     [Fact]
-    public async Task ManualInsertionMaintainsSiblingPositions()
+    public async Task InsertBeforeAsync_ManualInsertion_MaintainsSiblingPositions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -30,7 +30,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Same-tree moves permute only the crossed sibling interval.</summary>
     [Fact]
-    public async Task MoveBeforeMaintainsDenseSiblingOrder()
+    public async Task MoveBeforeAsync_MoveBefore_MaintainsDenseSiblingOrder()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -57,7 +57,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Deleting a non-root promotes its children as one dense sibling block.</summary>
     [Fact]
-    public async Task DeletePromotesDirectChildren()
+    public async Task DeleteAsync_Delete_PromotesDirectChildren()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -91,7 +91,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>DeleteTree removes only the selected identity and tombstones it.</summary>
     [Fact]
-    public async Task DeleteTreeLeavesOtherTreeUntouched()
+    public async Task DeleteTreeAsync_DeleteTree_LeavesOtherTreeUntouched()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -116,7 +116,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Moving a complete source tree retires its old identity after the merge.</summary>
     [Fact]
-    public async Task CrossTreeRootMoveTombstonesSourceIdentity()
+    public async Task MoveToAsync_CrossTreeRootMove_TombstonesSourceIdentity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -147,7 +147,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A source TreeId retired by a complete cross-tree move cannot be reused.</summary>
     [Fact]
-    public async Task CrossTreeRootMoveSourceIdCannotBeReused()
+    public async Task InsertRootAsync_CrossTreeRootMoveSourceId_CannotBeReused()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

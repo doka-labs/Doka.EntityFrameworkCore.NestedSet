@@ -16,8 +16,8 @@ public sealed partial class SupervisorEvidenceJoinTests
         UserGroupContext context,
         SupervisorScenarioFixture data,
         bool closed,
-        CancellationToken cancellationToken,
-        bool sharedWinner = false
+        bool sharedWinner,
+        CancellationToken cancellationToken
     )
     {
         await context

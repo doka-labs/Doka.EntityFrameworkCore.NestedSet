@@ -16,7 +16,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MissingEnlistmentContractRejectsBeforeOpeningConnection(
+    public async Task RunAsync_MissingEnlistmentContract_RejectsBeforeOpeningConnection(
         bool alreadyOpen
     )
     {

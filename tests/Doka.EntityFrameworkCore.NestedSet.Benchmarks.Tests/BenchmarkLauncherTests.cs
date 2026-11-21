@@ -7,7 +7,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 /// Verifies that native framework selection and artifact arguments reach the actual diagnostic launcher.
 /// </summary>
 [Collection(BenchmarkEnvironmentOwnership.Name)]
-public sealed class BenchmarkLauncherTests
+public sealed partial class BenchmarkLauncherTests
 {
     private const string ConnectionVariable = "NESTEDSET_BENCHMARK_CONNECTION_STRING";
 
@@ -63,7 +63,7 @@ public sealed class BenchmarkLauncherTests
     [InlineData("equals")]
     [InlineData("short")]
     [InlineData("response")]
-    public async Task DiagnosticsHonorNativeFiltersAndArtifacts(
+    public async Task Main_Diagnostics_HonorNativeFiltersAndArtifacts(
         string form
     )
     {
@@ -170,36 +170,6 @@ public sealed class BenchmarkLauncherTests
                 .GetString());
     }
 
-    /// <summary>An unmatched filter fails before resources or an observation sidecar are acquired.</summary>
-    [Fact]
-    public async Task UnmatchedDiagnosticFilterFailsBeforeResourceAcquisition()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        const string previousConnection = "unmatched-selection-must-not-acquire-a-connection";
-        Environment.SetEnvironmentVariable(ConnectionVariable, previousConnection);
-        Environment.SetEnvironmentVariable("DOCKER_HOST", "tcp://127.0.0.1:1");
-        var artifacts = Path.Combine(process.Directory, "unmatched");
-        string[] arguments =
-        [
-            "--engine=MySql",
-            "--nodes=20",
-            "--diagnostics",
-            "--artifacts",
-            artifacts,
-            "--filter=*MissingBenchmarkOperation",
-        ];
-
-        // Act
-        var exitCode = await Program.Main(arguments);
-
-        // Assert
-        Assert.Equal(2, exitCode);
-        Assert.False(Directory.Exists(artifacts));
-        Assert.Equal(previousConnection, Environment.GetEnvironmentVariable(ConnectionVariable));
-        Assert.Contains("No benchmark matched the native selection.", process.Error, StringComparison.Ordinal);
-    }
-
     /// <summary>
     /// Invalid selected forests, including the implicit second transfer tree, fail before Docker startup.
     /// </summary>
@@ -212,7 +182,7 @@ public sealed class BenchmarkLauncherTests
     [InlineData(20, 4, "*InsertBenchmarks.Root", true)]
     [InlineData(10, 1, "*CrossTreeMoveBenchmarks.RootUnderOtherTree", false)]
     [InlineData(10, 1, "*CrossTreeMoveBenchmarks.RootUnderOtherTree", true)]
-    public async Task InvalidSelectedScenarioFailsBeforeResourceAcquisition(
+    public async Task Main_InvalidSelectedScenario_FailsBeforeResourceAcquisition(
         int nodes,
         int trees,
         string filter,
@@ -253,91 +223,9 @@ public sealed class BenchmarkLauncherTests
         Assert.DoesNotContain("Docker", process.Error, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>A native exact-case filter excludes invalid combinations from a mixed dataset matrix.</summary>
-    [Fact]
-    public async Task UnselectedInvalidScenariosDoNotPreventValidDiagnostics()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        var artifacts = Path.Combine(process.Directory, "mixed-matrix");
-        var options = new BenchmarkRunOptions
-        {
-            NodeCounts = [10, 40],
-            Shapes = [BenchmarkShape.Wide, BenchmarkShape.Deep],
-            TreeCounts = [1, 4],
-            ArtifactsPath = artifacts,
-        };
-
-        options.ApplyEnvironment();
-
-        using var discovery = BenchmarkConverter.TypeToBenchmarks(
-            typeof(InsertBenchmarks),
-            BenchmarkConfiguration.Create(options));
-
-        var selected = discovery.BenchmarksCases.Single(benchmark =>
-            benchmark.Descriptor.WorkloadMethod.Name == nameof(InsertBenchmarks.Root)
-            && HasParameters(benchmark, 40, BenchmarkShape.Deep, 4, 0));
-
-        var filter = FullNameProvider.GetBenchmarkName(selected);
-        string[] arguments =
-        [
-            "--engine=SqliteMemory",
-            "--nodes=10,40",
-            "--shape=Wide,Deep",
-            "--trees=1,4",
-            "--diagnostics",
-            "--artifacts",
-            artifacts,
-            "--filter",
-            filter,
-        ];
-
-        // Act
-        var exitCode = await Program.Main(arguments);
-
-        // Assert
-        Assert.Equal(0, exitCode);
-        Assert.Contains(
-            discovery.BenchmarksCases,
-            benchmark => HasParameters(benchmark, 10, BenchmarkShape.Deep, 4, 0));
-
-        using var diagnostics = JsonDocument.Parse(
-            await File.ReadAllTextAsync(Path.Combine(artifacts, "command-diagnostics.json"), CancellationToken.None));
-
-        var result = Assert.Single(
-            diagnostics
-                .RootElement
-                .GetProperty("Results")
-                .EnumerateArray());
-
-        Assert.EndsWith(
-            ".InsertBenchmarks.Root",
-            result
-                .GetProperty("Benchmark")
-                .GetString());
-
-        Assert.Equal(
-            40,
-            result
-                .GetProperty("Nodes")
-                .GetInt32());
-
-        Assert.Equal(
-            (int)BenchmarkShape.Deep,
-            result
-                .GetProperty("Shape")
-                .GetInt32());
-
-        Assert.Equal(
-            4,
-            result
-                .GetProperty("Trees")
-                .GetInt32());
-    }
-
     /// <summary>The smallest valid transfer input executes with the native implicit second tree.</summary>
     [Fact]
-    public async Task DiagnosticsHonorImplicitCrossTreeMinimum()
+    public async Task Main_Diagnostics_HonorImplicitCrossTreeMinimum()
     {
         // Arrange
         using var process = new LauncherProcessState();
@@ -391,305 +279,6 @@ public sealed class BenchmarkLauncherTests
                 .GetProperty("Commands")
                 .GetInt32()
             > 0);
-    }
-
-    /// <summary>A native full-case filter selects the requested dataset from a larger parameter matrix.</summary>
-    [Fact]
-    public async Task DiagnosticFilterHonorsNativeParameterSelection()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        var artifacts = Path.Combine(process.Directory, "parameters");
-        var options = new BenchmarkRunOptions
-        {
-            NodeCounts = [20, 40],
-            Shapes = [BenchmarkShape.Wide, BenchmarkShape.Deep],
-            TreeCounts = [1, 2],
-            TrackedCounts = [0, 3],
-            ArtifactsPath = artifacts,
-        };
-
-        options.ApplyEnvironment();
-
-        using var discovery = BenchmarkConverter.TypeToBenchmarks(
-            typeof(InsertBenchmarks),
-            BenchmarkConfiguration.Create(options));
-
-        var selected = discovery.BenchmarksCases.Single(benchmark =>
-            benchmark.Descriptor.WorkloadMethod.Name == nameof(InsertBenchmarks.Root)
-            && HasParameters(benchmark, 40, BenchmarkShape.Deep, 2, 3));
-
-        var filter = FullNameProvider.GetBenchmarkName(selected);
-        string[] arguments =
-        [
-            "--engine=SqliteMemory",
-            "--nodes=20,40",
-            "--shape=Wide,Deep",
-            "--trees=1,2",
-            "--tracked=0,3",
-            "--diagnostics",
-            "--artifacts",
-            artifacts,
-            "--filter",
-            filter,
-        ];
-
-        // Act
-        var exitCode = await Program.Main(arguments);
-
-        // Assert
-        Assert.Equal(0, exitCode);
-
-        using var diagnostics = JsonDocument.Parse(
-            await File.ReadAllTextAsync(Path.Combine(artifacts, "command-diagnostics.json"), CancellationToken.None));
-
-        var result = Assert.Single(
-            diagnostics
-                .RootElement
-                .GetProperty("Results")
-                .EnumerateArray());
-
-        Assert.EndsWith(
-            ".InsertBenchmarks.Root",
-            result
-                .GetProperty("Benchmark")
-                .GetString());
-
-        Assert.Equal(
-            40,
-            result
-                .GetProperty("Nodes")
-                .GetInt32());
-
-        Assert.Equal(
-            (int)BenchmarkShape.Deep,
-            result
-                .GetProperty("Shape")
-                .GetInt32());
-
-        Assert.Equal(
-            2,
-            result
-                .GetProperty("Trees")
-                .GetInt32());
-
-        Assert.Equal(
-            3,
-            result
-                .GetProperty("Tracked")
-                .GetInt32());
-    }
-
-    /// <summary>Distinct framework jobs share one untimed diagnostic per operation and dataset.</summary>
-    [Fact]
-    public async Task DiagnosticsDeduplicateNativeJobs()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        var options = new BenchmarkRunOptions
-        {
-            NodeCounts = [20],
-            ArtifactsPath = Path.Combine(process.Directory, "jobs"),
-            Diagnostics = true,
-        };
-
-        options.ApplyEnvironment();
-
-        await using var environment = await BenchmarkEnvironment.CreateAsync(options, CancellationToken.None);
-        var configuration = ManualConfig
-            .Create(BenchmarkConfiguration.Create(options))
-            .AddJob(
-                Job
-                    .Default
-                    .RunOncePerIteration()
-                    .WithGcServer(false)
-                    .WithId("diagnostic-workstation"))
-            .AddJob(
-                Job
-                    .Default
-                    .RunOncePerIteration()
-                    .WithGcServer(true)
-                    .WithId("diagnostic-server"))
-            .AddFilter(new GlobFilter(["*InsertBenchmarks.Root"]));
-
-        using var discovery = BenchmarkConverter.TypeToBenchmarks(typeof(InsertBenchmarks), configuration);
-        var nativeCaseCount = discovery.BenchmarksCases.Length;
-        using var selection = BenchmarkSelection.Discover(configuration, true);
-
-        // Act
-        await BenchmarkDiagnostics.RunAsync(options, selection, CancellationToken.None);
-
-        // Assert
-        Assert.True(nativeCaseCount > 1);
-
-        using var diagnostics = JsonDocument.Parse(
-            await File.ReadAllTextAsync(
-                Path.Combine(options.ArtifactsPath, "command-diagnostics.json"),
-                CancellationToken.None));
-
-        var result = Assert.Single(
-            diagnostics
-                .RootElement
-                .GetProperty("Results")
-                .EnumerateArray());
-
-        Assert.EndsWith(
-            ".InsertBenchmarks.Root",
-            result
-                .GetProperty("Benchmark")
-                .GetString());
-
-        Assert.Equal(
-            20,
-            result
-                .GetProperty("Nodes")
-                .GetInt32());
-
-        Assert.True(
-            result
-                .GetProperty("Commands")
-                .GetInt32()
-            > 0);
-    }
-
-    /// <summary>
-    /// Listing resolves through native parsed settings before an unreachable Docker provider is acquired.
-    /// </summary>
-    /// <param name="responseFile">Whether the listing setting is supplied through a response file.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task NativeListingDoesNotAcquireDatabase(
-        bool responseFile
-    )
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        const string previousConnection = "listing-must-not-replace-the-inherited-connection";
-        Environment.SetEnvironmentVariable(ConnectionVariable, previousConnection);
-        Environment.SetEnvironmentVariable("DOCKER_HOST", "tcp://127.0.0.1:1");
-        var artifacts = Path.Combine(process.Directory, "listing");
-        var arguments = new List<string>
-        {
-            "--engine=MySql",
-            "--artifacts",
-            artifacts,
-        };
-
-        if (responseFile)
-        {
-            var response = Path.Combine(process.Directory, "listing.rsp");
-            await File.WriteAllTextAsync(response, "--LIST\nflat\n", CancellationToken.None);
-            arguments.Add("@" + response);
-        }
-        else
-        {
-            arguments.AddRange(["--LIST", "flat"]);
-        }
-
-        // Act
-        var exitCode = await Program.Main(arguments.ToArray());
-
-        // Assert
-        Assert.Equal(0, exitCode);
-        Assert.Equal(previousConnection, Environment.GetEnvironmentVariable(ConnectionVariable));
-        Assert.False(Directory.Exists(artifacts));
-        Assert.Contains(nameof(InsertBenchmarks.Root), process.Output, StringComparison.Ordinal);
-        Assert.DoesNotContain("Benchmark execution failed.", process.Error, StringComparison.Ordinal);
-    }
-
-    /// <summary>Execution without a native selector lists available methods before acquiring resources.</summary>
-    [Fact]
-    public async Task MissingNativeSelectorFailsBeforeResourceAcquisition()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        const string previousConnection = "missing-selection-must-not-acquire-a-connection";
-        Environment.SetEnvironmentVariable(ConnectionVariable, previousConnection);
-        Environment.SetEnvironmentVariable("DOCKER_HOST", "tcp://127.0.0.1:1");
-        var artifacts = Path.Combine(process.Directory, "missing-selector");
-        string[] arguments = ["--engine=MySql", "--artifacts", artifacts];
-
-        // Act
-        var exitCode = await Program.Main(arguments);
-
-        // Assert
-        Assert.Equal(2, exitCode);
-        Assert.Equal(previousConnection, Environment.GetEnvironmentVariable(ConnectionVariable));
-        Assert.False(Directory.Exists(artifacts));
-        Assert.Contains(nameof(InsertBenchmarks.Root), process.Output, StringComparison.Ordinal);
-        Assert.Contains("--filter", process.Error, StringComparison.Ordinal);
-        Assert.DoesNotContain("Docker", process.Error, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Both category selector forms, including native response expansion, count as explicit selection.
-    /// </summary>
-    /// <param name="selector">The native category selector.</param>
-    /// <param name="responseFile">Whether native parsing reads the selector from a response file.</param>
-    [Theory]
-    [InlineData("--anyCategories", false)]
-    [InlineData("--anyCategories", true)]
-    [InlineData("--allCategories", false)]
-    [InlineData("--allCategories", true)]
-    public async Task NativeCategorySelectorsCountAsExplicitSelection(
-        string selector,
-        bool responseFile
-    )
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        var options = new BenchmarkRunOptions();
-        string[] arguments = [selector, "SelectedCategory"];
-        if (responseFile)
-        {
-            var response = Path.Combine(process.Directory, "categories.rsp");
-            await File.WriteAllTextAsync(response, $"{selector}\nSelectedCategory\n", CancellationToken.None);
-            arguments = ["@" + response];
-        }
-
-        var parsed = ConfigParser.Parse(arguments, ConsoleLogger.Default, BenchmarkConfiguration.Create(options));
-
-        // Act
-        var explicitSelection = BenchmarkSelection.HasExplicitSelection(parsed.options);
-
-        // Assert
-        Assert.True(parsed.isSuccess);
-        Assert.True(explicitSelection);
-        Assert.False(Directory.Exists(options.ArtifactsPath));
-    }
-
-    /// <summary>Core selection ignores unused database scenarios and never acquires an inherited provider.</summary>
-    [Fact]
-    public void CoreOnlyNativeSelectionRequiresNoDatabase()
-    {
-        // Arrange
-        using var process = new LauncherProcessState();
-        const string previousConnection = "core-selection-must-not-acquire-a-connection";
-        Environment.SetEnvironmentVariable(ConnectionVariable, previousConnection);
-        Environment.SetEnvironmentVariable("DOCKER_HOST", "tcp://127.0.0.1:1");
-        var options = new BenchmarkRunOptions
-        {
-            Engine = BenchmarkEngine.MySql,
-            NodeCounts = [10],
-            TreeCounts = [4],
-            ArtifactsPath = Path.Combine(process.Directory, "core"),
-        };
-
-        options.ApplyEnvironment();
-        var configuration = ManualConfig
-            .Create(BenchmarkConfiguration.Create(options))
-            .AddFilter(new GlobFilter(["*BoundsBenchmarks.CountContainedLeaves"]));
-
-        // Act
-        using var selected = BenchmarkSelection.Discover(configuration, false);
-
-        // Assert
-        Assert.False(selected.RequiresDatabase);
-        Assert.Empty(selected.DatabaseCases);
-        Assert.Equal(previousConnection, Environment.GetEnvironmentVariable(ConnectionVariable));
-        Assert.False(Directory.Exists(options.ArtifactsPath));
-        Assert.DoesNotContain("Docker", process.Error, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Reads the framework's native parameter values when preparing one exact filter case.</summary>

@@ -6,7 +6,7 @@ public sealed partial class DokaStraightJoinTests
     /// The typed ordered-join metadata does not retain sources, selectors or captured request values.
     /// </summary>
     [Fact]
-    public void TypedOrderedJoinDoesNotRetainInvocationInputs()
+    public void CollectReleasedInputs_TypedOrderedJoin_DoesNotRetainInvocationInputs()
     {
         // Arrange
         var released = ProviderQueryLifetime.ReleaseInputs(orderedJoin: true);
@@ -25,7 +25,7 @@ public sealed partial class DokaStraightJoinTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void TypedOrderedJoinReleasesCollectibleRowArguments(
+    public void CollectReleasedInputs_TypedOrderedJoin_ReleasesCollectibleRowArguments(
         int position
     )
     {

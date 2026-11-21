@@ -10,7 +10,7 @@ public sealed class BenchmarkFailureTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FailureDiagnosticsRetainEvidenceAndExcludeSecretPayload(
+    public void DescribeFailure_FailureDiagnostics_RetainEvidenceAndExcludeSecretPayload(
         bool aggregate
     )
     {

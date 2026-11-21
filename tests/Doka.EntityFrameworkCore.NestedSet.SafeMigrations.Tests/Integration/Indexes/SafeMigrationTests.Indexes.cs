@@ -15,7 +15,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task GeneratedIndexOperationsReplayWithoutCatalogOrDataChanges(
+    public async Task ExecuteOperationsAsync_GeneratedIndexOperations_ReplayWithoutCatalogOrDataChanges(
         string engine,
         bool qualifySchema
     )
@@ -27,15 +27,19 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = GetIndexOperations(chain, context);
         var indexesBefore = IndexSignatures(
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Act
         await SafeMigrationTestServices.ExecuteOperationsAsync(
@@ -55,7 +59,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Assert
         AssertFreshIndexOperations(engine, operations);
@@ -90,7 +96,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task SameNameWrongColumnIndexFailsClosedAndPreservesData(
+    public async Task AnalyzeAsync_SameNameWrongColumnIndex_FailsClosedAndPreservesData(
         string engine,
         bool qualifySchema
     )
@@ -102,8 +108,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operation = GetIndexOperations(chain, context)
             .Single(candidate => ((EnsureIndexIntent)candidate.Intent)
@@ -123,7 +131,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -145,7 +155,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 
         // Assert
@@ -170,7 +182,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task PendingUpgradeRejectsIndexDriftWithoutAdvancingHistory(
+    public async Task AnalyzePendingMigrationsAsync_PendingUpgrade_RejectsIndexDriftWithoutAdvancingHistory(
         string engine,
         bool qualifySchema
     )
@@ -182,8 +194,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Baseline);
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var allOperations = GetUpOperations(upgrade, context, 1);
@@ -218,7 +232,7 @@ public sealed partial class SafeMigrationTests
         // WHY: The upgrade has not run; SQL Server still stores the historical Int32 coordinates.
         var nodesBefore = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
@@ -244,7 +258,7 @@ public sealed partial class SafeMigrationTests
 
         var nodesAfter = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var historyAfter = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
 

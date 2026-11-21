@@ -5,7 +5,7 @@ public sealed class BenchmarkLifecycleTests
 {
     /// <summary>Preparation is complete before its synchronous framework hook returns.</summary>
     [Fact]
-    public void CompletionWaitsForAsynchronousAction()
+    public void Complete_Completion_WaitsForAsynchronousAction()
     {
         // Arrange
         var completed = false;
@@ -27,7 +27,7 @@ public sealed class BenchmarkLifecycleTests
 
     /// <summary>A failed asynchronous hook retains its exact exception instead of wrapping it.</summary>
     [Fact]
-    public void CompletionPreservesOriginalException()
+    public void Complete_Completion_PreservesOriginalException()
     {
         // Arrange
         var original = new InvalidOperationException("Injected iteration failure.");
@@ -42,7 +42,7 @@ public sealed class BenchmarkLifecycleTests
 
     /// <summary>Cancellation remains attributable to its original caller token.</summary>
     [Fact]
-    public void CompletionPreservesCallerCancellation()
+    public void Complete_Completion_PreservesCallerCancellation()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();
@@ -59,7 +59,7 @@ public sealed class BenchmarkLifecycleTests
 
     /// <summary>Canceled fixture acquisition never opens a database or transfers resource ownership.</summary>
     [Fact]
-    public void CanceledFixtureAcquisitionPreservesToken()
+    public void Create_CanceledFixtureAcquisition_PreservesToken()
     {
         // Arrange
         using var cancellation = new CancellationTokenSource();

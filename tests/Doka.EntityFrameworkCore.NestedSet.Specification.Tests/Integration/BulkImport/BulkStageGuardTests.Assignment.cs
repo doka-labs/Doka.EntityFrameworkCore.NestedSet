@@ -4,7 +4,7 @@ public abstract partial class BulkStageGuardTests
 {
     /// <summary>Staging overwrites equivalent CLR aliases with the exact requested native scope and parent.</summary>
     [Fact]
-    public async Task ComparerEqualOriginalValuesDoNotPreventExactStaging()
+    public async Task InsertSubtreeAsync_ComparerEqualOriginalValues_DoNotPreventExactStaging()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
@@ -54,7 +54,7 @@ public abstract partial class BulkStageGuardTests
 
     /// <summary>Rollback restores the original representation even when the callback value compares equal.</summary>
     [Fact]
-    public async Task RejectedCallbackRestoresComparerEqualOriginalRepresentations()
+    public async Task InsertSubtreeAsync_RejectedCallback_RestoresComparerEqualOriginalRepresentations()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
@@ -118,7 +118,7 @@ public abstract partial class BulkStageGuardTests
 
     /// <summary>Staging isolates an initially shared scope array before a callback mutates the imported node.</summary>
     [Fact]
-    public async Task InitiallySharedBinaryScopeCannotMutateServiceArgument()
+    public async Task InsertForestAsync_InitiallySharedBinaryScope_CannotMutateServiceArgument()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(

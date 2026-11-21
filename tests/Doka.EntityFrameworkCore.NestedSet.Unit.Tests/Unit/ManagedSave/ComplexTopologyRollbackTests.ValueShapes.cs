@@ -12,7 +12,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task RuntimeCollectionRestoresExactTopology(
+    public async Task Restore_RuntimeCollection_RestoresExactTopology(
         bool fixedSize,
         bool detectCallback
     )
@@ -127,7 +127,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StructReferenceRestoresNestedTopology(
+    public async Task Restore_StructReference_RestoresNestedTopology(
         bool detectCallback
     )
     {

@@ -11,7 +11,7 @@ public abstract partial class EnterpriseTests
         ExcludedEngines = ["Sqlite"],
         Reason =
             "This staged contender requires independent server row locks; SQLite serializes all database writers.")]
-    public async Task DifferentScopeCommitsWhileFirstCallerHoldsTreeLock()
+    public async Task InsertRootAsync_DifferentScope_CommitsWhileFirstCallerHoldsTreeLock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -34,30 +34,25 @@ public abstract partial class EnterpriseTests
         // independence from InnoDB duplicate checks on recently deleted alternate-key records.
         const int firstNodeId = 1_000_001;
         const int secondNodeId = 2_000_002;
-        await firstTree.InsertRootAsync(new ConcurrentNode { Id = firstNodeId }, Guid.Empty, CancellationToken.None);
-        await second.Database.OpenConnectionAsync(CancellationToken.None);
-        var lockTimeout = Engine switch
-        {
-            "PostgreSql" => "SET lock_timeout = '5s'",
-            "SqlServer" => "SET LOCK_TIMEOUT 5000",
-            _ => "SET SESSION innodb_lock_wait_timeout = 5",
-        };
-
-        // WHY: A server lock timeout exposes accidental cross-scope blocking, while the longer client deadline
-        // allows container scheduling delays without weakening that database-level assertion.
-        await second.Database.ExecuteSqlRawAsync(lockTimeout, CancellationToken.None);
+        await firstTree.InsertRootAsync(
+            new ConcurrentNode { Id = firstNodeId },
+            Guid.Empty,
+            TestContext.Current.CancellationToken);
+        // WHY: This positive contract proves progress while the first tree is locked, not a maximum wait.
+        // The runner remains responsible for terminating a genuinely blocked regression.
+        await second.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         probe.Commands.Clear();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         var error = await Record.ExceptionAsync(() => secondTree.InsertRootAsync(
             new ConcurrentNode { Id = secondNodeId },
             Guid.Empty,
-            timeout.Token));
+            operationCancellationToken));
 
         var firstStillOwnsTransaction = ReferenceEquals(transaction, first.Database.CurrentTransaction);
 
-        // WHY: Releasing the retained lock must complete even if the competing writer exceeded its timeout.
+        // WHY: Releasing the retained lock must complete even if the competing writer failed or was canceled.
         await transaction.RollbackAsync(CancellationToken.None);
 
         // Assert
@@ -70,7 +65,7 @@ public abstract partial class EnterpriseTests
         await using var verification = database.CreateContext();
         var persisted = await verification
             .Set<ConcurrentNode>()
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(secondNodeId, persisted.Id);
         Assert.Equal(2, persisted.Tree);
@@ -83,7 +78,7 @@ public abstract partial class EnterpriseTests
         ExcludedEngines = ["Sqlite"],
         Reason =
             "This staged contender requires independent server row locks; SQLite serializes all database writers.")]
-    public async Task SameTreeReservationRemainsLockedUntilCallerCommit()
+    public async Task InsertRootAsync_SameTreeReservation_RemainsLockedUntilCallerCommit()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -102,17 +97,20 @@ public abstract partial class EnterpriseTests
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
 
-        await firstTree.InsertRootAsync(new ConcurrentNode { Id = 1 }, Guid.Empty, CancellationToken.None);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await firstTree.InsertRootAsync(
+            new ConcurrentNode { Id = 1 },
+            Guid.Empty,
+            TestContext.Current.CancellationToken);
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         var competing = Record.ExceptionAsync(() => secondTree.InsertRootAsync(
             new ConcurrentNode { Id = 2 },
             Guid.Empty,
-            timeout.Token));
+            operationCancellationToken));
 
-        await probe.Attempted.Task.WaitAsync(timeout.Token);
-        await transaction.CommitAsync(timeout.Token);
+        await probe.Attempted.Task.WaitAsync(operationCancellationToken);
+        await transaction.CommitAsync(operationCancellationToken);
         var error = await competing;
 
         // Assert
@@ -125,7 +123,7 @@ public abstract partial class EnterpriseTests
         var nodes = await verification
             .Set<ConcurrentNode>()
             .OrderBy(node => node.Left)
-            .ToListAsync(timeout.Token);
+            .ToListAsync(operationCancellationToken);
 
         var node = Assert.Single(nodes);
         Assert.Equal((1, 1L, 2L, 0L), (node.Id, node.Left, node.Right, node.Position));
@@ -137,7 +135,7 @@ public abstract partial class EnterpriseTests
         ExcludedEngines = ["Sqlite"],
         Reason =
             "This staged contender requires independent server row locks; SQLite serializes all database writers.")]
-    public async Task SameTreeContenderTimesOutAtRegistryBeforeReadingStructure()
+    public async Task InsertRootAsync_SameTreeContender_TimesOutAtRegistryBeforeReadingStructure()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -150,10 +148,13 @@ public abstract partial class EnterpriseTests
             .NestedSet<ConcurrentNode>()
             .ForScope(1);
 
-        await firstTree.InsertRootAsync(new ConcurrentNode { Id = 1 }, Guid.Empty, CancellationToken.None);
+        await firstTree.InsertRootAsync(
+            new ConcurrentNode { Id = 1 },
+            Guid.Empty,
+            TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var second = database.CreateContext((IInterceptor)probe);
-        await second.Database.OpenConnectionAsync(CancellationToken.None);
+        await second.Database.OpenConnectionAsync(TestContext.Current.CancellationToken);
         var configureTimeout = Engine switch
         {
             "PostgreSql" => "SET lock_timeout = '1s'",
@@ -162,7 +163,7 @@ public abstract partial class EnterpriseTests
         };
 
         // WHY: The server's lock-timeout error proves real contention; a client deadline could cancel before dispatch.
-        await second.Database.ExecuteSqlRawAsync(configureTimeout, CancellationToken.None);
+        await second.Database.ExecuteSqlRawAsync(configureTimeout, TestContext.Current.CancellationToken);
         probe.Commands.Clear();
         probe.ParameterValues.Clear();
         probe.ParameterNames.Clear();
@@ -174,7 +175,7 @@ public abstract partial class EnterpriseTests
         var exception = await Record.ExceptionAsync(() => secondTree.InsertRootAsync(
             new ConcurrentNode { Id = 2 },
             Guid.Empty,
-            CancellationToken.None));
+            TestContext.Current.CancellationToken));
 
         // Assert
         if (Engine == "PostgreSql")
@@ -222,13 +223,13 @@ public abstract partial class EnterpriseTests
                 .InTree(Guid.Empty)
                 .Nodes
                 .Select(node => node.Id)
-                .SingleAsync(CancellationToken.None));
+                .SingleAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>The first mutation creates technical tree infrastructure without a domain anchor entity.</summary>
     /// <returns>A task that completes after verifying the missing-anchor contract.</returns>
     [Fact]
-    public async Task FirstMutationCreatesRegistryWithoutDomainAnchor()
+    public async Task InsertRootAsync_FirstMutation_CreatesRegistryWithoutDomainAnchor()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -238,12 +239,12 @@ public abstract partial class EnterpriseTests
             .ForScope(1);
 
         // Act
-        await tree.InsertRootAsync(new ConcurrentNode { Id = 1 }, Guid.Empty, CancellationToken.None);
+        await tree.InsertRootAsync(new ConcurrentNode { Id = 1 }, Guid.Empty, TestContext.Current.CancellationToken);
 
         // Assert
         var node = await context
             .Set<ConcurrentNode>()
-            .SingleAsync(CancellationToken.None);
+            .SingleAsync(TestContext.Current.CancellationToken);
 
         var hierarchy = context.Model.FindEntityType(typeof(ConcurrentNode))!;
         var registry = NestedSetTreeRegistryMapping.For(hierarchy)
@@ -251,7 +252,7 @@ public abstract partial class EnterpriseTests
 
         var registryCount = await context
             .Set<NestedSetTreeRegistry>(registry.Name)
-            .CountAsync(CancellationToken.None);
+            .CountAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal((1, 1, Guid.Empty), (node.Id, node.Tree, node.TreeId));
         Assert.Equal(1, registryCount);
@@ -267,7 +268,7 @@ public abstract partial class EnterpriseTests
     [InlineData(4, true)]
     [InlineData(16, false)]
     [InlineData(16, true)]
-    public async Task ConcurrentWritersPreserveScopedForestInvariants(
+    public async Task InsertRootAsync_ConcurrentWriters_PreserveScopedForestInvariants(
         int writers,
         bool separateScopes
     )
@@ -275,22 +276,20 @@ public abstract partial class EnterpriseTests
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         var pending = Enumerable
             .Range(1, writers)
-            .Select(id => Task.Run(
-                () => InsertAfterGateAsync(
-                    database,
-                    id,
-                    separateScopes
-                        ? id
-                        : 1,
-                    separateScopes
-                        ? Guid.Empty
-                        : TreeId(id),
-                    gate.Task,
-                    timeout.Token),
-                timeout.Token))
+            .Select(id => InsertAfterGateAsync(
+                database,
+                id,
+                separateScopes
+                    ? id
+                    : 1,
+                separateScopes
+                    ? Guid.Empty
+                    : TreeId(id),
+                gate.Task,
+                operationCancellationToken))
             .ToArray();
 
         // Act
@@ -303,7 +302,7 @@ public abstract partial class EnterpriseTests
             .Set<ConcurrentNode>()
             .OrderBy(node => node.Tree)
             .ThenBy(node => node.Id)
-            .ToListAsync(timeout.Token);
+            .ToListAsync(operationCancellationToken);
 
         Assert.Equal(writers, nodes.Count);
         Assert.All(

@@ -12,7 +12,7 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalReferencePreservesNearestBeforeValue(
+    public async Task Build_SignalReference_PreservesNearestBeforeValue(
         bool nearest
     )
     {
@@ -57,7 +57,7 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalReferencePreservesBranchBarriersAndEmptySelfPath(
+    public async Task Build_SignalReference_PreservesBranchBarriersAndEmptySelfPath(
         bool hidden
     )
     {
@@ -111,7 +111,7 @@ public sealed class ConsumerReferenceTests
 
     /// <summary>Native selection and expression construction require no persisted reporting population.</summary>
     [Fact]
-    public async Task SignalConstructionUsesOnlyUnopenedModelMetadata()
+    public async Task Api_SignalConstruction_UsesOnlyUnopenedModelMetadata()
     {
         // Arrange
         var configuration = ManualConfig
@@ -149,7 +149,7 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MetadataOwnersKeepScalarExistenceBoundaries(
+    public async Task Build_MetadataOwners_KeepScalarExistenceBoundaries(
         bool nearest
     )
     {
@@ -182,7 +182,7 @@ public sealed class ConsumerReferenceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignalReferencePreservesEqualEventsAndCompleteGrain(
+    public async Task Build_SignalReference_PreservesEqualEventsAndCompleteGrain(
         bool nearest
     )
     {

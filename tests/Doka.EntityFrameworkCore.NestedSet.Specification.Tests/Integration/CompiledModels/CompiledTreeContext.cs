@@ -10,7 +10,9 @@ public class CompiledTreeContext : NestedSetDbContext
     public CompiledTreeContext() : this(
         new DbContextOptionsBuilder<CompiledTreeContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options,
         false) { }
 
@@ -126,70 +128,4 @@ public class CompiledTreeContext : NestedSetDbContext
             .HasScope(row => row.Scope)
             .HasParent(row => row.ParentId));
     }
-}
-
-/// <summary>A string scope whose aliases follow an explicit case-insensitive database collation.</summary>
-public sealed class CompiledScope
-{
-    /// <summary>Gets or sets the persistent application-owned anchor key.</summary>
-    public string Id { get; set; } = string.Empty;
-}
-
-/// <summary>A string-key hierarchy with deliberately different parent and primary-key collations.</summary>
-public sealed class CompiledFolder : INestedSetNode<string, Guid>
-{
-    /// <summary>Gets or sets the scope identifying the stable anchor.</summary>
-    public string Scope { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets a parent key that may use a case alias.</summary>
-    public string? ParentId { get; set; }
-
-    /// <summary>Gets or sets the sibling sort criterion.</summary>
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public string Id { get; set; } = string.Empty;
-
-    /// <inheritdoc />
-    public long Left { get; set; }
-
-    /// <inheritdoc />
-    public long Right { get; set; }
-
-    /// <inheritdoc />
-    public int Depth { get; set; }
-
-    /// <inheritdoc />
-    public long Position { get; set; }
-}
-
-/// <summary>A numeric-key baseline verifying compiled metadata does not require string-specific paths.</summary>
-public sealed class CompiledNumber : INestedSetNode<int, Guid>
-{
-    /// <summary>Gets or sets the numeric hierarchy scope.</summary>
-    public int Scope { get; set; }
-
-    /// <summary>Gets or sets the direct parent key.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <inheritdoc />
-    public int Id { get; set; }
-
-    /// <inheritdoc />
-    public long Left { get; set; }
-
-    /// <inheritdoc />
-    public long Right { get; set; }
-
-    /// <inheritdoc />
-    public int Depth { get; set; }
-
-    /// <inheritdoc />
-    public long Position { get; set; }
 }

@@ -1,7 +1,7 @@
 ---
 id: D-012
 status: implemented
-date: 2026-09-26
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -491,13 +491,14 @@ It preserves the accepted tree-identity and transaction contracts in
 [D-003](D-003-scoped-forests-and-adjacency.md) and
 [D-004](D-004-atomic-mutations-and-locks.md).
 
-The [implementation design](../implementation-design.md) shows the runtime
+The [provider boundary decision](D-020-provider-owned-runtime-packages.md) shows the runtime
 path. Public query composition remains separate from structural mutation
 storage: query filters apply to application results, while internal geometry
 reads bypass those filters and apply the complete hierarchy identity.
-The [regression matrix](../regression-coverage.md) maps these boundaries to
-concrete positive, negative, and adversarial tests. It records procedures and
-coverage mechanisms rather than claiming an unexecuted qualification result.
+The [test-selection guide](../testing.md#choose-the-right-check) identifies the
+positive, negative, and adversarial check families and links their source
+owners. It describes procedures and evidence boundaries rather than claiming
+an unexecuted qualification result.
 
 ### Re-evaluation Triggers
 
@@ -569,6 +570,8 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 
 - 2026-10-26: The MySql translator implementation reference follows its native adapter owner in D-020; the typed hierarchy contracts remain shared.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Public unscoped facade](../../src/Doka.EntityFrameworkCore.NestedSet/NestedSet.cs)
@@ -596,7 +599,7 @@ coverage mechanisms rather than claiming an unexecuted qualification result.
 - [Transaction regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Transactions)
 - [Tree-registry concurrency regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/TreeRegistry)
 - [Ordering and managed-save regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Ordering)
-- [Risk and polarity coverage matrix](../regression-coverage.md)
+- [Risk and polarity coverage matrix](../testing.md#choose-the-right-check)
 
 ### Sources
 

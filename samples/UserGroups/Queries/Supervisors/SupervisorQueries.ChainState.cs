@@ -50,14 +50,22 @@ internal static partial class SupervisorQueries
     /// <summary>
     /// Checks physical reads and logical allocations independently before either can exceed the request.
     /// </summary>
-    internal sealed class ChainBudget(SupervisorChainRequest request)
+    internal sealed class ChainBudget
     {
         private int _reads;
         private int _results;
         private int _visits;
 
         /// <summary>Gets the explicit consumer limits.</summary>
-        internal SupervisorChainRequest Request { get; } = request;
+        internal SupervisorChainRequest Request { get; }
+
+        /// <summary>Retains the immutable validated limits shared by this chain invocation.</summary>
+        internal ChainBudget(
+            SupervisorChainRequest request
+        )
+        {
+            Request = request;
+        }
 
         /// <summary>Gets the remaining physical rows before the next reader's SQL overflow probe.</summary>
         internal int RemainingReads => Request.MaxResultRows - _reads;

@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, "target")]
     [InlineData(false, "null")]
     [InlineData(true, "null")]
-    public async Task DetachedOldParentMovePreservesMarkedIntentAndRejectsUnplannedCallbacks(
+    public async Task SaveChangesAsync_DetachedOldParentMove_PreservesMarkedIntentAndRejectsUnplannedCallbacks(
         bool automaticDetection,
         string callbackChange
     )

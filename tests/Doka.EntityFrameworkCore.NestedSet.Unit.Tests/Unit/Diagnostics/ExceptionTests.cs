@@ -5,7 +5,7 @@ public sealed class ExceptionTests
 {
     /// <summary>Compatibility constructors retain the original cause and use a bounded default error code.</summary>
     [Fact]
-    public void UnclassifiedRejectionPreservesItsCause()
+    public void Construct_UnclassifiedRejection_PreservesItsCause()
     {
         // Arrange
         var cause = new ArgumentException("Application validation failed.");

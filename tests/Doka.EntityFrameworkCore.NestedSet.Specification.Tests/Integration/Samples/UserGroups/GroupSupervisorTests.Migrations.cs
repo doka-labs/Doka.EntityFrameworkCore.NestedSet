@@ -11,8 +11,8 @@ public abstract partial class GroupSupervisorTests
     [EngineFact(
         ExcludedEngines = ["PostgreSql", "SqlServer"],
         Reason = "The console sample publishes Doka and SQLite migration lines; "
-            + "PostgreSQL and SQL Server qualify the common supervisor model and queries.")]
-    public async Task SampleMigrationChainCreatesTypedSupervisorSchema()
+        + "PostgreSQL and SQL Server qualify the common supervisor model and queries.")]
+    public async Task MigrateAsync_SampleMigrationChain_CreatesTypedSupervisorSchema()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -55,8 +55,8 @@ public abstract partial class GroupSupervisorTests
     [EngineFact(
         ExcludedEngines = ["PostgreSql", "SqlServer"],
         Reason = "The console sample publishes Doka and SQLite migration lines; "
-            + "PostgreSQL and SQL Server have no executable sample migration set.")]
-    public async Task SupervisorMigrationPreservesExistingApplicationDataAndGrants()
+        + "PostgreSQL and SQL Server have no executable sample migration set.")]
+    public async Task MigrateAsync_SupervisorMigration_PreservesExistingApplicationDataAndGrants()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -93,40 +93,40 @@ public abstract partial class GroupSupervisorTests
         // WHY: The current entity model includes new columns absent from the released initial schema.
         // Seed that original schema directly; delimit only trusted identifiers and parameterize every stored value.
         var sql = $$"""
-                    INSERT INTO {{identifiers.DelimitIdentifier("UserGroups")}}
-                        ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
-                         {{identifiers.DelimitIdentifier("TreeId")}}, {{identifiers.DelimitIdentifier("ParentId")}},
-                         {{identifiers.DelimitIdentifier("Name")}}, {{identifiers.DelimitIdentifier("Left")}},
-                         {{identifiers.DelimitIdentifier("Right")}}, {{identifiers.DelimitIdentifier("Depth")}},
-                         {{identifiers.DelimitIdentifier("Position")}}, {{identifiers.DelimitIdentifier("UpdatedAtUtc")}})
-                        VALUES ({4}, {0}, {1}, NULL, {5}, {11}, {12}, {13}, {14}, {10});
-                    INSERT INTO {{identifiers.DelimitIdentifier("Users")}}
-                        ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
-                         {{identifiers.DelimitIdentifier("SupervisorId")}}, {{identifiers.DelimitIdentifier("Name")}},
-                         {{identifiers.DelimitIdentifier("Position")}}, {{identifiers.DelimitIdentifier("Depth")}},
-                         {{identifiers.DelimitIdentifier("Left")}}, {{identifiers.DelimitIdentifier("Right")}},
-                         {{identifiers.DelimitIdentifier("NestedSetPosition")}}, {{identifiers.DelimitIdentifier("TreeId")}})
-                        VALUES ({4}, {0}, NULL, {6}, {7}, {13}, {11}, {12}, {14}, {2});
-                    INSERT INTO {{identifiers.DelimitIdentifier("Roles")}}
-                        ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
-                         {{identifiers.DelimitIdentifier("Name")}}, {{identifiers.DelimitIdentifier("UpdatedAtUtc")}})
-                        VALUES ({3}, {0}, {8}, {10});
-                    INSERT INTO {{identifiers.DelimitIdentifier("Privileges")}}
-                        ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("Code")}})
-                        VALUES ({0}, {9});
-                    INSERT INTO {{identifiers.DelimitIdentifier("UserGroupMemberships")}}
-                        ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("UserId")}},
-                         {{identifiers.DelimitIdentifier("UserGroupId")}})
-                        VALUES ({0}, {4}, {4});
-                    INSERT INTO {{identifiers.DelimitIdentifier("UserGroupRoles")}}
-                        ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("UserGroupId")}},
-                         {{identifiers.DelimitIdentifier("RoleId")}})
-                        VALUES ({0}, {4}, {3});
-                    INSERT INTO {{identifiers.DelimitIdentifier("RolePrivileges")}}
-                        ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("RoleId")}},
-                         {{identifiers.DelimitIdentifier("PrivilegeCode")}})
-                        VALUES ({0}, {3}, {9});
-                    """;
+        INSERT INTO {{identifiers.DelimitIdentifier("UserGroups")}}
+            ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
+             {{identifiers.DelimitIdentifier("TreeId")}}, {{identifiers.DelimitIdentifier("ParentId")}},
+             {{identifiers.DelimitIdentifier("Name")}}, {{identifiers.DelimitIdentifier("Left")}},
+             {{identifiers.DelimitIdentifier("Right")}}, {{identifiers.DelimitIdentifier("Depth")}},
+             {{identifiers.DelimitIdentifier("Position")}}, {{identifiers.DelimitIdentifier("UpdatedAtUtc")}})
+            VALUES ({4}, {0}, {1}, NULL, {5}, {11}, {12}, {13}, {14}, {10});
+        INSERT INTO {{identifiers.DelimitIdentifier("Users")}}
+            ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
+             {{identifiers.DelimitIdentifier("SupervisorId")}}, {{identifiers.DelimitIdentifier("Name")}},
+             {{identifiers.DelimitIdentifier("Position")}}, {{identifiers.DelimitIdentifier("Depth")}},
+             {{identifiers.DelimitIdentifier("Left")}}, {{identifiers.DelimitIdentifier("Right")}},
+             {{identifiers.DelimitIdentifier("NestedSetPosition")}}, {{identifiers.DelimitIdentifier("TreeId")}})
+            VALUES ({4}, {0}, NULL, {6}, {7}, {13}, {11}, {12}, {14}, {2});
+        INSERT INTO {{identifiers.DelimitIdentifier("Roles")}}
+            ({{identifiers.DelimitIdentifier("Id")}}, {{identifiers.DelimitIdentifier("TenantId")}},
+             {{identifiers.DelimitIdentifier("Name")}}, {{identifiers.DelimitIdentifier("UpdatedAtUtc")}})
+            VALUES ({3}, {0}, {8}, {10});
+        INSERT INTO {{identifiers.DelimitIdentifier("Privileges")}}
+            ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("Code")}})
+            VALUES ({0}, {9});
+        INSERT INTO {{identifiers.DelimitIdentifier("UserGroupMemberships")}}
+            ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("UserId")}},
+             {{identifiers.DelimitIdentifier("UserGroupId")}})
+            VALUES ({0}, {4}, {4});
+        INSERT INTO {{identifiers.DelimitIdentifier("UserGroupRoles")}}
+            ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("UserGroupId")}},
+             {{identifiers.DelimitIdentifier("RoleId")}})
+            VALUES ({0}, {4}, {3});
+        INSERT INTO {{identifiers.DelimitIdentifier("RolePrivileges")}}
+            ({{identifiers.DelimitIdentifier("TenantId")}}, {{identifiers.DelimitIdentifier("RoleId")}},
+             {{identifiers.DelimitIdentifier("PrivilegeCode")}})
+            VALUES ({0}, {3}, {9});
+        """;
 
         object[] values =
         [
@@ -239,8 +239,8 @@ public abstract partial class GroupSupervisorTests
     [EngineFact(
         ExcludedEngines = ["PostgreSql", "SqlServer"],
         Reason = "The console sample publishes Doka and SQLite migration lines; "
-            + "PostgreSQL and SQL Server qualify the common supervisor model and queries.")]
-    public async Task MigratedSupervisorSchemaRunsTheActualSampleScenario()
+        + "PostgreSQL and SQL Server qualify the common supervisor model and queries.")]
+    public async Task CreateAsync_MigratedSupervisorSchema_RunsTheActualSampleScenario()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(

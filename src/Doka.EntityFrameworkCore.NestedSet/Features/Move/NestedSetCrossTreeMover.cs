@@ -47,7 +47,12 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
         var executor = new NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>(_context, _entityType);
 
         return executor.ExecuteAsync(
-            token => MoveToCoreAsync(sourceStore, targetStore, sourceKey, parentKey, token),
+            operationCancellationToken => MoveToCoreAsync(
+                sourceStore,
+                targetStore,
+                sourceKey,
+                parentKey,
+                operationCancellationToken),
             requests,
             cancellationToken);
     }
@@ -97,7 +102,7 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
             .ConfigureAwait(false);
 
         var destination = await new NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>(targetStore)
-            .ResolveAsync(parentKey, NestedSetPlacement.LastChild, 0, cancellationToken, parent)
+            .ResolveAsync(parentKey, NestedSetPlacement.LastChild, 0, parent, cancellationToken)
             .ConfigureAwait(false);
 
         await targetStore
@@ -169,17 +174,17 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
         };
 
         return executor.ExecuteAsync(
-            async token =>
+            async operationCancellationToken =>
             {
                 var source = await sourceStore
-                    .FindAsync(sourceKey, token)
+                    .FindAsync(sourceKey, operationCancellationToken)
                     .ConfigureAwait(false);
 
                 NestedSetGuards.RequireBounds(source);
 
                 if (await targetStore
                     .Nodes
-                    .AnyAsync(token)
+                    .AnyAsync(operationCancellationToken)
                     .ConfigureAwait(false))
                 {
                     throw new NestedSetException(
@@ -188,16 +193,16 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
                 }
 
                 var width = checked(source.Right - source.Left + 1);
-                await RemoveSourceSiblingSlotAsync(sourceStore, source, token)
+                await RemoveSourceSiblingSlotAsync(sourceStore, source, operationCancellationToken)
                     .ConfigureAwait(false);
 
                 var root = sourceStore.Nodes.Where(sourceStore.Equal(sourceStore.Map.Key, source.Key));
                 await sourceStore
-                    .SetParentAsync(root, default, token)
+                    .SetParentAsync(root, default, operationCancellationToken)
                     .ConfigureAwait(false);
 
                 await sourceStore
-                    .SetLongAsync(root, sourceStore.Map.Position, 0, token)
+                    .SetLongAsync(root, sourceStore.Map.Position, 0, operationCancellationToken)
                     .ConfigureAwait(false);
 
                 await TransferAsync(
@@ -206,14 +211,14 @@ internal sealed class NestedSetCrossTreeMover<TEntity, TKey, TTreeId, TScope>
                         targetStore.TreeId,
                         checked(1 - source.Left),
                         checked(-source.Depth),
-                        token)
+                        operationCancellationToken)
                     .ConfigureAwait(false);
 
                 await sourceStore
-                    .ShiftBoundsAsync(checked(source.Right + 1), -width, token)
+                    .ShiftBoundsAsync(checked(source.Right + 1), -width, operationCancellationToken)
                     .ConfigureAwait(false);
 
-                await CompleteSourceLifecycleAsync(sourceStore, source, token)
+                await CompleteSourceLifecycleAsync(sourceStore, source, operationCancellationToken)
                     .ConfigureAwait(false);
             },
             requests,

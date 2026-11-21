@@ -4,13 +4,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class SignalReportTests
 {
-    /// <summary>Equal observations with separate event identities remain separate contributions in every input format.</summary>
+    /// <summary>
+    /// Equal observations with separate event identities remain separate contributions in every input format.
+    /// </summary>
     /// <param name="portName">The physical acquisition format normalized by its own SQL projection.</param>
     [Theory]
     [InlineData("Pulse")]
     [InlineData("Sweep")]
     [InlineData("Burst")]
-    public async Task DistinctEqualEventsRetainTheirPhysicalMultiplicity(
+    public async Task ReadAsync_DistinctEqualEvents_RetainTheirPhysicalMultiplicity(
         string portName
     )
     {
@@ -21,7 +23,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var first = AddObservation(
             context,
             data,
@@ -66,7 +73,7 @@ public abstract partial class SignalReportTests
     [InlineData("Pulse")]
     [InlineData("Sweep")]
     [InlineData("Burst")]
-    public async Task HeterogeneousInputsCannotBypassChannelOrResolutionFilters(
+    public async Task ReadAsync_HeterogeneousInputs_CannotBypassChannelOrResolutionFilters(
         string portName
     )
     {
@@ -77,7 +84,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         AddObservation(context, data, port, SignalReportDataset.SweepChannel, MeasurementGranularity.Daily, 700);
         AddObservation(context, data, port, SignalReportDataset.PulseChannel, MeasurementGranularity.Monthly, 900);
         await context.SaveChangesAsync(CancellationToken.None);

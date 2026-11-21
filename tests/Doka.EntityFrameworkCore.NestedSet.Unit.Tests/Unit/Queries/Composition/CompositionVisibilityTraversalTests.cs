@@ -4,15 +4,23 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks exact-bound reuse and conservative traversal of external query expressions.</summary>
-/// <param name="output">Captures allocation evidence outside the measured operation.</param>
 
 // WHY: Concurrent collections can perturb thread allocation counters. Use the existing isolated
 // measurement collection without relaxing the budget or serializing unrelated regression tests.
 [Collection("Allocation measurements")]
-public sealed partial class CompositionVisibilityTraversalTests(
-    ITestOutputHelper output
-)
+public sealed partial class CompositionVisibilityTraversalTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Captures allocation evidence outside the measured operation.</param>
+    public CompositionVisibilityTraversalTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     private static readonly MethodInfo s_where = ((MethodCallExpression)
         ((Expression<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>)
             (query => query.Where(node => true))).Body).Method;
@@ -24,7 +32,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [InlineData(1, 1)]
     [InlineData(32, 1)]
     [InlineData(256, 2)]
-    public void SharedQuerySubtreeRetainsVisibilityAcrossOperations(
+    public void Require_SharedQuerySubtree_RetainsVisibilityAcrossOperations(
         int references,
         int operations
     )
@@ -61,7 +69,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [InlineData(0)]
     [InlineData(8)]
     [InlineData(16)]
-    public void SharedBinaryQueryGraphRetainsVisibleEndpoint(
+    public void Require_SharedBinaryQueryGraph_RetainsVisibleEndpoint(
         int depth
     )
     {
@@ -111,7 +119,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [InlineData(9, true)]
     [InlineData(32, true)]
     [InlineData(128, true)]
-    public void DistinctQuerySubtreesAreAllProved(
+    public void Require_DistinctQuerySubtrees_AreAllProved(
         int queries,
         bool unsafeLastQuery
     )
@@ -148,7 +156,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedQueryContainingOpaqueExtensionRetainsEveryVisit(
+    public void Require_SharedQueryContainingOpaqueExtension_RetainsEveryVisit(
         bool rejectSecondVisit
     )
     {
@@ -185,7 +193,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomAcceptDispatches(
+    public void Require_SharedParent_RetainsCustomAcceptDispatches(
         bool rejectSecondVisit
     )
     {
@@ -222,7 +230,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomMethodMetadataInspections(
+    public void Require_SharedParent_RetainsCustomMethodMetadataInspections(
         bool rejectSecondVisit
     )
     {
@@ -252,7 +260,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedParentRetainsCustomMemberMetadataInspections(
+    public void Require_SharedParent_RetainsCustomMemberMetadataInspections(
         bool rejectSecondVisit
     )
     {
@@ -282,7 +290,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
 
     /// <summary>A later independent unsafe source cannot inherit an earlier positive proof.</summary>
     [Fact]
-    public void LaterOperationStillRejectsUnsafeSharedQuery()
+    public void Require_LaterOperationStill_RejectsUnsafeSharedQuery()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -312,7 +320,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
 
     /// <summary>Repeated captured query getters remain untrusted and are never evaluated by a proof.</summary>
     [Fact]
-    public void SharedQueryNeverEvaluatesCapturedQueryGetter()
+    public void Require_SharedQuery_NeverEvaluatesCapturedQueryGetter()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -337,7 +345,7 @@ public sealed partial class CompositionVisibilityTraversalTests(
 
     /// <summary>Increasing references to existing query nodes does not allocate a cache entry per occurrence.</summary>
     [Fact]
-    public void SharedReferencesDoNotIncreaseProofAllocation()
+    public void Allocated_SharedReferences_DoNotIncreaseProofAllocation()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -364,76 +372,9 @@ public sealed partial class CompositionVisibilityTraversalTests(
         var repeatedBytes = Allocated(repeated, selector, entityType, bound);
 
         // Assert
-        output.WriteLine($"Operations=128; single={singleBytes} B; repeated={repeatedBytes} B.");
+        _output.WriteLine($"Operations=128; single={singleBytes} B; repeated={repeatedBytes} B.");
         Assert.InRange(repeatedBytes - singleBytes, -256L * 128, 256L * 128);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
-    }
-
-    /// <summary>Creates one visible mapped source without executing or translating it.</summary>
-    private static IQueryable<CompositionGuardNode> Nodes(
-        CompositionGuardContext context
-    )
-        => context
-            .NestedSet<CompositionGuardNode>(CompositionGuardContext.ScopedMapping)
-            .ForScope(1)
-            .InTree(Guid.Empty)
-            .Nodes;
-
-    /// <summary>Embeds actual queries in a predicate so endpoint resolution does not visit the probes.</summary>
-    private static IQueryable<CompositionGuardNode> Source(
-        IQueryable<CompositionGuardNode> nodes,
-        IEnumerable<Expression> sources
-    )
-    {
-        var tests = sources
-            .Select(Any)
-            .ToArray();
-
-        var predicate = tests.Aggregate(Expression.AndAlso);
-        var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
-
-        return nodes.Where(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node));
-    }
-
-    /// <summary>Uses the public Queryable Any metadata without evaluating a query or compiling a delegate.</summary>
-    private static Expression Any(
-        Expression source
-    )
-        => Expression.Call(typeof(Queryable), nameof(Queryable.Any), [typeof(CompositionGuardNode)], source);
-
-    /// <summary>Creates an ordinary immutable query operator with runtime-owned reflection metadata.</summary>
-    private static MethodCallExpression Where(
-        Expression source,
-        Expression predicate
-    )
-    {
-        var node = Expression.Parameter(typeof(CompositionGuardNode), "node");
-
-        return Expression.Call(
-            s_where,
-            source,
-            Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
-    }
-
-    /// <summary>Measures synchronous construction after both shapes and metadata paths are warm.</summary>
-    private static long Allocated(
-        IQueryable<CompositionGuardNode> source,
-        Expression<Func<CompositionGuardNode, CompositionGuardNode>> selector,
-        IEntityType entityType,
-        Expression bound
-    )
-    {
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Repeat the same proof operation within one fixed allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 128; index++)
-        {
-            NestedSetQueryEndpoint.Require(source, selector, entityType, bound, "node");
-        }
-
-        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 }

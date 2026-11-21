@@ -208,30 +208,53 @@ internal static partial class NestedSetSaveChanges
                     "save_changes",
                     boundaryToken => NestedSetTransaction.ExecuteAsync(
                         context,
-                        async token =>
+                        async operationCancellationToken =>
                         {
                             var requests = new List<INestedSetTreeLockRequest>();
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (int groupIndex = 0, groupCount = groups.Count; groupIndex < groupCount; groupIndex++)
                             {
+                                var group = groups[groupIndex];
+
                                 await group
-                                    .ResolveScopesAsync(requests, token)
+                                    .ResolveScopesAsync(requests, operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
 
                             await NestedSetSaveLocks
-                                .AcquireAsync(context, requests, token)
+                                .AcquireAsync(context, requests, operationCancellationToken)
                                 .ConfigureAwait(false);
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (
+                                int groupIndex2 = 0, groupCount2 = groups.Count;
+                                groupIndex2 < groupCount2;
+                                groupIndex2++
+                            )
                             {
+                                var group = groups[groupIndex2];
+
                                 await group
-                                    .PrepareLockedChangesAsync(token)
+                                    .PrepareLockedChangesAsync(operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (
+                                int groupIndex3 = 0, groupCount3 = groups.Count;
+                                groupIndex3 < groupCount3;
+                                groupIndex3++
+                            )
                             {
+                                var group = groups[groupIndex3];
+
                                 group.SuppressParentChanges();
                             }
 
@@ -242,35 +265,77 @@ internal static partial class NestedSetSaveChanges
                                     candidate.CaptureSuppressedParent(entry);
                                 }
 
-                                savedCount = await SaveGuardedAsync(context, saveChanges, guardPlan, snapshot, token)
+                                savedCount = await SaveGuardedAsync(
+                                        context,
+                                        saveChanges,
+                                        guardPlan,
+                                        snapshot,
+                                        operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
                             finally
                             {
-                                foreach (var group in groups)
+                                // WHY: This operation owns the stable indexed input; retain its established visit
+                                // order.
+                                // ReSharper disable once ForCanBeConvertedToForeach
+                                // ReSharper disable once LoopCanBeConvertedToQuery
+                                for (
+                                    int groupIndex4 = 0, groupCount4 = groups.Count;
+                                    groupIndex4 < groupCount4;
+                                    groupIndex4++
+                                )
                                 {
+                                    var group = groups[groupIndex4];
+
                                     group.RestoreParentChanges();
                                 }
                             }
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (
+                                int groupIndex5 = 0, groupCount5 = groups.Count;
+                                groupIndex5 < groupCount5;
+                                groupIndex5++
+                            )
                             {
+                                var group = groups[groupIndex5];
+
                                 await group
-                                    .ApplyParentChangesAsync(token)
+                                    .ApplyParentChangesAsync(operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (
+                                int groupIndex6 = 0, groupCount6 = groups.Count;
+                                groupIndex6 < groupCount6;
+                                groupIndex6++
+                            )
                             {
+                                var group = groups[groupIndex6];
+
                                 await group
-                                    .ReorderAsync(token)
+                                    .ReorderAsync(operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
 
-                            foreach (var group in groups)
+                            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                            // ReSharper disable once ForCanBeConvertedToForeach
+                            // ReSharper disable once LoopCanBeConvertedToQuery
+                            for (
+                                int groupIndex7 = 0, groupCount7 = groups.Count;
+                                groupIndex7 < groupCount7;
+                                groupIndex7++
+                            )
                             {
+                                var group = groups[groupIndex7];
+
                                 await group
-                                    .RefreshAsync(token)
+                                    .RefreshAsync(operationCancellationToken)
                                     .ConfigureAwait(false);
                             }
                         },

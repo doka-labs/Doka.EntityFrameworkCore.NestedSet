@@ -1,7 +1,6 @@
 using System.Buffers.Binary;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using GroupApp = Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 using SignalApp = Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 
@@ -291,87 +290,5 @@ internal static class CompositionConsumerModel
                 entity.FindProperty(property)!.GetColumnName(store)!)
             + " AS "
             + sql.DelimitIdentifier(alias);
-    }
-}
-
-/// <summary>Runs the actual signal builders against shared capacity views and bounded payload tables.</summary>
-internal sealed class CompositionCapacitySignalLabContext(DbContextOptions<CompositionCapacitySignalLabContext> options)
-    : SignalApp.SignalLabContext(options)
-{
-    /// <inheritdoc />
-    protected override void ConfigureConventions(
-        ModelConfigurationBuilder configurationBuilder
-    )
-    {
-        base.ConfigureConventions(configurationBuilder);
-
-        // WHY: The real catalog UNION also projects unbound Guid.Empty literals. Their default scalar
-        // mapping must match the adapted integer property mapping on every provider, including constants.
-        configurationBuilder
-            .DefaultTypeMapping<Guid>()
-            .HasConversion<CompositionConsumerIdentityConverter>();
-    }
-
-    /// <inheritdoc />
-    protected override void OnModelCreating(
-        ModelBuilder modelBuilder
-    )
-    {
-        if (Database.IsNpgsql())
-        {
-            modelBuilder.HasDefaultSchema("hierarchies");
-        }
-
-        base.OnModelCreating(modelBuilder);
-        CompositionConsumerModel.Configure(modelBuilder, true);
-    }
-}
-
-/// <summary>Shares the fixture's reversible scalar mapping between properties and unbound catalog literals.</summary>
-internal sealed class CompositionConsumerIdentityConverter : ValueConverter<Guid, int>
-{
-    /// <summary>Creates EF's parameterless converter for the restricted fixture identity domain.</summary>
-    public CompositionConsumerIdentityConverter()
-        : base(value => CompositionConsumerModel.Integer(value), value => CompositionConsumerModel.Identity(value)) { }
-}
-
-/// <summary>Keeps converted tree identities consistent between properties and unbound status-union literals.</summary>
-internal sealed class CompositionConsumerTreeConverter : ValueConverter<Guid, Guid>
-{
-    /// <summary>Creates the bijective swap used by this fixture's logical and physical tree identities.</summary>
-    public CompositionConsumerTreeConverter()
-        : base(value => CompositionConsumerModel.SwapTree(value), value => CompositionConsumerModel.SwapTree(value)) { }
-}
-
-/// <summary>Runs the actual supervisor builders over the same persisted capacity hierarchy.</summary>
-internal sealed class CompositionCapacityGroupContext(DbContextOptions<CompositionCapacityGroupContext> options)
-    : GroupApp.UserGroupContext(options)
-{
-    /// <inheritdoc />
-    protected override void ConfigureConventions(
-        ModelConfigurationBuilder configurationBuilder
-    )
-    {
-        base.ConfigureConventions(configurationBuilder);
-
-        // WHY: The real status UNION's unbound StartTreeId literals must retain the same reversible tree
-        // mapping as its entity-property branches. Tenant/role properties retain their explicit integer codecs.
-        configurationBuilder
-            .DefaultTypeMapping<Guid>()
-            .HasConversion<CompositionConsumerTreeConverter>();
-    }
-
-    /// <inheritdoc />
-    protected override void OnModelCreating(
-        ModelBuilder modelBuilder
-    )
-    {
-        if (Database.IsNpgsql())
-        {
-            modelBuilder.HasDefaultSchema("hierarchies");
-        }
-
-        base.OnModelCreating(modelBuilder);
-        CompositionConsumerModel.Configure(modelBuilder, false);
     }
 }

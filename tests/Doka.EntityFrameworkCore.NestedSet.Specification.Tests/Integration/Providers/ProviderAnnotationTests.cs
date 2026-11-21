@@ -14,7 +14,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
         Reason = "MySql audits this same executable assembly and verifies both owned engine registrations.")]
-    public async Task SharedTestAnnotationsPreserveProviderOwnership()
+    public async Task FindSharedAnnotationErrors_SharedTestAnnotations_PreserveProviderOwnership()
     {
         // Arrange
         var methods = typeof(ProviderAnnotationTests)
@@ -49,7 +49,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
         Reason = "MySql audits this same executable assembly and verifies both owned engine registrations.")]
-    public void SharedSuitesRemainAbstract()
+    public void GetTypes_SharedSuites_RemainAbstract()
     {
         // Arrange
         var assembly = typeof(ProviderAnnotationTests).Assembly;
@@ -77,7 +77,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
         Reason = "MySql audits this same executable assembly and verifies both owned engine registrations.")]
-    public void ProviderSuitesPreserveOwnedSharedContracts()
+    public void ResolveEngine_ProviderSuites_PreserveOwnedSharedContracts()
     {
         // Arrange
         var shared = typeof(ProviderAnnotationTests).Assembly;
@@ -157,7 +157,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
 
     /// <summary>Raw IDE-visible metadata includes only the concurrent scenarios supported by the engine.</summary>
     [Fact]
-    public void ConcurrentWriterMetadataMatchesEngineCapabilities()
+    public void GetCustomAttribute_ConcurrentWriterMetadata_MatchesEngineCapabilities()
     {
         // Arrange
         var provider = GetType()
@@ -172,12 +172,14 @@ public abstract class ProviderAnnotationTests : ProviderTest
             .ToArray();
 
         var expected = Engine == "Sqlite"
-            ? new[] { nameof(ConcurrentWriterTests.SameTreeSerializes64ChildWritersWithDensePositions) }
+            ? new[] { nameof(ConcurrentWriterTests.InsertChildAsync_SameTreeConcurrentWriters_RetainDensePositions) }
             : new[]
             {
-                nameof(ConcurrentCapacityTests.CanceledBlockedContenderPreservesBothCallerTransactions),
-                nameof(ConcurrentCapacityTests.IndependentExistingTreesHold64LocksInOneScope),
-                nameof(ConcurrentWriterTests.SameTreeSerializes64ChildWritersWithDensePositions),
+                nameof(
+                    ConcurrentCapacityTests.InsertChildAsync_CanceledBlockedContender_PreservesBothCallerTransactions),
+                nameof(ConcurrentWriterTests.InsertChildAsync_SameTreeConcurrentWriters_RetainDensePositions),
+                nameof(
+                    ConcurrentCapacityTests.InsertIndependentChildAsync_IndependentExistingTrees_Hold64LocksInOneScope),
             };
 
         // Act
@@ -220,7 +222,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
         Reason = "MySql audits this same executable assembly and verifies both owned engine registrations.")]
-    public async Task ProviderAssemblyContainsOnlyOwnedSuites()
+    public async Task FindErrors_ProviderAssembly_ContainsOnlyOwnedSuites()
     {
         // Arrange
         var provider = GetType()
@@ -271,7 +273,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["MariaDb"],
         Reason = "MySql audits this same executable assembly and verifies both owned engine registrations.")]
-    public void ProviderFixtureRegistrationsRemainLocal()
+    public void FindErrors_ProviderFixtureRegistrations_RemainLocal()
     {
         // Arrange
         var shared = typeof(ProviderAnnotationTests).Assembly;

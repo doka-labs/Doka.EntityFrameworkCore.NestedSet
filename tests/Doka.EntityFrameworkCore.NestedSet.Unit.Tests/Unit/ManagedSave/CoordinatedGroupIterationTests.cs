@@ -5,7 +5,7 @@ public sealed partial class CoordinatedGroupIterationTests
 {
     /// <summary>Moves and refreshes both owners without treating the last hierarchy group as complete early.</summary>
     [Fact]
-    public async Task ParentChangesApplyToEveryHierarchyOwner()
+    public async Task SaveChangesAsync_ParentChanges_ApplyToEveryHierarchyOwner()
     {
         // Arrange
         await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -54,7 +54,7 @@ public sealed partial class CoordinatedGroupIterationTests
 
     /// <summary>A payload failure restores both pending parent changes and rolls back both physical trees.</summary>
     [Fact]
-    public async Task PayloadFailureRestoresEveryHierarchyOwner()
+    public async Task SaveChangesAsync_PayloadFailure_RestoresEveryHierarchyOwner()
     {
         // Arrange
         await using var context = await CreateContextAsync(cancellationToken: TestContext.Current.CancellationToken);

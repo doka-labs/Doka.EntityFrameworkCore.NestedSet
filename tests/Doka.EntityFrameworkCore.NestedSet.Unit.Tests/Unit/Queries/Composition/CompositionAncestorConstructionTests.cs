@@ -12,7 +12,7 @@ public sealed class CompositionAncestorConstructionTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task StrictAncestorCoordinatesKeepDirectQueryRootsAndEndpointProof(
+    public async Task SelectAncestors_StrictAncestor_CoordinatesKeepDirectQueryRootsAndEndpointProof(
         string engine
     )
     {
@@ -101,7 +101,7 @@ public sealed class CompositionAncestorConstructionTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task OrdinaryAncestorTranslationDoesNotPerformIo(
+    public async Task ToQueryString_OrdinaryAncestorTranslation_DoesNotPerformIo(
         string engine,
         bool includeSelf
     )
@@ -172,7 +172,7 @@ public sealed class CompositionAncestorConstructionTests
     [InlineData("MariaDb", false, true)]
     [InlineData("MariaDb", true, false)]
     [InlineData("MariaDb", true, true)]
-    public async Task AncestorExpansionRetainsExactlyOneCallerSelection(
+    public async Task SelectAncestorsOrSelf_AncestorExpansion_RetainsExactlyOneCallerSelection(
         string engine,
         bool includeSelf,
         bool queryBearing

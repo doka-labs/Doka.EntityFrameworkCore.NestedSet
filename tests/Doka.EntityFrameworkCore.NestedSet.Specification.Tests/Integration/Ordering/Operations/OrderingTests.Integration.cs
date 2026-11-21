@@ -4,12 +4,13 @@ public abstract partial class OrderingTests
 {
     /// <summary>Shares EF singleton services across probe families while retaining independent entity counts.</summary>
     [Fact]
-    public async Task ProbeFamiliesShareServiceProviderAndKeepMaterializationCountsIsolated()
+    public async Task GetService_ProbeFamilies_ShareServiceProviderAndKeepMaterializationCountsIsolated()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         await using var database = await TestDatabase.CreateAsync(
@@ -27,8 +28,8 @@ public abstract partial class OrderingTests
         await using var ordered = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            orderedProbe);
+            mode: "Strict",
+            interceptors: [orderedProbe]);
 
         await using var ordinary = database.CreateContext((IInterceptor)ordinaryProbe);
 
@@ -55,12 +56,13 @@ public abstract partial class OrderingTests
 
     /// <summary>An unregistered ordered facade fails before starting its requested mutation.</summary>
     [Fact]
-    public async Task OrderedFacadeRejectsMissingAdapterBeforeMutation()
+    public async Task ForScope_OrderedFacade_RejectsMissingAdapterBeforeMutation()
     {
         // Arrange
         await using var configured = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var connection = configured.Database.GetConnectionString()!;
         var probe = new OrderingSaveProbe();
@@ -126,14 +128,17 @@ public abstract partial class OrderingTests
                 .ToArrayAsync(CancellationToken.None));
     }
 
-    /// <summary>A selected adapter still rejects tracked ordering writes saved without the coordinated wrapper.</summary>
+    /// <summary>
+    /// A selected adapter still rejects tracked ordering writes saved without the coordinated wrapper.
+    /// </summary>
     [Fact]
-    public async Task TrackedOrderingChangeRejectsMissingCoordinatedSaveWrapper()
+    public async Task SaveChangesAsync_TrackedOrderingChange_RejectsMissingCoordinatedSaveWrapper()
     {
         // Arrange
         await using var configured = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await configured
             .NestedSet<OrderingNode>()

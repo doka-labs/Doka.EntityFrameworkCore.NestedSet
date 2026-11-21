@@ -7,7 +7,7 @@ public sealed partial class DokaStraightJoinTests
 {
     /// <summary>The direct operator preserves both inputs and all typed selectors without execution.</summary>
     [Fact]
-    public void TypedOrderedJoinRetainsItsExactInputsAndSelectors()
+    public void TryOrderedJoin_TypedOrderedJoin_RetainsItsExactInputsAndSelectors()
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -41,7 +41,7 @@ public sealed partial class DokaStraightJoinTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FreshCapturesAndCompleteSourceOccurrencesArePreserved(
+    public void TryOrderedJoin_Fresh_CapturesAndCompleteSourceOccurrencesArePreserved(
         bool empty
     )
     {
@@ -106,7 +106,7 @@ public sealed partial class DokaStraightJoinTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void PortableAdaptersKeepOrderedJoinUnavailable(
+    public void TryOrderedJoin_PortableAdapters_KeepOrderedJoinUnavailable(
         string engine
     )
     {
@@ -133,7 +133,7 @@ public sealed partial class DokaStraightJoinTests
 
     /// <summary>The typed native boundary rejects client sources without reflection exception wrappers.</summary>
     [Fact]
-    public void ClientSourcesAreRejectedWithoutReflectionWrapping()
+    public void TryOrderedJoin_ClientSources_AreRejectedWithoutReflectionWrapping()
     {
         // Arrange
         var source = Array
@@ -158,7 +158,7 @@ public sealed partial class DokaStraightJoinTests
 
     /// <summary>An actual provider exception crosses the typed ordered-join call without reflection wrapping.</summary>
     [Fact]
-    public void QueryProviderFailureIsNotWrapped()
+    public void TryOrderedJoin_QueryProviderFailure_IsNotWrapped()
     {
         // Arrange
         var expected = new InvalidOperationException("The actual query provider rejected construction.");

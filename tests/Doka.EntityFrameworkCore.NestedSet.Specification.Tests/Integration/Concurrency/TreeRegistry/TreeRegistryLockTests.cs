@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies typed tree-registry lifecycle and ordering on every supported relational engine.</summary>
-public abstract class TreeRegistryLockTests : ProviderTest
+public abstract partial class TreeRegistryLockTests : ProviderTest
 {
     private readonly RelationalFixture _fixture;
 
@@ -15,7 +15,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
     /// <summary>An already active TreeId cannot be reserved as a new tree.</summary>
     [Fact]
-    public async Task ActiveTreeIdCannotBeReservedAgain()
+    public async Task AcquireAsync_ActiveTreeId_CannotBeReservedAgain()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -27,7 +27,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 7,
                 treeId,
                 NestedSetTreeLockMode.New,
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         }
 
         await using var context = database.CreateContext();
@@ -38,7 +38,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
             7,
             treeId,
             NestedSetTreeLockMode.New,
-            CancellationToken.None));
+            TestContext.Current.CancellationToken));
 
         // Assert
         var nestedSet = Assert.IsType<NestedSetException>(exception);
@@ -48,7 +48,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
     /// <summary>Locking an existing active tree must not count as a structural change.</summary>
     [Fact]
-    public async Task ExistingLockPreservesExistingRevision()
+    public async Task AcquireAsync_ExistingLock_PreservesExistingRevision()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -60,7 +60,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 7,
                 treeId,
                 NestedSetTreeLockMode.New,
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         }
 
         await using var context = database.CreateContext();
@@ -76,7 +76,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
             7,
             treeId,
             NestedSetTreeLockMode.Existing,
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         // Assert
         await using var verification = database.CreateContext();
@@ -91,7 +91,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
     /// <summary>Explicitly reserving a new tree creates its registry without a structural revision.</summary>
     [Fact]
-    public async Task NewReservationStartsAtRevisionZero()
+    public async Task AcquireAsync_NewReservation_StartsAtRevisionZero()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -104,7 +104,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
             7,
             treeId,
             NestedSetTreeLockMode.New,
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         // Assert
         await using var verification = database.CreateContext();
@@ -117,145 +117,12 @@ public abstract class TreeRegistryLockTests : ProviderTest
                 cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>A tombstone rejects operations that require an existing active tree.</summary>
-    [Fact]
-    public async Task TombstonedTreeIdRejectsExistingLock()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var treeId = Guid.NewGuid();
-        await using (var setup = database.CreateContext())
-        {
-            await TreeRegistryLockTestSupport.AcquireAsync(
-                setup,
-                7,
-                treeId,
-                NestedSetTreeLockMode.New,
-                CancellationToken.None);
-
-            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        }
-
-        await using var context = database.CreateContext();
-
-        // Act
-        var existing = await Record.ExceptionAsync(() => TreeRegistryLockTestSupport.AcquireAsync(
-            context,
-            7,
-            treeId,
-            NestedSetTreeLockMode.Existing,
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.TreeIdUnavailable,
-            Assert.IsType<NestedSetException>(existing)
-                .Code);
-    }
-
-    /// <summary>A tombstone rejects attempts to reserve its TreeId as a new tree.</summary>
-    [Fact]
-    public async Task TombstonedTreeIdRejectsNewReservation()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var treeId = Guid.NewGuid();
-        await using (var setup = database.CreateContext())
-        {
-            await TreeRegistryLockTestSupport.AcquireAsync(
-                setup,
-                7,
-                treeId,
-                NestedSetTreeLockMode.New,
-                CancellationToken.None);
-
-            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        }
-
-        await using var context = database.CreateContext();
-
-        // Act
-        var created = await Record.ExceptionAsync(() => TreeRegistryLockTestSupport.AcquireAsync(
-            context,
-            7,
-            treeId,
-            NestedSetTreeLockMode.New,
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.TreeIdUnavailable,
-            Assert.IsType<NestedSetException>(created)
-                .Code);
-    }
-
-    /// <summary>Fixture seeding rejects a deleted tree identity without persisting precomputed rows.</summary>
-    [Fact]
-    public async Task FixtureSeedRejectsTombstonedTreeId()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var treeId = Guid.NewGuid();
-        await using (var setup = database.CreateContext())
-        {
-            await TreeRegistryLockTestSupport.AcquireAsync(
-                setup,
-                7,
-                treeId,
-                NestedSetTreeLockMode.New,
-                CancellationToken.None);
-
-            await TombstoneAsync(setup, 7, treeId, cancellationToken: TestContext.Current.CancellationToken);
-        }
-
-        await using var context = database.CreateContext();
-        var revisionBefore = await TreeRegistryLockTestSupport.ReadRevisionAsync(
-            context,
-            7,
-            treeId,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await context.AddAsync(
-            new TreeNode
-            {
-                NodeId = 1,
-                Tree = 7,
-                TreeId = treeId,
-                Start = 1,
-                End = 2,
-            },
-            CancellationToken.None);
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => context.SavePrecomputedHierarchyAsync(CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.TreeIdUnavailable,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        await using var verification = database.CreateContext();
-        Assert.Equal(
-            revisionBefore,
-            await TreeRegistryLockTestSupport.ReadRevisionAsync(
-                verification,
-                7,
-                treeId,
-                cancellationToken: TestContext.Current.CancellationToken));
-
-        Assert.Empty(
-            await verification
-                .Set<TreeNode>()
-                .ToArrayAsync(CancellationToken.None));
-    }
-
     /// <summary>Different TreeIds in the same Scope make progress while another tree lock is retained.</summary>
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason =
             "This staged contender requires independent server row locks; SQLite serializes all database writers.")]
-    public async Task DifferentTreesInSameScopeDoNotShareALibraryLock()
+    public async Task AcquireAsync_DifferentTreesInSameScope_DoNotShareALibraryLock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -269,7 +136,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
                     TreeRegistryLockTestSupport.Request(setup, 7, firstTree, NestedSetTreeLockMode.New),
                     TreeRegistryLockTestSupport.Request(setup, 7, secondTree, NestedSetTreeLockMode.New),
                 ],
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         }
 
         await using var first = database.CreateContext();
@@ -277,13 +144,15 @@ public abstract class TreeRegistryLockTests : ProviderTest
         var isolation = NestedSetProviderCapabilities.Resolve(first)
             .RequiredIsolation;
 
-        await using var transaction = await first.Database.BeginTransactionAsync(isolation, CancellationToken.None);
+        await using var transaction = await first.Database.BeginTransactionAsync(
+            isolation,
+            TestContext.Current.CancellationToken);
         await NestedSetTreeLocks.AcquireAsync(
             first,
             [TreeRegistryLockTestSupport.Request(first, 7, firstTree, NestedSetTreeLockMode.Existing)],
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         await TreeRegistryLockTestSupport.AcquireAsync(
@@ -291,19 +160,19 @@ public abstract class TreeRegistryLockTests : ProviderTest
             7,
             secondTree,
             NestedSetTreeLockMode.Existing,
-            timeout.Token);
+            operationCancellationToken);
 
         var firstStillOwnsTransaction = ReferenceEquals(transaction, first.Database.CurrentTransaction);
         await transaction.RollbackAsync(CancellationToken.None);
 
         // Assert
         Assert.True(firstStillOwnsTransaction);
-        Assert.False(timeout.IsCancellationRequested);
+        Assert.False(operationCancellationToken.IsCancellationRequested);
     }
 
     /// <summary>Opposite request order is canonicalized before either transaction acquires its first row.</summary>
     [Fact]
-    public async Task OppositeMultiTreeRequestsCompleteWithoutDeadlock()
+    public async Task AcquireAsync_OppositeMultiTreeRequests_CompleteWithoutDeadlock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -317,36 +186,36 @@ public abstract class TreeRegistryLockTests : ProviderTest
                     TreeRegistryLockTestSupport.Request(setup, 7, firstTree, NestedSetTreeLockMode.New),
                     TreeRegistryLockTestSupport.Request(setup, 7, secondTree, NestedSetTreeLockMode.New),
                 ],
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         }
 
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
         var ascending = TreeRegistryLockTestSupport.LockAfterGateAsync(
             database,
             7,
             [firstTree, secondTree],
             gate.Task,
-            timeout.Token);
+            operationCancellationToken);
 
         var descending = TreeRegistryLockTestSupport.LockAfterGateAsync(
             database,
             7,
             [secondTree, firstTree],
             gate.Task,
-            timeout.Token);
+            operationCancellationToken);
 
         // Act
         gate.SetResult();
         await Task.WhenAll(ascending, descending);
 
         // Assert
-        Assert.False(timeout.IsCancellationRequested);
+        Assert.False(operationCancellationToken.IsCancellationRequested);
     }
 
     /// <summary>A wide scoped forest resolves one global database order with one rowset parameter.</summary>
     [Fact]
-    public async Task WideScopedForestResolvesOrderBeyondScalarParameterLimits()
+    public async Task RequireDistinctAsync_WideScopedForest_ResolvesOrderBeyondScalarParameterLimits()
     {
         // Arrange
         // WHY: Each request binds Scope and TreeId; these engine-sized counts cross scalar parameter limits.
@@ -373,7 +242,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
         }
 
         // Act
-        await NestedSetTreeLocks.RequireDistinctAsync(context, requests, CancellationToken.None);
+        await NestedSetTreeLocks.RequireDistinctAsync(context, requests, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(probe.Commands);
@@ -382,7 +251,7 @@ public abstract class TreeRegistryLockTests : ProviderTest
 
     /// <summary>Typed and JSON rowsets lock string scopes in the same order across their switch threshold.</summary>
     [Fact]
-    public async Task RowsetThresholdPreservesStringScopeLockOrder()
+    public async Task AcquireManyAsync_RowsetThreshold_PreservesStringScopeLockOrder()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -405,7 +274,10 @@ public abstract class TreeRegistryLockTests : ProviderTest
                     NestedSetTreeLockMode.New))
                 .ToArray();
 
-            await TreeRegistryLockTestSupport.AcquireManyAsync(setup, reservations, CancellationToken.None);
+            await TreeRegistryLockTestSupport.AcquireManyAsync(
+                setup,
+                reservations,
+                TestContext.Current.CancellationToken);
         }
 
         var narrowProbe = new EnterpriseProbe();
@@ -432,8 +304,11 @@ public abstract class TreeRegistryLockTests : ProviderTest
             .ToArray();
 
         // Act
-        await TreeRegistryLockTestSupport.AcquireManyAsync(narrow, narrowRequests, CancellationToken.None);
-        await TreeRegistryLockTestSupport.AcquireManyAsync(wide, wideRequests, CancellationToken.None);
+        await TreeRegistryLockTestSupport.AcquireManyAsync(
+            narrow,
+            narrowRequests,
+            TestContext.Current.CancellationToken);
+        await TreeRegistryLockTestSupport.AcquireManyAsync(wide, wideRequests, TestContext.Current.CancellationToken);
 
         // Assert
         var narrowOrder = LockScopes(narrowProbe);

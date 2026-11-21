@@ -19,7 +19,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
     /// <summary>Renaming a named shared node refreshes three sorted siblings and preserves another mapping.</summary>
     /// <returns>A task that completes after checking geometry, tracking and an unrelated named write.</returns>
     [Fact]
-    public async Task NamedSharedClrSaveRefreshesSortedSiblingsAndKeepsOtherMapping()
+    public async Task SaveChangesAsync_NamedSharedClrSave_RefreshesSortedSiblingsAndKeepsOtherMapping()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SortedSharedContext>(
@@ -144,7 +144,7 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
     /// <summary>Moving a named property-bag child retains hierarchy metadata alongside another named bag.</summary>
     /// <returns>A task that completes after checking both trees and the unrelated property-bag write.</returns>
     [Fact]
-    public async Task NamedPropertyBagParentSaveKeepsExactMetadataAndOtherMapping()
+    public async Task SaveChangesAsync_NamedPropertyBagParentSave_KeepsExactMetadataAndOtherMapping()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<PropertyBagSaveContext>(
@@ -229,9 +229,15 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
     };
 
     /// <summary>Coordinates ordinary property-bag saves through the public named mapping contract.</summary>
-    private sealed class PropertyBagSaveContext(DbContextOptions<PropertyBagSaveContext> options)
-        : NestedSetDbContext(options)
+    private sealed class PropertyBagSaveContext
+        : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public PropertyBagSaveContext(
+            DbContextOptions<PropertyBagSaveContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
@@ -283,9 +289,15 @@ public abstract class SharedTypeManagedSaveTests : ProviderTest
     }
 
     /// <summary>Coordinates ordinary named shared CLR saves with public selector-based sorting.</summary>
-    private sealed class SortedSharedContext(DbContextOptions<SortedSharedContext> options)
-        : NestedSetDbContext(options)
+    private sealed class SortedSharedContext
+        : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public SortedSharedContext(
+            DbContextOptions<SortedSharedContext> options
+        ) : base(options) { }
+
         /// <summary>Names the shared hierarchy independently of its CLR type.</summary>
         internal const string FolderEntity = "ManagedSharedFolder";
 

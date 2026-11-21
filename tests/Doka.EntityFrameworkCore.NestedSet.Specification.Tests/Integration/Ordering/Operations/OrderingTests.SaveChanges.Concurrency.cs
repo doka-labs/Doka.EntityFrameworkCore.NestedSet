@@ -7,12 +7,13 @@ public abstract partial class OrderingTests
         ExcludedEngines = new[] { "Sqlite" },
         Reason = "This staged contender requires independent server row locks; SQLite serializes all database writers."
     )]
-    public async Task SortedSaveRejectsNodeMovedToUnlockedTree()
+    public async Task SaveChangesAsync_SortedSave_RejectsNodeMovedToUnlockedTree()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var hierarchy = setup
             .NestedSet<OrderingNode>()
@@ -20,37 +21,38 @@ public abstract partial class OrderingTests
 
         var firstTree = Guid.NewGuid();
         var secondTree = Guid.NewGuid();
-        await hierarchy.InsertRootAsync(Node(1, "Root"), firstTree, CancellationToken.None);
-        await hierarchy.InsertChildAsync(Node(2, "Alpha"), 1, CancellationToken.None);
-        await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, CancellationToken.None);
+        await hierarchy.InsertRootAsync(Node(1, "Root"), firstTree, TestContext.Current.CancellationToken);
+        await hierarchy.InsertChildAsync(Node(2, "Alpha"), 1, TestContext.Current.CancellationToken);
+        await hierarchy.InsertRootAsync(Node(10, "Destination"), secondTree, TestContext.Current.CancellationToken);
         await using var barrier = new SaveRegistryLockBarrier();
         await using var first = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            barrier);
+            mode: "Strict",
+            interceptors: [barrier]);
 
         await using var second = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var renamed = await first
             .Set<OrderingNode>()
-            .SingleAsync(node => node.Id == 2, CancellationToken.None);
+            .SingleAsync(node => node.Id == 2, TestContext.Current.CancellationToken);
 
         renamed.Name = "Zulu";
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
-        var pendingSave = first.SaveChangesAsync(timeout.Token);
-        await barrier.Attempted.Task.WaitAsync(timeout.Token);
+        var pendingSave = first.SaveChangesAsync(operationCancellationToken);
+        await barrier.Attempted.Task.WaitAsync(operationCancellationToken);
 
         try
         {
             await second
                 .NestedSet<OrderingNode>()
                 .ForScope(1)
-                .MoveToAsync(2, 10, timeout.Token);
+                .MoveToAsync(2, 10, operationCancellationToken);
         }
         finally
         {
@@ -64,12 +66,13 @@ public abstract partial class OrderingTests
         Assert.Contains("changed trees before locking", conflict.Message, StringComparison.Ordinal);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var node = await verification
             .Set<OrderingNode>()
             .AsNoTracking()
-            .SingleAsync(value => value.Id == 2, CancellationToken.None);
+            .SingleAsync(value => value.Id == 2, TestContext.Current.CancellationToken);
 
         Assert.Equal(secondTree, node.TreeId);
         Assert.Equal("Alpha", node.Name);
@@ -79,11 +82,11 @@ public abstract partial class OrderingTests
 
         var firstReport = await scope
             .InTree(firstTree)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, TestContext.Current.CancellationToken);
 
         var secondReport = await scope
             .InTree(secondTree)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, TestContext.Current.CancellationToken);
 
         Assert.True(firstReport.IsValid);
         Assert.True(secondReport.IsValid);

@@ -37,7 +37,9 @@ internal sealed class ManagedHeapObservation
         _knownCollectionEpoch = _previousSampleCollections >= 0 && _gcIndex <= _previousSampleCollections;
     }
 
-    /// <summary>Returns a conservative occupied-heap estimate including allocations since the last completed GC.</summary>
+    /// <summary>
+    /// Returns a conservative occupied-heap estimate including allocations since the last completed GC.
+    /// </summary>
     /// <returns>Occupied bytes at this observation; not a peak between observations.</returns>
     internal long Sample()
     {
@@ -134,7 +136,9 @@ internal sealed class ManagedHeapObservation
         return Math.Min(previousStart, start.Allocated);
     }
 
-    /// <summary>Returns actual retained bytes after a blocking collection for isolated before/after plan tests.</summary>
+    /// <summary>
+    /// Returns actual retained bytes after a blocking collection for isolated before/after plan tests.
+    /// </summary>
     internal static long CollectedBytes()
     {
         var info = CollectInformation();

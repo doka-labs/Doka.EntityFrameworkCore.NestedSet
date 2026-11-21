@@ -57,11 +57,13 @@ the reviewed stable contract and promotes the accepted public API changes from
 `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` in the source commit before
 qualification.
 
-The current shipped API files record the stable `10.3.0` contract: Core is
-unchanged, the common EF API includes query composition, optional registry
-naming and 36 required-cancellation declarations, and each adapter owns its
-native callback. The removed options-level registration remains absent. All
-unshipped files are reserved for subsequent changes. The historical optional
+The current shipped API files record the stable `10.4.0` contract across all
+six packages. C# 14 extension-block views represent existing operations while
+the earlier static-method declarations remain recorded. The common EF API
+retains query composition, optional registry naming and explicit cancellation
+arguments, and each adapter owns its native callback. The removed options-level
+registration remains absent. All unshipped files are reserved for subsequent
+changes. The historical optional
 cancellation signatures remain in the `10.2.0` release tag. The two original
 package IDs retain SDK compatibility validation against the published `10.0.0`
 baseline with only the approved registration removal suppressed; the source
@@ -69,8 +71,8 @@ exception does not add a binary-compatibility suppression. The earlier
 registration exception is approved in
 [D-020](decisions/D-020-provider-owned-runtime-packages.md); both exceptions
 are documented in the [upgrade guide](upgrading-provider-packages.md). The
-source uses `VersionPrefix=10.3.0` without a prerelease suffix and the dated
-`10.3.0 (2026-11-06)` changelog entry. Publication evidence remains the exact
+source uses `VersionPrefix=10.4.0` without a prerelease suffix and the dated
+`10.4.0 (2026-11-21)` changelog entry. Publication evidence remains the exact
 release's hosted qualification and successful public readback.
 
 ## Entry conditions

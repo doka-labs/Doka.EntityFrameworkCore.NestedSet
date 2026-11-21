@@ -15,14 +15,17 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task TypeSelectionDoesNotFallBackAfterRoutingFailure(
+    public async Task ResolveAsync_TypeSelection_DoesNotFallBackAfterRoutingFailure(
         bool typeFirst,
         bool found
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .MembershipMetadatas
@@ -72,11 +75,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>Hidden candidate people are removed before eligible-group ranking (U49,U70).</summary>
     [Fact]
-    public async Task HiddenPeopleCannotConsumeTheNearestEligibleGroup()
+    public async Task ResolveAsync_HiddenPeople_CannotConsumeTheNearestEligibleGroup()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var hidden = new[] { data.Users[1], data.Users[2] };
         await context
@@ -108,11 +114,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>A hidden intermediate group prevents an apparently complete farther manager path (U48).</summary>
     [Fact]
-    public async Task HiddenIntermediateGroupBlocksFartherTypeWinner()
+    public async Task ResolveAsync_HiddenIntermediateGroup_BlocksFartherTypeWinner()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .Groups
@@ -149,14 +158,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData(1, true)]
     [InlineData(3, true)]
     [InlineData(4, false)]
-    public async Task DirectEdgeDateBoundsAreInclusive(
+    public async Task ResolveAsync_DirectEdgeDateBounds_AreInclusive(
         int dayOffset,
         bool found
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var first = new DateOnly(2026, 10, 1);
         await context
@@ -199,13 +211,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("membership")]
     [InlineData("global")]
     [InlineData("either")]
-    public async Task ExplicitRoleSourceUsesExactMembership(
+    public async Task ResolveAsync_ExplicitRoleSource_UsesExactMembership(
         string source
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(App.SearchStart.IncludeSelf, data.Groups[6]) with
         {

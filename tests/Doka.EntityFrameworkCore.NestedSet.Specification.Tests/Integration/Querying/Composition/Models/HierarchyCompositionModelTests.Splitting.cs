@@ -16,7 +16,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task TableSplitPrincipalRetainsCompletePathsWithoutPayloadMaterialization(
+    public async Task QueryDepths_TableSplitPrincipal_RetainsCompletePathsWithoutPayloadMaterialization(
         HierarchyCompositionOperation operation
     )
     {
@@ -87,7 +87,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task EntitySplitStructuralFragmentRetainsMappedIdentityAndCompletePaths(
+    public async Task QueryDepths_EntitySplitStructuralFragment_RetainsMappedIdentityAndCompletePaths(
         HierarchyCompositionOperation operation
     )
     {

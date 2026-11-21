@@ -5,6 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Facade;
 /// <typeparam name="TKey">The exact mapped node key type.</typeparam>
 /// <typeparam name="TTreeId">The exact mapped tree identity type.</typeparam>
 /// <typeparam name="TScope">The mapped scope type, or the internal scopeless marker.</typeparam>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed partial class
     NestedSetMutationInvoker<TEntity, TKey, TTreeId, TScope> : NestedSetMutationInvoker<TEntity>
     where TEntity : class
@@ -123,8 +124,13 @@ internal sealed partial class
 
         // WHY: Both full cardinalities are needed before classifying failure: a missing anchor takes precedence
         // over ambiguity in the other ordinal. Iterating the existing list needs no per-anchor arrays or iterator.
-        foreach (var row in rows)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int rowIndex = 0, rowCount = rows.Count; rowIndex < rowCount; rowIndex++)
         {
+            var row = rows[rowIndex];
+
             if (row.Ordinal == 0)
             {
                 source = row.TreeId;
@@ -190,13 +196,13 @@ internal sealed partial class
     private static async Task ExecuteResolvedAsync(
         NestedSetMutationBinding<TEntity> binding,
         IReadOnlyList<(TKey Key, TTreeId TreeId)> anchors,
-        Func<Task> operation,
+        Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken
     )
     {
         try
         {
-            await operation()
+            await operation(cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (NestedSetException failure) when (failure.Code is NestedSetErrorCode.NodeNotFound
@@ -207,8 +213,13 @@ internal sealed partial class
             // exact-tree operation report NodeNotFound or TreeIdUnavailable even while the node still exists.
             // Classification happens after transaction/savepoint cleanup; automatically replaying to write
             // could replay unrelated application work in a caller-owned transaction.
-            foreach (var (key, treeId) in anchors)
+            // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (int itemIndex = 0, itemCount = anchors.Count; itemIndex < itemCount; itemIndex++)
             {
+                var (key, treeId) = anchors[itemIndex];
+
                 if (await BelongsToTreeAsync(binding, key, treeId, cancellationToken)
                     .ConfigureAwait(false))
                 {

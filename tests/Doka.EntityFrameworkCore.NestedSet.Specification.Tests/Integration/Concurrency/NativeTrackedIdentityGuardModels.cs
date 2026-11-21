@@ -3,9 +3,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Uses converted NodeKeys with binary Scope identity to exercise native scalar membership probes.</summary>
-internal sealed class ConvertedBroadScopeContext(DbContextOptions<ConvertedBroadScopeContext> options)
-    : BroadScopeContext(options)
+internal sealed class ConvertedBroadScopeContext
+    : BroadScopeContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public ConvertedBroadScopeContext(
+        DbContextOptions<ConvertedBroadScopeContext> options
+    ) : base(options) { }
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder

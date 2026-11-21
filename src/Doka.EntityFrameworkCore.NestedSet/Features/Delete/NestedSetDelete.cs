@@ -35,10 +35,10 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
         CancellationToken cancellationToken
     ) => _store.ExecuteMutationAsync(
         _executor,
-        async token =>
+        async operationCancellationToken =>
         {
             var source = await _store
-                .FindAsync(key, token)
+                .FindAsync(key, operationCancellationToken)
                 .ConfigureAwait(false);
 
             NestedSetGuards.RequireBounds(source);
@@ -52,7 +52,7 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
 
             var children = _store.Siblings(new NestedSetParent<TKey>(true, source.Key));
             var count = await children
-                .CountAsync(token)
+                .CountAsync(operationCancellationToken)
                 .ConfigureAwait(false);
 
             // WHY: Promoted children occupy the deleted node's former slot as an ordered block. Following siblings
@@ -65,18 +65,18 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
                     _store.Map.Position,
                     1,
                     checked(count - 1),
-                    token)
+                    operationCancellationToken)
                 .ConfigureAwait(false);
 
             if (count > 0)
             {
                 await _store
-                    .ChangeLongAsync(children, _store.Map.Position, 1, source.Position, token)
+                    .ChangeLongAsync(children, _store.Map.Position, 1, source.Position, operationCancellationToken)
                     .ConfigureAwait(false);
 
                 // WHY: Reparent before deletion so restrictive self-referencing foreign keys remain valid at each step.
                 await _store
-                    .SetParentAsync(children, source.Parent, token)
+                    .SetParentAsync(children, source.Parent, operationCancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -86,13 +86,13 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
             if (physicalDelete.IsRequired)
             {
                 await physicalDelete
-                    .ExecuteAsync(node, token)
+                    .ExecuteAsync(node, operationCancellationToken)
                     .ConfigureAwait(false);
             }
             else
             {
                 await NestedSetTelemetry
-                    .TrackRows(node.ExecuteDeleteAsync(token))
+                    .TrackRows(node.ExecuteDeleteAsync(operationCancellationToken))
                     .ConfigureAwait(false);
             }
 
@@ -123,7 +123,7 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
                                     node => EF.Property<long>(node, _store.Map.Right) > source.Right
                                         ? EF.Property<long>(node, _store.Map.Right) - 2
                                         : EF.Property<long>(node, _store.Map.Right) - 1),
-                            token))
+                            operationCancellationToken))
                 .ConfigureAwait(false);
 
             if (count > 0
@@ -132,12 +132,15 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
                 // WHY: A promoted block may interleave with its new siblings under the domain rule. Permuting
                 // intervals in batches preserves every descendant without moving each promoted subtree separately.
                 await new NestedSetOrderer<TEntity, TKey, TTreeId, TScope>(_store)
-                    .ReorderSiblingsAsync(source.Parent, token)
+                    .ReorderSiblingsAsync(source.Parent, operationCancellationToken)
                     .ConfigureAwait(false);
             }
 
             await NestedSetTreeRegistryState
-                .TouchAsync(_store.Context, _store.LockRequest(NestedSetTreeLockMode.Existing), token)
+                .TouchAsync(
+                    _store.Context,
+                    _store.LockRequest(NestedSetTreeLockMode.Existing),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         NestedSetTreeLockMode.Existing,
@@ -152,10 +155,10 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
         CancellationToken cancellationToken
     ) => _store.ExecuteMutationAsync(
         _executor,
-        async token =>
+        async operationCancellationToken =>
         {
             var source = await _store
-                .FindAsync(key, token)
+                .FindAsync(key, operationCancellationToken)
                 .ConfigureAwait(false);
 
             NestedSetGuards.RequireBounds(source);
@@ -172,20 +175,20 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
                 // WHY: Doka and SQLite must tolerate restrictive self-FKs created outside the EF model.
                 // Unknown physical constraints forbid a metadata-only shortcut; null roots need no unlink write.
                 await _store
-                    .SetParentAsync(subtree.Where(_store.HasParent()), default, token)
+                    .SetParentAsync(subtree.Where(_store.HasParent()), default, operationCancellationToken)
                     .ConfigureAwait(false);
             }
 
             if (physicalDelete.IsRequired)
             {
                 await physicalDelete
-                    .ExecuteAsync(subtree, token)
+                    .ExecuteAsync(subtree, operationCancellationToken)
                     .ConfigureAwait(false);
             }
             else
             {
                 await NestedSetTelemetry
-                    .TrackRows(subtree.ExecuteDeleteAsync(token))
+                    .TrackRows(subtree.ExecuteDeleteAsync(operationCancellationToken))
                     .ConfigureAwait(false);
             }
 
@@ -197,11 +200,14 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
                     _store.Map.Position,
                     1,
                     -1,
-                    token)
+                    operationCancellationToken)
                 .ConfigureAwait(false);
 
             await _store
-                .ShiftBoundsAsync(checked(source.Right + 1), -checked(source.Right - source.Left + 1), token)
+                .ShiftBoundsAsync(
+                    checked(source.Right + 1),
+                    -checked(source.Right - source.Left + 1),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
 
             var request = _store.LockRequest(NestedSetTreeLockMode.Existing);
@@ -209,13 +215,13 @@ internal sealed class NestedSetDelete<TEntity, TKey, TTreeId, TScope>
             if (source.Depth == 0)
             {
                 await NestedSetTreeRegistryState
-                    .TombstoneAsync(_store.Context, request, token)
+                    .TombstoneAsync(_store.Context, request, operationCancellationToken)
                     .ConfigureAwait(false);
             }
             else
             {
                 await NestedSetTreeRegistryState
-                    .TouchAsync(_store.Context, request, token)
+                    .TouchAsync(_store.Context, request, operationCancellationToken)
                     .ConfigureAwait(false);
             }
         },

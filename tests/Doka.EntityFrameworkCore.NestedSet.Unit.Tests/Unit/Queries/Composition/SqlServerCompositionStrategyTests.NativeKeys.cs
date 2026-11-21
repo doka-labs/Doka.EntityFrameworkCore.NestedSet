@@ -4,7 +4,7 @@ public sealed partial class SqlServerCompositionStrategyTests
 {
     /// <summary>Operator-free converted keys stay native in the owner-first APPLY without a CAST.</summary>
     [Fact]
-    public async Task ConvertedOwnerKeyRetainsNativeSql()
+    public async Task ToQueryString_ConvertedOwnerKey_RetainsNativeSql()
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<CoordinateBoundsContext>("SqlServer");
@@ -36,7 +36,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeOwnerKeyRetainsSqlWithoutTextConversion(
+    public async Task Translate_NativeOwnerKey_RetainsSqlWithoutTextConversion(
         bool binary
     )
     {
@@ -79,12 +79,15 @@ public sealed partial class SqlServerCompositionStrategyTests
     }
 
     /// <summary>Maps only native identity roles needed to qualify owner-first key translation.</summary>
-    private sealed class NativeOwnerKeyContext<TKey>(
-        DbContextOptions<NativeOwnerKeyContext<TKey>> options
-    )
-        : DbContext(options)
+    private sealed class NativeOwnerKeyContext<TKey>
+        : DbContext
         where TKey : class
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public NativeOwnerKeyContext(
+            DbContextOptions<NativeOwnerKeyContext<TKey>> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

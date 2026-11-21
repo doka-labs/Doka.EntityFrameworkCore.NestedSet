@@ -17,7 +17,8 @@ internal static class SampleReadSnapshot
     ///     An ambient, inadequate, or improperly retried transaction is present.
     /// </exception>
     /// <exception cref="NotSupportedException">
-    ///     The context does not use a qualified provider or its SQLite connection lacks the required enlistment contract.
+    ///     The context does not use a qualified provider or its SQLite connection lacks the required enlistment
+    /// contract.
     /// </exception>
     /// <remarks>
     ///     SQL Server requires ALLOW_SNAPSHOT_ISOLATION configured by the database owner in advance.
@@ -63,16 +64,19 @@ internal static class SampleReadSnapshot
         // WHY: A transient retry must replay the catalog and all report/chain reads together in a new
         // snapshot. Reusing an earlier frontier or retrying a single hop would mix different database views.
         return await strategy.ExecuteAsync(
-            async token =>
+            async operationCancellationToken =>
             {
                 if (provider == "Microsoft.EntityFrameworkCore.Sqlite")
                 {
-                    return await ReadSqliteAsync(context, read, token);
+                    return await ReadSqliteAsync(context, read, operationCancellationToken);
                 }
 
-                await using var transaction = await context.Database.BeginTransactionAsync(isolation, token);
-                var result = await read(token);
-                await transaction.CommitAsync(token);
+                await using var transaction = await context.Database.BeginTransactionAsync(
+                    isolation,
+                    operationCancellationToken);
+
+                var result = await read(operationCancellationToken);
+                await transaction.CommitAsync(operationCancellationToken);
 
                 return result;
             },

@@ -94,7 +94,11 @@ internal static class NestedSetTransaction
         // WHY: A native adapter may acquire the writer lock at transaction creation rather than a later statement.
         var transaction = provider.MeasureTransactionBeginLockWait
             ? await NestedSetTelemetry
-                .MeasureLockAsync(token => context.Database.BeginTransactionAsync(isolation, token), cancellationToken)
+                .MeasureLockAsync(
+                    operationCancellationToken => context.Database.BeginTransactionAsync(
+                        isolation,
+                        operationCancellationToken),
+                    cancellationToken)
                 .ConfigureAwait(false)
             : await context
                 .Database
@@ -197,7 +201,7 @@ internal static class NestedSetTransaction
             .ValidateCallerSessionAsync(context, cancellationToken)
             .ConfigureAwait(false);
 
-        // WHY: A distinct identifier avoids application/EF collisions while staying within the supported short-name limit.
+        // WHY: A distinct identifier avoids application/EF collisions within the supported short-name limit.
         var savepoint = $"NS{Guid.NewGuid():N}"[..32];
 
         await transaction

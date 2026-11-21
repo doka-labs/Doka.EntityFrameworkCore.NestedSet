@@ -24,7 +24,7 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
 
     /// <summary>Independent trees share three payload waves without multiplying full tracker scans.</summary>
     [Fact]
-    public async Task IndependentForestKeepsGlobalTrackerWorkBounded()
+    public async Task InsertForestAsync_IndependentForest_KeepsGlobalTrackerWorkBounded()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

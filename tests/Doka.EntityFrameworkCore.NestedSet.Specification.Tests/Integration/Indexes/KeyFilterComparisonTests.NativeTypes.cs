@@ -40,7 +40,7 @@ public abstract partial class KeyFilterComparisonTests
     /// <summary>Compares one native key type and batch shape after its isolated rows have been arranged.</summary>
     [EngineTheory]
     [EngineMemberData(nameof(NativeScalarCases))]
-    public Task NativeScalarTypesPreserveCollectionEqualityAtEveryBatchSize(
+    public Task CompareNativeAsync_NativeScalarTypes_PreserveCollectionEqualityAtEveryBatchSize(
         string key,
         int count
     ) => key switch
@@ -129,13 +129,19 @@ public abstract partial class KeyFilterComparisonTests
         switch (engine)
         {
             case "Sqlite":
-                options.UseSqlite(connection, provider => provider.UseNestedSets());
+                options.UseSqlite(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "PostgreSql":
-                options.UseNpgsql(connection, provider => provider.UseNestedSets());
+                options.UseNpgsql(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "SqlServer":
-                options.UseSqlServer(connection, provider => provider.UseNestedSets());
+                options.UseSqlServer(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             default:
                 options.UseMySql(
@@ -151,24 +157,30 @@ public abstract partial class KeyFilterComparisonTests
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         options.AddInterceptors(probe);
         await using var context = new NativeKeyContext<TKey>(options.Options);
+        FunctionalTestContextPolicy.Configure(context);
 
         // WHY: The comparison must exercise mappings accepted by the library, not only EF-mappable CLR values.
         _ = NestedSetMapping<NativeKeyNode<TKey>, TKey, int>.For(
             context,
             context.Model.FindEntityType(typeof(NativeKeyNode<TKey>))!);
 
-        await context
-            .GetService<IRelationalDatabaseCreator>()
-            .CreateTablesAsync(cancellationToken);
+        Exception? comparisonFailure = null;
 
         try
         {
+            await context
+                .GetService<IRelationalDatabaseCreator>()
+                .CreateTablesAsync(cancellationToken);
+
             var values = Enumerable
                 .Range(0, 256)
                 .Select(createKey)
                 .Distinct()
                 .ToArray();
 
+            // WHY: The source ordinal also defines independent nested-set bounds and sibling positions.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < values.Length; index++)
             {
                 await context.AddAsync(
@@ -215,17 +227,17 @@ public abstract partial class KeyFilterComparisonTests
             Assert.Equal(equality, contains);
             Assert.Equal(equality, production);
         }
+        catch (Exception failure)
+        {
+            comparisonFailure = failure;
+
+            throw;
+        }
         finally
         {
             // WHY: Cases reuse a fixture database but own these two model tables; cleanup makes discovery order
-            // irrelevant.
-            var sql = context.GetService<ISqlGenerationHelper>();
-
-            foreach (var entity in context.Model.GetEntityTypes())
-            {
-                var drop = "DROP TABLE " + sql.DelimitIdentifier(entity.GetTableName()!, entity.GetSchema());
-                await context.Database.ExecuteSqlRawAsync(drop, cancellationToken);
-            }
+            // irrelevant. Its protected completion retains both comparison and independent DROP failures.
+            await QueryPlanTestSupport.DropOwnedTablesAsync(context, comparisonFailure);
         }
     }
 

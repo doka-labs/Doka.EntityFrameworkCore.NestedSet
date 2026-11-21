@@ -2,6 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Provides composable hierarchy queries and operations over a normal EF Core entity set.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
+[PublicAPI]
 public sealed partial class NestedSet<TEntity>
     where TEntity : class
 {
@@ -27,7 +28,9 @@ public sealed partial class NestedSet<TEntity>
     /// <param name="scope">The non-null partition value.</param>
     /// <returns>A facade who's every query and operation includes the Scope predicate.</returns>
     /// <exception cref="InvalidOperationException">The hierarchy has no configured Scope.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TScope" /> differs from the mapped Scope type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TScope" /> differs from the mapped Scope type.
+    /// </exception>
     public ScopedNestedSet<TEntity, TScope> ForScope<TScope>(
         TScope scope
     )
@@ -36,9 +39,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Selects one complete tree in stable nested-set preorder.</summary>
     /// <typeparam name="TTreeId">The exact mapped TreeId type inferred from <paramref name="treeId" />.</typeparam>
     /// <param name="treeId">The stable tree identity.</param>
-    /// <returns>A tree-bound facade whose <see cref="NestedSetTree{TEntity, TTreeId}.Nodes" /> query is composable.</returns>
+    /// <returns>
+    /// A tree-bound facade whose <see cref="NestedSetTree{TEntity, TTreeId}.Nodes" /> query is composable.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TTreeId" /> differs from the mapped TreeId type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TTreeId" /> differs from the mapped TreeId type.
+    /// </exception>
     public NestedSetTree<TEntity, TTreeId> InTree<TTreeId>(
         TTreeId treeId
     )
@@ -47,9 +54,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Returns the complete tree containing the visible anchor without loading it first.</summary>
     /// <typeparam name="TKey">The exact mapped NodeKey type inferred from <paramref name="nodeKey" />.</typeparam>
     /// <param name="nodeKey">The visible anchor identity.</param>
-    /// <returns>A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.</returns>
+    /// <returns>
+    /// A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> TreeContaining<TKey>(
         TKey nodeKey
     )
@@ -58,9 +69,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Returns the visible anchor and its visible descendants without loading the anchor first.</summary>
     /// <typeparam name="TKey">The exact mapped NodeKey type inferred from <paramref name="nodeKey" />.</typeparam>
     /// <param name="nodeKey">The visible subtree anchor identity.</param>
-    /// <returns>A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.</returns>
+    /// <returns>
+    /// A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> SubtreeOf<TKey>(
         TKey nodeKey
     )
@@ -69,9 +84,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Returns the visible direct children of an anchor without loading the anchor first.</summary>
     /// <typeparam name="TKey">The exact mapped NodeKey type inferred from <paramref name="nodeKey" />.</typeparam>
     /// <param name="nodeKey">The visible parent identity.</param>
-    /// <returns>A composable no-tracking query in sibling order, or an empty query when the anchor is absent or filtered.</returns>
+    /// <returns>
+    /// A composable no-tracking query in sibling order, or an empty query when the anchor is absent or filtered.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> ChildrenOf<TKey>(
         TKey nodeKey
     )
@@ -80,9 +99,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Returns the visible strict descendants of an anchor without loading the anchor first.</summary>
     /// <typeparam name="TKey">The exact mapped NodeKey type inferred from <paramref name="nodeKey" />.</typeparam>
     /// <param name="nodeKey">The visible ancestor identity.</param>
-    /// <returns>A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.</returns>
+    /// <returns>
+    /// A composable no-tracking query in preorder, or an empty query when the anchor is absent or filtered.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> DescendantsOf<TKey>(
         TKey nodeKey
     )
@@ -91,9 +114,13 @@ public sealed partial class NestedSet<TEntity>
     /// <summary>Returns the visible strict ancestors of an anchor without loading the anchor first.</summary>
     /// <typeparam name="TKey">The exact mapped NodeKey type inferred from <paramref name="nodeKey" />.</typeparam>
     /// <param name="nodeKey">The visible descendant identity.</param>
-    /// <returns>A composable no-tracking query from root to parent, or an empty query when the anchor is absent or filtered.</returns>
+    /// <returns>
+    /// A composable no-tracking query from root to parent, or an empty query when the anchor is absent or filtered.
+    /// </returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> AncestorsOf<TKey>(
         TKey nodeKey
     )
@@ -104,7 +131,9 @@ public sealed partial class NestedSet<TEntity>
     /// <param name="nodeKey">The visible child identity.</param>
     /// <returns>A composable no-tracking query containing at most one parent.</returns>
     /// <exception cref="InvalidOperationException">The hierarchy defines a Scope that has not been bound.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TKey" /> differs from the mapped NodeKey type.</exception>
+    /// <exception cref="ArgumentException">
+    /// <typeparamref name="TKey" /> differs from the mapped NodeKey type.
+    /// </exception>
     public IQueryable<TEntity> ParentOf<TKey>(
         TKey nodeKey
     )

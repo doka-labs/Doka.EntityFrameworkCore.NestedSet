@@ -16,10 +16,10 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>The schema-only fallback remains informational and occurs once for each actual context.</summary>
     [Fact]
-    public void AncestorFallbackIsReportedOncePerContext()
+    public void AncestorIndexWithoutReader_AncestorFallback_IsReportedOncePerContext()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var boundary = new CompositionIoBoundary();
         var options = DiagnosticOptions(events, boundary);
         using var provider = NestedSetTestAdapters.BuildServices(options);
@@ -51,10 +51,10 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>A null context cannot consume another actual context's once-marker.</summary>
     [Fact]
-    public void NullAncestorFallbackContextIsRejected()
+    public void AncestorIndexWithoutReader_NullAncestorFallbackContext_IsRejected()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var options = DiagnosticOptions(events);
         using var provider = NestedSetTestAdapters.BuildServices(options);
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
@@ -77,10 +77,10 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>Concurrent first reporting claims one bounded event after EF service initialization.</summary>
     [Fact]
-    public async Task ConcurrentAncestorFallbackReportsOneEvent()
+    public async Task AncestorIndexWithoutReader_ConcurrentAncestorFallback_ReportsOneEvent()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var options = DiagnosticOptions(events);
         using var provider = NestedSetTestAdapters.BuildServices(options);
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
@@ -102,10 +102,10 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>EF's explicit event filter suppresses the schema-only informational diagnosis.</summary>
     [Fact]
-    public void ExplicitWarningFilterCanSuppressAncestorFallback()
+    public void AncestorIndexWithoutReader_ExplicitWarningFilter_CanSuppressAncestorFallback()
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var options = new DbContextOptionsBuilder<CompositionGuardContext>(DiagnosticOptions(events))
             .ConfigureWarnings(warnings => warnings.Ignore(new EventId(70_004, AncestorFallbackName)))
             .Options;
@@ -128,13 +128,13 @@ public sealed partial class DokaQueryFeaturesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void AncestorFallbackHonorsIndependentDiagnosticSourceFiltering(
+    public void AncestorIndexWithoutReader_AncestorFallback_HonorsIndependentDiagnosticSourceFiltering(
         bool enabled,
         bool ignored
     )
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var builder = new DbContextOptionsBuilder<CompositionGuardContext>(DiagnosticOptions(events));
 
         if (ignored)
@@ -195,7 +195,7 @@ public sealed partial class DokaQueryFeaturesTests
     /// <summary>Already reported fallback checks allocate no per-query objects.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void RepeatedAncestorFallbackChecksDoNotAllocate()
+    public void MeasureFallbackChecks_RepeatedAncestorFallbackChecks_DoNotAllocate()
     {
         // Arrange
         var options = DiagnosticOptions(new List<EventData>());
@@ -220,7 +220,7 @@ public sealed partial class DokaQueryFeaturesTests
 
     /// <summary>The weak once-marker cannot extend the lifetime of its disposed context.</summary>
     [Fact]
-    public void AncestorFallbackDoesNotRetainDisposedContext()
+    public void AncestorIndexWithoutReader_DisposedContext_IsNotRetained()
     {
         // Arrange
         var released = ReportAndReleaseContext();

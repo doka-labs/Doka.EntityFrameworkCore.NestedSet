@@ -6,7 +6,7 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MarkedNullParentWithSynchronizedNavigationsRequiresExplicitTreeId(
+    public async Task SaveChangesAsync_MarkedNullParentWithSynchronizedNavigations_RequiresExplicitTreeId(
         bool automaticDetection
     )
     {

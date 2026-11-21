@@ -32,7 +32,7 @@ internal sealed partial class
         return NestedSetTelemetry.ExecuteAsync(
             binding.Context,
             "validate",
-            token => maintenance.ValidateAsync(level, token),
+            operationCancellationToken => maintenance.ValidateAsync(level, operationCancellationToken),
             cancellationToken);
     }
 

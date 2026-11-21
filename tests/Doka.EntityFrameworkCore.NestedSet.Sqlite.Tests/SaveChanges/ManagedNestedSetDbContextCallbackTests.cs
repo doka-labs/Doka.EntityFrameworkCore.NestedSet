@@ -19,7 +19,7 @@ public sealed class ManagedNestedSetDbContextCallbackTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PostBaseTrackerInspectionDoesNotRejectManagedInsert(
+    public async Task InsertForestAsync_PostBaseTrackerInspection_DoesNotRejectManagedInsert(
         bool bulk
     )
     {

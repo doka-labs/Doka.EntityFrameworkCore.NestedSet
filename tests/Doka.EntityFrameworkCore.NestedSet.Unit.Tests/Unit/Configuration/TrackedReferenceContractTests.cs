@@ -10,7 +10,7 @@ public sealed class TrackedReferenceContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SameKeyInstanceDoesNotCreateAnEntryOrDetectPayload(
+    public async Task FindTrackedEntry_SameKeyInstance_DoesNotCreateAnEntryOrDetectPayload(
         bool automaticDetection
     )
     {
@@ -59,7 +59,7 @@ public sealed class TrackedReferenceContractTests
     [InlineData(EntityState.Modified)]
     [InlineData(EntityState.Deleted)]
     [InlineData(EntityState.Detached)]
-    public async Task ExactReferenceRetainsItsNativeState(
+    public async Task FindTrackedEntry_ExactReference_RetainsItsNativeState(
         EntityState state
     )
     {
@@ -92,7 +92,7 @@ public sealed class TrackedReferenceContractTests
 
     /// <summary>Named shared mappings remain separate even when their CLR types and keys are identical.</summary>
     [Fact]
-    public async Task NamedSharedReferencesUseExactNavigationMetadata()
+    public async Task FindTrackedEntry_NamedSharedReferences_UseExactNavigationMetadata()
     {
         // Arrange
         await using var context = CreateContext();
@@ -129,7 +129,7 @@ public sealed class TrackedReferenceContractTests
 
     /// <summary>Declared base navigation metadata resolves a tracked concrete subtype without remapping it.</summary>
     [Fact]
-    public async Task BaseMetadataResolvesConcreteReference()
+    public async Task FindTrackedEntry_BaseMetadata_ResolvesConcreteReference()
     {
         // Arrange
         await using var context = CreateContext();
@@ -162,10 +162,13 @@ public sealed class TrackedReferenceContractTests
     }
 
     /// <summary>Maps ordinary, inherited, and named shared instances for exact reference lookup.</summary>
-    private sealed class ReferenceContext(
-        DbContextOptions<ReferenceContext> options
-    ) : DbContext(options)
+    private sealed class ReferenceContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ReferenceContext(
+            DbContextOptions<ReferenceContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

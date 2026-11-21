@@ -12,7 +12,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task InclusiveOwnerHydrationHasItsOwnDirectedSqlEdge(
+    public async Task ToQueryString_InclusiveOwnerHydration_HasItsOwnDirectedSqlEdge(
         string engine,
         bool scoped
     )
@@ -80,10 +80,13 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>Provides equivalent scoped and unscoped mappings without inheriting a different test model.</summary>
-    private sealed class OwnerHydrationContext(
-        DbContextOptions<OwnerHydrationContext> options
-    ) : DbContext(options)
+    private sealed class OwnerHydrationContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public OwnerHydrationContext(
+            DbContextOptions<OwnerHydrationContext> options
+        ) : base(options) { }
+
         /// <summary>Names the hierarchy whose identity includes Scope, TreeId and NodeKey.</summary>
         internal const string Scoped = "ScopedOwnerHydration";
 

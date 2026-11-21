@@ -1,6 +1,9 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
-/// <summary>Completes deferred strategy selection after EF has expanded captures and before query translation.</summary>
+/// <summary>
+/// Completes deferred strategy selection after EF has expanded captures and before query translation.
+/// </summary>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class NestedSetQueryExpressionInterceptor : IQueryExpressionInterceptor
 {
     /// <inheritdoc />
@@ -17,8 +20,18 @@ internal sealed class NestedSetQueryExpressionInterceptor : IQueryExpressionInte
     }
 
     /// <summary>Owns one compilation only; the injected singleton retains no context or expression tree.</summary>
-    private sealed class NormalizedCompositionVisitor(DbContext? context) : ExpressionVisitor
+    private sealed class NormalizedCompositionVisitor : ExpressionVisitor
     {
+        private readonly DbContext? _context;
+
+        /// <summary>Binds source-sensitive composition to the context compiling this query.</summary>
+        internal NormalizedCompositionVisitor(
+            DbContext? context
+        )
+        {
+            _context = context;
+        }
+
         private readonly NestedSetNormalizedQueryRoots _roots = new();
 
         /// <inheritdoc />
@@ -49,7 +62,7 @@ internal sealed class NestedSetQueryExpressionInterceptor : IQueryExpressionInte
             // WHY: Canonicalize the exact owned bindings before visiting the inner source. EF may
             // have detached and rebuilt equivalent occurrences; no application source is interned.
             var normalized = (MethodCallExpression)base.VisitMethodCall(_roots.Canonicalize(node));
-            var owner = context
+            var owner = _context
                 ?? throw new InvalidOperationException(
                     "Deferred hierarchy composition requires the compiling DbContext.");
 

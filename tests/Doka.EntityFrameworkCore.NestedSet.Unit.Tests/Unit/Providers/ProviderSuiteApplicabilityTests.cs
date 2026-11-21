@@ -11,7 +11,7 @@ public sealed class ProviderSuiteApplicabilityTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public void OrdinaryFamilyRequiresEveryEngineWrapper(
+    public void RequiresSharedWrapper_OrdinaryFamily_RequiresEveryEngineWrapper(
         string engine
     )
     {
@@ -34,7 +34,7 @@ public sealed class ProviderSuiteApplicabilityTests
     [InlineData("PostgreSql", true)]
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
-    public void FullyExcludedFamilyHasNoEngineWrapper(
+    public void RequiresSharedWrapper_FullyExcludedFamily_HasNoEngineWrapper(
         string engine,
         bool expected
     )
@@ -51,7 +51,7 @@ public sealed class ProviderSuiteApplicabilityTests
 
     /// <summary>An excluded method cannot remove a wrapper needed by other ordinary methods.</summary>
     [Fact]
-    public void PartiallyExcludedFamilyStillRequiresItsWrapper()
+    public void RequiresSharedWrapper_PartiallyExcludedFamilyStill_RequiresItsWrapper()
     {
         // Arrange
         var suite = typeof(ProviderAnnotationTests);
@@ -65,7 +65,7 @@ public sealed class ProviderSuiteApplicabilityTests
 
     /// <summary>A helper without test declarations cannot require an executable provider wrapper.</summary>
     [Fact]
-    public void NonTestHelperDoesNotRequireWrapper()
+    public void RequiresSharedWrapper_NonTestHelper_DoesNotRequireWrapper()
     {
         // Arrange
         var suite = typeof(ConcurrentCapacityTestSupport);
@@ -79,7 +79,7 @@ public sealed class ProviderSuiteApplicabilityTests
 
     /// <summary>An unknown engine must fail rather than silently appear to require coverage.</summary>
     [Fact]
-    public void UnknownEngineIsRejected()
+    public void RequiresSharedWrapper_UnknownEngine_IsRejected()
     {
         // Arrange
         var suite = typeof(ConcurrentWriterTests);

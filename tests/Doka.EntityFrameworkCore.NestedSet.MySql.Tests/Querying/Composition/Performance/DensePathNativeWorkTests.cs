@@ -15,7 +15,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>Separates materialized output from input while preserving native escapes and fractional rows.</summary>
     [Fact]
-    public void NativeActualCountersRetainRowsTimesLoopsAndMaterialization()
+    public void MariaDb_NativeActualCounters_RetainRowsTimesLoopsAndMaterialization()
     {
         // Arrange
         const string plan = """
@@ -42,7 +42,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>Pre-index enumeration includes rows rejected by index condition pushdown.</summary>
     [Fact]
-    public void PreIndexRowsRetainCumulativeEnumerationBeforeIndexFiltering()
+    public void MariaDb_PreIndexRows_RetainCumulativeEnumerationBeforeIndexFiltering()
     {
         // Arrange
         const string plan = """
@@ -61,7 +61,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>Input observations cannot stand in for unexposed materialized output.</summary>
     [Fact]
-    public void UnexposedMaterializedOutputRemainsUnknown()
+    public void MariaDb_UnexposedMaterializedOutput_RemainsUnknown()
     {
         // Arrange
         const string plan = """
@@ -80,7 +80,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>An unexposed relation cannot erase a separate measured output from the work guard.</summary>
     [Fact]
-    public void UnknownMaterializationDoesNotHideKnownOutput()
+    public void MariaDb_UnknownMaterialization_DoesNotHideKnownOutput()
     {
         // Arrange
         const string plan = """
@@ -102,7 +102,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>Unexecuted native sorts retain unknown output instead of fabricating zero stored rows.</summary>
     [Fact]
-    public void NeverExecutedMaterializedSortRemainsUnknown()
+    public void MariaDb_NeverExecutedMaterializedSort_RemainsUnknown()
     {
         // Arrange
         const string plan = """
@@ -124,7 +124,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>A nonterminal sort cannot prove how many rows its enclosing materialization stores.</summary>
     [Fact]
-    public void NonterminalSortOutputRemainsUnknown()
+    public void MariaDb_NonterminalSortOutput_RemainsUnknown()
     {
         // Arrange
         const string plan = """
@@ -166,7 +166,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
           "materialized":{"query_block":{"filesort":{"r_loops":1,"r_output_rows":null,
             "temporary_table":{}}}}}}}
         """)]
-    public void BrokenActualMetadataFailsClosed(
+    public void Read_BrokenActualMetadata_FailsClosed(
         string plan
     )
     {
@@ -182,7 +182,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>Malformed JSON is rejected instead of producing zero work and a false passing qualification.</summary>
     [Fact]
-    public void MalformedNativePlanFailsClosed()
+    public void MariaDb_MalformedNativePlan_FailsClosed()
     {
         // Arrange
         const string plan = "{\"query_block\":";
@@ -196,7 +196,7 @@ public sealed class DensePathNativeWorkTests : ProviderTest,
 
     /// <summary>An estimated-only document cannot masquerade as executed native work.</summary>
     [Fact]
-    public void EstimatedOnlyNativePlanFailsClosed()
+    public void MariaDb_EstimatedOnlyNativePlan_FailsClosed()
     {
         // Arrange
         const string plan = "{\"query_block\":{\"table\":{\"rows\":100000,\"loops\":1}}}";

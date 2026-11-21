@@ -1,7 +1,7 @@
 ---
 id: D-006
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -109,6 +109,8 @@ must differ from the physical outer table name under SQLite identifier equality.
 - 2026-09-28: Confirmed iterative adjacency inspection, changed-row repair batches, and validation and rebuild regression specifications against the linked repository evidence.
 - 2026-10-03: Real million-row qualification exposed a SQLite complete-tree scan per repair batch. Separated unique-key access from statement-local membership checks and added plan/isolation regressions without manual statistics.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Iterative inspector](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Maintenance/NestedSetInspector.cs)
@@ -119,7 +121,7 @@ must differ from the physical outer table name under SQLite identifier equality.
 - [Rebuild tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Hierarchy/Maintenance/RelationalTests.Rebuild.cs)
 - [SQLite keyed write plans and isolation](../../tests/Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests/Indexes/SqliteQueryPlanTests.cs)
 - [Real repair capacity and late rollback](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Capacity/CapacityTests.cs)
-- [Implementation design](../../docs/implementation-design.md)
+- [Implementation design](D-020-provider-owned-runtime-packages.md)
 
 ### Sources
 

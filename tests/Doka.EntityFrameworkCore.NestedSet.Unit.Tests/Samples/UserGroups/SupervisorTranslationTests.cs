@@ -32,7 +32,7 @@ public sealed class SupervisorTranslationTests
     [InlineData("unique", "type-later")]
     [InlineData("priority", "type-later")]
     [InlineData("person", "type-later")]
-    public async Task SqlServerCompilesTheActualStatusAndSelectionQuery(
+    public async Task ResolutionRows_SqlServer_CompilesTheActualStatusAndSelectionQuery(
         string mode,
         string groupMode
     )

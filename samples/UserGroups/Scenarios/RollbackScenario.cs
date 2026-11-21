@@ -11,15 +11,18 @@ internal static class RollbackScenario
     /// <summary>Rolls back provisional access and checks that hierarchy and ordinary writes are unchanged.</summary>
     /// <param name="configuration">The sample-owned database configuration.</param>
     /// <param name="details">Whether tree output includes structural columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used throughout setup, rollback, and verification.</param>
     /// <returns>A task that completes after the fresh persisted-state comparison succeeds.</returns>
     public static async Task RunAsync(
         SampleDatabaseConfiguration configuration,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         await SampleConsole.HeadingAsync(
+            output,
             "ROLLBACK: denied approval removes provisional groups and grants together",
             cancellationToken);
 
@@ -36,6 +39,7 @@ internal static class RollbackScenario
                 s_treeId,
                 "Before provisional access:",
                 details,
+                output,
                 cancellationToken);
         }
 
@@ -70,6 +74,7 @@ internal static class RollbackScenario
                 s_treeId,
                 "Visible inside the uncommitted transaction:",
                 details,
+                output,
                 cancellationToken);
 
             await transaction.RollbackAsync(cancellationToken);
@@ -113,10 +118,12 @@ internal static class RollbackScenario
             s_treeId,
             "After caller rollback:",
             details,
+            output,
             cancellationToken);
 
         await GroupScenarioData.ValidateAsync(verification, s_tenantId, s_treeId, cancellationToken);
         await SampleConsole.WriteLineAsync(
+            output,
             "All original coordinates and parents remain; no provisional group, role or grant remains.",
             cancellationToken);
     }

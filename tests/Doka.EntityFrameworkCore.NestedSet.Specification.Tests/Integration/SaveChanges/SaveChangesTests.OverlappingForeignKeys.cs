@@ -46,7 +46,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, false, true, "reference")]
     [InlineData(true, true, false, "reference")]
     [InlineData(true, true, true, "reference")]
-    public async Task OverlappingPayloadRelationshipRetainsOrdinaryDetection(
+    public async Task SaveNavigationAsync_OverlappingPayloadRelationship_RetainsOrdinaryDetection(
         bool wrapped,
         bool automaticDetection,
         bool synchronous,
@@ -160,7 +160,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, true, false, true)]
     [InlineData(true, true, true, false)]
     [InlineData(true, true, true, true)]
-    public async Task OverlappingPayloadRelationshipCannotChangeScope(
+    public async Task SaveNavigationAsync_OverlappingPayloadRelationship_CannotChangeScope(
         bool wrapped,
         bool automaticDetection,
         bool synchronous,

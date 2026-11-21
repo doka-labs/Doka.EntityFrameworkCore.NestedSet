@@ -16,7 +16,7 @@ public abstract class SharedTypeTests : ProviderTest
 
     /// <summary>Uses the explicit entity-type name for every insert, structural write, and query.</summary>
     [Fact]
-    public async Task NamedSharedTypeSupportsInsertAndQueryAsync()
+    public async Task InsertRootAsync_NamedSharedType_SupportsInsertAndQuery()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<SharedTypeContext>(
@@ -66,7 +66,7 @@ public abstract class SharedTypeTests : ProviderTest
     /// <summary>Rejects ambiguous CLR-only access when the model contains named shared entity types.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void SharedTypeWithoutEntityNameIsRejected()
+    public void NestedSet_SharedTypeWithoutEntityName_IsRejected()
     {
         // Arrange
         var options = ModelCompatibilityDatabase.Options<SharedTypeContext>(Engine);

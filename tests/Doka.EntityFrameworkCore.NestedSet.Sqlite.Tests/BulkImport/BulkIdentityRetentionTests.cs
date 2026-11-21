@@ -20,7 +20,7 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task ScalarKeyRejectionReleasesInstalledIdentity(
+    public async Task ImportScalarAsync_ScalarKeyRejection_ReleasesInstalledIdentity(
         bool generated,
         bool afterSave
     )
@@ -33,10 +33,13 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -99,7 +102,7 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
 
     /// <summary>A subsequently attached imported aggregate resolves to the same native identity.</summary>
     [Fact]
-    public async Task NativeFindResolvesTheAttachedImportedMutableIdentity()
+    public async Task FindAsync_NativeFind_ResolvesTheAttachedImportedMutableIdentity()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -109,10 +112,13 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -156,7 +162,7 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LaterTrackingMutationReleasesEveryIntroducedIdentity(
+    public async Task ImportTwoRootsAsync_LaterTrackingMutation_ReleasesEveryIntroducedIdentity(
         bool intermediate
     )
     {
@@ -168,10 +174,13 @@ public sealed partial class BulkIdentityRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<IdentityContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new IdentityContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);

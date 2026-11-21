@@ -12,7 +12,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SqlServerCoordinateUpgradePreservesHierarchyAndExpandsCapacity(
+    public async Task MigrateAsync_SqlServerCoordinateUpgrade_PreservesHierarchyAndExpandsCapacity(
         bool qualifySchema,
         bool populated
     )
@@ -24,15 +24,17 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
         if (populated)
         {
-            await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+            await database.SeedAsync(
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Baseline);
         }
 
         var before = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
@@ -44,8 +46,10 @@ public sealed partial class SafeMigrationTests
         var beyondInt32 = (long)int.MaxValue + 1;
 
         // Act
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        var after = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await database.InsertNodeDirectlyAsync(
             new MigrationNode
             {
@@ -60,7 +64,8 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var largeNode = (await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken)).Single(node => node.NodeId == 43);
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current)).Single(node => node.NodeId == 43);
 
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var checks = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -104,7 +109,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(true, "RightAfterLeft")]
     [InlineData(true, "DepthMin")]
     [InlineData(true, "PositionMin")]
-    public async Task SqlServerInvalidCoordinateUpgradeRollsBackSchemaAndHistory(
+    public async Task MigrateAsync_SqlServerInvalidCoordinateUpgrade_RollsBackSchemaAndHistory(
         bool qualifySchema,
         string checkName
     )
@@ -116,8 +121,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Baseline);
 
         // WHY: Physical insertion bypasses managed writes to represent corrupt legacy data before checks existed.
         await database.InsertNodeDirectlyAsync(
@@ -133,7 +140,7 @@ public sealed partial class SafeMigrationTests
         var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var nodesBefore = await database.ReadNodesAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
+            stage: MigrationStage.Baseline);
 
         var columnsBefore = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
@@ -147,7 +154,8 @@ public sealed partial class SafeMigrationTests
         // Act
         var exception = await Record.ExceptionAsync(() => database.MigrateAsync(
             upgrade,
-            cancellationToken: TestContext.Current.CancellationToken));
+            cancellationToken: TestContext.Current.CancellationToken,
+            target: null));
 
         // Assert
         var databaseException = Assert.IsAssignableFrom<DbException>(exception);
@@ -167,7 +175,7 @@ public sealed partial class SafeMigrationTests
             nodesBefore,
             await database.ReadNodesAsync(
                 cancellationToken: TestContext.Current.CancellationToken,
-                MigrationStage.Baseline));
+                stage: MigrationStage.Baseline));
 
         Assert.Equal(
             columnsBefore,
@@ -194,7 +202,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SqlServerCoordinateNarrowingPreservesSchemaAndData(
+    public async Task MigrateAsync_SqlServerCoordinateNarrowing_PreservesSchemaAndData(
         bool qualifySchema,
         bool beyondInt32
     )
@@ -206,8 +214,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var current = database.Scaffold(MigrationStage.Current, "SafeInitial");
-        await database.MigrateAsync(current, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(current, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var coordinate = beyondInt32
             ? (long)int.MaxValue + 1
             : 5;
@@ -233,7 +243,9 @@ public sealed partial class SafeMigrationTests
                 cancellationToken: TestContext.Current.CancellationToken));
 
         var checksBefore = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var columnsBefore = await database.ReadColumnTypesAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
@@ -246,7 +258,8 @@ public sealed partial class SafeMigrationTests
         // Act
         var exception = await Record.ExceptionAsync(() => database.MigrateAsync(
             narrowing,
-            cancellationToken: TestContext.Current.CancellationToken));
+            cancellationToken: TestContext.Current.CancellationToken,
+            target: null));
 
         // Assert
         var databaseException = Assert.IsAssignableFrom<DbException>(exception);
@@ -265,7 +278,8 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             nodesBefore,
             await database.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
 
         Assert.Equal(
             columnsBefore,

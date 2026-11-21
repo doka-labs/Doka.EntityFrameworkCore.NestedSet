@@ -4,7 +4,7 @@ public abstract partial class NestedSetMutationFacadeTests
 {
     /// <summary>Forest and subtree imports derive every structural value from their explicit destination.</summary>
     [Fact]
-    public async Task BulkImportsAssignExactTreeIdentity()
+    public async Task InsertForestAsync_BulkImports_AssignExactTreeIdentity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -84,7 +84,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Database-equivalent TreeIds are rejected before the first hierarchy row is inserted.</summary>
     [Fact]
-    public async Task ForestRejectsDuplicateTreeIdentityAtomically()
+    public async Task InsertForestAsync_Forest_RejectsDuplicateTreeIdentityAtomically()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -134,7 +134,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Planning is read-only and rebuild repairs only the selected tree's derived structure.</summary>
     [Fact]
-    public async Task TreeMaintenancePlansAndRepairsExactTree()
+    public async Task RebuildAsync_TreeMaintenance_PlansAndRepairsExactTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -199,7 +199,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A corrupted TreeId with multiple roots cannot produce an ambiguous rebuild plan.</summary>
     [Fact]
-    public async Task TreeMaintenanceRejectsMultipleRoots()
+    public async Task ValidateAsync_TreeMaintenance_RejectsMultipleRoots()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

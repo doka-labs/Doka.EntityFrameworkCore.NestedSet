@@ -12,7 +12,7 @@ public sealed class SupervisorRequestTests
     [InlineData("membership")]
     [InlineData("global")]
     [InlineData("either")]
-    public void ExplicitRoleAlternativeIsAccepted(
+    public void Validate_ExplicitRoleAlternative_IsAccepted(
         string role
     )
     {
@@ -37,7 +37,7 @@ public sealed class SupervisorRequestTests
     [InlineData("either")]
     [InlineData("unknown")]
     [InlineData("null")]
-    public void InvalidRoleAlternativeIsRejected(
+    public void Validate_InvalidRoleAlternative_IsRejected(
         string role
     )
     {
@@ -57,7 +57,7 @@ public sealed class SupervisorRequestTests
     [InlineData("all")]
     [InlineData("eligible")]
     [InlineData("type")]
-    public void ExplicitGroupAlternativeIsAccepted(
+    public void Validate_ExplicitGroupAlternative_IsAccepted(
         string group
     )
     {
@@ -85,7 +85,7 @@ public sealed class SupervisorRequestTests
     [InlineData("null-eligible-types", 1)]
     [InlineData("unknown", 1)]
     [InlineData("null", 1)]
-    public void InvalidGroupAlternativeIsRejected(
+    public void Validate_InvalidGroupAlternative_IsRejected(
         string group,
         int rank
     )
@@ -111,7 +111,7 @@ public sealed class SupervisorRequestTests
     [InlineData((int)SupervisorSelectionKind.RequireUnique, 1)]
     [InlineData((int)SupervisorSelectionKind.HighestBusinessPriority, 1)]
     [InlineData(99, null)]
-    public void IgnoredOrInvalidPersonRankIsRejected(
+    public void Validate_IgnoredOrInvalidPersonRank_IsRejected(
         int kind,
         int? number
     )
@@ -139,7 +139,7 @@ public sealed class SupervisorRequestTests
     [InlineData((int)MetadataOwner.SourceGroup, (int)MetadataOwner.CandidateUser)]
     [InlineData((int)MetadataOwner.SourceGroup, (int)MetadataOwner.CandidateMembership)]
     [InlineData((int)MetadataOwner.SourceGroup, (int)MetadataOwner.CandidateGroup)]
-    public void DifferentRoutingFieldsOnExactOwnersAreAccepted(
+    public void Validate_DifferentRoutingFieldsOnExactOwners_AreAccepted(
         int source,
         int candidate
     )
@@ -168,7 +168,7 @@ public sealed class SupervisorRequestTests
     [InlineData("source-field")]
     [InlineData("candidate-field")]
     [InlineData("null-condition")]
-    public void InvalidRoutingConditionIsRejected(
+    public void Validate_InvalidRoutingCondition_IsRejected(
         string invalid
     )
     {
@@ -195,7 +195,7 @@ public sealed class SupervisorRequestTests
 
     /// <summary>An undefined search boundary cannot silently switch the inclusion of the source group.</summary>
     [Fact]
-    public void UnknownSearchStartIsRejected()
+    public void Validate_UnknownSearchStart_IsRejected()
     {
         // Arrange
         var request = ValidRequest() with { SearchStart = (SearchStart)99 };
@@ -209,7 +209,7 @@ public sealed class SupervisorRequestTests
 
     /// <summary>A null match collection differs from explicitly choosing no metadata filter.</summary>
     [Fact]
-    public void MissingMatchCollectionIsRejected()
+    public void Validate_Missing_MatchCollectionIsRejected()
     {
         // Arrange
         var request = ValidRequest() with { Matches = null! };

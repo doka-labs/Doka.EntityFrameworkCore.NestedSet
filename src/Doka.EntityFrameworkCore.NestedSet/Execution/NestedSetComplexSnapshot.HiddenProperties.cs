@@ -57,6 +57,9 @@ internal sealed partial class NestedSetComplexSnapshot
         var instances = new object[containers.Count + 1];
         instances[0] = element;
 
+        // WHY: Pair each owner with its exact containing-property ordinal before copyback.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < containers.Count; index++)
         {
             instances[index + 1] = containers[index]
@@ -66,6 +69,9 @@ internal sealed partial class NestedSetComplexSnapshot
 
         NestedSetTrackerSnapshot.SetMappedClrValue(instances[^1], metadata, value);
 
+        // WHY: Copy boxed value-type changes outward from the innermost retained container.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = containers.Count - 1; index >= 0; index--)
         {
             NestedSetTrackerSnapshot.SetMappedClrValue(instances[index], containers[index], instances[index + 1]);

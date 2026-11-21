@@ -6,7 +6,7 @@ public sealed partial class SignalReportValidationTests
 {
     /// <summary>The async catalog retains reordered, duplicate, ignored-kind and exact scalar semantics.</summary>
     [Fact]
-    public async Task CatalogReaderMatchesTheCompleteSynchronousCatalog()
+    public async Task RequireCatalogAsync_CatalogReader_MatchesTheCompleteSynchronousCatalog()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -41,7 +41,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("authorization", "A selected anchor or channel is missing")]
     [InlineData("unit", "One additive report requires")]
     [InlineData("metadata", "Unknown field, owner classification")]
-    public async Task CatalogReaderPreservesRejectionOrderAfterDisposal(
+    public async Task RequireCatalogAsync_CatalogReader_PreservesRejectionOrderAfterDisposal(
         string failure,
         string expected
     )
@@ -84,7 +84,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("read")]
     [InlineData("dispose")]
     [InlineData("cancel")]
-    public async Task CatalogReaderPreservesLateReaderFailure(
+    public async Task RequireCatalogAsync_CatalogReader_PreservesLateReaderFailure(
         string boundary
     )
     {
@@ -129,7 +129,7 @@ public sealed partial class SignalReportValidationTests
 
     /// <summary>The streamed grid preserves exact tuple identity, order, zero and sparse absence.</summary>
     [Fact]
-    public async Task GridReaderMatchesTheCompleteSynchronousGrid()
+    public async Task CreateGridAsync_GridReader_MatchesTheCompleteSynchronousGrid()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(
@@ -170,7 +170,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task GridReaderRejectsAllDuplicateGroupsAfterDisposal(
+    public async Task CreateGridAsync_GridReader_RejectsAllDuplicateGroupsAfterDisposal(
         bool foreign,
         bool sameValue
     )
@@ -216,7 +216,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("read")]
     [InlineData("dispose")]
     [InlineData("cancel")]
-    public async Task GridReaderPreservesLateFailureAfterDuplicate(
+    public async Task CreateGridAsync_GridReader_PreservesLateFailureAfterDuplicate(
         string boundary
     )
     {
@@ -268,7 +268,7 @@ public sealed partial class SignalReportValidationTests
 
     /// <summary>A duplicate must win over selected-grid overflow, without allocating a partial grid.</summary>
     [Fact]
-    public async Task GridReaderRejectsDuplicateBeforeCardinalityOverflow()
+    public async Task CreateGridAsync_GridReader_RejectsDuplicateBeforeCardinalityOverflow()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with

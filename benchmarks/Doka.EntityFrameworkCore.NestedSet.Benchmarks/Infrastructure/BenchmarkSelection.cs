@@ -75,7 +75,7 @@ internal sealed class BenchmarkSelection : IDisposable
 
         try
         {
-            if (!selection._runInfos.Any(runInfo => runInfo.BenchmarksCases.Length > 0))
+            if (selection._runInfos.All(runInfo => runInfo.BenchmarksCases.Length == 0))
             {
                 throw new ArgumentException("No benchmark matched the native selection.");
             }
@@ -85,8 +85,13 @@ internal sealed class BenchmarkSelection : IDisposable
                 throw new ArgumentException("No database benchmark matched the diagnostic selection.");
             }
 
-            foreach (var benchmarkCase in selection.DatabaseCases)
+            // WHY: The owned discovery snapshot is indexable and does not change during validation.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var caseIndex = 0; caseIndex < selection.DatabaseCases.Count; caseIndex++)
             {
+                var benchmarkCase = selection.DatabaseCases[caseIndex];
+
                 var scenario = CreateScenario(benchmarkCase);
 
                 try

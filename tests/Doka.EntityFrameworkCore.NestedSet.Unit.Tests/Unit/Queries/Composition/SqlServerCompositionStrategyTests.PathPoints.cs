@@ -46,7 +46,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     /// <param name="expectedCount">The independently known accepted occurrence count.</param>
     [Theory]
     [MemberData(nameof(CompletedPathCases))]
-    public async Task CompletedPathPointsExecuteExactFailureSemantics(
+    public async Task WherePathEdges_CompletedPathPoints_ExecuteExactFailureSemantics(
         bool scoped,
         string mode,
         int location,
@@ -96,9 +96,12 @@ public sealed partial class SqlServerCompositionStrategyTests
             case "depth":             nodes[location].Depth = 50; break;
             case "hidden-above":      nodes[0].Visible = false; break;
             case "empty":
-                foreach (var node in nodes)
+                // WHY: Only node flags change; the arranged list's order and membership stay fixed.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (var nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
                 {
-                    node.Visible = false;
+                    nodes[nodeIndex].Visible = false;
                 }
 
                 break;

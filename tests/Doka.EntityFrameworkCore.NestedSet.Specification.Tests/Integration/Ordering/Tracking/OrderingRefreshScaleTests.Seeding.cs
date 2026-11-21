@@ -8,7 +8,7 @@ public abstract partial class OrderingRefreshScaleTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(10001)]
-    public async Task NativeSeedPreservesEveryRowWithBoundedCommands(
+    public async Task SeedAsync_NativeSeed_PreservesEveryRowWithBoundedCommands(
         int nodes
     )
     {
@@ -27,7 +27,8 @@ public abstract partial class OrderingRefreshScaleTests
         // Assert
         await using var verify = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var root = await verify
             .Set<OrderingNode>()
@@ -129,7 +130,7 @@ public abstract partial class OrderingRefreshScaleTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task NativeSeedFailureRollsBackEveryEarlierWrite(
+    public async Task SeedAsync_NativeSeedFailure_RollsBackEveryEarlierWrite(
         int failOnWrite
     )
     {
@@ -149,7 +150,8 @@ public abstract partial class OrderingRefreshScaleTests
         // Assert
         await using var verify = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var registry = NestedSetTreeRegistryMapping.For(verify.Model.FindEntityType(typeof(OrderingNode))!)
             .Registry;
@@ -172,7 +174,7 @@ public abstract partial class OrderingRefreshScaleTests
 
     /// <summary>Invalid cardinalities are rejected before resetting an already populated fixture.</summary>
     [Fact]
-    public async Task NativeSeedRejectsNegativeCountBeforeResettingData()
+    public async Task SeedAsync_NativeSeed_RejectsNegativeCountBeforeResettingData()
     {
         // Arrange
         await OrderingRefreshTestSupport.SeedAsync(
@@ -184,7 +186,8 @@ public abstract partial class OrderingRefreshScaleTests
         var cancellationToken = TestContext.Current.CancellationToken;
         await using var before = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var treeId = await before
             .Set<OrderingNode>()
@@ -202,7 +205,8 @@ public abstract partial class OrderingRefreshScaleTests
         // Assert
         await using var verify = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         Assert.Equal("nodes", failure.ParamName);
         Assert.Equal(

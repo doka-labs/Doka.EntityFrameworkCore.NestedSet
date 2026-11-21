@@ -6,6 +6,12 @@ no performance thresholds, CI requirement, release-candidate requirement, or
 merge decision. Invalid inputs, failed operations, and missing measurements
 produce a nonzero exit code.
 
+Observation contexts remove implicit EF and native command/undo timeouts so a
+slow operation or untimed verification remains measurable. Explicit connection
+or provider timeouts and later context overrides are preserved. This policy
+belongs to the benchmark harness; application defaults remain unchanged, and
+an interrupted or failed run is never reported as successful measurement.
+
 Run commands from the repository root. With no arguments, the executable prints
 usage and the benchmark catalog without provisioning a database:
 
@@ -224,7 +230,7 @@ The historical [six-block CPU/GC/ThreadPool qualification](../../docs/qualificat
 retains original/previous/current comparisons, native reports, caller/retention
 controls, all adverse observations and precision limits. Its three-cohort runs
 used the recorded private provider overlay without changing pins for that
-measurement. The current declared Doka 10.6.4/SafeMigrations 10.7.0 graph has
+measurement. The current declared Doka 10.7.0/SafeMigrations 10.7.3 graph has
 its own [qualification boundary](../../docs/qualification/provider-migrations.md);
 the earlier measurements are not reassigned to the newer published binaries.
 They also predate the independent SignalLab event model. The commands and

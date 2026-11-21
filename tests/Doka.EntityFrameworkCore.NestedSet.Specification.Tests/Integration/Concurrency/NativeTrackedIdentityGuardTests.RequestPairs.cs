@@ -5,7 +5,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 {
     /// <summary>A crossed tracked pair remains unaffected when Scope and TreeId occur in separate requests.</summary>
     [Fact]
-    public async Task CrossedRequestScopeAndTreeIdDoNotFormAnAffectedPair()
+    public async Task ExecuteAsync_CrossedRequestScopeAndTreeId_DoNotFormAnAffectedPair()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -103,7 +103,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 
     /// <summary>An exact requested pair rejects its tracked node before any SQL or operation callback.</summary>
     [Fact]
-    public async Task ExactCompleteRequestPairRejectsBeforeSql()
+    public async Task ExecuteAsync_Exact_CompleteRequestPairRejectsBeforeSql()
     {
         // Arrange
         var probe = new NativeGuardProbe();

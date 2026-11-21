@@ -1,11 +1,7 @@
-using System.Collections.Generic;
-using System.Data.Common;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.SqlServer;
 
 /// <summary>Protects subtype-only generated tokens after coordinated and explicit structural writes.</summary>
-public sealed class DerivedRowVersionTests : ProviderTest,
+public sealed partial class DerivedRowVersionTests : ProviderTest,
     IClassFixture<ProviderFixture<DerivedRowVersionFixture, SqlServerEngine>>
 {
     private static readonly Guid s_destinationTree = new("d84ef4d1-bbce-47c3-bc67-c9df35bc3524");
@@ -30,7 +26,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
     [InlineData(5, false)]
     [InlineData(6, true)]
     [InlineData(6, false)]
-    public async Task CoordinatedOwnerRefreshIncludesDerivedTokens(
+    public async Task SaveNestedSetChangesAsync_CoordinatedOwnerRefresh_IncludesDerivedTokens(
         int destination,
         bool acceptAllChanges
     )
@@ -39,7 +35,7 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         var probe = new RefreshProbe();
         await using var context = await _fixture.ResetAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            probe);
+            interceptor: probe);
 
         var tracked = await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var changed = Assert.IsType<DerivedVersionTokenNode>(tracked.Single(node => node.Id == 2));
@@ -169,10 +165,12 @@ public sealed class DerivedRowVersionTests : ProviderTest,
 
     /// <summary>An untracked explicit move permits reloading a derived token for a later payload save.</summary>
     [Fact]
-    public async Task UntrackedExplicitMoveAllowsReloadedDerivedTokenPayloadSave()
+    public async Task MoveToAsync_UntrackedExplicitMove_AllowsReloadedDerivedTokenPayloadSave()
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await _fixture.ResetAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            interceptor: null);
         var tracked = await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var leaf = Assert.IsType<DerivedVersionTokenNode>(tracked.Single(node => node.Id == 4));
         var original = leaf.Version.ToArray();
@@ -211,139 +209,19 @@ public sealed class DerivedRowVersionTests : ProviderTest,
         await AssertValidAsync(context, cancellationToken: TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Explicit movement rejects tracked subtypes and retains their tokens and structure.</summary>
-    [Fact]
-    public async Task TrackedExplicitMoveRejectsDerivedNodesWithoutChangingTokens()
-    {
-        // Arrange
-        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var tracked = await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var tokens = tracked
-            .OfType<DerivedVersionTokenNode>()
-            .ToDictionary(node => node.Id, node => node.Version.ToArray());
-
-        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var hierarchy = context
-            .NestedSet<DerivedVersionBaseNode>()
-            .ForScope(1);
-
-        // Act
-        var rejection = await Assert.ThrowsAsync<NestedSetException>(() =>
-            hierarchy.MoveToAsync(2, 5, CancellationToken.None));
-
-        // Assert
-        Assert.Equal(NestedSetErrorCode.InvalidContext, rejection.Code);
-        Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.All(
-            tracked,
-            node => Assert.Equal(
-                EntityState.Unchanged,
-                context.Entry(node)
-                    .State));
-
-        Assert.All(
-            tracked.OfType<DerivedVersionTokenNode>(),
-            node =>
-            {
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .CurrentValue);
-
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .OriginalValue);
-            });
-
-        await AssertValidAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>A payload callback failure restores both persisted and tracked tokens before parent movement.</summary>
-    [Fact]
-    public async Task LateFailureRestoresDerivedTokensAndPendingPayload()
-    {
-        // Arrange
-        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var tracked = await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var changed = Assert.IsType<DerivedVersionTokenNode>(tracked.Single(node => node.Id == 2));
-        var peer = tracked.Single(node => node.Id == 3);
-        var tokens = tracked
-            .OfType<DerivedVersionTokenNode>()
-            .ToDictionary(node => node.Id, node => node.Version.ToArray());
-
-        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        changed.ParentId = 5;
-        changed.Name = "Zulu";
-        peer.Name = "Zulu peer";
-        var callbackRan = false;
-
-        // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => context.SaveNestedSetChangesAsync(
-            false,
-            async token =>
-            {
-                await context.SaveChangesAsync(false, token);
-                callbackRan = true;
-
-                throw new InvalidOperationException("Derived token rollback probe.");
-            },
-            CancellationToken.None));
-
-        // Assert
-        Assert.True(callbackRan);
-        Assert.Equal("Derived token rollback probe.", failure.Message);
-        Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.All(
-            tracked.OfType<DerivedVersionTokenNode>(),
-            node =>
-            {
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .CurrentValue);
-
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .OriginalValue);
-            });
-
-        Assert.Equal(5, changed.ParentId);
-        Assert.Equal("Zulu", changed.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(changed)
-                .State);
-
-        Assert.Equal("Zulu peer", peer.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(peer)
-                .State);
-
-        await AssertValidAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
     /// <summary>A base facade returns the final derived token after single or atomic bulk ordering.</summary>
     /// <param name="bulk">Whether the public operation imports a branch or inserts one leaf.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BaseFacadeInsertionReturnsFreshDerivedTokens(
+    public async Task InsertSubtreeAsync_BaseFacadeInsertion_ReturnsFreshDerivedTokens(
         bool bulk
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await _fixture.ResetAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            interceptor: null);
         var hierarchy = context
             .NestedSet<DerivedVersionBaseNode>()
             .ForScope(1);
@@ -421,222 +299,6 @@ public sealed class DerivedRowVersionTests : ProviderTest,
                 .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
     }
 
-    /// <summary>A failed bulk refresh restores mixed-subtype token inputs without retaining entries.</summary>
-    [Fact]
-    public async Task FailedBulkInsertionRestoresDerivedTokenInputs()
-    {
-        // Arrange
-        var probe = new RefreshProbe { FailBulkRefresh = true };
-        await using var context = await _fixture.ResetAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        var hierarchy = context
-            .NestedSet<DerivedVersionBaseNode>()
-            .ForScope(1);
-
-        await hierarchy.InsertRootAsync(
-            new DerivedVersionBaseNode
-            {
-                Id = 1,
-                Name = "Root",
-            },
-            Guid.Empty,
-            CancellationToken.None);
-
-        var input = new DerivedVersionTokenNode
-        {
-            Id = 10,
-            Name = "Alpha",
-            Version = [1, 2, 3],
-        };
-
-        var child = new DerivedVersionTokenNode
-        {
-            Id = 12,
-            Name = "Child",
-            Version = [4, 5, 6],
-        };
-
-        var inputToken = input.Version.ToArray();
-        var childToken = child.Version.ToArray();
-        var branch = new NestedSetBranch<DerivedVersionBaseNode>(
-            input,
-            [
-                new NestedSetBranch<DerivedVersionBaseNode>(
-                    new DerivedVersionPlainNode
-                    {
-                        Id = 11,
-                        Name = "Plain",
-                    }),
-                new NestedSetBranch<DerivedVersionBaseNode>(child),
-            ]);
-
-        // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => hierarchy.InsertSubtreeAsync(
-            branch,
-            1,
-            CancellationToken.None));
-
-        // Assert
-        Assert.True(probe.BulkRefreshAttempted);
-        Assert.Equal("Derived token bulk refresh probe.", failure.Message);
-        Assert.Equal(inputToken, input.Version);
-        Assert.Equal(childToken, child.Version);
-        Assert.Empty(context.ChangeTracker.Entries());
-        Assert.Equal(
-            1,
-            await context
-                .Set<DerivedVersionBaseNode>()
-                .CountAsync(CancellationToken.None));
-
-        Assert.True(
-            (await hierarchy
-                .InTree(Guid.Empty)
-                .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None)).IsValid);
-    }
-
-    /// <summary>A final refresh failure restores tokens already updated by the earlier parent-move refresh.</summary>
-    [Fact]
-    public async Task FailureAfterParentRefreshRestoresDerivedTokens()
-    {
-        // Arrange
-        var probe = new RefreshProbe { FailAfterFirstRead = true };
-        await using var context = await _fixture.ResetAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            probe);
-
-        var tracked = await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var changed = Assert.IsType<DerivedVersionTokenNode>(tracked.Single(node => node.Id == 2));
-        var peer = tracked.Single(node => node.Id == 3);
-        var tokens = tracked
-            .OfType<DerivedVersionTokenNode>()
-            .ToDictionary(node => node.Id, node => node.Version.ToArray());
-
-        var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        changed.ParentId = 5;
-        changed.Name = "Zulu";
-        peer.Name = "Zulu peer";
-
-        // Act
-        var failure = await Assert.ThrowsAsync<InvalidOperationException>(() => context.SaveNestedSetChangesAsync(
-            false,
-            async token =>
-            {
-                var count = await context.SaveChangesAsync(false, token);
-                probe.Active = true;
-
-                return count;
-            },
-            CancellationToken.None));
-
-        // Assert
-        probe.Active = false;
-        Assert.Equal("Derived token late refresh probe.", failure.Message);
-        Assert.Equal(2, probe.Commands.Count);
-        Assert.Equal(before, await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken));
-        Assert.All(
-            tracked.OfType<DerivedVersionTokenNode>(),
-            node =>
-            {
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .CurrentValue);
-
-                Assert.Equal(
-                    tokens[node.Id],
-                    context
-                        .Entry(node)
-                        .Property(value => value.Version)
-                        .OriginalValue);
-            });
-
-        Assert.Equal(5, changed.ParentId);
-        Assert.Equal("Zulu", changed.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(changed)
-                .State);
-
-        Assert.Equal("Zulu peer", peer.Name);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(peer)
-                .State);
-
-        await AssertValidAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Seeds a concrete base, an ordinary sibling, and three token-bearing descendants.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static async Task<DerivedVersionBaseNode[]> SeedAsync(
-        DerivedRowVersionContext context,
-        CancellationToken cancellationToken
-    )
-    {
-        var hierarchy = context
-            .NestedSet<DerivedVersionBaseNode>()
-            .ForScope(1);
-
-        await hierarchy.InsertForestAsync(
-            [
-                new NestedSetTreeImport<DerivedVersionBaseNode, Guid>(
-                    Guid.Empty,
-                    new NestedSetBranch<DerivedVersionBaseNode>(
-                        new DerivedVersionBaseNode
-                        {
-                            Id = 1,
-                            Name = "Root",
-                        },
-                        [
-                            new NestedSetBranch<DerivedVersionBaseNode>(
-                                new DerivedVersionTokenNode
-                                {
-                                    Id = 2,
-                                    Name = "Alpha",
-                                },
-                                [
-                                    new NestedSetBranch<DerivedVersionBaseNode>(
-                                        new DerivedVersionTokenNode
-                                        {
-                                            Id = 4,
-                                            Name = "Leaf",
-                                        }),
-                                ]),
-                            new NestedSetBranch<DerivedVersionBaseNode>(
-                                new DerivedVersionPlainNode
-                                {
-                                    Id = 3,
-                                    Name = "Middle",
-                                }),
-                            new NestedSetBranch<DerivedVersionBaseNode>(
-                                new DerivedVersionTokenNode
-                                {
-                                    Id = 5,
-                                    Name = "Other",
-                                }),
-                        ])),
-                new NestedSetTreeImport<DerivedVersionBaseNode, Guid>(
-                    s_destinationTree,
-                    new NestedSetBranch<DerivedVersionBaseNode>(
-                        new DerivedVersionBaseNode
-                        {
-                            Id = 6,
-                            Name = "Destination root",
-                        })),
-            ],
-            cancellationToken);
-
-        return await context
-            .Set<DerivedVersionBaseNode>()
-            .OrderBy(node => node.Id)
-            .ToArrayAsync(cancellationToken);
-    }
-
     /// <summary>Observes payload, tokens, and every structural value without consulting the tracker.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <param name="context">The context used for provider operations.</param>
@@ -677,60 +339,6 @@ public sealed class DerivedRowVersionTests : ProviderTest,
                     .ForScope(1)
                     .InTree(tree)
                     .ValidateAsync(NestedSetValidationLevel.Full, cancellationToken)).IsValid);
-        }
-    }
-
-    /// <summary>Observes only token refresh reads after payload SQL, with an optional late failure.</summary>
-    private sealed class RefreshProbe : DbCommandInterceptor
-    {
-        /// <summary>Gets or sets whether the enclosing test has completed its payload save.</summary>
-        internal bool Active { get; set; }
-
-        /// <summary>Gets or sets whether a second token refresh should fail after the first one completed.</summary>
-        internal bool FailAfterFirstRead { get; init; }
-
-        /// <summary>Gets or sets whether the atomic import's tagged final refresh should fail.</summary>
-        internal bool FailBulkRefresh { get; init; }
-
-        /// <summary>Gets whether the import reached its final refresh after assigning generated input values.</summary>
-        internal bool BulkRefreshAttempted { get; private set; }
-
-        /// <summary>Gets scalar refresh commands without recording seed or application payload reads.</summary>
-        internal List<string> Commands { get; } = [];
-
-        /// <inheritdoc />
-        public override ValueTask<
-                InterceptionResult<DbDataReader>>
-            ReaderExecutingAsync(
-                DbCommand command,
-                CommandEventData eventData,
-                InterceptionResult<DbDataReader> result,
-                CancellationToken cancellationToken = default
-            )
-        {
-            if (FailBulkRefresh
-                && command.CommandText.Contains(
-                    "Doka.EntityFrameworkCore.NestedSet.BulkRefresh",
-                    StringComparison.Ordinal))
-            {
-                BulkRefreshAttempted = true;
-
-                throw new InvalidOperationException("Derived token bulk refresh probe.");
-            }
-
-            if (Active
-                && command.CommandText.StartsWith("SELECT", StringComparison.Ordinal)
-                && command.CommandText.Contains("[Version]", StringComparison.Ordinal))
-            {
-                Commands.Add(command.CommandText);
-
-                if (FailAfterFirstRead && Commands.Count == 2)
-                {
-                    throw new InvalidOperationException("Derived token late refresh probe.");
-                }
-            }
-
-            return ValueTask.FromResult(result);
         }
     }
 }

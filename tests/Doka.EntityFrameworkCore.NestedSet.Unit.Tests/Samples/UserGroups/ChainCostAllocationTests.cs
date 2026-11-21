@@ -1,15 +1,23 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 /// <summary>Guards retained frontier allocations without charging an extra transport array per unique cursor.</summary>
-/// <param name="output">Receives observed allocation totals outside the measured operation.</param>
 [Trait("Category", "Allocation")]
-public sealed class ChainCostAllocationTests(
-    ITestOutputHelper output
-)
+public sealed class ChainCostAllocationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Receives observed allocation totals outside the measured operation.</param>
+    public ChainCostAllocationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>A canonical unique occurrence creates only its retained hop and immutable path node.</summary>
     [Fact]
-    public void UniqueContinuationsAvoidAnAdditionalArrayPerLogicalPath()
+    public void AdvanceBranch_UniqueContinuations_AvoidAnAdditionalArrayPerLogicalPath()
     {
         // Arrange
         const int paths = 1_024;
@@ -35,7 +43,7 @@ public sealed class ChainCostAllocationTests(
         var resolution = new SupervisorResolution(SupervisorResolutionStatus.Found, 7, [candidate], candidate);
         var warm = new SupervisorQueries.ChainBudget(request);
         var warmPaths = new List<SupervisorQueries.ChainPath>(4);
-        var completed = new List<SupervisorChainBranch>();
+        List<SupervisorChainBranch> completed = [];
 
         // WHY: Warm real retained-path construction without charging its first-use costs to the measured interval.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -92,7 +100,7 @@ public sealed class ChainCostAllocationTests(
         // WHY: 128 bytes per state admit the actual hop and prefix node with layout headroom. Adding a
         // separate one-element occurrence array for every state exceeds that linear retained-object budget.
         Assert.InRange(allocated, 0, paths * 128L + 4_096);
-        output.WriteLine($"Paths={paths}; continuation allocation={allocated} B.");
+        _output.WriteLine($"Paths={paths}; continuation allocation={allocated} B.");
         GC.KeepAlive(next);
     }
 }

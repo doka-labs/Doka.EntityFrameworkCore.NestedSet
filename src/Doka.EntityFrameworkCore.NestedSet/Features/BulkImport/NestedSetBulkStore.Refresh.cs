@@ -1,0 +1,264 @@
+namespace Doka.EntityFrameworkCore.NestedSet.Features.BulkImport;
+
+internal sealed partial class NestedSetBulkStore<TEntity, TKey, TTreeId, TScope>
+    where TEntity : class
+    where TKey : notnull
+    where TTreeId : notnull
+    where TScope : notnull
+{
+    /// <summary>
+    ///     Returns final coordinates and update-generated values without materializing existing forest payload.
+    /// </summary>
+    /// <param name="boundary">The beginning of the reserved import interval before optional native ordering.</param>
+    /// <param name="cancellationToken">The token checked while capturing identities and streaming final values.</param>
+    internal async Task RefreshAsync(
+        long boundary,
+        CancellationToken cancellationToken
+    )
+    {
+        var properties = new[]
+            {
+                _store.Map.KeyProperty,
+                _store.Map.LeftProperty,
+                _store.Map.RightProperty,
+                _store.Map.DepthProperty,
+                _store.Map.PositionProperty,
+                _store.Map.ParentProperty,
+            }
+            .Concat(
+                NestedSetRefreshProperties
+                    .Generated(_store.Map.EntityType)
+                    .Where(property => (property.ValueGenerated & ValueGenerated.OnUpdate) != 0))
+            .Distinct()
+            .ToArray();
+
+        var setters = properties
+            .Select(CreateRefreshSetter)
+            .ToArray();
+
+        // WHY: Refresh applies arbitrary provider-generated and complex scalar metadata values. This heterogeneous
+        // row exists only at the materialization/metadata-assignment boundary; expected identities remain typed.
+        var parameter = Expression.Parameter(typeof(TEntity), "node");
+        var projection = Expression.Lambda<Func<TEntity, object[]>>(
+            Expression.NewArrayInit(
+                typeof(object),
+                properties.Select(property => NestedSetRefreshProperties.Project(parameter, property))),
+            parameter);
+
+        var keys = CaptureExpectedKeys(cancellationToken);
+
+        if (_store.Map.Order is null)
+        {
+            await RefreshIntervalAsync(boundary, setters, projection, keys, cancellationToken)
+                .ConfigureAwait(false);
+
+            return;
+        }
+
+        // WHY: Native ordering can place existing sibling subtrees between imported nodes. Their final rows no
+        // longer share the reserved interval, so this path keeps its bounded, exact-tree key selection.
+        for (var offset = 0; offset < _plan.Nodes.Count; offset += NestedSetBatch.MaximumRows)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var count = Math.Min(NestedSetBatch.MaximumRows, _plan.Nodes.Count - offset);
+            var entries = new Dictionary<TKey, int>(count, _store.Map.KeyComparer);
+
+            // WHY: Map only the current key batch to its absolute plan ordinals.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var index = offset; index < offset + count; index++)
+            {
+                entries.Add(keys[index], index);
+            }
+
+            var query = _store
+                .Nodes
+                .Where(NestedSetKeyFilter<TEntity>.Matches(_store.Map.KeyProperty, entries.Keys.ToArray()))
+                .TagWith(NestedSetDiagnostics.BulkRefreshTag);
+
+            var refreshed = 0;
+
+            await foreach (var values in query
+                .Select(projection)
+                .AsAsyncEnumerable()
+                .WithCancellation(cancellationToken)
+                .ConfigureAwait(false))
+            {
+                var key = (TKey)values[0];
+
+                // WHY: An EF key comparer may equate two different stored values. The dictionary only locates
+                // the candidate; the provider comparison authorizes its structural refresh.
+                if (!entries.TryGetValue(key, out var index)
+                    || !NestedSetTypedValue<TKey>.Matches(_store.Map.KeyProperty, key, keys[index]))
+                {
+                    throw new DbUpdateConcurrencyException("The imported refresh contains an unexpected node.");
+                }
+
+                refreshed++;
+
+                RefreshEntry(_plan.Nodes[index], setters, values);
+            }
+
+            if (refreshed != count)
+            {
+                throw new DbUpdateConcurrencyException("An imported node disappeared from its tree during insertion.");
+            }
+        }
+
+        VerifyInputKeys(keys, cancellationToken);
+    }
+
+    /// <summary>Captures stable key representations before any final refresh reader can mutate an input.</summary>
+    private TKey[] CaptureExpectedKeys(
+        CancellationToken cancellationToken
+    )
+    {
+        var keys = new TKey[_plan.Nodes.Count];
+
+        // WHY: Keep independent key snapshots aligned with their original plan nodes.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 0; index < keys.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // WHY: Application key comparers can equate database-distinct values, and a reader callback can
+            // mutate an input's array key. Independent snapshots preserve the expected membership.
+            keys[index] = NestedSetTypedValue<TKey>.Snapshot(_store.Map.KeyProperty, _plan.Nodes[index].Key);
+        }
+
+        return keys;
+    }
+
+    /// <summary>Streams the unordered import's reserved interval and verifies every planned row exactly once.</summary>
+    private async Task RefreshIntervalAsync(
+        long boundary,
+        Action<TEntity, object?>?[] setters,
+        Expression<Func<TEntity, object[]>> projection,
+        TKey[] keys,
+        CancellationToken cancellationToken
+    )
+    {
+        var end = checked(boundary + _plan.Width - 1);
+        var imported = _store
+            .Nodes
+            .Where(node => EF.Property<long>(node, _store.Map.Left) >= boundary
+                && EF.Property<long>(node, _store.Map.Right) <= end)
+            .TagWith(NestedSetDiagnostics.BulkRefreshTag)
+            .OrderBy(_store.Property<long>(_store.Map.Left));
+
+        var refreshed = 0;
+
+        // WHY: Explicit placement retains the plan's preorder inside one contiguous interval. The TreeId/Left
+        // index streams that same order, avoiding both per-batch reads and a second entry dictionary per node.
+        await foreach (var values in imported
+            .Select(projection)
+            .AsAsyncEnumerable()
+            .WithCancellation(cancellationToken)
+            .ConfigureAwait(false))
+        {
+            if (refreshed == keys.Length
+                || !NestedSetTypedValue<TKey>.Matches(_store.Map.KeyProperty, (TKey)values[0], keys[refreshed]))
+            {
+                throw new DbUpdateConcurrencyException("The imported interval contains an unexpected node.");
+            }
+
+            var node = _plan.Nodes[refreshed];
+            var geometry = node.Geometry;
+
+            if ((long)values[1] != geometry.Left
+                || (long)values[2] != geometry.Right
+                || (int)values[3] != geometry.Depth
+                || (long)values[4] != geometry.Position)
+            {
+                throw new DbUpdateConcurrencyException(
+                    "An imported node changed its planned geometry during insertion.");
+            }
+
+            RefreshEntry(node, setters, values);
+            refreshed++;
+        }
+
+        if (refreshed != keys.Length)
+        {
+            throw new DbUpdateConcurrencyException("An imported node disappeared from its reserved interval.");
+        }
+
+        VerifyInputKeys(keys, cancellationToken);
+    }
+
+    /// <summary>Rejects input keys changed by callbacks or mapped setters during either refresh path.</summary>
+    private void VerifyInputKeys(
+        TKey[] keys,
+        CancellationToken cancellationToken
+    )
+    {
+        // WHY: Reader callbacks or mapped setters can mutate an input key while its physical row stays intact,
+        // including an earlier input changed by a later setter. Read the caller-visible value after disposal and
+        // compare it with the independent database-membership snapshot.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 0; index < keys.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = NestedSetTypedValue<TKey>.Read(_plan.Nodes[index].Entity, _store.Map.KeyProperty);
+
+            if (!NestedSetTypedValue<TKey>.Matches(_store.Map.KeyProperty, current, keys[index]))
+            {
+                throw new DbUpdateConcurrencyException("An imported input changed its identity during refresh.");
+            }
+        }
+    }
+
+    /// <summary>Applies final CLR and complex scalar values without adding detached state to the context.</summary>
+    private static void RefreshEntry(
+        NestedSetBulkPlan<TEntity, TKey, TTreeId, TScope>.Node node,
+        Action<TEntity, object?>?[] setters,
+        object[] values
+    )
+    {
+        // WHY: Creating an already-detached Entry still adds it to EF's strong detached-reference map, and
+        // assigning Detached again does not remove it. Direct compiled setters preserve exact database values
+        // and complex value-copyback without retaining one EF entry for every imported node.
+        // Align refresh setters and projected values while leaving the key slot untouched.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var index = 1; index < setters.Length; index++)
+        {
+            setters[index]
+                ?.Invoke(node.Entity, values[index]);
+        }
+    }
+
+    /// <summary>Resolves mapped CLR assignment and any subtype guard once before streaming refreshed rows.</summary>
+    private static Action<TEntity, object?>? CreateRefreshSetter(
+        IProperty property
+    )
+    {
+        var setter = NestedSetDetachedValueSetter.Get(property);
+
+        if (setter is null)
+        {
+            return null;
+        }
+
+        var declaring = property.DeclaringType.ContainingEntityType.ClrType;
+
+        if (declaring.IsAssignableFrom(typeof(TEntity)))
+        {
+            // WHY: Ordinary owner properties apply to every imported row. Bind the public setter directly
+            // once so the million-node path performs neither reflection nor repeated metadata traversal.
+            return setter.SetClrValueUsingContainingEntity;
+        }
+
+        return (entity, value) =>
+        {
+            // WHY: A base facade can import sibling subtypes in one tree. Only inputs declaring the generated
+            // scalar receive its projected value; other subtypes do not have a CLR or tracking slot for it.
+            if (declaring.IsInstanceOfType(entity))
+            {
+                setter.SetClrValueUsingContainingEntity(entity, value);
+            }
+        };
+    }
+}

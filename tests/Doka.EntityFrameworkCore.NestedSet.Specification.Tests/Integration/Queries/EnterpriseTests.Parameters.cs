@@ -7,7 +7,7 @@ public abstract partial class EnterpriseTests
     /// </summary>
     /// <returns>A task that completes after checking parameter values and independent query results.</returns>
     [Fact]
-    public async Task RuntimeScopesAndKeysUseParametersWithReusableSqlShape()
+    public async Task ChildrenOf_RuntimeScopesAndKeys_UseParametersWithReusableSqlShape()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

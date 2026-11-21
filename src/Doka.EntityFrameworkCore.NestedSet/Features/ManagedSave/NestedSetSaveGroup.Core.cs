@@ -183,8 +183,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                     throw new DbUpdateConcurrencyException("A hierarchy node no longer exists.");
                 }
 
-                foreach (var row in rows)
+                // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (int rowIndex = 0, rowCount = rows.Count; rowIndex < rowCount; rowIndex++)
                 {
+                    var row = rows[rowIndex];
+
                     _identities.Add(row);
                     AddLockRequest(requests, row.Scope, row.TreeId);
                 }
@@ -262,8 +267,13 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
                         "Every requested Parent must resolve in the changed node's Scope.");
                 }
 
-                foreach (var target in targets)
+                // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (int targetIndex = 0, targetCount = targets.Count; targetIndex < targetCount; targetIndex++)
                 {
+                    var target = targets[targetIndex];
+
                     AddLockRequest(requests, group.Key, target.TreeId);
                 }
             }

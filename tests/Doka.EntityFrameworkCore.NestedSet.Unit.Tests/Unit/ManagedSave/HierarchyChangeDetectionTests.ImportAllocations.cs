@@ -29,7 +29,7 @@ public sealed class HierarchyImportCollectionAllocationTests
     [InlineData(2_000)]
     [InlineData(4_000)]
     [InlineData(8_000)]
-    public async Task PreparedImportGuardAllocationScalesWithBoundedWaves(
+    public async Task TrackWave_PreparedImportGuardAllocation_ScalesWithBoundedWaves(
         int nodes
     )
     {
@@ -98,7 +98,7 @@ public sealed class HierarchyImportCollectionAllocationTests
 
     /// <summary>A large detached snapshot prefix does not add a per-call set-comparison bitmap.</summary>
     [Fact]
-    public async Task CompletedSnapshotSizeDoesNotIncreaseWarmGuardAllocation()
+    public async Task Observe_CompletedSnapshotSize_DoesNotIncreaseWarmGuardAllocation()
     {
         // Arrange
         await using var smallContext = new SnapshotContext();
@@ -160,7 +160,7 @@ public sealed class HierarchyImportCollectionAllocationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PreparedImportRejectsForeignCollectionReference(
+    public async Task HasHierarchyChanges_PreparedImport_RejectsForeignCollectionReference(
         bool replace
     )
     {
@@ -205,7 +205,7 @@ public sealed class HierarchyImportCollectionAllocationTests
 
     /// <summary>Duplicate prepared references retain set semantics without tracking future inputs.</summary>
     [Fact]
-    public async Task PreparedImportPreservesDuplicateReferenceSemantics()
+    public async Task HasHierarchyChanges_PreparedImport_PreservesDuplicateReferenceSemantics()
     {
         // Arrange
         await using var context = new SnapshotContext();
@@ -227,7 +227,7 @@ public sealed class HierarchyImportCollectionAllocationTests
 
     /// <summary>Removing a still-tracked required scope relationship remains guarded during an import.</summary>
     [Fact]
-    public async Task PreparedImportRejectsTrackedSnapshotMemberRemoval()
+    public async Task HasHierarchyChanges_PreparedImport_RejectsTrackedSnapshotMemberRemoval()
     {
         // Arrange
         await using var context = new SnapshotContext();

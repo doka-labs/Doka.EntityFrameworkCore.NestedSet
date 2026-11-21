@@ -7,7 +7,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AssignedCustomKeyFailureAllowsSingleInsertRetry(
+    public async Task InsertRootAsync_AssignedCustomKeyFailure_AllowsSingleInsertRetry(
         bool afterSave
     )
     {
@@ -74,7 +74,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RejectedSingleGraphTrackingAllowsRetry(
+    public async Task InsertRootAsync_RejectedSingleGraphTracking_AllowsRetry(
         bool owned
     )
     {
@@ -134,7 +134,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GeneratedSingleKeyFailureAllowsRetry(
+    public async Task InsertRootAsync_GeneratedSingleKeyFailure_AllowsRetry(
         bool afterSave
     )
     {

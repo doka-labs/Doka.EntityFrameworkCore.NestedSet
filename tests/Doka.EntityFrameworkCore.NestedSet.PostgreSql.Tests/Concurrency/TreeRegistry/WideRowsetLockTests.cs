@@ -19,7 +19,7 @@ public sealed class WideRowsetLockTests : ProviderTest,
 
     /// <summary>Opposing wide request orders serialize on the same database-sorted registry sequence.</summary>
     [Fact]
-    public async Task OppositeWideRequestsCompleteWithoutDeadlock()
+    public async Task AcquireAsync_OppositeWideRequests_CompleteWithoutDeadlock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -39,12 +39,17 @@ public sealed class WideRowsetLockTests : ProviderTest,
                         treeId,
                         NestedSetTreeLockMode.New))
                     .ToArray(),
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
         }
 
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-        var ascending = TreeRegistryLockTestSupport.LockAfterGateAsync(database, 7, treeIds, gate.Task, timeout.Token);
+        var operationCancellationToken = TestContext.Current.CancellationToken;
+        var ascending = TreeRegistryLockTestSupport.LockAfterGateAsync(
+            database,
+            7,
+            treeIds,
+            gate.Task,
+            operationCancellationToken);
         var descending = TreeRegistryLockTestSupport.LockAfterGateAsync(
             database,
             7,
@@ -52,13 +57,13 @@ public sealed class WideRowsetLockTests : ProviderTest,
                 .Reverse()
                 .ToArray(),
             gate.Task,
-            timeout.Token);
+            operationCancellationToken);
 
         // Act
         gate.SetResult();
         await Task.WhenAll(ascending, descending);
 
         // Assert
-        Assert.False(timeout.IsCancellationRequested);
+        Assert.False(operationCancellationToken.IsCancellationRequested);
     }
 }

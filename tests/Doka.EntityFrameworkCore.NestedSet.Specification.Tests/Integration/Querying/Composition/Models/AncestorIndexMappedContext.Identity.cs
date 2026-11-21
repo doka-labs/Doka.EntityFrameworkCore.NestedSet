@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 internal sealed partial class AncestorIndexMappedContext
 {
-    /// <summary>Keeps native array keys and independently allocated nullable parent arrays value-comparable in SQL.</summary>
+    /// <summary>
+    /// Keeps native array keys and independently allocated nullable parent arrays value-comparable in SQL.
+    /// </summary>
     private static void ConfigureBinary(
         ModelBuilder modelBuilder
     )
@@ -78,7 +80,9 @@ internal sealed partial class AncestorIndexMappedContext
             .HasAncestorIndex());
     }
 
-    /// <summary>Preserves database-distinct converted TreeIds whose CLR equality deliberately treats case aliases as equal.</summary>
+    /// <summary>
+    /// Preserves database-distinct converted TreeIds whose CLR equality deliberately treats case aliases as equal.
+    /// </summary>
     private void ConfigureBroadTree(
         ModelBuilder modelBuilder
     )

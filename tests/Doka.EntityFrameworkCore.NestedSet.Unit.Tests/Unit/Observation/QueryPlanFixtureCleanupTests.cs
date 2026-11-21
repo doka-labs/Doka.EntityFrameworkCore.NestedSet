@@ -7,10 +7,10 @@ public sealed class QueryPlanFixtureCleanupTests
 {
     /// <summary>Successful teardown writes evidence before cleaning up its owned resources.</summary>
     [Fact]
-    public async Task SuccessfulTeardownWritesBeforeCleanup()
+    public async Task CompleteFixtureAsync_SuccessfulTeardown_WritesBeforeCleanup()
     {
         // Arrange
-        var calls = new List<string>();
+        List<string> calls = [];
 
         // Act
         await QueryPlanTestSupport.CompleteFixtureAsync(
@@ -36,7 +36,7 @@ public sealed class QueryPlanFixtureCleanupTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task WriterFailureStillCleansUpAndRetainsOriginalException(
+    public async Task CompleteFixtureAsync_WriterFailureStill_CleansUpAndRetainsOriginalException(
         bool synchronous
     )
     {
@@ -67,7 +67,7 @@ public sealed class QueryPlanFixtureCleanupTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CleanupFailureRetainsOriginalException(
+    public async Task CompleteFixtureAsync_CleanupFailure_RetainsOriginalException(
         bool synchronous
     )
     {
@@ -95,7 +95,7 @@ public sealed class QueryPlanFixtureCleanupTests
 
     /// <summary>Simultaneous writer and cleanup failures remain visible in their original operation order.</summary>
     [Fact]
-    public async Task WriterAndCleanupFailuresAreBothPreserved()
+    public async Task CompleteFixtureAsync_WriterAndCleanupFailures_AreBothPreserved()
     {
         // Arrange
         var writerFailure = new IOException("Evidence failure.");
@@ -121,7 +121,7 @@ public sealed class QueryPlanFixtureCleanupTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AllOwnedCleanupFailuresRemainVisible(
+    public async Task CompleteFixtureAsync_AllOwnedCleanupFailures_RemainVisible(
         bool writerFails
     )
     {
@@ -156,7 +156,7 @@ public sealed class QueryPlanFixtureCleanupTests
 
     /// <summary>An explicitly thrown aggregate is one original failure rather than a flattened replacement.</summary>
     [Fact]
-    public async Task LoneExplicitAggregateRetainsOriginalException()
+    public async Task CompleteFixtureAsync_LoneExplicitAggregate_RetainsOriginalException()
     {
         // Arrange
         var expected = new AggregateException("Original aggregate.", new IOException("Nested failure."));
@@ -172,7 +172,7 @@ public sealed class QueryPlanFixtureCleanupTests
 
     /// <summary>Canceled evidence still triggers owned-resource cleanup before cancellation is propagated.</summary>
     [Fact]
-    public async Task CanceledWriterStillCleansUp()
+    public async Task CompleteFixtureAsync_CanceledWriterStill_CleansUp()
     {
         // Arrange
         using var canceled = new CancellationTokenSource();

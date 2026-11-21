@@ -25,7 +25,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("constructor", "direct", true)]
     [InlineData("index", "direct", true)]
     [InlineData("constant", "direct", true)]
-    public async Task ApplicationMetadataGettersRemainOutsideClassification(
+    public async Task UsesQueryOperators_ApplicationMetadataGetters_RemainOutsideClassification(
         string kind,
         string parent,
         bool metadataFirst
@@ -97,7 +97,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("constant", "conditional")]
     [InlineData("constant", "block")]
     [InlineData("constant", "assign")]
-    public async Task RuntimeMetadataRetainsIndependentFactEligibility(
+    public async Task UsesQueryOperators_RuntimeMetadata_RetainsIndependentFactEligibility(
         string kind,
         string parent
     )
@@ -151,7 +151,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("block", false)]
     [InlineData("assign", false)]
     [InlineData("direct", true)]
-    public async Task DynamicDelegateMetadataRemainsOpaqueWithoutReduction(
+    public async Task UsesQueryOperators_DynamicDelegateMetadata_RemainsOpaqueWithoutReduction(
         string parent,
         bool metadataFirst
     )

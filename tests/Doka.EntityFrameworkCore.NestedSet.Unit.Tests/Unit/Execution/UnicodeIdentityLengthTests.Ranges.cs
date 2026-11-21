@@ -6,7 +6,7 @@ public sealed partial class UnicodeIdentityLengthTests
     /// Every BMP code unit outside the surrogate range counts once, including its adjacent boundaries.
     /// </summary>
     [Fact]
-    public void EveryNonSurrogateCodeUnitCountsOnce()
+    public void CountUnicodeScalars_EveryNonSurrogateCodeUnit_CountsOnce()
     {
         // Arrange
         var characters = Enumerable
@@ -29,7 +29,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void EverySurrogateCodeUnitCountsInsideValidPairs(
+    public void CountUnicodeScalars_EverySurrogateCodeUnit_CountsInsideValidPairs(
         bool varyHighSurrogate
     )
     {
@@ -62,7 +62,7 @@ public sealed partial class UnicodeIdentityLengthTests
 
     /// <summary>Every unpaired surrogate is rejected rather than counted or silently replaced.</summary>
     [Fact]
-    public void EveryUnpairedSurrogateCodeUnitIsRejected()
+    public void ConvertAll_EveryUnpairedSurrogateCodeUnit_IsRejected()
     {
         // Arrange
         // WHY: Build malformed strings at runtime; attribute-string encoding cannot preserve unpaired surrogates.

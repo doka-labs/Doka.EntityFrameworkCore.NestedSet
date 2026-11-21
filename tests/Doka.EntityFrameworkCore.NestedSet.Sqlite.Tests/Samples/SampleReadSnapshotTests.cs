@@ -20,7 +20,7 @@ public sealed class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnedWalSnapshotPermitsWriterCommitAndRetainsEarlierView(
+    public async Task RunAsync_OwnedWalSnapshot_PermitsWriterCommitAndRetainsEarlierView(
         bool alreadyOpen
     )
     {

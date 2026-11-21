@@ -7,7 +7,7 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PostgreSqlPartialParentIndexesReplayExecutionWithoutMutation(
+    public async Task ExecuteOperationsAsync_PostgreSqlPartialParentIndexes_ReplayExecutionWithoutMutation(
         bool qualifySchema
     )
     {
@@ -18,8 +18,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
@@ -30,7 +32,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -44,7 +48,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Equal(2, operations.Length);
@@ -64,12 +70,14 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(historyBefore, historyAfter);
     }
 
-    /// <summary>Generated partial parent indexes analyze as matching objects without changing persistent state.</summary>
+    /// <summary>
+    /// Generated partial parent indexes analyze as matching objects without changing persistent state.
+    /// </summary>
     /// <param name="qualifySchema">Whether the physical hierarchy uses an explicit schema.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PostgreSqlPartialParentIndexesAnalyzeWithoutMutation(
+    public async Task AnalyzeAsync_PostgreSqlPartialParentIndexes_AnalyzeWithoutMutation(
         bool qualifySchema
     )
     {
@@ -80,8 +88,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var operations = GetIndexOperations(chain, context)
             .Where(operation => ((EnsureIndexIntent)operation.Intent).Definition.Filter
@@ -92,7 +102,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -109,7 +121,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Equal(2, operations.Length);
@@ -140,7 +154,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(true, "dependent")]
     [InlineData(true, "roots")]
     [InlineData(true, "tree")]
-    public async Task PostgreSqlPartialHierarchyFilterDriftAnalysisIsRejectedWithoutMutation(
+    public async Task AnalyzeAsync_PostgreSqlPartialHierarchyFilterDriftAnalysis_IsRejectedWithoutMutation(
         bool qualifySchema,
         string role
     )
@@ -152,8 +166,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var filter = role switch
         {
@@ -200,7 +216,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -217,7 +235,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         Assert.Single(report.Assessments);
@@ -238,7 +258,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(true, "dependent")]
     [InlineData(true, "roots")]
     [InlineData(true, "tree")]
-    public async Task PostgreSqlPartialHierarchyFilterDriftExecutionIsRejectedWithoutMutation(
+    public async Task ExecuteOperationsAsync_PostgreSqlPartialHierarchyFilterDriftExecution_IsRejectedWithoutMutation(
         bool qualifySchema,
         string role
     )
@@ -250,8 +270,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var chain = database.Scaffold(MigrationStage.Current, "PartialParents");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var filter = role switch
         {
@@ -298,7 +320,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // Act
@@ -313,7 +337,9 @@ public sealed partial class SafeMigrationTests
             context,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var nodesAfter = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesAfter = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyAfter = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         var databaseException = Assert.IsAssignableFrom<DbException>(exception);

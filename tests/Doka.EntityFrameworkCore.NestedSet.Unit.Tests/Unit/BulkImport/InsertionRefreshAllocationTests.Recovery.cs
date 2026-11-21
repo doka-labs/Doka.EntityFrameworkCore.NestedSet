@@ -6,7 +6,7 @@ public sealed partial class InsertionRefreshAllocationTests
 {
     /// <summary>A null current key is rejected before a custom comparer requiring non-null operands runs.</summary>
     [Fact]
-    public void CustomComparerNullKeyIsRejectedWithoutInvokingEquality()
+    public void Matches_CustomComparerNullKey_IsRejectedWithoutInvokingEquality()
     {
         // Arrange
         using var context = new AllocationContext();
@@ -24,7 +24,7 @@ public sealed partial class InsertionRefreshAllocationTests
 
     /// <summary>A removed non-nullable bag key retains the native sentinel conversion diagnostic.</summary>
     [Fact]
-    public void MissingIndexerKeyPreservesTheFrameworkGetterDiagnostic()
+    public void Matches_MissingIndexerKey_PreservesTheFrameworkGetterDiagnostic()
     {
         // Arrange
         using var context = new AllocationContext();
@@ -56,7 +56,7 @@ public sealed partial class InsertionRefreshAllocationTests
     [Theory]
     [InlineData(37)]
     [InlineData(99)]
-    public void GeneratedSidecarRejectsChangedClrSentinel(
+    public void Matches_GeneratedSidecar_RejectsChangedClrSentinel(
         int replacement
     )
     {
@@ -87,7 +87,7 @@ public sealed partial class InsertionRefreshAllocationTests
 
     /// <summary>EF acceptance copies the provider key into CLR without invalidating the captured identity.</summary>
     [Fact]
-    public void AcceptedGeneratedIdentityMatchesItsCopiedClrValue()
+    public void AcceptAllChanges_AcceptedGeneratedIdentity_MatchesItsCopiedClrValue()
     {
         // Arrange
         using var context = new AllocationContext();
@@ -115,7 +115,7 @@ public sealed partial class InsertionRefreshAllocationTests
     [Theory]
     [InlineData(nameof(CompoundNode.Scope))]
     [InlineData(nameof(CompoundNode.Id))]
-    public void CompositeIdentityRejectsEitherChangedComponent(
+    public void Matches_CompositeIdentity_RejectsEitherChangedComponent(
         string component
     )
     {
@@ -151,7 +151,7 @@ public sealed partial class InsertionRefreshAllocationTests
     /// Returning CLR to its staged key does not hide an intermediate installed relationship identity.
     /// </summary>
     [Fact]
-    public void IntermediateRelationshipIdentityIsRemovedWhenClrReturnsToStagedKey()
+    public void PrepareDetach_IntermediateRelationshipIdentity_IsRemovedWhenClrReturnsToStagedKey()
     {
         // Arrange
         using var context = new AllocationContext();
@@ -185,7 +185,7 @@ public sealed partial class InsertionRefreshAllocationTests
 
     /// <summary>Detaching an introduced dependent preserves the other dependent's exact principal bucket.</summary>
     [Fact]
-    public void DependentCleanupPreservesUnrelatedMembership()
+    public void PrepareDetach_DependentCleanup_PreservesUnrelatedMembership()
     {
         // Arrange
         using var context = new AllocationContext();

@@ -12,7 +12,7 @@ public sealed partial class ProviderCapabilitiesTests
     [InlineData("MySql", "Doka.EntityFrameworkCore.MySql", IsolationLevel.ReadCommitted)]
     [InlineData("PostgreSql", "Npgsql.EntityFrameworkCore.PostgreSQL", IsolationLevel.ReadCommitted)]
     [InlineData("SqlServer", "Microsoft.EntityFrameworkCore.SqlServer", IsolationLevel.ReadCommitted)]
-    public void SelectedAdaptersOwnTheirProviderAndRequiredIsolation(
+    public void ProviderName_SelectedAdapters_OwnTheirProviderAndRequiredIsolation(
         string engine,
         string name,
         IsolationLevel isolation

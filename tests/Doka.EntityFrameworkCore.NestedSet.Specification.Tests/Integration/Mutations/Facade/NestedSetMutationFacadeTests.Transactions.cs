@@ -4,7 +4,7 @@ public abstract partial class NestedSetMutationFacadeTests
 {
     /// <summary>An application transaction can roll back payload and hierarchy work together.</summary>
     [Fact]
-    public async Task ApplicationTransactionRollbackIsAtomic()
+    public async Task ExecuteApplicationTransactionAsync_ApplicationTransactionRollback_IsAtomic()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -30,7 +30,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>An application transaction can commit payload and hierarchy work together.</summary>
     [Fact]
-    public async Task ApplicationTransactionCommitIsAtomic()
+    public async Task ExecuteApplicationTransactionAsync_ApplicationTransactionCommit_IsAtomic()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

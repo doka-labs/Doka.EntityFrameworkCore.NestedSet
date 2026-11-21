@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Controls the amount of structural validation performed for one tree.</summary>
+[PublicAPI]
 public enum NestedSetValidationLevel
 {
     /// <summary>Checks structural invariants without retaining a repair coordinate for every changed node.</summary>

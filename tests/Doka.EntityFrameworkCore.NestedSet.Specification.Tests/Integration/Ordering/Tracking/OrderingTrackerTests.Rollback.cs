@@ -6,7 +6,7 @@ public abstract partial class OrderingTrackerTests
     ///     Restores an unrelated identity's CLR sentinel and temporary key before retrying the same context.
     /// </summary>
     [Fact]
-    public async Task LateFailureRestoresAddedIdentityAndAllowsRetry()
+    public async Task SaveChangesAsync_LateFailure_RestoresAddedIdentityAndAllowsRetry()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -82,7 +82,7 @@ public abstract partial class OrderingTrackerTests
 
     /// <summary>Preserves a deferred required orphan so a later retry still performs its intended deletion.</summary>
     [Fact]
-    public async Task LateFailureRestoresDeferredOrphanAndAllowsRetry()
+    public async Task SaveChangesAsync_LateFailure_RestoresDeferredOrphanAndAllowsRetry()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -153,7 +153,7 @@ public abstract partial class OrderingTrackerTests
     ///     Retains the application's Never orphan policy instead of silently converting it into a cascade.
     /// </summary>
     [Fact]
-    public async Task RequiredOrphanWithNeverTimingStillFailsWithoutChangingPolicy()
+    public async Task SaveChangesAsync_RequiredOrphanWithNeverTimingStill_FailsWithoutChangingPolicy()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -204,7 +204,7 @@ public abstract partial class OrderingTrackerTests
 
     /// <summary>Rejects the first callback-created hierarchy change before SQL while retaining pending edits.</summary>
     [Fact]
-    public async Task SavingChangesCallbackCannotBypassInitialOrderingCandidateDiscovery()
+    public async Task SaveChangesAsync_SavingChangesCallback_CannotBypassInitialOrderingCandidateDiscovery()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

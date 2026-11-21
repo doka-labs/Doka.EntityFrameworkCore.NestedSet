@@ -11,7 +11,7 @@ public abstract partial class SignalReportTests
         ExcludedEngines = ["PostgreSql", "SqlServer"],
         Reason = "The console sample publishes Doka and SQLite migration lines; "
             + "PostgreSQL and SQL Server qualify the common reporting model and queries.")]
-    public async Task SampleMigrationChainCreatesTypedReportingSchema()
+    public async Task MigrateAsync_SampleMigrationChain_CreatesTypedReportingSchema()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -39,7 +39,7 @@ public abstract partial class SignalReportTests
         ExcludedEngines = ["PostgreSql", "SqlServer"],
         Reason = "The console sample publishes Doka and SQLite migration lines; "
             + "PostgreSQL and SQL Server have no executable sample migration set.")]
-    public async Task ReportingMigrationPreservesExistingInstrumentData()
+    public async Task MigrateAsync_ReportingMigration_PreservesExistingInstrumentData()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(

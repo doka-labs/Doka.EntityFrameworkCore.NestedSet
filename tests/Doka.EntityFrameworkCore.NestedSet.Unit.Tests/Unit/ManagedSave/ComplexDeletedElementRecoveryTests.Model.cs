@@ -41,19 +41,29 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     };
 
     /// <summary>Maps three complex collection levels, the depth at which EF's Deleted recursion appears.</summary>
-    private sealed class DeletedContext(
-        SqliteConnection connection,
-        bool ownsConnection
-    ) : DbContext
+    private sealed class DeletedContext : DbContext
     {
+        private readonly SqliteConnection _connection;
+        private readonly bool _ownsConnection;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public DeletedContext(
+            SqliteConnection connection,
+            bool ownsConnection
+        )
+        {
+            _connection = connection;
+            _ownsConnection = ownsConnection;
+        }
+
         /// <summary>Releases the in-memory store with the context that outlives the seeding context.</summary>
         public override void Dispose()
         {
             base.Dispose();
 
-            if (ownsConnection)
+            if (_ownsConnection)
             {
-                connection.Dispose();
+                _connection.Dispose();
             }
         }
 
@@ -62,9 +72,9 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         {
             await base.DisposeAsync();
 
-            if (ownsConnection)
+            if (_ownsConnection)
             {
-                await connection.DisposeAsync();
+                await _connection.DisposeAsync();
             }
         }
 
@@ -72,7 +82,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
         protected override void OnConfiguring(
             DbContextOptionsBuilder optionsBuilder
         )
-            => optionsBuilder.UseSqlite(connection);
+            => optionsBuilder.UseSqlite(_connection);
 
         /// <inheritdoc />
         protected override void OnModelCreating(

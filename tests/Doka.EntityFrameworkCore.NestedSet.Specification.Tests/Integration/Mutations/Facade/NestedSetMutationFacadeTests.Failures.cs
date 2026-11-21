@@ -4,7 +4,7 @@ public abstract partial class NestedSetMutationFacadeTests
 {
     /// <summary>DeleteAsync rejects a root without changing the tree.</summary>
     [Fact]
-    public async Task DeleteRejectsRoot()
+    public async Task DeleteAsync_Delete_RejectsRoot()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -31,7 +31,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A pre-canceled root insertion writes neither a registry identity nor a node.</summary>
     [Fact]
-    public async Task PreCanceledRootInsertionWritesNothing()
+    public async Task InsertRootAsync_PreCanceledRootInsertion_WritesNothing()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -55,7 +55,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A missing insertion anchor is reported before any structural row changes.</summary>
     [Fact]
-    public async Task MissingInsertionAnchorWritesNothing()
+    public async Task InsertChildAsync_MissingInsertionAnchor_WritesNothing()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -84,7 +84,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A subtree cannot move relative to itself or beneath one of its descendants.</summary>
     [Fact]
-    public async Task CyclicMoveWritesNothing()
+    public async Task MoveToAsync_CyclicMove_WritesNothing()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -110,7 +110,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Relative sibling moves reject a destination in another tree before changing either tree.</summary>
     [Fact]
-    public async Task RelativeMoveRejectsAnotherTree()
+    public async Task MoveBeforeAsync_RelativeMove_RejectsAnotherTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -135,7 +135,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Detach rejects both active and retired destination identities before moving any row.</summary>
     [Fact]
-    public async Task DetachRejectsUnavailableTreeId()
+    public async Task DetachAsTreeAsync_Detach_RejectsUnavailableTreeId()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -161,7 +161,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Concurrent first writers reserve one TreeId exactly once.</summary>
     [Fact]
-    public async Task ConcurrentDuplicateRootsHaveOneWinner()
+    public async Task CaptureAsync_ConcurrentDuplicateRoots_HaveOneWinner()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

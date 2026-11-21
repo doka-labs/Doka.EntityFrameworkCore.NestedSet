@@ -35,8 +35,8 @@ internal sealed class NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>
         TKey? anchor,
         NestedSetPlacement? placement,
         long maximum,
-        CancellationToken cancellationToken,
-        NestedSetNode<TKey>? knownAnchor = null
+        NestedSetNode<TKey>? knownAnchor,
+        CancellationToken cancellationToken
     )
     {
         if (placement is null)

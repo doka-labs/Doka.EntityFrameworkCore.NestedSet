@@ -11,15 +11,18 @@ internal static class CommitScenario
     /// <summary>Commits the hierarchy and grant rows atomically, then checks them with a fresh context.</summary>
     /// <param name="configuration">The sample-owned database configuration.</param>
     /// <param name="details">Whether tree output includes structural columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used throughout the transaction and verification.</param>
     /// <returns>A task that completes after the committed provisioning result has been verified.</returns>
     public static async Task RunAsync(
         SampleDatabaseConfiguration configuration,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         await SampleConsole.HeadingAsync(
+            output,
             "COMMIT: provision a group and its roles as one application operation",
             cancellationToken);
 
@@ -62,6 +65,7 @@ internal static class CommitScenario
             s_treeId,
             "Committed hierarchy:",
             details,
+            output,
             cancellationToken);
 
         var permissions = await GroupOutput.PrivilegesAsync(
@@ -69,6 +73,7 @@ internal static class CommitScenario
             s_tenantId,
             team.Id,
             "Delivery team effective privileges",
+            output,
             cancellationToken);
 
         SampleConsole.Require(
@@ -86,6 +91,7 @@ internal static class CommitScenario
 
         await GroupScenarioData.ValidateAsync(verification, s_tenantId, s_treeId, cancellationToken);
         await SampleConsole.WriteLineAsync(
+            output,
             "Committed together: tree, group, role, permission definition, assignment and grant.",
             cancellationToken);
     }

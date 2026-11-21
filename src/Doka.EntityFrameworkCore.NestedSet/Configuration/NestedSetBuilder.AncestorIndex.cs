@@ -7,10 +7,14 @@ public sealed partial class NestedSetBuilder<TEntity>
     private string? _ancestorIndexProperty;
 
     /// <summary>Adds a generated nonleaf flag and an additive access path for selected ancestor queries.</summary>
-    /// <param name="nonLeafPropertyName">The generated Boolean property name; a shadow property is created if absent.</param>
+    /// <param name="nonLeafPropertyName">
+    /// The generated Boolean property name; a shadow property is created if absent.
+    /// </param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentException">The property name is empty or whitespace.</exception>
-    /// <exception cref="InvalidOperationException">The completed model cannot generate the flag in the hierarchy table.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The completed model cannot generate the flag in the hierarchy table.
+    /// </exception>
     /// <remarks>
     /// The generated flag is true when Right is greater than Left plus one. This opt-in changes the database
     /// model and requires a migration. The index contains optional scope,

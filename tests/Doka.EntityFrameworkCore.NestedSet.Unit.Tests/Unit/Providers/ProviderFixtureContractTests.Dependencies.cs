@@ -6,7 +6,7 @@ public sealed partial class ProviderFixtureContractTests
     [Theory]
     [InlineData(typeof(FixtureBuiltinSubject), null)]
     [InlineData(typeof(ParentDependentSubject), typeof(CollectionFixtureDefinition))]
-    public void SupportedFixtureArgumentsAreAccepted(
+    public void FindErrors_SupportedFixtureArguments_AreAccepted(
         Type subject,
         Type? definition
     )
@@ -25,7 +25,7 @@ public sealed partial class ProviderFixtureContractTests
     /// A class fixture can depend directly on an assembly fixture through the collection's parent chain.
     /// </summary>
     [Fact]
-    public void FixtureDependencyResolvesThroughAssemblyChain()
+    public void FindErrors_FixtureDependency_ResolvesThroughAssemblyChain()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(ParentDependentSubject), assemblyFixtures: [typeof(Resource)]);
@@ -41,7 +41,7 @@ public sealed partial class ProviderFixtureContractTests
     /// A collection fixture can depend on an assembly fixture, then satisfy the concrete test constructor.
     /// </summary>
     [Fact]
-    public void CollectionFixtureDependencyResolvesFromAssembly()
+    public void FindErrors_CollectionFixtureDependency_ResolvesFromAssembly()
     {
         // Arrange
         var metadata = CreateMetadata(
@@ -66,7 +66,7 @@ public sealed partial class ProviderFixtureContractTests
     [InlineData(typeof(OptionalFixtureSubject), "Resource resource")]
     [InlineData(typeof(ParamsFixtureSubject), "Object[] resources")]
     [InlineData(typeof(MultipleConstructorResource), "exactly one public constructor")]
-    public void UnsupportedFixtureArgumentsAreRejected(
+    public void FindErrors_UnsupportedFixtureArguments_AreRejected(
         Type subject,
         string diagnostic
     )
@@ -86,7 +86,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>Assembly fixtures cannot use another assembly fixture as a constructor dependency.</summary>
     [Fact]
-    public void AssemblyFixtureRejectsSameLevelDependency()
+    public void FindErrors_AssemblyFixture_RejectsSameLevelDependency()
     {
         // Arrange
         var metadata = CreateMetadata(
@@ -105,7 +105,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>A collection fixture cannot depend on a peer registered in the same collection.</summary>
     [Fact]
-    public void CollectionFixtureRejectsSameLevelDependency()
+    public void FindErrors_CollectionFixture_RejectsSameLevelDependency()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(DependencySubject), typeof(SameLevelCollectionDefinition));
@@ -122,7 +122,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>Invalid registered fixtures are checked even when the test constructor does not consume them.</summary>
     [Fact]
-    public void UnusedRegisteredFixtureStillHasToBeConstructible()
+    public void FindErrors_UnusedRegisteredFixtureStill_HasToBeConstructible()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(NoArgumentSubject), assemblyFixtures: [typeof(DependentResource)]);
@@ -138,7 +138,7 @@ public sealed partial class ProviderFixtureContractTests
     /// The audit reads signatures without constructing a fixture whose constructor deliberately throws.
     /// </summary>
     [Fact]
-    public void StructuralAuditDoesNotInitializeResources()
+    public void FindErrors_StructuralAudit_DoesNotInitializeResources()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(ThrowingResourceSubject));

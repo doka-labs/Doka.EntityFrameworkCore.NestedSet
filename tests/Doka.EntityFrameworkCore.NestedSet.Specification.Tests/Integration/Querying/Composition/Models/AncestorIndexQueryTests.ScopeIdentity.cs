@@ -2,12 +2,14 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Closed partition points preserve converted column equality without CLR ordering or broad domain equality.</summary>
+    /// <summary>
+    /// Closed partition points preserve converted column equality without CLR ordering or broad domain equality.
+    /// </summary>
     /// <param name="includeSelf">Whether the selected leaf also participates as an owner.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedForestKeepsConvertedScopeAliasesDatabaseDistinct(
+    public async Task SelectAncestors_IndexedForest_KeepsConvertedScopeAliasesDatabaseDistinct(
         bool includeSelf
     )
     {

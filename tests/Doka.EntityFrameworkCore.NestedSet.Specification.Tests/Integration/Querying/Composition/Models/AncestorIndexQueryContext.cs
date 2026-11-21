@@ -2,9 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Maps an opted-in indexed hierarchy with real owned and ordinary navigation identifiers.</summary>
 /// <param name="options">The fixture-owned provider connection and observers.</param>
-internal sealed class AncestorIndexQueryContext(DbContextOptions<AncestorIndexQueryContext> options)
-    : DbContext(options)
+internal sealed class AncestorIndexQueryContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public AncestorIndexQueryContext(
+        DbContextOptions<AncestorIndexQueryContext> options
+    ) : base(options) { }
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder

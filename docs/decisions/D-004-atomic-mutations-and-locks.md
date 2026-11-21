@@ -1,7 +1,7 @@
 ---
 id: D-004
 status: implemented
-date: 2026-09-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -378,7 +378,9 @@ post-write recovery failure.
 Its native write operations are invoked only during rollback.
 Automatic or explicit DetectChanges would consume the caller's unmarked preimage,
 so it is not a recovery primitive. Versioned source comparison covers EF 10.0.12 and 10.0.14;
-runtime qualification uses 10.0.14 and does not qualify every permitted patch.
+the recorded runtime qualification used 10.0.14 and does not qualify every
+permitted patch. The [support matrix](../support-and-qualification.md) owns
+the current servicing baseline and separates declarations from execution evidence.
 
 The original-buffer binding is necessary for a raw-null complex leaf that
 must retain a distinct original and an unmodified flag. The public false setter
@@ -483,11 +485,14 @@ keeps capture-time incompatibility and rollback-only failure distinct.
 - 2026-11-02: Clarified operation-relative ownership for callback-only complex cache occurrences whose CLR ancestors disappeared. Captured authority remains exact; uncaptured cache handles require reacquisition after rollback. Hidden struct reads resolve their retained original element after mapped copyback.
 - 2026-11-03: Consolidated public recovery contracts, regression references and resource guidance in their maintained guides. Removed development-stage report dependencies; decision and runtime contracts are unchanged.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+- 2026-11-21: Distinguished the versioned EF 10.0.14 source/runtime record from the current servicing baseline. Preserved its original source links and recovery contract; a dependency update alone does not qualify every permitted EF patch.
+
 ### Implementation References
 
 - [Manual-detection recovery contract](../configuration.md#manual-change-detection)
-- [Recovery implementation and framework boundary](../implementation-design.md#ordering-and-coordinated-saves)
-- [Recovery and native-authority regressions](../regression-coverage.md#manual-detection-and-hierarchy-guards)
+- [Recovery ownership and framework boundary](../transactions-and-locking.md#tracker-and-complex-value-restoration)
+- [Tracker and native-authority recovery](../transactions-and-locking.md#tracker-and-complex-value-restoration)
 - [Capture and recovery resource model](../performance.md#prepared-imports-and-recovery-costs)
 - [Complex topology journal](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetComplexSnapshot.cs)
 - [Hidden native-child scalar recovery](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetComplexSnapshot.HiddenProperties.cs)

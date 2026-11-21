@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Describes the deterministic writes a rebuild would perform without changing the database.</summary>
+[PublicAPI]
 public sealed class NestedSetRebuildPlan
 {
     /// <summary>Initializes one immutable rebuild plan.</summary>
@@ -69,20 +70,4 @@ public sealed class NestedSetRebuildPlan
 
     /// <summary>Gets whether the bounded issue sample omits any individual violations.</summary>
     public bool IssuesTruncated => TotalIssueCount > Issues.Count;
-}
-
-/// <summary>Identifies a mapped hierarchy role without exposing model property names as string contracts.</summary>
-public enum NestedSetStructuralRole
-{
-    /// <summary>The inclusive left preorder boundary.</summary>
-    Left = 0,
-
-    /// <summary>The inclusive right preorder boundary.</summary>
-    Right = 1,
-
-    /// <summary>The number of ancestors above a node.</summary>
-    Depth = 2,
-
-    /// <summary>The zero-based position inside a sibling group.</summary>
-    Position = 3,
 }

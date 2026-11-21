@@ -7,12 +7,13 @@ public abstract partial class OrderingTests
         ExcludedEngines = ["Sqlite"],
         Reason = "This staged contender requires independent server row locks; SQLite serializes all database writers."
     )]
-    public async Task ParentMovesDoNotReacquireRegistryLocksAfterPayload()
+    public async Task SaveChangesAsync_Parent_MovesDoNotReacquireRegistryLocksAfterPayload()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var hierarchy = setup
             .NestedSet<OrderingNode>()
@@ -30,9 +31,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            commands,
-            savepoints);
+            mode: "Strict",
+            interceptors: [commands, savepoints]);
 
         var changed = await context
             .Set<OrderingNode>()
@@ -60,7 +60,8 @@ public abstract partial class OrderingTests
         Assert.InRange(savepoints.Created, 0, 1);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var scope = verification
             .NestedSet<OrderingNode>()

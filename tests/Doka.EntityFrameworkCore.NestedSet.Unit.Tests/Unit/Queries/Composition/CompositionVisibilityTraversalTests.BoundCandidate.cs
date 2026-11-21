@@ -17,7 +17,7 @@ public sealed partial class CompositionVisibilityTraversalTests
     [InlineData("method", true)]
     [InlineData("member", false)]
     [InlineData("member", true)]
-    public void OpaqueBoundCandidateRetainsSecondInspection(
+    public void Require_OpaqueBoundCandidate_RetainsSecondInspection(
         string shape,
         bool rejectSecondVisit
     )

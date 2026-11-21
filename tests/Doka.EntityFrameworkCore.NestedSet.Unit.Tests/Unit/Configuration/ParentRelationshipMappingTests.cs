@@ -10,7 +10,7 @@ public sealed class ParentRelationshipMappingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ParentRelationshipRespectsStructuralIndexContract(
+    public async Task For_ParentRelationship_RespectsStructuralIndexContract(
         bool unique
     )
     {
@@ -45,12 +45,20 @@ public sealed class ParentRelationshipMappingTests
     }
 
     /// <summary>Uses EF's standard relationship convention with the same existing synthetic node model.</summary>
-    private sealed class ParentMappingContext(
-        bool unique
-    ) : DbContext, ITestModelVariant
+    private sealed class ParentMappingContext : DbContext, ITestModelVariant
     {
+        private readonly bool _unique;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ParentMappingContext(
+            bool unique
+        )
+        {
+            _unique = unique;
+        }
+
         /// <inheritdoc />
-        object ITestModelVariant.ModelVariant => unique;
+        object ITestModelVariant.ModelVariant => _unique;
 
         /// <inheritdoc />
         protected override void OnConfiguring(
@@ -79,7 +87,7 @@ public sealed class ParentRelationshipMappingTests
                 .HasParent(item => item.ParentId)
                 .OrderBy(item => item.Name));
 
-            if (unique)
+            if (_unique)
             {
                 // WHY: This is the normal one-to-one FK convention, without manually creating a unique index.
                 node

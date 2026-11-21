@@ -6,7 +6,7 @@ public abstract partial class OrderingRefreshScaleTests
     ///     Verifies the published provider's native Guid collection translation above scalar parameter limits.
     /// </summary>
     [Fact]
-    public async Task GuidCollectionParameterPreservesNativeIdentityBeyondScalarLimit()
+    public async Task Parameter_GuidCollectionParameter_PreservesNativeIdentityBeyondScalarLimit()
     {
         // Arrange
         var database = await _relationalFixture.ResetAsync(
@@ -87,7 +87,7 @@ public abstract partial class OrderingRefreshScaleTests
 
     /// <summary>Preserves complete Guid refresh through each provider's qualified key-matching path.</summary>
     [Fact]
-    public async Task GuidOrderingRefreshKeepsExactKeysAcrossBatches()
+    public async Task SaveChangesAsync_GuidOrderingRefresh_KeepsExactKeysAcrossBatches()
     {
         // Arrange
         await using var setup = await _keyFixture.ResetAsync(

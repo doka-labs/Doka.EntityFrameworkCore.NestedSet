@@ -11,7 +11,7 @@ public sealed class MigrationFixtureCancellationTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task CanceledCreationRejectsBeforeAcquiringResources(
+    public async Task CreateDatabaseAsync_CanceledCreation_RejectsBeforeAcquiringResources(
         string engine
     )
     {
@@ -21,7 +21,12 @@ public sealed class MigrationFixtureCancellationTests
         await cancellation.CancelAsync();
 
         // Act
-        var error = await Record.ExceptionAsync(() => fixture.CreateDatabaseAsync(engine, cancellation.Token));
+        var error = await Record.ExceptionAsync(() => fixture.CreateDatabaseAsync(
+            engine,
+            cancellationToken: cancellation.Token,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true));
 
         // Assert
         var canceled = Assert.IsAssignableFrom<OperationCanceledException>(error);

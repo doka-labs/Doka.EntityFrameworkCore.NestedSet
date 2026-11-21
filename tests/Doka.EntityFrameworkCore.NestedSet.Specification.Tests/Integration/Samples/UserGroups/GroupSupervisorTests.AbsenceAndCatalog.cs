@@ -21,14 +21,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("resolve", true)]
     [InlineData("original", true)]
     [InlineData("expanded", true)]
-    public async Task EveryApiPreservesSourceAndOwnMembershipAbsence(
+    public async Task Candidates_EveryApi_PreservesSourceAndOwnMembershipAbsence(
         string api,
         bool foreignStart
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (!foreignStart)
         {
@@ -99,13 +102,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("role")]
     [InlineData("type")]
     [InlineData("kind")]
-    public async Task InvalidTenantCatalogRulesCannotSilentlyDisableFilters(
+    public async Task ResolveAsync_InvalidTenantCatalogRules_CannotSilentlyDisableFilters(
         string invalid
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         if (invalid == "kind")
@@ -144,11 +150,14 @@ public abstract partial class GroupSupervisorTests
     /// An explicit role-free type-and-metadata query remains useful after all person grants are removed (U68).
     /// </summary>
     [Fact]
-    public async Task ExplicitNoRoleFilterKeepsTypeAndMetadataRules()
+    public async Task ResolveAsync_ExplicitNoRoleFilter_KeepsTypeAndMetadataRules()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .MembershipRoles
@@ -192,13 +201,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData("both-space")]
     [InlineData("missing")]
     [InlineData("wrong-owner")]
-    public async Task MissingValuesAreNotWildcardsAndOwnersAreNotInterchangeable(
+    public async Task ResolveAsync_MissingValues_AreNotWildcardsAndOwnersAreNotInterchangeable(
         string shape
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with { Groups = new App.NthTypeGroupThenValidate(3, 1) };
         if (shape == "missing")

@@ -30,11 +30,11 @@ internal sealed partial class
         subtree
             ? "delete_subtree"
             : "delete",
-        async token =>
+        async operationCancellationToken =>
         {
-            RequireNoPendingWrites(binding, token);
+            RequireNoPendingWrites(binding, operationCancellationToken);
             var nodeKey = SnapshotKey(binding, key);
-            var treeId = await ResolveTreeIdAsync(binding, nodeKey, token)
+            var treeId = await ResolveTreeIdAsync(binding, nodeKey, operationCancellationToken)
                 .ConfigureAwait(false);
 
             var store = Store(binding, treeId);
@@ -46,10 +46,10 @@ internal sealed partial class
             await ExecuteResolvedAsync(
                     binding,
                     [(nodeKey, treeId)],
-                    () => subtree
-                        ? delete.DeleteSubtreeAsync(nodeKey, token)
-                        : delete.DeleteAsync(nodeKey, token),
-                    token)
+                    callbackCancellationToken => subtree
+                        ? delete.DeleteSubtreeAsync(nodeKey, callbackCancellationToken)
+                        : delete.DeleteAsync(nodeKey, callbackCancellationToken),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);
@@ -76,7 +76,9 @@ internal sealed partial class
         return NestedSetTelemetry.ExecuteAsync(
             binding.Context,
             "delete_tree",
-            token => NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>.DeleteAsync(store, token),
+            operationCancellationToken => NestedSetTreeDeleter<TEntity, TKey, TTreeId, TScope>.DeleteAsync(
+                store,
+                operationCancellationToken),
             cancellationToken);
     }
 
@@ -102,7 +104,9 @@ internal sealed partial class
         return NestedSetTelemetry.ExecuteAsync(
             binding.Context,
             "purge_tree_id",
-            token => NestedSetTreeRegistryPurger<TEntity, TKey, TTreeId, TScope>.PurgeAsync(store, token),
+            operationCancellationToken => NestedSetTreeRegistryPurger<TEntity, TKey, TTreeId, TScope>.PurgeAsync(
+                store,
+                operationCancellationToken),
             cancellationToken);
     }
 }

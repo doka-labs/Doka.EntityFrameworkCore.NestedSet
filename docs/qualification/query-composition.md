@@ -35,7 +35,7 @@ nested loops and completed the witnesses again for every origin. Without
 `OPTIMIZE FOR UNKNOWN` the class passed, but both million-node cases timed out
 and three composition work guards failed on plans compiled for fewer origins;
 for example `mixed-wide-10000-origins-10` read 99,990 rows against 20,060
-allowed. The hint therefore stays.
+allowed. The qualified form therefore retained the hint.
 
 For `NthEligibleGroup` and `NthTypeGroupThenValidate`, the sample now groups one
 marker per origin with that origin's witness occurrences instead of joining
@@ -62,8 +62,8 @@ tested source `0bf2c3ee7781` on supported x64. Eight SQL Server capacity cases
 failed: both medium compositions, both large consumers, depth 100,000, both
 million-node cases and ten million nodes. Their actual-work guards reported, for
 example, 200,000 reads against 20,060 allowed for
-`mixed-wide-10000-origins-10`. These corrections are uncommitted local changes,
-not a hosted rerun.
+`mixed-wide-10000-origins-10`. At that recorded stage the corrections were
+uncommitted local changes, not a hosted rerun.
 
 Diagnosis used SQL Server 2022 CU27-GDR1 and the .NET 10.0.403 SDK as x64
 containers under Apple Silicon emulation. That environment reproduced the
@@ -133,7 +133,8 @@ The first hosted run of stable preparation, CI `40668521125` at source
 `7f770a3e4d9e4878dc518c28a4587ff85b119f6f`, failed one MySQL case, one
 PostgreSQL case and 16 SQL Server cases. Its source-quality, build/package,
 engineering, Unit, SQLite, sample and migration lanes passed. These corrections
-are uncommitted successor changes; they are not a successful hosted rerun.
+were uncommitted successor changes at that recorded stage; that local record
+does not establish a successful hosted rerun.
 
 The failures have distinct evidence boundaries:
 
@@ -406,7 +407,7 @@ These are executed-plan observations for their fixture, not physical I/O or
 a proof that every application plan is linear. Current deterministic budgets,
 parameters, populations and test owners are in the
 [performance guide](../performance.md#deterministic-construction-and-transport-budgets)
-and [coverage map](../query-composition-regression-coverage.md).
+and the [test-selection and evidence guide](../testing.md).
 
 ## Optional ancestor access
 

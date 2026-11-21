@@ -8,7 +8,7 @@ public sealed class QueryConstructionAllocationTests
     /// Every pair contributes in exact ABBA order, and a small permanent delta stays below its budget.
     /// </summary>
     [Fact]
-    public void PairedMeasurementIncludesAllOneThousandPairsInAlternatingOrder()
+    public void MeasurePaired_PairedMeasurement_IncludesAllOneThousandPairsInAlternatingOrder()
     {
         // Arrange
         var order = new char[2000];
@@ -38,7 +38,7 @@ public sealed class QueryConstructionAllocationTests
 
     /// <summary>A continuous eight-KiB regression remains above the four-KiB incremental allocation budget.</summary>
     [Fact]
-    public void PairedMeanDoesNotHideContinuousAllocationGrowth()
+    public void MeasurePaired_PairedMean_DoesNotHideContinuousAllocationGrowth()
     {
         // Arrange
         var baselineCalls = 0;
@@ -68,7 +68,7 @@ public sealed class QueryConstructionAllocationTests
 
     /// <summary>The absolute mean counts exactly 100 complete builds and retains their allocation cost.</summary>
     [Fact]
-    public void AbsoluteMeanMeasuresExactlyOneHundredCompleteBuilds()
+    public void Measure_AbsoluteMean_MeasuresExactlyOneHundredCompleteBuilds()
     {
         // Arrange
         var calls = 0;

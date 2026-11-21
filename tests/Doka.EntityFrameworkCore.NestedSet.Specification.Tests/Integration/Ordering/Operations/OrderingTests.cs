@@ -101,8 +101,8 @@ public abstract partial class OrderingTests : ProviderTest
     /// <summary>Checks interval and adjacency invariants independently of the library's inspector.</summary>
     private static async Task AssertForestAsync(
         OrderingContext context,
-        CancellationToken cancellationToken,
-        int scope = 1
+        int scope,
+        CancellationToken cancellationToken
     )
     {
         var forest = await Nodes(context, scope)

@@ -57,7 +57,7 @@ internal static class OrderingRefreshTestSupport
     )
     {
         ArgumentOutOfRangeException.ThrowIfNegative(nodes);
-        await using var setup = await fixture.ResetAsync(engine, cancellationToken: cancellationToken);
+        await using var setup = await fixture.ResetAsync(engine, cancellationToken: cancellationToken, mode: "Strict");
         var extensions = setup
             .GetService<IDbContextOptions>()
             .Extensions

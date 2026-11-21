@@ -18,7 +18,7 @@ public sealed partial class SampleReadSnapshotTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedAdoptionReleasesItsConnectionReference(
+    public async Task RunAsync_FailedAdoption_ReleasesItsConnectionReference(
         bool cancel,
         bool alreadyOpen
     )
@@ -95,7 +95,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedNativeBeginPreservesCallerConnectionOwnership(
+    public async Task RunAsync_FailedNativeBegin_PreservesCallerConnectionOwnership(
         bool alreadyOpen
     )
     {
@@ -150,7 +150,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BeforeAdoptionFailureDoesNotCloseAnUnacquiredReference(
+    public async Task RunAsync_BeforeAdoptionFailure_DoesNotCloseAnUnacquiredReference(
         bool alreadyOpen
     )
     {
@@ -215,11 +215,21 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Injects failure only after EF has opened its adoption reference.</summary>
-    private sealed class FailingSnapshotAdoption(
-        CancellationTokenSource stop,
-        bool cancel
-    ) : DbTransactionInterceptor
+    private sealed class FailingSnapshotAdoption : DbTransactionInterceptor
     {
+        private readonly CancellationTokenSource _stop;
+        private readonly bool _cancel;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public FailingSnapshotAdoption(
+            CancellationTokenSource stop,
+            bool cancel
+        )
+        {
+            _stop = stop;
+            _cancel = cancel;
+        }
+
         /// <summary>Gets the native transaction received by the failed adoption notification.</summary>
         internal DbTransaction? Native { get; private set; }
 
@@ -236,9 +246,9 @@ public sealed partial class SampleReadSnapshotTests
         {
             Native = result;
 
-            if (cancel)
+            if (_cancel)
             {
-                await stop.CancelAsync();
+                await _stop.CancelAsync();
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
@@ -264,11 +274,19 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Introduces an ambient boundary after the helper's initial guard but before EF adoption.</summary>
-    private sealed class AmbientSnapshotBeginConnection(
-        CommittableTransaction ambient
-    )
-        : SqliteConnection("Data Source=:memory:")
+    private sealed class AmbientSnapshotBeginConnection
+        : SqliteConnection
     {
+        private readonly CommittableTransaction _ambient;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public AmbientSnapshotBeginConnection(
+            CommittableTransaction ambient
+        ) : base("Data Source=:memory:")
+        {
+            _ambient = ambient;
+        }
+
         /// <summary>Gets the native transaction that must be disposed when adoption is rejected.</summary>
         internal SqliteTransaction? Begun { get; private set; }
 
@@ -279,7 +297,7 @@ public sealed partial class SampleReadSnapshotTests
         )
         {
             Begun = base.BeginTransaction(isolationLevel, deferred);
-            AmbientTransaction.Current = ambient;
+            AmbientTransaction.Current = _ambient;
 
             return Begun;
         }

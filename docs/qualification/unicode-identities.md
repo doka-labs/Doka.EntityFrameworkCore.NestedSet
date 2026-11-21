@@ -5,7 +5,13 @@ against the mapped maximum length before registry commands. This page records
 the 2026-10-20 correctness and native-boundary evidence. It is a length-unit
 correction, not Unicode normalization or a universal encoding guarantee.
 
-## Contract
+The [mapping guide](../configuration.md#required-structural-roles) owns accepted
+identity inputs. This record owns the dated guard/native-boundary observations
+below, including their distinct binaries and provider prerequisites.
+
+<a id="contract"></a>
+
+## Qualified length-unit cases
 
 Binary provider values count bytes. Known concrete Doka `char`/`varchar` and
 Npgsql character mappings count Unicode scalar values. Both concrete type and
@@ -76,7 +82,9 @@ provider's separate index-budget correction. The guard itself also passed all
 10.5.0, independently of that provider feature. Neither this run nor model
 translation qualifies native SQL Server, hosted release or NativeAOT behavior.
 
-## Current regression boundary
+<a id="current-regression-boundary"></a>
+
+## Later historical regression boundary
 
 The later 2026-10-24/25 final-product Unit cohort passes 2,611 cases, including
 the retained identity/mapping guards, against the new local owner graph. The

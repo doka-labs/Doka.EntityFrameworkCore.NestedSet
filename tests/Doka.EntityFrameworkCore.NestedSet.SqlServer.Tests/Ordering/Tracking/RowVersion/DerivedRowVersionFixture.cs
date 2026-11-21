@@ -24,8 +24,8 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
     /// <param name="interceptor">An optional scalar-refresh observation or failure probe.</param>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     public async Task<DerivedRowVersionContext> ResetAsync(
-        CancellationToken cancellationToken,
-        DbCommandInterceptor? interceptor = null
+        DbCommandInterceptor? interceptor,
+        CancellationToken cancellationToken
     )
     {
         var initialize = _database is null;
@@ -33,7 +33,9 @@ public sealed class DerivedRowVersionFixture : IAsyncLifetime
         await using var source = _database.CreateContext();
         var builder = new DbContextOptionsBuilder<DerivedRowVersionContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(source.Database.GetConnectionString(), provider => provider.UseNestedSets());
+            .UseSqlServer(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets());
 
         if (interceptor is not null)
         {

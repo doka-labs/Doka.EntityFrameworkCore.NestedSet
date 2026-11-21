@@ -91,7 +91,8 @@ internal static partial class SupervisorQueries
                                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                     SupervisorExactText.Suffix(definition.FieldCode))
 
-                                // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                                // WHY: The text inliner replaces this marker with string comparisons before EF
+                                // translation.
                                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
                             .Select(definition => definition.FieldCode)
@@ -120,7 +121,8 @@ internal static partial class SupervisorQueries
                                     // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                     SupervisorExactText.Suffix(definition.FieldCode))
 
-                                // WHY: The text inliner replaces this marker with string comparisons before EF translation.
+                                // WHY: The text inliner replaces this marker with string comparisons before EF
+                                // translation.
                                 // ReSharper disable once EntityFramework.UnsupportedServerSideFunctionCall
                                 && SupervisorExactText.FieldEquals(definition.ValueKind, "Text"))
                             .Select(definition => definition.FieldCode)

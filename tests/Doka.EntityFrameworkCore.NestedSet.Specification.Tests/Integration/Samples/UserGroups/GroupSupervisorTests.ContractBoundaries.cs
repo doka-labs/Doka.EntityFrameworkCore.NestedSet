@@ -7,11 +7,14 @@ public abstract partial class GroupSupervisorTests
 {
     /// <summary>Database padding cannot turn an unsupported metadata kind into the supported Text contract.</summary>
     [Fact]
-    public async Task PaddedMetadataKindIsRejectedByTheActualCatalogReader()
+    public async Task ResolveAsync_PaddedMetadataKind_IsRejectedByTheActualCatalogReader()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .MembershipMetadataDefinitions
@@ -41,11 +44,14 @@ public abstract partial class GroupSupervisorTests
     /// Exact catalog codes reject padding aliases either through the physical FK or the actual query residual.
     /// </summary>
     [Fact]
-    public async Task PaddedStoredFieldCodeCannotBecomeARoutingMatch()
+    public async Task ExecuteUpdateAsync_PaddedStoredFieldCode_CannotBecomeARoutingMatch()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with { Groups = new App.NthTypeGroupThenValidate(3, 1) };
         probe.Enabled = true;
@@ -83,11 +89,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>Structural distance counts edges, not eligible groups, people, or supervisor hops (U36).</summary>
     [Fact]
-    public async Task StructuralDistanceTwoCanSelectAGroupWithoutAManager()
+    public async Task SelectAncestorsOrSelf_StructuralDistanceTwo_CanSelectAGroupWithoutAManager()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         probe.Enabled = true;
 
@@ -122,11 +131,14 @@ public abstract partial class GroupSupervisorTests
 
     /// <summary>Eligible types exclude a nearer roleholder before assigning the first group rank (U14).</summary>
     [Fact]
-    public async Task EligibleTypeFilterSkipsNearerPeopleOfAnotherGroupType()
+    public async Task ResolveAsync_EligibleTypeFilter_SkipsNearerPeopleOfAnotherGroupType()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with { Groups = new App.NthEligibleGroup([1], 1) };
         probe.Enabled = true;
@@ -154,13 +166,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task HiddenMembershipOrLocalGrantIsFilteredBeforeGroupRank(
+    public async Task ResolveAsync_HiddenMembershipOrLocalGrant_IsFilteredBeforeGroupRank(
         bool membership
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (membership)
         {
@@ -206,11 +221,14 @@ public abstract partial class GroupSupervisorTests
     /// (U51).
     /// </summary>
     [Fact]
-    public async Task ClosedEdgeCannotBeBypassedAndDoesNotBlockAnotherOwnOrigin()
+    public async Task ResolveAsync_ClosedEdge_CannotBeBypassedAndDoesNotBlockAnotherOwnOrigin()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .GroupRelationPeriods
@@ -273,13 +291,16 @@ public abstract partial class GroupSupervisorTests
     /// (U28).
     /// </summary>
     [Fact]
-    public async Task RoutingRequestScalarsAreBoundAsCommandParameters()
+    public async Task Candidates_RoutingRequestScalars_AreBoundAsCommandParameters()
     {
         // Arrange
         const int routingUser = 923456789;
         const string field = "ChannelClass";
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]) with
         {

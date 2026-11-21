@@ -8,7 +8,7 @@ public sealed partial class PersistedRelationshipProofTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SingleMemberFkProofRequiresCurrentValueWrite(
+    public async Task CapturePersisted_SingleMemberFkProof_RequiresCurrentValueWrite(
         bool originalOnlyProcedure
     )
     {
@@ -86,7 +86,7 @@ public sealed partial class PersistedRelationshipProofTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProcedureFkProofRequiresActualCompleteReadback(
+    public async Task CapturePersisted_ProcedureFkProof_RequiresActualCompleteReadback(
         bool returned
     )
     {
@@ -174,7 +174,7 @@ public sealed partial class PersistedRelationshipProofTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TemporaryFkProofRequiresWriteAndPropagatedReadback(
+    public async Task CapturePersisted_TemporaryFkProof_RequiresWriteAndPropagatedReadback(
         bool written
     )
     {

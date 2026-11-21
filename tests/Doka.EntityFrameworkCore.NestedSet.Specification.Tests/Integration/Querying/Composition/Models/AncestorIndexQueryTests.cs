@@ -20,8 +20,8 @@ public abstract partial class AncestorIndexQueryTests : ProviderTest
         Guid scope,
         Guid tree,
         CompositionCommandProbe probe,
-        CancellationToken cancellationToken,
-        bool foreignTrees = false
+        bool foreignTrees,
+        CancellationToken cancellationToken
     )
     {
         var context = await _fixture.CreateContextAsync<AncestorIndexQueryContext>(
@@ -71,7 +71,9 @@ public abstract partial class AncestorIndexQueryTests : ProviderTest
         }
     }
 
-    /// <summary>Creates deterministic coordinates independently of the query's range or aggregate implementation.</summary>
+    /// <summary>
+    /// Creates deterministic coordinates independently of the query's range or aggregate implementation.
+    /// </summary>
     private static CompositionNavigationNode CreateNode(
         Guid scope,
         Guid tree,

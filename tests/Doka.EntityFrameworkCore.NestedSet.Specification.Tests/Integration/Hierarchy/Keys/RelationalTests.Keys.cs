@@ -5,7 +5,7 @@ public abstract partial class RelationalTests
     /// <summary>Guid keys and nullable Guid parent references support direct-child queries.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task GuidChildrenResolveNullableParent()
+    public async Task ChildrenOf_GuidChildren_ResolveNullableParent()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -39,7 +39,7 @@ public abstract partial class RelationalTests
     /// <summary>Detaching a Guid-keyed child creates an independent tree and clears its nullable parent.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task GuidDetachmentCreatesAnIndependentRoot()
+    public async Task DetachAsTreeAsync_GuidDetachment_CreatesAnIndependentRoot()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -83,7 +83,7 @@ public abstract partial class RelationalTests
     /// </summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task GuidCrossTreeMoveSetsTypedParent()
+    public async Task MoveToAsync_GuidCrossTreeMove_SetsTypedParent()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -117,7 +117,7 @@ public abstract partial class RelationalTests
     /// <summary>String anchor lookup stores the canonical database key under provider collation.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task StringInsertStoresCanonicalParentKey()
+    public async Task InsertChildAsync_StringInsert_StoresCanonicalParentKey()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -150,7 +150,7 @@ public abstract partial class RelationalTests
     /// <summary>String parent aliases use primary-key collation even when parent-column collation differs.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task StringRebuildResolvesStoredParentAlias()
+    public async Task RebuildAsync_StringRebuild_ResolvesStoredParentAlias()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -190,7 +190,7 @@ public abstract partial class RelationalTests
     /// <summary>String parent aliases use primary-key collation even when parent-column collation differs.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task StringChildrenUsesKeyCollationForStoredParentAlias()
+    public async Task ChildrenOf_StringChildren_UsesKeyCollationForStoredParentAlias()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -224,7 +224,7 @@ public abstract partial class RelationalTests
     /// <summary>Moving a string-keyed subtree to the forest clears its parent.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task StringDetachmentCreatesAnIndependentRoot()
+    public async Task DetachAsTreeAsync_StringDetachment_CreatesAnIndependentRoot()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -273,7 +273,7 @@ public abstract partial class RelationalTests
     /// </summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task StringCrossTreeMoveStoresCanonicalParent()
+    public async Task MoveToAsync_StringCrossTreeMove_StoresCanonicalParent()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

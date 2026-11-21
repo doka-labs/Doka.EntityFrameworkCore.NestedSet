@@ -7,7 +7,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnicodeMappingsOwnServicesAndReleaseThemWithContext(
+    public async Task DisposeAsync_UnicodeMappings_OwnServicesAndReleaseThemWithContext(
         bool asynchronous
     )
     {

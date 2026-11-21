@@ -12,7 +12,7 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", "nested-add-reverse", false)]
     [InlineData("forest", "remove-two", false)]
     [InlineData("forest", "nested-add-reverse", true)]
-    public async Task ComplexCompositionRollbackRestoresNativeLanesAndAllowsRetry(
+    public async Task SaveChangesAsync_RestoredComplexComposition_AllowsRetryWithNativeLanes(
         string shape,
         string mutation,
         bool automaticDetection
@@ -161,7 +161,7 @@ public abstract partial class SaveChangesTests
     [InlineData("single", "nested-add-reverse")]
     [InlineData("subtree", "remove-two")]
     [InlineData("forest", "nested-add-reverse")]
-    public async Task ComplexCompositionSuccessPersistsConsumerTopology(
+    public async Task RunComplexCompositionOperationAsync_ComplexCompositionSuccess_PersistsConsumerTopology(
         string shape,
         string mutation
     )

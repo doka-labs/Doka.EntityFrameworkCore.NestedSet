@@ -17,7 +17,7 @@ public abstract class TableMappingTests : ProviderTest
     /// <summary>Places convention-derived access paths on the fragment containing the hierarchy columns.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void EntitySplittingPlacesIndexesOnStructureFragment()
+    public void GenerateCreateScript_EntitySplitting_PlacesIndexesOnStructureFragment()
     {
         // Arrange
         using var context = new EntitySplitContext(ModelCompatibilityDatabase.Options<EntitySplitContext>(Engine));
@@ -51,7 +51,7 @@ public abstract class TableMappingTests : ProviderTest
 
     /// <summary>Mutates the hierarchy principal when another entity can share its physical table row.</summary>
     [Fact]
-    public async Task TableSplittingPreservesSharedRowPayloadDuringMoveAsync()
+    public async Task MoveToAsync_TableSplitting_PreservesSharedRowPayloadDuringMove()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<TableSplitContext>(
@@ -132,7 +132,7 @@ public abstract class TableMappingTests : ProviderTest
 
     /// <summary>Targets the sole fragment containing every structural and ordering property.</summary>
     [Fact]
-    public async Task EntitySplittingSupportsCoLocatedStructureAsync()
+    public async Task MoveToAsync_EntitySplitting_SupportsCoLocatedStructure()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(

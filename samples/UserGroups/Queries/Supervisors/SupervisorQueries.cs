@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups;
 
-/// <summary>Exposes deferred candidates, scalar resolution, and explicitly different supervisor-chain workflows.</summary>
+/// <summary>
+/// Exposes deferred candidates, scalar resolution, and explicitly different supervisor-chain workflows.
+/// </summary>
 internal static partial class SupervisorQueries
 {
     /// <summary>Builds visible supervisor candidates while preserving each source membership path.</summary>
@@ -63,7 +65,7 @@ internal static partial class SupervisorQueries
 
         return SampleReadSnapshot.RunAsync(
             context,
-            token => FollowAsync(context, tenantId, request, true, token),
+            operationCancellationToken => FollowAsync(context, tenantId, request, true, operationCancellationToken),
             cancellationToken);
     }
 
@@ -86,7 +88,7 @@ internal static partial class SupervisorQueries
 
         return SampleReadSnapshot.RunAsync(
             context,
-            token => FollowAsync(context, tenantId, request, false, token),
+            operationCancellationToken => FollowAsync(context, tenantId, request, false, operationCancellationToken),
             cancellationToken);
     }
 }

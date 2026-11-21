@@ -9,7 +9,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData("Path")]
     [InlineData("Any")]
     [InlineData("Nearest")]
-    public async Task DeeperForeignOwnerCannotAffectScopeWideSelection(
+    public async Task SelectAncestors_DeeperForeignOwner_CannotAffectScopeWideSelection(
         string shape
     )
     {
@@ -19,7 +19,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var foreignTree = Guid.NewGuid();
         await context.AddRangeAsync(

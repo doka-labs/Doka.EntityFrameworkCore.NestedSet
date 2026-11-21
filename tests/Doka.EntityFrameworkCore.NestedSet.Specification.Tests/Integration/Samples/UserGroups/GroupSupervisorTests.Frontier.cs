@@ -14,13 +14,16 @@ public abstract partial class GroupSupervisorTests
     [InlineData(1)]
     [InlineData(4)]
     [InlineData(16)]
-    public async Task FrontierBatchesFollowPhysicalStatesInsteadOfLogicalPeopleQueries(
+    public async Task FollowOriginalPathAsync_FrontierBatches_FollowPhysicalStatesInsteadOfLogicalPeopleQueries(
         int fields
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(
             context,
@@ -180,14 +183,17 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 2)]
-    public async Task ReExpansionCanIntroduceAnOwnTreeWithoutChangingTenant(
+    public async Task FollowAllMembershipsAsync_ReExpansion_CanIntroduceAnOwnTreeWithoutChangingTenant(
         bool expanded,
         int branches
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var secondTree = Guid.NewGuid();
         var hierarchy = context

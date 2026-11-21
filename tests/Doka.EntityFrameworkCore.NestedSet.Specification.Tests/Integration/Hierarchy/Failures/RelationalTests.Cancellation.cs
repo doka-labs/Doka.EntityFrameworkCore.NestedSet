@@ -8,7 +8,7 @@ public abstract partial class RelationalTests
     [InlineData("Move")]
     [InlineData("Delete")]
     [InlineData("DeleteSubtree")]
-    public async Task CancellationAfterAppliedTreeWriteRestoresTheForest(
+    public async Task MoveToAsync_CancellationAfterAppliedTreeWrite_RestoresTheForest(
         string operation
     )
     {

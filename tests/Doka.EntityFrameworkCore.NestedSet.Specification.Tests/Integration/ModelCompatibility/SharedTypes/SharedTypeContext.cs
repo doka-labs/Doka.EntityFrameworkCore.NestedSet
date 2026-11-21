@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Maps two property-bag entity types so hierarchy access must retain the selected EF entity-type name.</summary>
+/// <summary>
+/// Maps two property-bag entity types so hierarchy access must retain the selected EF entity-type name.
+/// </summary>
 internal sealed class SharedTypeContext : DbContext
 {
     internal const string FolderEntity = "SharedFolder";

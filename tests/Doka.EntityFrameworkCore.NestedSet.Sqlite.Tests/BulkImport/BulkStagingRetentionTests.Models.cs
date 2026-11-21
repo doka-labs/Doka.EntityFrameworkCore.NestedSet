@@ -6,9 +6,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 public sealed partial class BulkStagingRetentionTests
 {
     /// <summary>Maps a shadow scope to exercise ownership before the first graph callback.</summary>
-    private sealed class ShadowStagingContext(DbContextOptions<ShadowStagingContext> options)
-        : NestedSetDbContext(options)
+    private sealed class ShadowStagingContext
+        : NestedSetDbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public ShadowStagingContext(
+            DbContextOptions<ShadowStagingContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder builder

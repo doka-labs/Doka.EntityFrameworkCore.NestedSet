@@ -21,23 +21,23 @@ public abstract partial class HierarchyCompositionTests : ProviderTest
     private Task<CompositionContext> CreateContextAsync(
         Guid scope,
         CompositionCommandProbe probe,
-        CancellationToken cancellationToken,
-        int? hidden = null,
-        int? closed = null,
-        EnterpriseProbe? planProbe = null,
-        int? chainNodes = null,
-        ChainOwnerMode ownerMode = ChainOwnerMode.RootValue
+        int? hidden,
+        int? closed,
+        EnterpriseProbe? planProbe,
+        int? chainNodes,
+        ChainOwnerMode ownerMode,
+        CancellationToken cancellationToken
     ) => CompositionTestData.CreateContextAsync(
         _fixture,
         Engine,
         scope,
         probe,
         cancellationToken: cancellationToken,
-        hidden,
-        closed,
-        planProbe,
-        chainNodes,
-        ownerMode);
+        hidden: hidden,
+        closed: closed,
+        planProbe: planProbe,
+        chainNodes: chainNodes,
+        ownerMode: ownerMode);
 
     /// <summary>Persists three independent fact tables with identical measurement identities.</summary>
     private static async Task SeedReadingsAsync(

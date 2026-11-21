@@ -4,7 +4,7 @@ public abstract partial class WriteAmplificationTests
 {
     /// <summary>Parent lookup joins its scoped anchor without imposing an order on the result.</summary>
     [Fact]
-    public async Task ParentQueryJoinsTheScopedAnchorWithoutOrdering()
+    public async Task ParentOf_ParentQuery_JoinsTheScopedAnchorWithoutOrdering()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -33,7 +33,7 @@ public abstract partial class WriteAmplificationTests
 
     /// <summary>Ancestor lookup keeps its scoped anchor and returns every ancestor of the node.</summary>
     [Fact]
-    public async Task AncestorQueryReturnsTheScopedPathWithoutExistenceScans()
+    public async Task AncestorsOf_AncestorQuery_ReturnsTheScopedPathWithoutExistenceScans()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -60,7 +60,7 @@ public abstract partial class WriteAmplificationTests
 
     /// <summary>Descendant lookup applies a depth filter within the selected tree and scope.</summary>
     [Fact]
-    public async Task DescendantQueryPreservesDepthFilterWithoutExistenceScans()
+    public async Task DescendantsOf_DescendantQuery_PreservesDepthFilterWithoutExistenceScans()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -88,7 +88,7 @@ public abstract partial class WriteAmplificationTests
 
     /// <summary>A node in another scope cannot provide the parent anchor for this service.</summary>
     [Fact]
-    public async Task ParentQueryExcludesAnAnchorInAnotherScope()
+    public async Task ParentOf_ParentQuery_ExcludesAnAnchorInAnotherScope()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

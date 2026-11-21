@@ -9,7 +9,7 @@ public sealed class NestedSetBoundsTests
     [InlineData("Direct")]
     [InlineData("Boxed")]
     [InlineData("Interpolated")]
-    public void DefaultBoundsRemainPrintable(
+    public void ToString_DefaultBounds_RemainPrintable(
         string format
     )
     {
@@ -31,7 +31,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Includes the stored coordinates in a valid interval's diagnostic representation.</summary>
     [Fact]
-    public void BoundsFormattingIncludesStoredCoordinates()
+    public void ToString_ValidBounds_IncludesStoredCoordinates()
     {
         // Arrange
         var bounds = new NestedSetBounds(2, long.MaxValue);
@@ -54,7 +54,7 @@ public sealed class NestedSetBoundsTests
     [InlineData(1L, 8L, 8L, 3L, false)]
     [InlineData(10L, 15L, 6L, 2L, false)]
     [InlineData(2L, long.MaxValue, long.MaxValue - 1, (long.MaxValue - 3) / 2, false)]
-    public void ComputesDenseTreeProperties(
+    public void Width_DenseTree_ReturnsExpectedProperties(
         long left,
         long right,
         long width,
@@ -81,7 +81,7 @@ public sealed class NestedSetBoundsTests
     [InlineData(long.MinValue, long.MaxValue)]
     [InlineData(2L, 2L)]
     [InlineData(3L, 2L)]
-    public void RejectsNonPositiveOrUnorderedBounds(
+    public void Construct_NonPositiveOrUnorderedBounds_ThrowsArgumentOutOfRangeException(
         long left,
         long right
     )
@@ -98,7 +98,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that construction rejects a width that cannot contain complete boundary pairs.</summary>
     [Fact]
-    public void RejectsOddWidth()
+    public void Construct_OddWidth_ThrowsArgumentOutOfRangeException()
     {
         // Arrange
         var invalid = (Left: 1, Right: 3);
@@ -112,7 +112,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that the default value cannot expose a valid width.</summary>
     [Fact]
-    public void DefaultBoundsRejectWidthCalculation()
+    public void Width_DefaultBounds_RejectWidthCalculation()
     {
         // Arrange
         var invalid = default(NestedSetBounds);
@@ -126,7 +126,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that the default value cannot silently appear to be a non-leaf.</summary>
     [Fact]
-    public void DefaultBoundsRejectLeafCalculation()
+    public void IsLeaf_DefaultBounds_RejectLeafCalculation()
     {
         // Arrange
         var invalid = default(NestedSetBounds);
@@ -140,7 +140,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that the default value cannot expose a descendant count.</summary>
     [Fact]
-    public void DefaultBoundsRejectDescendantCalculation()
+    public void DescendantCount_DefaultBounds_RejectDescendantCalculation()
     {
         // Arrange
         var invalid = default(NestedSetBounds);
@@ -154,7 +154,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that containment rejects a default candidate ancestor.</summary>
     [Fact]
-    public void ContainsRejectsDefaultAncestor()
+    public void Contains_DefaultAncestor_IsRejected()
     {
         // Arrange
         var invalid = default(NestedSetBounds);
@@ -169,7 +169,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies that containment rejects a default candidate descendant.</summary>
     [Fact]
-    public void ContainsRejectsDefaultDescendant()
+    public void Contains_DefaultDescendant_IsRejected()
     {
         // Arrange
         var valid = new NestedSetBounds(1, 2);
@@ -192,7 +192,7 @@ public sealed class NestedSetBoundsTests
     [InlineData(9L, 10L, false)]
     [InlineData(6L, 9L, false)]
     [InlineData(long.MaxValue - 1, long.MaxValue, false)]
-    public void ContainsRequiresBothStrictInteriorBounds(
+    public void Contains_BoundaryComparison_RequiresBothStrictInteriorBounds(
         long left,
         long right,
         bool expected
@@ -211,7 +211,7 @@ public sealed class NestedSetBoundsTests
 
     /// <summary>Verifies value equality for independently constructed identical intervals.</summary>
     [Fact]
-    public void BoundsHaveValueEquality()
+    public void Equals_Bounds_HaveValueEquality()
     {
         // Arrange
         var bounds = new NestedSetBounds(1, 2);

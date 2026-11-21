@@ -8,7 +8,7 @@ public sealed class CompositionCommandProbeTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReaderDispatchRecordsTheOriginalCancellationToken(
+    public async Task ReaderExecutingAsync_ReaderDispatch_RecordsTheOriginalCancellationToken(
         bool canceled
     )
     {
@@ -33,7 +33,7 @@ public sealed class CompositionCommandProbeTests
 
     /// <summary>Fixture reset removes the previous dispatch token together with its command count.</summary>
     [Fact]
-    public async Task ResetClearsCapturedReaderCancellation()
+    public async Task Reset_PreviouslyCapturedReaderCancellation_IsCleared()
     {
         // Arrange
         var probe = new CompositionCommandProbe();
@@ -55,7 +55,7 @@ public sealed class CompositionCommandProbeTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NonReaderDispatchDoesNotInventReaderCancellation(
+    public async Task ScalarExecutingAsync_NonReaderDispatch_DoesNotInventReaderCancellation(
         bool scalar
     )
     {

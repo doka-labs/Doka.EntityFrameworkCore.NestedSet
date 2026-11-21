@@ -7,8 +7,9 @@ public abstract partial class EnterpriseTests
     [EngineFact(
         ExcludedEngines = ["Sqlite", "SqlServer"],
         Reason =
-            "The staged concurrent delete requires an MVCC read snapshot; SQLite and the default SQL Server fixture retain blocking read locks.")]
-    public async Task ValidationSnapshotSurvivesConcurrentDeleteBetweenReads()
+            "The staged concurrent delete requires an MVCC read snapshot; "
+            + "SQLite and the default SQL Server fixture retain blocking read locks.")]
+    public async Task ValidateAsync_ValidationSnapshot_SurvivesConcurrentDeleteBetweenReads()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -70,7 +71,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies snapshot validation preserves caller transactions and their uncommitted payloads.</summary>
     /// <returns>A task that completes after checking transaction ownership and application state.</returns>
     [Fact]
-    public async Task ValidationPreservesCallerSerializableTransaction()
+    public async Task ValidateAsync_Validation_PreservesCallerSerializableTransaction()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -78,7 +79,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         await using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync(

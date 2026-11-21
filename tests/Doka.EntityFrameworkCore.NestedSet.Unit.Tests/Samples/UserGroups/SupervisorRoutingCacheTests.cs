@@ -9,7 +9,7 @@ public sealed class SupervisorRoutingCacheTests
 {
     /// <summary>Every cached owner-pair shape contains only expression parameters and immutable owner flags.</summary>
     [Fact]
-    public void CachedRoutingShapesContainNoScopedQueryState()
+    public void GetField_CachedRoutingShapes_ContainNoScopedQueryState()
     {
         // Arrange
         var field = typeof(SupervisorQueries)

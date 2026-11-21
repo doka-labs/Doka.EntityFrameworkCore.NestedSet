@@ -1,0 +1,5 @@
+# WHY: Repository text has consistent LF bytes independently of personal Git configuration.
+* text=auto
+
+# WHY: Raw-string SQL and fixture values must not acquire platform-dependent line endings.
+*.cs text eol=lf

@@ -275,7 +275,7 @@ Benchmarks measure the real sample builders and an independently composed LINQ
 reference on identical prepared data. Generated SQL work, broad/deep trees and
 materialization controls retain separate evidence boundaries.
 
-See the [regression map](../../docs/query-composition-regression-coverage.md),
+See the [test guide](../../docs/testing.md),
 [performance guide](../../docs/performance.md) and
 [measurement qualification](../../docs/qualification/query-performance.md) for
 source references and the exact scope of measured evidence. Historical figures

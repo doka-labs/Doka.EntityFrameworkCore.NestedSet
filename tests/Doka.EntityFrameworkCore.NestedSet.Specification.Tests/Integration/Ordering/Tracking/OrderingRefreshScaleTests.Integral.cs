@@ -25,7 +25,7 @@ public abstract partial class OrderingRefreshScaleTests
     /// </summary>
     [Theory]
     [MemberData(nameof(IntegralCases))]
-    public async Task IntegralCollectionTransportPreservesAcceptedNativeExtremes(
+    public async Task Match_IntegralCollectionTransport_PreservesAcceptedNativeExtremes(
         Type keyType
     )
     {

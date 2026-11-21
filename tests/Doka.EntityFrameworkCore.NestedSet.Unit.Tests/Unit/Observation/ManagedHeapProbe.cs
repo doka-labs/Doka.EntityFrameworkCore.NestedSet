@@ -11,6 +11,9 @@ internal static class ManagedHeapProbe
     /// <summary>Identifies the exact private command handled before xUnit initializes.</summary>
     internal const string Command = "--nestedset-heap-calibration";
 
+    /// <summary>Identifies the child that remains alive until its owning cancellation test terminates it.</summary>
+    internal const string CancellationCommand = "--nestedset-heap-cancellation-control";
+
     /// <summary>Measures a warmed object shape without loading the test runner's transient state.</summary>
     /// <param name="shape">The independently counted small-object or small-array allocation shape.</param>
     /// <returns>The retained growth, allocation traffic and number of strongly held objects.</returns>
@@ -38,8 +41,27 @@ internal static class ManagedHeapProbe
     /// <param name="shape">The allocation shape measured in the independent process.</param>
     /// <param name="cancellationToken">The caller's token for forward waiting, never for child cleanup.</param>
     /// <returns>The child process's independent counters.</returns>
-    internal static async Task<Measurement> RunIsolatedAsync(
+    internal static Task<Measurement> RunIsolatedAsync(
         string shape,
+        CancellationToken cancellationToken
+    ) => RunChildAsync(Command, shape, null, cancellationToken);
+
+    /// <summary>
+    /// Uses a nonterminating child to observe cancellation and reaping independently of machine speed.
+    /// </summary>
+    /// <param name="started">Observes the owned native handle before forward waiting begins.</param>
+    /// <param name="cancellationToken">The caller's cancellation request for the live child.</param>
+    /// <returns>The interrupted probe task; the control never completes with a measurement.</returns>
+    internal static Task<Measurement> RunCancellationControlAsync(
+        Action<Process> started,
+        CancellationToken cancellationToken
+    ) => RunChildAsync(CancellationCommand, "wait", started, cancellationToken);
+
+    /// <summary>Owns the child and drains both streams before releasing its process resources on every exit.</summary>
+    private static async Task<Measurement> RunChildAsync(
+        string command,
+        string shape,
+        Action<Process>? started,
         CancellationToken cancellationToken
     )
     {
@@ -54,24 +76,22 @@ internal static class ManagedHeapProbe
         };
 
         start.ArgumentList.Add(typeof(UnitTestProgram).Assembly.Location);
-        start.ArgumentList.Add(Command);
+        start.ArgumentList.Add(command);
         start.ArgumentList.Add(shape);
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException("The isolated heap calibration process did not start.");
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromMinutes(1));
-        using var cleanup = new CancellationTokenSource();
-
-        // WHY: Cancellation must stop forward waiting without abandoning the streams before child termination.
-        var output = process.StandardOutput.ReadToEndAsync(cleanup.Token);
-        var errors = process.StandardError.ReadToEndAsync(cleanup.Token);
+        // WHY: Readers belong to the child, not the cancellable wait. Termination and draining must finish
+        // before their process is disposed; the outer runner alone owns hang protection.
+        var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
 
         try
         {
-            await process.WaitForExitAsync(timeout.Token);
-            var json = await output.WaitAsync(timeout.Token);
-            var error = await errors.WaitAsync(timeout.Token);
+            started?.Invoke(process);
+            await process.WaitForExitAsync(cancellationToken);
+            var json = await output.WaitAsync(cancellationToken);
+            var error = await errors.WaitAsync(cancellationToken);
 
             if (process.ExitCode != 0)
             {
@@ -82,9 +102,8 @@ internal static class ManagedHeapProbe
         }
         catch (Exception failure)
         {
-            // WHY: Recovery has its own deadline; the caller's expired token cannot prevent reaping or draining.
-            cleanup.CancelAfter(TimeSpan.FromSeconds(10));
-            var cleanupFailures = new List<Exception>();
+            // WHY: An expired request cannot interrupt reaping or stream draining after the owned child is killed.
+            List<Exception> cleanupFailures = [];
 
             try
             {
@@ -104,14 +123,16 @@ internal static class ManagedHeapProbe
 
             try
             {
-                await process.WaitForExitAsync(cleanup.Token);
+                await process.WaitForExitAsync(CancellationToken.None);
             }
             catch (Exception cleanupFailure)
             {
                 cleanupFailures.Add(cleanupFailure);
             }
 
-            foreach (var read in new[] { output, errors })
+            Task<string>[] reads = [output, errors];
+
+            foreach (var read in reads)
             {
                 try
                 {

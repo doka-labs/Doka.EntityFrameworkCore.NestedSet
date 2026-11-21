@@ -104,6 +104,7 @@ internal sealed partial class NestedSetStore<TEntity, TKey, TTreeId, TScope>
     /// <param name="value">The typed parent identity, or an absent value for roots.</param>
     /// <param name="cancellationToken">The token used to cancel the update.</param>
     /// <returns>The number of affected rows.</returns>
+    [UsedImplicitly]
     private static Task<int> SetParentTypedAsync<TParent>(
         IQueryable<TEntity> query,
         string name,

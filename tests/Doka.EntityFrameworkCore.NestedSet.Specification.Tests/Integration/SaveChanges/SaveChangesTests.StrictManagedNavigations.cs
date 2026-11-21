@@ -7,7 +7,7 @@ public abstract partial class SaveChangesTests
     [InlineData("single")]
     [InlineData("subtree")]
     [InlineData("forest")]
-    public async Task ManualManagedCallbacksCannotChangeHierarchyNavigation(
+    public async Task InsertForestAsync_ManualManagedCallbacks_CannotChangeHierarchyNavigation(
         string shape
     )
     {

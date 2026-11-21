@@ -68,6 +68,10 @@ Position 2  Pictures
 Positions restart for every parent. A root has Position zero because it has no
 root siblings inside its TreeId.
 
+Parent presence is independent of a key's default value. An assigned key of
+`0` or `Guid.Empty` is a real parent; only the mapped absent/null Parent denotes
+a root. Converters and the mapped principal-key comparison retain that meaning.
+
 The scoped parent identity is `(Scope, NodeKey)`, not `(Scope, TreeId,
 NodeKey)`. This permits a subtree to change TreeId during a cross-tree move
 without relying on a self-referential cascading key update. The mutation engine
@@ -174,3 +178,15 @@ conflicting domain relationships, or repair a cycle without application input.
 
 See [Queries and mutations](operations.md) for the facade and
 [Transactions and locking](transactions-and-locking.md) before live repair.
+
+## Core value contracts
+
+`Doka.NestedSet` has no EF dependency. Its optional
+`INestedSetNode<TNodeKey, TTreeId>` and
+`IScopedNestedSetNode<TNodeKey, TTreeId, TScope>` interfaces describe conventional
+roles; explicit EF mapping remains the compatibility path for existing entities.
+`NestedSetBounds` validates one inclusive interval, and the relationship
+extensions compare complete tree identity before evaluating ancestry or descent.
+The public types' XML documentation is the API contract; the
+[shipped baseline](../src/Doka.NestedSet/PublicAPI.Shipped.txt) records the exact
+released declarations.

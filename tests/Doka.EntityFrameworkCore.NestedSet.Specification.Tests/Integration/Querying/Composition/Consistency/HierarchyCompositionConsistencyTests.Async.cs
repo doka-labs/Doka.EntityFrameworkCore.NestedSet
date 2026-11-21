@@ -9,7 +9,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OneAsyncTerminalExecutesOneMixedQuery(
+    public async Task SumAsync_OneAsyncTerminal_ExecutesOneMixedQuery(
         bool aggregate
     )
     {
@@ -41,7 +41,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CancellationBeforeExecutionDoesNotProduceAResult(
+    public async Task SumAsync_CancellationBeforeExecution_DoesNotProduceAResult(
         bool aggregate
     )
     {
@@ -97,7 +97,7 @@ public abstract partial class HierarchyCompositionConsistencyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CancellationDuringReaderDoesNotReturnPartialSuccess(
+    public async Task SumAsync_CancellationDuringReader_DoesNotReturnPartialSuccess(
         bool aggregate
     )
     {

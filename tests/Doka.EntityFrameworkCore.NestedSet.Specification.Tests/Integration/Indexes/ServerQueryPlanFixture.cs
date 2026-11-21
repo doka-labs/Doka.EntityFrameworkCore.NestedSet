@@ -51,7 +51,11 @@ public sealed class ServerQueryPlanFixture : IAsyncLifetime
         // initialization task prevents per-row resets without introducing another container or shared global seed.
         await (_initialization ??= InitializeSeedAsync(engine, cancellationToken: cancellationToken));
 
-        return await _fixture.CreateContextAsync(engine, cancellationToken: cancellationToken, "Strict", probe);
+        return await _fixture.CreateContextAsync(
+            engine,
+            cancellationToken: cancellationToken,
+            mode: "Strict",
+            interceptors: [probe]);
     }
 
     /// <summary>Retains one query observation in the original scope, anchor and query-kind order.</summary>
@@ -95,7 +99,7 @@ public sealed class ServerQueryPlanFixture : IAsyncLifetime
         CancellationToken cancellationToken
     )
     {
-        await using var setup = await _fixture.ResetAsync(engine, cancellationToken: cancellationToken);
+        await using var setup = await _fixture.ResetAsync(engine, cancellationToken: cancellationToken, mode: "Strict");
         await SeedAsync(setup, cancellationToken: cancellationToken);
         await QueryPlanTestSupport.RefreshStatisticsAsync<OrderingNode>(
             setup,

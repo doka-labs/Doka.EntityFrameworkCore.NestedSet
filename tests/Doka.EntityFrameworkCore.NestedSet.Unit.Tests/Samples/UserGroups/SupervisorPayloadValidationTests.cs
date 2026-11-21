@@ -19,7 +19,7 @@ public sealed class SupervisorPayloadValidationTests
     [InlineData("text", false)]
     [InlineData("null", false)]
     [InlineData("empty", false)]
-    public async Task ExplicitPayloadPolicyRejectsInvalidFieldsAndPreservesMissingValues(
+    public async Task Validate_ExplicitPayloadPolicy_RejectsInvalidFieldsAndPreservesMissingValues(
         string shape,
         bool invalid
     )

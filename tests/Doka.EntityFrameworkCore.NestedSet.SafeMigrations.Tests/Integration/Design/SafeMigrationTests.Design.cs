@@ -15,7 +15,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task UnchangedSnapshotProducesNoMigrationOperations(
+    public async Task Scaffold_UnchangedSnapshot_ProducesNoMigrationOperations(
         string engine,
         bool qualifySchema
     )
@@ -47,7 +47,7 @@ public sealed partial class SafeMigrationTests
     [InlineData("Npgsql.EntityFrameworkCore.PostgreSQL")]
     [InlineData("Microsoft.EntityFrameworkCore.SqlServer")]
     [InlineData("Doka.EntityFrameworkCore.MySql")]
-    public void PackageBuildAssetsRegisterProviderDesignServices(
+    public void GetCustomAttributes_PackageBuildAssets_RegisterProviderDesignServices(
         string provider
     )
     {
@@ -81,7 +81,7 @@ public sealed partial class SafeMigrationTests
     [InlineData(
         MigrationsSqlGenerationOptions.Script | MigrationsSqlGenerationOptions.Idempotent,
         "Generating idempotent scripts for migrations is not")]
-    public async Task SqliteSafeScriptGenerationIsRejectedBeforeMutation(
+    public async Task GenerateScript_SqliteSafeScriptGeneration_IsRejectedBeforeMutation(
         MigrationsSqlGenerationOptions options,
         string expectedMessage
     )
@@ -93,8 +93,10 @@ public sealed partial class SafeMigrationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var baseline = database.Scaffold(MigrationStage.Baseline, "SafeBaseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken, target: null);
+        await database.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var upgrade = database.Scaffold(MigrationStage.Current, "SafeScopeKey", baseline);
         await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
         var migrator = context.GetService<IMigrator>();
@@ -102,7 +104,9 @@ public sealed partial class SafeMigrationTests
             await database.ReadIndexesAsync(
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodesBefore = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodesBefore = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var historyBefore = (await context.Database.GetAppliedMigrationsAsync(CancellationToken.None)).ToArray();
 
         // WHY: SafeMigrations rejects ordinary scripts; EF's SQLite history guard rejects idempotent scripts first.
@@ -121,7 +125,8 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             nodesBefore,
             await database.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
 
         Assert.Equal([baseline.MigrationIds[0]], historyBefore);
         Assert.Equal(historyBefore, await context.Database.GetAppliedMigrationsAsync(CancellationToken.None));

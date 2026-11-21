@@ -7,7 +7,7 @@ public sealed partial class ProviderFixtureContractTests
     /// Inherited class fixtures satisfy the actual concrete constructor rather than its base constructor.
     /// </summary>
     [Fact]
-    public void InheritedClassFixtureResolvesConcreteConstructor()
+    public void FindErrors_InheritedClassFixture_ResolvesConcreteConstructor()
     {
         // Arrange
         var subject = typeof(InheritedFixtureSubject);
@@ -23,7 +23,7 @@ public sealed partial class ProviderFixtureContractTests
     /// Inheriting a valid fixture interface cannot hide a different unsupported leaf constructor argument.
     /// </summary>
     [Fact]
-    public void InheritedRegistrationCannotHideWrongLeafConstructor()
+    public void FindErrors_InheritedRegistration_CannotHideWrongLeafConstructor()
     {
         // Arrange
         var subject = typeof(WrongLeafFixtureSubject);
@@ -42,7 +42,7 @@ public sealed partial class ProviderFixtureContractTests
     [Theory]
     [InlineData(typeof(ClassFixtureDefinition))]
     [InlineData(typeof(CollectionFixtureDefinition))]
-    public void DefinitionFixtureResolvesConcreteConstructor(
+    public void FindErrors_DefinitionFixture_ResolvesConcreteConstructor(
         Type definition
     )
     {
@@ -60,7 +60,7 @@ public sealed partial class ProviderFixtureContractTests
     /// Assembly registration supports exact injection even when no class or collection fixture exists.
     /// </summary>
     [Fact]
-    public void AssemblyFixtureResolvesConcreteConstructor()
+    public void FindErrors_AssemblyFixture_ResolvesConcreteConstructor()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(ResourceSubject), assemblyFixtures: [typeof(Resource)]);
@@ -75,7 +75,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>Removing the required assembly registration makes the same constructor unsupported.</summary>
     [Fact]
-    public void MissingAssemblyFixtureRejectsConcreteConstructor()
+    public void FindErrors_MissingAssemblyFixture_RejectsConcreteConstructor()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(ResourceSubject));
@@ -91,7 +91,7 @@ public sealed partial class ProviderFixtureContractTests
     /// Partial open-generic fixture registrations resolve a closed request through its generic definition.
     /// </summary>
     [Fact]
-    public void GenericFixtureDefinitionResolvesClosedConstructor()
+    public void FindErrors_GenericFixtureDefinition_ResolvesClosedConstructor()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(GenericResourceSubject), typeof(GenericCollectionDefinition<>));
@@ -105,7 +105,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>A directly registered open generic cannot be eagerly constructed as an assembly fixture.</summary>
     [Fact]
-    public void DirectOpenGenericAssemblyFixtureIsRejected()
+    public void FindErrors_Direct_OpenGenericAssemblyFixtureIsRejected()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(GenericResourceSubject), assemblyFixtures: [typeof(GenericResource<>)]);
@@ -126,7 +126,7 @@ public sealed partial class ProviderFixtureContractTests
     [InlineData(typeof(DefaultArgumentSubject))]
     [InlineData(typeof(OptionalArgumentSubject))]
     [InlineData(typeof(ParamsArgumentSubject))]
-    public void SupportedTestArgumentsAreAccepted(
+    public void FindErrors_SupportedTestArguments_AreAccepted(
         Type subject
     )
     {
@@ -142,7 +142,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>Static test classes do not require a public instance constructor.</summary>
     [Fact]
-    public void StaticClassNeedsNoInstanceConstructor()
+    public void FindErrors_StaticClass_NeedsNoInstanceConstructor()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(StaticSubject));
@@ -164,7 +164,7 @@ public sealed partial class ProviderFixtureContractTests
     [InlineData(typeof(TestContextSubject), "ITestContext context")]
     [InlineData(typeof(DerivedOutputSubject), "IExtendedOutput output")]
     [InlineData(typeof(AssignableFixtureSubject), "Resource resource")]
-    public void UnsupportedTestArgumentsAreRejected(
+    public void FindErrors_UnsupportedTestArguments_AreRejected(
         Type subject,
         string missingArgument
     )
@@ -184,7 +184,7 @@ public sealed partial class ProviderFixtureContractTests
     [InlineData(typeof(NoPublicConstructorSubject), "exactly one public constructor")]
     [InlineData(typeof(MultipleConstructorSubject), "exactly one public constructor")]
     [InlineData(typeof(MisplacedCollectionFixtureSubject), "ICollectionFixture")]
-    public void InvalidTestClassShapesAreRejected(
+    public void FindErrors_InvalidTestClassShapes_AreRejected(
         Type subject,
         string diagnostic
     )
@@ -201,7 +201,7 @@ public sealed partial class ProviderFixtureContractTests
 
     /// <summary>A collection attribute on a base suite resolves the provider's public named definition.</summary>
     [Fact]
-    public void InheritedNamedCollectionSuppliesFixture()
+    public void FindErrors_InheritedNamedCollection_SuppliesFixture()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(InheritedCollectionSubject));
@@ -218,7 +218,7 @@ public sealed partial class ProviderFixtureContractTests
     /// A nested class does not inherit its enclosing class's collection or its fixture registrations.
     /// </summary>
     [Fact]
-    public void NestedClassCannotBorrowEnclosingCollection()
+    public void FindErrors_NestedClass_CannotBorrowEnclosingCollection()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(CollectionOuter.NestedSubject));
@@ -235,7 +235,7 @@ public sealed partial class ProviderFixtureContractTests
     /// An unknown named collection remains fixture-free and cannot resolve a required constructor argument.
     /// </summary>
     [Fact]
-    public void MissingNamedDefinitionRejectsRequiredFixture()
+    public void FindErrors_MissingNamedDefinition_RejectsRequiredFixture()
     {
         // Arrange
         var metadata = CreateMetadata(typeof(UnknownCollectionSubject));
@@ -252,7 +252,7 @@ public sealed partial class ProviderFixtureContractTests
     /// An inherited type-based attribute can resolve a definition outside the metadata's assembly inventory.
     /// </summary>
     [Fact]
-    public void ExternalTypeBasedCollectionSuppliesFixture()
+    public void FindErrors_ExternalTypeBasedCollection_SuppliesFixture()
     {
         // Arrange
         // WHY: A library-owned metadata inventory isolates the external-definition fallback from named lookup.

@@ -8,7 +8,7 @@ public sealed partial class DokaSourceBindingTests
     /// <summary>Reading the actual typed marker identity allocates no replacement reflection metadata.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void WarmTypedMethodIdentityLookupDoesNotAllocate()
+    public void MeasureMethodLookups_WarmTypedMethodIdentityLookup_DoesNotAllocate()
     {
         // Arrange
         var adapter = NestedSetTestAdapters.ForEngine("MySql");

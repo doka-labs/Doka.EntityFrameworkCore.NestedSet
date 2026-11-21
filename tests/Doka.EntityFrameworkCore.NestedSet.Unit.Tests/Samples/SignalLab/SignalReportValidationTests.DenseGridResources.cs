@@ -7,7 +7,7 @@ public sealed partial class SignalReportValidationTests
     /// <summary>A dense streamed grid retains only bounded indexes and its final ordered cells.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public async Task DenseStreamedGridRetainsBoundedTemporaryState()
+    public async Task CreateGridAsync_DenseStreamedGrid_RetainsBoundedTemporaryState()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(
@@ -63,7 +63,7 @@ public sealed partial class SignalReportValidationTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Dense streamed grid: cells={cells.Length}; allocated={allocated} B; "
             + $"maximum={maximumBytes} B.");
 

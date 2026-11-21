@@ -17,7 +17,7 @@ public abstract partial class GroupSupervisorTests
     [InlineData(false, 1, true)]
     [InlineData(false, 2, true)]
     [InlineData(false, 3, false)]
-    public async Task GroupOrdinalsKeepNativeWorkBoundedByOriginsAndOccurrences(
+    public async Task ResolveAsync_GroupOrdinals_KeepNativeWorkBoundedByOriginsAndOccurrences(
         bool typeFirst,
         int number,
         bool found
@@ -31,7 +31,7 @@ public abstract partial class GroupSupervisorTests
         await using var context = await CreateAsync(
             probe,
             cancellationToken: TestContext.Current.CancellationToken,
-            plans);
+            planProbe: plans);
 
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedGroupRankOriginsAsync(

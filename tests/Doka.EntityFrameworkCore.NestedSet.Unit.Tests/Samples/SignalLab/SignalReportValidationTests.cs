@@ -3,17 +3,25 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Guards sample-owned request, calendar and result-grid rules once, independently of SQL providers.</summary>
-public sealed partial class SignalReportValidationTests(
-    ITestOutputHelper output
-)
+public sealed partial class SignalReportValidationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    public SignalReportValidationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Inclusive boundaries, open ends and the maximum date require no AddDays conversion.</summary>
     [Theory]
     [InlineData(17, false)]
     [InlineData(0, true)]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public void PeriodUsesInclusiveDays(
+    public void IsAllowed_Period_UsesInclusiveDays(
         int day,
         bool expected
     )
@@ -33,7 +41,7 @@ public sealed partial class SignalReportValidationTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MaximumDayDoesNotOverflow(
+    public void IsAllowed_MaximumDay_DoesNotOverflow(
         bool openEnd
     )
     {
@@ -52,7 +60,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>Invalid inclusive intervals fail before persistence.</summary>
     [Fact]
-    public void ReversedPeriodIsRejected()
+    public void RequirePeriod_ReversedPeriod_IsRejected()
     {
         // Arrange
         var from = SignalReportDataset.FirstDay.AddDays(1);
@@ -67,7 +75,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>Repeated selections and identical criteria do not change the scalar report grain.</summary>
     [Fact]
-    public void SnapshotDeduplicatesSelectionsAndScalarCriteria()
+    public void Snapshot_DuplicateSelectionsAndScalarCriteria_AreDeduplicated()
     {
         // Arrange
         var request = Request();
@@ -94,7 +102,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>Two AND values of one scalar field are a request error rather than an implicit OR.</summary>
     [Fact]
-    public void ConflictingScalarValuesAreRejected()
+    public void Snapshot_ConflictingScalarValues_AreRejected()
     {
         // Arrange
         var request = Request();
@@ -110,7 +118,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>One classification cannot silently evaluate its fields against different owner policies.</summary>
     [Fact]
-    public void MixedOwnerModesAreRejected()
+    public void Snapshot_MixedOwnerModes_AreRejected()
     {
         // Arrange
         var request = Request();
@@ -135,7 +143,7 @@ public sealed partial class SignalReportValidationTests(
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void UnknownOperatorOrGrainIsRejected(
+    public void Snapshot_UnknownOperatorOrGrain_IsRejected(
         bool invalidOperator
     )
     {
@@ -154,7 +162,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>The same fixed catalog accepts its exact codes and choices.</summary>
     [Fact]
-    public void ExactCatalogValuesAreAccepted()
+    public void RequireCatalog_ExactCatalogValues_AreAccepted()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request());
@@ -175,7 +183,7 @@ public sealed partial class SignalReportValidationTests(
     [InlineData("wrong-type")]
     [InlineData("unknown-choice")]
     [InlineData("case")]
-    public void InvalidCatalogBindingIsRejected(
+    public void RequireCatalog_InvalidCatalogBinding_IsRejected(
         string shape
     )
     {
@@ -210,7 +218,7 @@ public sealed partial class SignalReportValidationTests(
     [Theory]
     [InlineData("")]
     [InlineData("currency")]
-    public void IncompatibleMetricUnitsAreRejected(
+    public void RequireCatalog_IncompatibleMetricUnits_AreRejected(
         string unit
     )
     {
@@ -242,7 +250,7 @@ public sealed partial class SignalReportValidationTests(
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void MissingAnchorOrMetricIsRejected(
+    public void RequireCatalog_MissingAnchorOrMetric_IsRejected(
         int kind
     )
     {
@@ -261,7 +269,7 @@ public sealed partial class SignalReportValidationTests(
 
     /// <summary>An absent SQL group remains distinct from a measured zero in the display grid.</summary>
     [Fact]
-    public void GridPreservesMissingVersusMeasuredZero()
+    public void CreateGrid_Grid_PreservesMissingVersusMeasuredZero()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(

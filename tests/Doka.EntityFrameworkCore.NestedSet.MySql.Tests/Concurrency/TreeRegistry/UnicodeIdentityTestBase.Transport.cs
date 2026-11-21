@@ -9,7 +9,7 @@ public abstract partial class UnicodeIdentityTestBase
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task SupplementaryRowsetsReserveEveryDistinctIdentity(
+    public async Task ExecuteAsync_SupplementaryRowsets_ReserveEveryDistinctIdentity(
         int count
     )
     {
@@ -101,7 +101,7 @@ public abstract partial class UnicodeIdentityTestBase
     [Theory]
     [InlineData(2)]
     [InlineData(256)]
-    public async Task SupplementaryRowsetsRejectEqualIdentities(
+    public async Task RequireDistinctAsync_SupplementaryRowsets_RejectEqualIdentities(
         int count
     )
     {

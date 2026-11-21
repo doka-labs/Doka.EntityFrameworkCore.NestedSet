@@ -17,7 +17,7 @@ public abstract partial class CapacityTests
     [InlineData(129, true, true)]
     [InlineData(100_001, false, false)]
     [InlineData(100_001, true, false)]
-    public async Task CoordinateOracleRecognizesCompleteFixtures(
+    public async Task MismatchesAsync_CoordinateOracleRecognizes_CompleteFixtures(
         int count,
         bool deep,
         bool corrupt
@@ -33,8 +33,8 @@ public abstract partial class CapacityTests
             setup,
             count,
             cancellationToken: TestContext.Current.CancellationToken,
-            deep,
-            corrupt);
+            deep: deep,
+            corrupt: corrupt);
 
         await using var context = CreateCapacityContext(database);
 
@@ -43,8 +43,8 @@ public abstract partial class CapacityTests
             context,
             count,
             cancellationToken: TestContext.Current.CancellationToken,
-            deep,
-            corrupt);
+            deep: deep,
+            corrupt: corrupt);
 
         // Assert
         Assert.Equal(0, mismatches);
@@ -60,7 +60,7 @@ public abstract partial class CapacityTests
     [InlineData(2)]
     [InlineData(100_000)]
     [InlineData(100_001)]
-    public async Task CoordinateOracleDetectsMissingRows(
+    public async Task MismatchesAsync_CoordinateOracle_DetectsMissingRows(
         int key
     )
     {
@@ -74,11 +74,16 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == key)
-            .ExecuteDeleteAsync(CancellationToken.None);
+            .ExecuteDeleteAsync(TestContext.Current.CancellationToken);
 
         await using var context = CreateCapacityContext(database);
 
@@ -86,7 +91,9 @@ public abstract partial class CapacityTests
         var mismatches = await CapacitySeed.MismatchesAsync(
             context,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -103,7 +110,7 @@ public abstract partial class CapacityTests
     [InlineData(0, false)]
     [InlineData(130, false)]
     [InlineData(130, true)]
-    public async Task CoordinateOracleDetectsUnexpectedRows(
+    public async Task MismatchesAsync_CoordinateOracle_DetectsUnexpectedRows(
         int key,
         bool replace
     )
@@ -115,14 +122,19 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         if (replace)
         {
             await setup
                 .Set<TreeNode>()
                 .Where(node => node.NodeId == count)
-                .ExecuteDeleteAsync(CancellationToken.None);
+                .ExecuteDeleteAsync(TestContext.Current.CancellationToken);
         }
 
         setup.Add(
@@ -138,14 +150,16 @@ public abstract partial class CapacityTests
                 Position = 128,
             });
 
-        await setup.SavePrecomputedHierarchyAsync(CancellationToken.None);
+        await setup.SavePrecomputedHierarchyAsync(TestContext.Current.CancellationToken);
         await using var context = CreateCapacityContext(database);
 
         // Act
         var mismatches = await CapacitySeed.MismatchesAsync(
             context,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         // Assert
         Assert.Equal(
@@ -177,7 +191,7 @@ public abstract partial class CapacityTests
     [InlineData(nameof(TreeNode.Depth), false, true)]
     [InlineData(nameof(TreeNode.Position), true, false)]
     [InlineData(nameof(TreeNode.Position), false, true)]
-    public async Task CoordinateOracleDetectsStructuralDamage(
+    public async Task MismatchesAsync_CoordinateOracle_DetectsStructuralDamage(
         string field,
         bool root,
         bool deep
@@ -193,7 +207,12 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken, deep);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: deep,
+            corrupt: false);
         var target = setup
             .Set<TreeNode>()
             .Where(node => node.NodeId
@@ -209,7 +228,8 @@ public abstract partial class CapacityTests
             context,
             count,
             cancellationToken: TestContext.Current.CancellationToken,
-            deep);
+            deep: deep,
+            corrupt: false);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -223,7 +243,7 @@ public abstract partial class CapacityTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CoordinateOracleDetectsWrongNonNullParent(
+    public async Task MismatchesAsync_CoordinateOracle_DetectsWrongNonNullParent(
         bool deep
     )
     {
@@ -234,7 +254,12 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken, deep);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: deep,
+            corrupt: false);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == count)
@@ -244,7 +269,7 @@ public abstract partial class CapacityTests
                     deep
                         ? 1
                         : 2),
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
 
         await using var context = CreateCapacityContext(database);
 
@@ -253,7 +278,8 @@ public abstract partial class CapacityTests
             context,
             count,
             cancellationToken: TestContext.Current.CancellationToken,
-            deep);
+            deep: deep,
+            corrupt: false);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -267,7 +293,7 @@ public abstract partial class CapacityTests
     [Theory]
     [InlineData(100_000)]
     [InlineData(100_001)]
-    public async Task CoordinateOracleDetectsDamageAcrossRangeBoundary(
+    public async Task MismatchesAsync_CoordinateOracle_DetectsDamageAcrossRangeBoundary(
         int key
     )
     {
@@ -278,11 +304,18 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         await setup
             .Set<TreeNode>()
             .Where(node => node.NodeId == key)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Depth, 9), CancellationToken.None);
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(node => node.Depth, 9),
+                TestContext.Current.CancellationToken);
 
         await using var context = CreateCapacityContext(database);
 
@@ -290,7 +323,9 @@ public abstract partial class CapacityTests
         var mismatches = await CapacitySeed.MismatchesAsync(
             context,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         // Assert
         Assert.Equal(1, mismatches);
@@ -301,7 +336,7 @@ public abstract partial class CapacityTests
     /// <returns>A task that completes after observing bounded aggregates without a command latency gate.</returns>
     [Trait("Category", "Capacity")]
     [Fact]
-    public async Task CoordinateOracleBoundsCoordinateAggregates()
+    public async Task MismatchesAsync_CoordinateOracle_BoundsCoordinateAggregates()
     {
         // Arrange
         const int count = 100_001;
@@ -310,7 +345,12 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = CreateCapacityContext(database);
-        await CapacitySeed.SeedAsync(setup, count, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            count,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         var probe = new CoordinateCommandProbe();
         await using var context = CreateCapacityContext(database, probe);
 
@@ -318,7 +358,9 @@ public abstract partial class CapacityTests
         var mismatches = await CapacitySeed.MismatchesAsync(
             context,
             count,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         // Assert
         Assert.Equal(0, mismatches);
@@ -341,71 +383,5 @@ public abstract partial class CapacityTests
                 Assert.InRange((long)command.Bounds[1] - command.Bounds[0] + 1, 1, 100_000);
                 Assert.Equal(0, command.Timeout);
             });
-    }
-
-    /// <summary>Changes one stored field without repairing the deliberately invalid fixture row.</summary>
-    /// <param name="cancellationToken">The caller's token for cancellable fixture work.</param>
-    private static Task<int> DamageAsync(
-        IQueryable<TreeNode> target,
-        string field,
-        bool root,
-        CancellationToken cancellationToken
-    ) => field switch
-    {
-        nameof(TreeNode.Tree) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Tree, 2),
-            cancellationToken),
-        nameof(TreeNode.TreeId) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.TreeId, s_inputTreeId),
-            cancellationToken),
-        nameof(TreeNode.Parent) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(
-                node => node.Parent,
-                root
-                    ? 129
-                    : null),
-            cancellationToken),
-        nameof(TreeNode.Start) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Start, 17L),
-            cancellationToken),
-        nameof(TreeNode.End) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.End, node => node.End + 1),
-            cancellationToken),
-        nameof(TreeNode.Depth) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Depth, 9),
-            cancellationToken),
-        nameof(TreeNode.Position) => target.ExecuteUpdateAsync(
-            setters => setters.SetProperty(node => node.Position, 17L),
-            cancellationToken),
-        _ => throw new ArgumentOutOfRangeException(nameof(field)),
-    };
-
-    /// <summary>Retains structural aggregate SQL and key-range bindings for query verification.</summary>
-    private sealed class CoordinateCommandProbe : DbCommandInterceptor
-    {
-        /// <summary>Gets the verification commands without retaining result rows or application payload.</summary>
-        internal List<(string Sql, int[] Bounds, int Timeout)> Commands { get; } = [];
-
-        /// <inheritdoc />
-        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-            DbCommand command,
-            CommandEventData eventData,
-            InterceptionResult<DbDataReader> result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            Commands.Add(
-                (
-                    command.CommandText,
-                    command
-                        .Parameters
-                        .Cast<DbParameter>()
-                        .Where(parameter => parameter.Value is int)
-                        .Select(parameter => Convert.ToInt32(parameter.Value, CultureInfo.InvariantCulture))
-                        .ToArray(),
-                    command.CommandTimeout));
-
-            return ValueTask.FromResult(result);
-        }
     }
 }

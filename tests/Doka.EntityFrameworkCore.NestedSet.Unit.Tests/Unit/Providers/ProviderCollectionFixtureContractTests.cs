@@ -9,7 +9,7 @@ public sealed class ProviderCollectionFixtureContractTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public void OwnedCollectionRegistersExactlyItsEngineFixtures(
+    public void FindErrors_OwnedCollection_RegistersExactlyItsEngineFixtures(
         string project
     )
     {
@@ -32,7 +32,7 @@ public sealed class ProviderCollectionFixtureContractTests
     [InlineData(typeof(ProviderFixture<ModelCompatibilityDatabase, SqlServerEngine>))]
     [InlineData(typeof(ProviderFixture<ProviderResources, SqliteEngine>))]
     [InlineData(typeof(UnrelatedFixture))]
-    public void UnexpectedCollectionFixtureIsRejectedWithoutActivation(
+    public void FindErrors_UnexpectedCollectionFixture_IsRejectedWithoutActivation(
         Type unexpected
     )
     {
@@ -53,7 +53,7 @@ public sealed class ProviderCollectionFixtureContractTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void MissingMySqlFamilyFixtureIsRejected(
+    public void FindErrors_MissingMySqlFamilyFixture_IsRejected(
         int omitted
     )
     {
@@ -85,7 +85,7 @@ public sealed class ProviderCollectionFixtureContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void InheritedRegistrationsRemainInExactSet(
+    public void FindErrors_InheritedRegistrations_RemainInExactSet(
         bool unexpected
     )
     {
@@ -118,7 +118,7 @@ public sealed class ProviderCollectionFixtureContractTests
     [InlineData("PostgreSql", 1)]
     [InlineData("SqlServer", 1)]
     [InlineData("Sqlite", 1)]
-    public void EmptyDefinitionRejectsEveryExpectedFixture(
+    public void FindErrors_EmptyDefinition_RejectsEveryExpectedFixture(
         string project,
         int expectedCount
     )
@@ -137,7 +137,7 @@ public sealed class ProviderCollectionFixtureContractTests
 
     /// <summary>A missing collection definition is rejected before its registration metadata is inspected.</summary>
     [Fact]
-    public void NullDefinitionIsRejected()
+    public void FindErrors_NullDefinition_IsRejected()
     {
         // Arrange
         var assemblyName = AssemblyName("Sqlite");
@@ -151,7 +151,7 @@ public sealed class ProviderCollectionFixtureContractTests
 
     /// <summary>An unregistered executable cannot select a permissive empty fixture contract.</summary>
     [Fact]
-    public void UnknownAssemblyIsRejected()
+    public void FindErrors_UnknownAssembly_IsRejected()
     {
         // Arrange
         var definition = CreateDefinition([]);

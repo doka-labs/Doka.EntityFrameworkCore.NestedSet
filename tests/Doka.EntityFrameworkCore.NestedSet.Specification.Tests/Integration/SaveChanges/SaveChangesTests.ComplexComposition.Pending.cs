@@ -17,7 +17,7 @@ public abstract partial class SaveChangesTests
     [InlineData("single", "deleted", true)]
     [InlineData("subtree", "deleted", false)]
     [InlineData("forest", "deleted", true)]
-    public async Task ComplexCompositionPendingGraphRetriesWithoutStagingHoles(
+    public async Task SaveChangesAsync_PendingComplexGraph_RetriesWithoutStagingHoles(
         string shape,
         string pending,
         bool automaticDetection

@@ -3,17 +3,25 @@ using System.Text.RegularExpressions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards the SQL Server completed long-path proof and its exact row-dependent fallback.</summary>
-/// <param name="output">The sink retaining actual generated SQL for native qualification.</param>
-public sealed partial class SqlServerPathFailureTranslationTests(
-    ITestOutputHelper output
-)
+public sealed partial class SqlServerPathFailureTranslationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">The sink retaining actual generated SQL for native qualification.</param>
+    public SqlServerPathFailureTranslationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Independent paths complete failure points once; row-dependent rules keep their own count.</summary>
     /// <param name="rowAware">Whether the edge rule depends on the original occurrence.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PathProofCompletesOnlyRowIndependentFailures(
+    public async Task FencedRelations_PathProof_CompletesOnlyRowIndependentFailures(
         bool rowAware
     )
     {
@@ -60,7 +68,7 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             .ToQueryString();
 
         var fenced = FencedRelations(sql);
-        output.WriteLine(sql);
+        _output.WriteLine(sql);
 
         // Assert
         Assert.Equal(
@@ -83,7 +91,7 @@ public sealed partial class SqlServerPathFailureTranslationTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CompletedFailurePointsKeepOuterFiltersOutsideTheFence(
+    public async Task ToQueryString_CompletedFailurePoints_KeepOuterFiltersOutsideTheFence(
         bool nearest
     )
     {
@@ -129,7 +137,7 @@ public sealed partial class SqlServerPathFailureTranslationTests(
             .Select(row => row.Lower.Id)
             .ToQueryString();
 
-        output.WriteLine(sql);
+        _output.WriteLine(sql);
 
         // Assert
         AssertUncorrelated(Assert.Single(FencedRelations(sql)));
@@ -143,7 +151,7 @@ public sealed partial class SqlServerPathFailureTranslationTests(
 
     /// <summary>The guard rejects a fenced relation that reads an alias declared outside it.</summary>
     [Fact]
-    public void CorrelationGuardRejectsOuterAliases()
+    public void AssertUncorrelated_CorrelationGuard_RejectsOuterAliases()
     {
         // Arrange
         const string inner = "SELECT [f].[Start] FROM [Nodes] AS [f] WHERE [f].[Tree] = @tree";
@@ -162,7 +170,7 @@ public sealed partial class SqlServerPathFailureTranslationTests(
         string sql
     )
     {
-        var result = new List<string>();
+        List<string> result = [];
 
         foreach (Match fence in Regex.Matches(sql, @"ORDER BY \[\w+\]\.\[\w+\]\s+OFFSET 0 ROWS"))
         {

@@ -5,7 +5,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 {
     /// <summary>An unchanged attached entity cannot hide a null required reference TreeId.</summary>
     [Fact]
-    public async Task NullRequiredTrackedTreeIdRejectsBeforeDatabaseCommands()
+    public async Task DeleteTreeAsync_NullRequiredTrackedTreeId_RejectsBeforeDatabaseCommands()
     {
         // Arrange
         var probe = new NativeGuardProbe();

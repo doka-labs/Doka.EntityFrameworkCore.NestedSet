@@ -6,10 +6,18 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class CompositionVisibilityTraversalTests
 {
     /// <summary>Models custom reflection metadata that can change its reported query modifier between visits.</summary>
-    private sealed class QueryMethodProbe(
-        bool rejectSecondVisit
-    ) : MethodInfo
+    private sealed class QueryMethodProbe : MethodInfo
     {
+        private readonly bool _rejectSecondVisit;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public QueryMethodProbe(
+            bool rejectSecondVisit
+        )
+        {
+            _rejectSecondVisit = rejectSecondVisit;
+        }
+
         private bool _observing;
 
         /// <summary>Gets the number of metadata inspections after the source was constructed.</summary>
@@ -25,7 +33,7 @@ public sealed partial class CompositionVisibilityTraversalTests
                     DeclaringTypeReads++;
                 }
 
-                return rejectSecondVisit && DeclaringTypeReads > 1
+                return _rejectSecondVisit && DeclaringTypeReads > 1
                     ? typeof(EntityFrameworkQueryableExtensions)
                     : s_where.DeclaringType;
             }
@@ -38,7 +46,7 @@ public sealed partial class CompositionVisibilityTraversalTests
         public override RuntimeMethodHandle MethodHandle => s_where.MethodHandle;
 
         /// <inheritdoc />
-        public override string Name => rejectSecondVisit && DeclaringTypeReads > 1
+        public override string Name => _rejectSecondVisit && DeclaringTypeReads > 1
             ? nameof(EntityFrameworkQueryableExtensions.IgnoreQueryFilters)
             : s_where.Name;
 
@@ -132,10 +140,18 @@ public sealed partial class CompositionVisibilityTraversalTests
     }
 
     /// <summary>Models custom reflection metadata that changes a member's reported type between visits.</summary>
-    private sealed class QueryMemberProbe(
-        bool rejectSecondVisit
-    ) : PropertyInfo
+    private sealed class QueryMemberProbe : PropertyInfo
     {
+        private readonly bool _rejectSecondVisit;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public QueryMemberProbe(
+            bool rejectSecondVisit
+        )
+        {
+            _rejectSecondVisit = rejectSecondVisit;
+        }
+
         private readonly PropertyInfo _property = typeof(MetadataHolder).GetProperty(nameof(MetadataHolder.Allowed))!;
         private bool _observing;
 
@@ -152,7 +168,7 @@ public sealed partial class CompositionVisibilityTraversalTests
                     TypeReads++;
                 }
 
-                return rejectSecondVisit && TypeReads > 1
+                return _rejectSecondVisit && TypeReads > 1
                     ? typeof(IQueryable<CompositionGuardNode>)
                     : typeof(bool);
             }
@@ -260,10 +276,18 @@ public sealed partial class CompositionVisibilityTraversalTests
     }
 
     /// <summary>Models custom dispatch that bypasses VisitExtension while exposing a different second child.</summary>
-    private sealed class ChangingDispatch(
-        Expression secondVisit
-    ) : Expression
+    private sealed class ChangingDispatch : Expression
     {
+        private readonly Expression _secondVisit;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ChangingDispatch(
+            Expression secondVisit
+        )
+        {
+            _secondVisit = secondVisit;
+        }
+
         /// <summary>Gets the number of actual Accept dispatches, including repeated references.</summary>
         internal int Visits { get; private set; }
 
@@ -282,16 +306,24 @@ public sealed partial class CompositionVisibilityTraversalTests
 
             return visitor.Visit(
                 Visits > 1
-                    ? secondVisit
+                    ? _secondVisit
                     : Constant(true));
         }
     }
 
     /// <summary>Models an opaque extension whose second traversal may expose a query-wide unsafe modifier.</summary>
-    private sealed class ChangingPredicate(
-        Expression secondVisit
-    ) : Expression
+    private sealed class ChangingPredicate : Expression
     {
+        private readonly Expression _secondVisit;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ChangingPredicate(
+            Expression secondVisit
+        )
+        {
+            _secondVisit = secondVisit;
+        }
+
         /// <summary>Gets the number of actual extension traversals, including repeated references.</summary>
         internal int Visits { get; private set; }
 
@@ -309,7 +341,7 @@ public sealed partial class CompositionVisibilityTraversalTests
             Visits++;
             visitor.Visit(
                 Visits > 1
-                    ? secondVisit
+                    ? _secondVisit
                     : Constant(true));
 
             return this;

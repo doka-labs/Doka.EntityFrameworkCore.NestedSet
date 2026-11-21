@@ -12,7 +12,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("sources", true)]
     [InlineData("zero-sources", false)]
     [InlineData("zero-sources", true)]
-    public async Task GridReaderDefersAllCardinalityOverflowShapes(
+    public async Task CreateGridAsync_GridReader_DefersAllCardinalityOverflowShapes(
         string shape,
         bool duplicate
     )
@@ -73,7 +73,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("anchors")]
     [InlineData("signals")]
     [InlineData("sources")]
-    public async Task GridAdaptersPreserveEmptySelectionDimensions(
+    public async Task CreateGrid_GridAdapters_PreserveEmptySelectionDimensions(
         string dimension
     )
     {

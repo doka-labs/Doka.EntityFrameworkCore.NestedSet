@@ -10,7 +10,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task NestedStructRestoresRawPrimitiveValuesThroughContainingPath(
+    public async Task Restore_NestedStruct_RestoresRawPrimitiveValuesThroughContainingPath(
         bool replace,
         bool detectCallback
     )

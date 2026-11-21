@@ -16,7 +16,7 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
 
     /// <summary>A scalar NodeKey refreshes its tracked alias without comparing scope values in CLR.</summary>
     [Fact]
-    public async Task ScalarIdentityRefreshesTrackedScopeAliasAsync()
+    public async Task SaveNestedSetChangesAsync_ScalarIdentity_RefreshesTrackedScopeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ScalarScopeAliasContext>(
@@ -46,7 +46,7 @@ public abstract class ScopeAliasRefreshTests : ProviderTest
 
     /// <summary>A scope-qualified NodeKey resolves the tracked alias in SQL and keeps other scopes separate.</summary>
     [Fact]
-    public async Task ScopedIdentityRefreshesTrackedScopeAliasAsync()
+    public async Task SaveNestedSetChangesAsync_ScopedIdentity_RefreshesTrackedScopeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<ScopedScopeAliasContext>(

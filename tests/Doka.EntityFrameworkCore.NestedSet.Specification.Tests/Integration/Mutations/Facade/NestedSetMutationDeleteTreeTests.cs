@@ -15,7 +15,7 @@ public abstract class NestedSetMutationDeleteTreeTests : ProviderTest
 
     /// <summary>Whole-tree deletion satisfies restrictive self references on every supported provider.</summary>
     [Fact]
-    public async Task DeleteTreeSupportsRestrictiveSelfForeignKey()
+    public async Task DeleteTreeAsync_DeleteTree_SupportsRestrictiveSelfForeignKey()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

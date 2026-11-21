@@ -12,7 +12,7 @@ public sealed class SupervisorPersonSelectionTests
     [InlineData(0, "NotFound")]
     [InlineData(1, "Found")]
     [InlineData(2, "Ambiguous")]
-    public void UniqueSelectionDistinguishesMissingAndAmbiguous(
+    public void Select_UniqueSelection_DistinguishesMissingAndAmbiguous(
         int count,
         string expected
     )
@@ -34,7 +34,7 @@ public sealed class SupervisorPersonSelectionTests
 
     /// <summary>All preserves each candidate occurrence and does not claim a canonical unique continuation.</summary>
     [Fact]
-    public void AllPreservesOccurrencesForRepeatedPeople()
+    public void Select_All_PreservesOccurrencesForRepeatedPeople()
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(21, 1, 9), Candidate(21, 3, 2), Candidate(22, 2, 4)];
@@ -50,7 +50,7 @@ public sealed class SupervisorPersonSelectionTests
 
     /// <summary>Explicitly requesting all candidates still reports an evaluated origin with no matches.</summary>
     [Fact]
-    public void AllWithoutCandidatesIsNotFound()
+    public void Select_AllWithoutCandidates_IsNotFound()
     {
         // Arrange
         SupervisorCandidate[] candidates = [];
@@ -66,7 +66,7 @@ public sealed class SupervisorPersonSelectionTests
 
     /// <summary>Evidence for the same person remains visible and does not create ambiguity.</summary>
     [Fact]
-    public void RepeatedEvidenceForSamePersonIsNotAmbiguous()
+    public void Select_RepeatedEvidenceForSamePerson_IsNotAmbiguous()
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(21, 3, 1), Candidate(21, 1, 9)];
@@ -84,7 +84,7 @@ public sealed class SupervisorPersonSelectionTests
     /// Business priority can select a farther person instead of silently applying nearest-distance ranking.
     /// </summary>
     [Fact]
-    public void SmallestBusinessPriorityWinsAcrossDistances()
+    public void Select_SmallestBusinessPriority_WinsAcrossDistances()
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(10, 1, 5), Candidate(20, 4, 1), Candidate(30, 2, 7)];
@@ -104,7 +104,7 @@ public sealed class SupervisorPersonSelectionTests
 
     /// <summary>Equal best priorities across distinct people stay ambiguous even when their distances differ.</summary>
     [Fact]
-    public void EqualBestBusinessPriorityDoesNotChooseTechnicalIdentity()
+    public void Select_EqualBestBusinessPriority_DoesNotChooseTechnicalIdentity()
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(1, 1, 2), Candidate(99, 4, 2), Candidate(3, 2, 8)];
@@ -121,7 +121,7 @@ public sealed class SupervisorPersonSelectionTests
     /// Repeated best-priority evidence for one person remains unique and uses its nearest best occurrence.
     /// </summary>
     [Fact]
-    public void BusinessPriorityUsesBestThenNearestOccurrence()
+    public void Select_BusinessPriority_UsesBestThenNearestOccurrence()
     {
         // Arrange
         SupervisorCandidate[] candidates =
@@ -153,7 +153,7 @@ public sealed class SupervisorPersonSelectionTests
     [InlineData(2, "Ambiguous", null)]
     [InlineData(3, "Found", 30)]
     [InlineData(4, "NotFound", null)]
-    public void PersonRankRetainsEveryTiedSlot(
+    public void NthPerson_PersonRank_RetainsEveryTiedSlot(
         int slot,
         string expected,
         int? person
@@ -180,7 +180,7 @@ public sealed class SupervisorPersonSelectionTests
     /// Person ranking uses each person's nearest occurrence before applying that occurrence's business priority.
     /// </summary>
     [Fact]
-    public void FartherBetterPriorityDoesNotReplaceNearestOccurrenceForPersonRank()
+    public void NthPerson_FartherBetterPriority_DoesNotReplaceNearestOccurrenceForPersonRank()
     {
         // Arrange
         SupervisorCandidate[] candidates = [Candidate(10, 1, 8), Candidate(10, 4, 1), Candidate(20, 1, 3)];
@@ -200,7 +200,7 @@ public sealed class SupervisorPersonSelectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UniquePersonHasNearestDeterministicContinuation(
+    public void Select_UniquePerson_HasNearestDeterministicContinuation(
         bool personRank
     )
     {

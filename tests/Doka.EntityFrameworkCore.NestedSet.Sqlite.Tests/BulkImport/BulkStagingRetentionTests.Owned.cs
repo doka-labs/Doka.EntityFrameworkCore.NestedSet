@@ -6,7 +6,7 @@ public sealed partial class BulkStagingRetentionTests
 {
     /// <summary>A rejected owned child leaves neither its detached handle nor its previously tracked parent.</summary>
     [Fact]
-    public async Task OwnedTrackingFailureReleasesTheCompletePartialGraph()
+    public async Task ImportWithoutRetainingInputAsync_OwnedTrackingFailure_ReleasesTheCompletePartialGraph()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -16,10 +16,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -96,7 +99,7 @@ public sealed partial class BulkStagingRetentionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TrackingCallbacksReleaseOwnedInputsAndPreserveUnrelatedTracking(
+    public async Task ImportWithoutRetainingInputAsync_TrackingCallbacks_ReleaseOwnedInputsAndPreserveUnrelatedTracking(
         bool fail
     )
     {
@@ -108,10 +111,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -143,7 +149,8 @@ public sealed partial class BulkStagingRetentionTests
             context,
             getter: false,
             tracking: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            payload: false);
 
         // Assert
         if (fail)
@@ -186,7 +193,7 @@ public sealed partial class BulkStagingRetentionTests
 
     /// <summary>The same caller input remains persistable after a rejected first tracking.</summary>
     [Fact]
-    public async Task TrackingFailureAllowsInputRetry()
+    public async Task InsertForestAsync_TrackingFailure_AllowsInputRetry()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -196,10 +203,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -271,74 +281,9 @@ public sealed partial class BulkStagingRetentionTests
                 .State);
     }
 
-    /// <summary>A root callback can observe owned metadata without retaining either input after it throws.</summary>
-    [Fact]
-    public async Task RootTrackingFailureReleasesObservedOwnedInput()
-    {
-        // Arrange
-        await using var database = await TestDatabase.CreateAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await using var source = database.CreateContext();
-        var options = new DbContextOptionsBuilder<StagingContext>()
-            .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
-            .Options;
-
-        await using var context = new StagingContext(options);
-        await context
-            .GetService<IRelationalDatabaseCreator>()
-            .CreateTablesAsync(CancellationToken.None);
-
-        var marker = new StagingMarker { Id = 7 };
-        context.Attach(marker);
-        EntityState? observed = null;
-        context.ChangeTracker.Tracking += (_, arguments) =>
-        {
-            if (arguments.Entry.Entity is StagingNode { Payload: { } payload })
-            {
-                observed = context.Entry(payload)
-                    .State;
-
-                throw new InjectedCommandException();
-            }
-        };
-
-        // Act
-        var result = await ImportWithoutRetainingInputAsync(
-            context,
-            getter: false,
-            tracking: true,
-            payload: true,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.IsType<InjectedCommandException>(result.Error);
-        Assert.Equal(EntityState.Detached, observed);
-        Assert.True(result.Restored);
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-        Assert.False(result.Input.TryGetTarget(out _));
-        Assert.False(result.Payload!.TryGetTarget(out _));
-        Assert.Same(
-            marker,
-            Assert.Single(context.ChangeTracker.Entries())
-                .Entity);
-
-        Assert.Equal(
-            0,
-            await context
-                .Set<StagingNode>()
-                .CountAsync(CancellationToken.None));
-
-        GC.KeepAlive(context);
-    }
-
     /// <summary>Import rejects a tracked owned payload while preserving its caller-owned aggregate.</summary>
     [Fact]
-    public async Task TrackedOwnedPayloadRejectionPreservesItsExistingAggregate()
+    public async Task InsertForestAsync_TrackedOwnedPayloadRejection_PreservesItsExistingAggregate()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -348,10 +293,13 @@ public sealed partial class BulkStagingRetentionTests
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);

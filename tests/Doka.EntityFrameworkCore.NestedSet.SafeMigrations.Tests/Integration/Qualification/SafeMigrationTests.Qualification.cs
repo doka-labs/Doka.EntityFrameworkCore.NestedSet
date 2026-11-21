@@ -8,7 +8,7 @@ public sealed partial class SafeMigrationTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ForeignDatabaseQualifierIsRejectedBeforeEitherDatabaseChanges(
+    public async Task AnalyzeAsync_ForeignDatabaseQualifier_IsRejectedBeforeEitherDatabaseChanges(
         string engine
     )
     {
@@ -25,10 +25,20 @@ public sealed partial class SafeMigrationTests
 
         var selectedBaseline = selected.Scaffold(MigrationStage.Baseline, "SafeSelectedBaseline");
         var foreignBaseline = foreign.Scaffold(MigrationStage.Baseline, "SafeForeignBaseline");
-        await selected.MigrateAsync(selectedBaseline, cancellationToken: TestContext.Current.CancellationToken);
-        await foreign.MigrateAsync(foreignBaseline, cancellationToken: TestContext.Current.CancellationToken);
-        await selected.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await foreign.SeedAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await selected.MigrateAsync(
+            selectedBaseline,
+            cancellationToken: TestContext.Current.CancellationToken,
+            target: null);
+        await foreign.MigrateAsync(
+            foreignBaseline,
+            cancellationToken: TestContext.Current.CancellationToken,
+            target: null);
+        await selected.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
+        await foreign.SeedAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // WHY: Analysis requires the runtime model and migration snapshot to agree before checking qualifiers.
         var selectedUpgrade = selected.Scaffold(MigrationStage.Current, "SafeSelectedScopeKey", selectedBaseline);
@@ -52,9 +62,12 @@ public sealed partial class SafeMigrationTests
                 cancellationToken: TestContext.Current.CancellationToken));
 
         var selectedNodesBefore = await selected.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
-        var foreignNodesBefore = await foreign.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var foreignNodesBefore = await foreign.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // WHY: Both databases have the same table and data. Stripping or honoring the foreign qualifier would
         // create the missing index in one database, so both physical catalogs must remain unchanged.
@@ -104,11 +117,13 @@ public sealed partial class SafeMigrationTests
         Assert.Equal(
             selectedNodesBefore,
             await selected.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
 
         Assert.Equal(
             foreignNodesBefore,
             await foreign.ReadNodesAsync(
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                stage: MigrationStage.Current));
     }
 }

@@ -12,7 +12,7 @@ public sealed class BulkOriginalStructureTests
     [InlineData(0L, 0)]
     [InlineData(long.MinValue, int.MinValue)]
     [InlineData(long.MaxValue, int.MaxValue)]
-    public async Task NonSentinelCoordinatesRetainTheirExactValues(
+    public async Task Capture_NonSentinel_CoordinatesRetainTheirExactValues(
         long boundary,
         int depth
     )
@@ -42,7 +42,7 @@ public sealed class BulkOriginalStructureTests
 
     /// <summary>Inputs entirely described by metadata sentinels need no allocated rollback snapshot.</summary>
     [Fact]
-    public async Task AllSentinelCoordinatesNeedNoSnapshot()
+    public async Task Capture_AllSentinel_CoordinatesNeedNoSnapshot()
     {
         // Arrange
         await using var context = CreateContext();
@@ -65,7 +65,7 @@ public sealed class BulkOriginalStructureTests
 
     /// <summary>A captured coordinate does not turn omitted coordinates into native default values.</summary>
     [Fact]
-    public async Task SparseSnapshotUsesTheSentinelForOmittedCoordinates()
+    public async Task Capture_SparseSnapshot_UsesTheSentinelForOmittedCoordinates()
     {
         // Arrange
         await using var context = CreateContext();

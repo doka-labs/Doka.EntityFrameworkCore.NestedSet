@@ -1,7 +1,7 @@
 ---
 id: D-016
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -57,7 +57,7 @@ decision's parallel six-package and original-byte recovery boundaries.
 
 [D-022](D-022-shared-ci-and-release-qualification.md) replaces the release-only
 job graph: CI and the release candidate call one shared quality workflow. Its
-build job restores owned shipping locks, builds the Release solution once with
+build job restores owned reviewed locks, builds the Release solution once with
 the selected version, packs each shipping package once and inspects all primary
 and symbol archives with the inspector built in that solution. Package
 consumers and SBOMs verify that immutable package artifact in every run. Test
@@ -173,6 +173,8 @@ conflicts before duplicate-tolerant pushes, and public package and PDB readback 
 
 - 2026-10-28: D-021 records the owner-approved release-line extension, preserving parallel qualification, six packages and original-byte recovery while replacing main-only source and always-Latest assumptions. Extra lines remain inactive.
 - 2026-10-30: D-022 replaces the release-only job graph, compiled-byte transport, shared deadline and local serial qualification with the shared quality workflow. Packages, consumers, SBOMs, the sealed candidate, attestation and publication guards are unchanged.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

@@ -8,7 +8,7 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData("subtree")]
     [InlineData("forest")]
-    public async Task PreparedOwnerImportContinuesFutureCleanupAfterCallbackFailure(
+    public async Task InsertPreparedOwnerImportAsync_PreparedOwnerImport_ContinuesFutureCleanupAfterCallbackFailure(
         string shape
     )
     {

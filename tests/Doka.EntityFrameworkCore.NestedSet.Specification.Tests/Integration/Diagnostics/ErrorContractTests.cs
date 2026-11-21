@@ -22,7 +22,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>A lock write affecting no rows has its own code and cannot mutate the hierarchy.</summary>
     [Fact]
-    public async Task UnacquiredWriteLockReportsItsOwnCode()
+    public async Task InsertRootAsync_UnacquiredWriteLock_ReportsItsOwnCode()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -50,7 +50,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>A provider failure during lock acquisition keeps its exact type and original instance.</summary>
     [Fact]
-    public async Task ProviderLockFailureRemainsUnwrapped()
+    public async Task InsertRootAsync_ProviderLockFailure_RemainsUnwrapped()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -79,7 +79,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>A move beneath one's own descendant is distinguishable from a missing-node failure.</summary>
     [Fact]
-    public async Task MovingUnderADescendantReportsACycleAndPreservesTheTree()
+    public async Task MoveToAsync_MovingUnderADescendant_ReportsACycleAndPreservesTheTree()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -113,7 +113,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>A key belonging to another scope is not exposed through the typed missing-node error.</summary>
     [Fact]
-    public async Task OtherScopeNodeReportsNotFoundWithoutLeakingScopeOrKey()
+    public async Task DeleteAsync_OtherScopeNode_ReportsNotFoundWithoutLeakingScopeOrKey()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -146,7 +146,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>Corrupt persisted coordinates are rejected before they can change another row.</summary>
     [Fact]
-    public async Task InvalidBoundsReportInvalidStructure()
+    public async Task DeleteAsync_InvalidBounds_ReportInvalidStructure()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -176,7 +176,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>Tracked structural entities cannot silently become stale during a bulk hierarchy update.</summary>
     [Fact]
-    public async Task TrackedHierarchyReportsInvalidContext()
+    public async Task DeleteAsync_TrackedHierarchy_ReportsInvalidContext()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -204,7 +204,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>Ambient transactions are distinguished from invalid tracker or hierarchy state.</summary>
     [Fact]
-    public async Task AmbientTransactionReportsInvalidTransaction()
+    public async Task InsertRootAsync_AmbientTransaction_ReportsInvalidTransaction()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -227,7 +227,7 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>Repeated import references are rejected as invalid input before structural writes.</summary>
     [Fact]
-    public async Task RepeatedImportEntityReportsInvalidImport()
+    public async Task InsertForestAsync_RepeatedImportEntity_ReportsInvalidImport()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -257,12 +257,13 @@ public abstract class ErrorContractTests : ProviderTest
 
     /// <summary>Strict sibling rules reject explicit placement with a dedicated machine-readable reason.</summary>
     [Fact]
-    public async Task StrictPlacementReportsManualPlacementNotAllowed()
+    public async Task InsertAsFirstChildAsync_StrictPlacement_ReportsManualPlacementNotAllowed()
     {
         // Arrange
         await using var context = await _ordering.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var service = context
             .NestedSet<OrderingNode>()

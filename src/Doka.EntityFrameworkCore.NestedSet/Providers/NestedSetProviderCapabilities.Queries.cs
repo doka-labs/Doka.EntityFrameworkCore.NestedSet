@@ -65,7 +65,9 @@ internal abstract partial class NestedSetProviderCapabilities
         IProperty key
     );
 
-    /// <summary>Matches captured unique keys through the provider's native parameterized collection transport.</summary>
+    /// <summary>
+    /// Matches captured unique keys through the provider's native parameterized collection transport.
+    /// </summary>
     /// <typeparam name="TEntity">The mapped hierarchy entity.</typeparam>
     /// <typeparam name="TKey">The exact native key type.</typeparam>
     /// <param name="source">The already scope- and interval-restricted entity query.</param>

@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Retains exact scope/tree membership and ordinary query-filter behavior around the indexed fence.</summary>
+    /// <summary>
+    /// Retains exact scope/tree membership and ordinary query-filter behavior around the indexed fence.
+    /// </summary>
     /// <param name="includeSelf">Whether the selected node is an eligible equal-bound owner.</param>
     /// <param name="shape">A visible, hidden, missing or empty source/owner configuration.</param>
     [Theory]
@@ -16,7 +18,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(true, "missing-source")]
     [InlineData(false, "empty-selection")]
     [InlineData(true, "empty-selection")]
-    public async Task IndexedAncestorsKeepScopeTreeVisibilityAndEmptySelection(
+    public async Task SelectAncestors_IndexedAncestors_KeepScopeTreeVisibilityAndEmptySelection(
         bool includeSelf,
         string shape
     )
@@ -110,7 +112,9 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Inclusive bounds include different keys and shared boundaries without weakening strict containment.</summary>
+    /// <summary>
+    /// Inclusive bounds include different keys and shared boundaries without weakening strict containment.
+    /// </summary>
     /// <param name="includeSelf">Whether equal/shared boundaries are admitted.</param>
     /// <param name="shape">The independently created owner interval.</param>
     [Theory]
@@ -122,7 +126,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(true, "shared-left")]
     [InlineData(false, "shared-right")]
     [InlineData(true, "shared-right")]
-    public async Task IndexedAncestorsPreserveEqualAndSharedBounds(
+    public async Task SelectAncestors_IndexedAncestors_PreserveEqualAndSharedBounds(
         bool includeSelf,
         string shape
     )
@@ -135,7 +139,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var source = shape == "equal-nonleaf"
             ? 2
@@ -192,7 +197,7 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IndexedAncestorsRetainConsumerOccurrenceBags(
+    public async Task SelectAncestors_IndexedConsumerOccurrences_RetainEveryOccurrence(
         bool includeSelf
     )
     {
@@ -204,7 +209,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var hierarchy = context
             .NestedSet<CompositionNavigationNode>()

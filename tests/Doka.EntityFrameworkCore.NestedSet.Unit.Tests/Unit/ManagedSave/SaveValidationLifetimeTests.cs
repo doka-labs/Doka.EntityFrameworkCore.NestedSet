@@ -4,7 +4,7 @@ using Doka.EntityFrameworkCore.NestedSet.Features.ManagedSave;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects save guard lifetimes independently of a later save replacing them.</summary>
-public sealed class SaveValidationLifetimeTests
+public sealed partial class SaveValidationLifetimeTests
 {
     // WHY: Subsequent saves overwrite the guard and can hide a retained closure. Inspect the existing typed
     // context state directly so success, failure, cancellation and pool reuse must release that exact guard.
@@ -22,7 +22,7 @@ public sealed class SaveValidationLifetimeTests
     [InlineData("failure", true)]
     [InlineData("cancellation", false)]
     [InlineData("cancellation", true)]
-    public async Task AsyncBoundaryRestoresExactPreviousValidation(
+    public async Task ObserveBoundaryAsync_AsyncBoundary_RestoresExactPreviousValidation(
         string outcome,
         bool existingGuard
     )
@@ -61,7 +61,7 @@ public sealed class SaveValidationLifetimeTests
     [InlineData("success")]
     [InlineData("failure")]
     [InlineData("cancellation")]
-    public async Task PooledLeaseDoesNotRetainPreviousValidation(
+    public async Task ObservePoolReuseAsync_PooledLease_DoesNotRetainPreviousValidation(
         string outcome
     )
     {
@@ -107,7 +107,7 @@ public sealed class SaveValidationLifetimeTests
     [InlineData("cancellation", false, true)]
     [InlineData("cancellation", true, false)]
     [InlineData("cancellation", true, true)]
-    public async Task SynchronousBoundaryRestoresValidationAndDetection(
+    public async Task ObserveSynchronousBoundary_SynchronousBoundary_RestoresValidationAndDetection(
         string outcome,
         bool existingGuard,
         bool automatic
@@ -144,7 +144,7 @@ public sealed class SaveValidationLifetimeTests
     [InlineData("success")]
     [InlineData("failure")]
     [InlineData("cancellation")]
-    public async Task PooledSynchronousLeaseDoesNotRetainValidationOrChangedDetection(
+    public async Task ObserveSynchronousPoolReuseAsync_PooledSynchronousLease_DoesNotRetainValidationOrChangedDetection(
         string outcome
     )
     {
@@ -277,7 +277,7 @@ public sealed class SaveValidationLifetimeTests
         var failure = await Record.ExceptionAsync(() => NestedSetSaveChanges.ExecuteAsync(
             context,
             acceptAllChangesOnSuccess: false,
-            async token =>
+            async callbackCancellationToken =>
             {
                 calls++;
                 during = state.SaveValidation;
@@ -287,7 +287,7 @@ public sealed class SaveValidationLifetimeTests
                 if (outcome == "cancellation")
                 {
                     await stop.CancelAsync();
-                    token.ThrowIfCancellationRequested();
+                    callbackCancellationToken.ThrowIfCancellationRequested();
                 }
 
                 return outcome == "failure"
@@ -364,48 +364,4 @@ public sealed class SaveValidationLifetimeTests
     private static NestedSetSaveChanges.SaveState StateFor(
         DbContext context
     ) => s_states.GetValue(context, static _ => new NestedSetSaveChanges.SaveState());
-
-    /// <summary>Distinguishes an injected payload failure from guard or context initialization failures.</summary>
-    private sealed class SaveFailureException : Exception;
-
-    /// <summary>Captures both sides of one guard lifetime without retaining the context itself.</summary>
-    private sealed record BoundaryObservation(
-        Action? During,
-        Action? After,
-        bool ActiveDuring,
-        int Calls,
-        Exception? Failure
-    );
-
-    /// <summary>Captures lease identity and the untouched validation slot of the reused context.</summary>
-    private sealed record PoolObservation(
-        bool SameContext,
-        bool SameState,
-        BoundaryObservation First,
-        Action? NextLeaseValidation,
-        bool NextLeaseActive,
-        CancellationToken CancellationToken
-    );
-
-    /// <summary>Captures guard identity, intentional flag tampering, and the result of one sync save.</summary>
-    private sealed record SynchronousObservation(
-        Action? During,
-        Action? After,
-        bool ActiveDuring,
-        bool DetectionDuring,
-        bool DetectionAfter,
-        int Calls,
-        Exception? Failure,
-        CancellationToken CancellationToken
-    );
-
-    /// <summary>Captures a synchronous boundary's state before and after a real EF pool lease transition.</summary>
-    private sealed record SynchronousPoolObservation(
-        bool SameContext,
-        bool SameState,
-        SynchronousObservation First,
-        Action? NextLeaseValidation,
-        bool NextLeaseActive,
-        bool NextLeaseDetection
-    );
 }

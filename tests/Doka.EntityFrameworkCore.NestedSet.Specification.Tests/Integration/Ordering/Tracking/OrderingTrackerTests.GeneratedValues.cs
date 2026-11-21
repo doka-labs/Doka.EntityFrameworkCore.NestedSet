@@ -4,7 +4,7 @@ public abstract partial class OrderingTrackerTests
 {
     /// <summary>Matches EF's unaccepted token state while accepting bulk-refreshed unchanged siblings.</summary>
     [Fact]
-    public async Task SaveWithoutAcceptancePreservesGeneratedTokenSemanticsAndUnchangedSiblings()
+    public async Task SaveChangesAsync_SaveWithoutAcceptance_PreservesGeneratedTokenSemanticsAndUnchangedSiblings()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -82,7 +82,7 @@ public abstract partial class OrderingTrackerTests
 
     /// <summary>Refreshes generated tokens at the final insertion position before later attachment.</summary>
     [Fact]
-    public async Task OrderedInsertRefreshesGeneratedTokenBeforeAnAttachedPayloadSave()
+    public async Task InsertRootAsync_OrderedInsert_RefreshesGeneratedTokenBeforeAnAttachedPayloadSave()
     {
         // Arrange
         var database = await CreateDatabaseAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

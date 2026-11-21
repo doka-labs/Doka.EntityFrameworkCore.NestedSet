@@ -11,7 +11,7 @@ public sealed class PostgresNearestDecisionTests
     [InlineData("independent")]
     [InlineData("row-aware")]
     [InlineData("query-bearing")]
-    public async Task NearestDecisionSelectsDepthOnceWithoutIo(
+    public async Task Matches_NearestDecision_SelectsDepthOnceWithoutIo(
         string shape
     )
     {
@@ -75,7 +75,7 @@ public sealed class PostgresNearestDecisionTests
     /// A one-anchor broad result cannot hide repeated materialization of the full payload population.
     /// </summary>
     [Fact]
-    public void RepeatedBroadPayloadExceedsTheUnchangedPairWorkBudget()
+    public void ReadPostgreSqlJson_RepeatedBroadPayload_ExceedsTheUnchangedPairWorkBudget()
     {
         // Arrange
         const int nodes = 100_000;

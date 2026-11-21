@@ -14,6 +14,7 @@ global using System.Threading.Tasks;
 global using Doka.EntityFrameworkCore.NestedSet.Execution;
 global using Doka.EntityFrameworkCore.NestedSet.Mapping;
 global using Doka.EntityFrameworkCore.NestedSet.Providers;
+global using JetBrains.Annotations;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Infrastructure;
 global using Microsoft.EntityFrameworkCore.Metadata;

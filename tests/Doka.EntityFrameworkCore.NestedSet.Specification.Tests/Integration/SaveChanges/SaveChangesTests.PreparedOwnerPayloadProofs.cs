@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData("subtree", 65, true)]
     [InlineData("forest", 130, false)]
     [InlineData("forest", 130, true)]
-    public async Task PreparedOwnerImportFuturePayloadProofRequiresLiveForeignKey(
+    public async Task InsertPreparedOwnerImportAsync_PreparedOwnerImportFuturePayloadProof_RequiresLiveForeignKey(
         string shape,
         int nodes,
         bool changeFuturePayload

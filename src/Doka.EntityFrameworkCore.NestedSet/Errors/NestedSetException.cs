@@ -5,6 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 ///     Provider, cancellation, and arithmetic exceptions retain their original types. This exception derives from
 ///     InvalidOperationException so existing handlers for rejected hierarchy operations continue to work.
 /// </remarks>
+[PublicAPI]
 public sealed class NestedSetException : InvalidOperationException
 {
     /// <summary>Creates an unclassified hierarchy precondition failure.</summary>

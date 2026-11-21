@@ -196,8 +196,13 @@ internal static class SupervisorSelectionRules
 
         if (selection is FromPrioritizedOrigin priority)
         {
-            foreach (var group in priority.GroupIds)
+            // WHY: The explicit origin priority is indexable and must retain caller order.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var groupIndex = 0; groupIndex < priority.GroupIds.Count; groupIndex++)
             {
+                var group = priority.GroupIds[groupIndex];
+
                 var origin = batch.Origins.SingleOrDefault(row => row.StartGroupId == group);
                 if (origin is not null)
                 {
@@ -275,8 +280,13 @@ internal static class SupervisorSelectionRules
     {
         var canonical = new Dictionary<int, SupervisorCandidate>();
 
-        foreach (var row in candidates)
+        // WHY: Ranking visits the stable candidate snapshot without an interface enumerator.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var candidateIndex = 0; candidateIndex < candidates.Count; candidateIndex++)
         {
+            var row = candidates[candidateIndex];
+
             if (!canonical.TryGetValue(row.CandidateUserId, out var current)
                 || ComparePersonRank(row, current) < 0)
             {

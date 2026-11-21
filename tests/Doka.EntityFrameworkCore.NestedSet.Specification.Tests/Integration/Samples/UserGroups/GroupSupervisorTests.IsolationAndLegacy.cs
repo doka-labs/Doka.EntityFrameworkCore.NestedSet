@@ -9,11 +9,14 @@ public abstract partial class GroupSupervisorTests
     /// Matching owner values on a sibling, another tree, or another tenant never repair the selected path (U29).
     /// </summary>
     [Fact]
-    public async Task MatchingForeignAndSiblingMetadataCannotSupplyAPathWinner()
+    public async Task ResolveAsync_MatchingForeignAndSiblingMetadata_CannotSupplyAPathWinner()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var foreign = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var independent = new App.UserGroup
@@ -128,11 +131,14 @@ public abstract partial class GroupSupervisorTests
     /// (U64).
     /// </summary>
     [Fact]
-    public async Task OriginalPrivilegesAndDirectUserHierarchyRemainIndependent()
+    public async Task EffectiveForUserAsync_OriginalPrivilegesAndDirectUserHierarchy_RemainIndependent()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await context
             .NestedSet<App.User>()

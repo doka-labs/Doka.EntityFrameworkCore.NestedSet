@@ -2,13 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class HierarchyCompositionCapacityTests
 {
-    /// <summary>Qualifies independent facts against shared day-specific paths on the actual deep signal report.</summary>
+    /// <summary>
+    /// Qualifies independent facts against shared day-specific paths on the actual deep signal report.
+    /// </summary>
     /// <param name="repeatedFacts">Whether several metrics and sources reuse each node/day path.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task DeepSignalProofReuseRetainsResultsAndReportsNativeWork(
+    public async Task MeasureSignalsAsync_DeepSignalProof_ReuseRetainsResultsAndReportsNativeWork(
         bool repeatedFacts
     )
     {
@@ -23,7 +25,8 @@ public abstract partial class HierarchyCompositionCapacityTests
             setup,
             nodes,
             deep: true,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         await QueryPlanTestSupport.RefreshStatisticsAsync<TreeNode>(
             setup,

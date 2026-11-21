@@ -5,7 +5,7 @@ public sealed class EntityTypeConfigurationUxTests
 {
     /// <summary>Applies a scoped ordered hierarchy through IEntityTypeConfiguration only.</summary>
     [Fact]
-    public void ScopedConfigurationProducesCompleteHierarchyMetadata()
+    public void GetIndexes_ScopedConfiguration_ProducesCompleteHierarchyMetadata()
     {
         // Arrange
         using var context = new ScopedContext();
@@ -114,7 +114,7 @@ public sealed class EntityTypeConfigurationUxTests
 
     /// <summary>Omits Scope without requiring context-level nested-set configuration hooks.</summary>
     [Fact]
-    public void ScopelessConfigurationProducesTreeLocalMetadata()
+    public void GetIndexes_ScopelessConfiguration_ProducesTreeLocalMetadata()
     {
         // Arrange
         using var context = new ScopelessContext();

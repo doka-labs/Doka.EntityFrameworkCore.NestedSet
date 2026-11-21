@@ -87,7 +87,8 @@ internal static class NestedSetCollations
                     ?.Value as string
                 ?? throw new InvalidOperationException(
                     $"The nested-set collation capture for '{hierarchy.Name}.{property.Name}' is incomplete. "
-                    + "Regenerate after configuring the native provider callback's UseNestedSets() before model generation "
+                    + "Regenerate after configuring the native provider callback's UseNestedSets() "
+                    + "before model generation "
                     + "so hierarchy-owned physical identity collations are captured.");
 
             return captured.Length == 0
@@ -103,7 +104,8 @@ internal static class NestedSetCollations
         {
             // WHY: Reconstructing a supplied runtime model defeats compiled-model reuse and can change semantics.
             throw new InvalidOperationException(
-                "Compiled or explicitly supplied models require the native provider callback's UseNestedSets() before model "
+                "Compiled or explicitly supplied models require the native provider callback's UseNestedSets() "
+                + "before model "
                 + "generation. Regenerate the model so hierarchy-owned physical collation metadata is captured.");
         }
 

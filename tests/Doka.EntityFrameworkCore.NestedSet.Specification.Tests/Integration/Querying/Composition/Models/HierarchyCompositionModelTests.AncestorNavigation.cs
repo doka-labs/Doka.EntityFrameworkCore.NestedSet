@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(true, "hidden-leaf")]
     [InlineData(false, "missing-leaf")]
     [InlineData(true, "missing-leaf")]
-    public async Task AncestorEntityPairsPreserveOwnedAutoIncludes(
+    public async Task SelectAncestorsOrSelf_AncestorEntityPairs_PreserveOwnedAutoIncludes(
         bool includeSelf,
         string selection
     )
@@ -112,7 +112,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(true, "hidden-leaf")]
     [InlineData(false, "missing-leaf")]
     [InlineData(true, "missing-leaf")]
-    public async Task AncestorProjectionPreservesOwnedAndOrdinaryCollectionDtos(
+    public async Task SelectAncestorsOrSelf_AncestorProjection_PreservesOwnedAndOrdinaryCollectionDtos(
         bool includeSelf,
         string selection
     )

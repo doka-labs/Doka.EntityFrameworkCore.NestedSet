@@ -5,7 +5,7 @@ public sealed class UserGroupMembershipTests
 {
     /// <summary>A user may have two groups while another user in the same supervisor tree has none.</summary>
     [Fact]
-    public async Task UsersCanHaveZeroOrMultipleGroupsAsync()
+    public async Task SaveChangesAsync_Users_CanHaveZeroOrMultipleGroups()
     {
         // Arrange
         await using var context = CreateContext();
@@ -75,7 +75,7 @@ public sealed class UserGroupMembershipTests
 
     /// <summary>The composite primary key rejects a repeated user-to-group association.</summary>
     [Fact]
-    public async Task DuplicateMembershipFailsAtDatabaseBoundaryAsync()
+    public async Task ExecuteSqlInterpolatedAsync_DuplicateMembership_FailsAtDatabaseBoundary()
     {
         // Arrange
         await using var context = CreateContext();
@@ -129,7 +129,7 @@ public sealed class UserGroupMembershipTests
 
     /// <summary>The composite user foreign key rejects a link that names a user from another tenant.</summary>
     [Fact]
-    public async Task ForeignTenantUserMembershipFailsAtDatabaseBoundaryAsync()
+    public async Task SaveChangesAsync_ForeignTenantUserMembership_FailsAtDatabaseBoundary()
     {
         // Arrange
         await using var context = CreateContext();
@@ -176,7 +176,7 @@ public sealed class UserGroupMembershipTests
 
     /// <summary>Removing one association leaves the user and the user's other group intact.</summary>
     [Fact]
-    public async Task RemovingMembershipKeepsOtherGroupAndUserAsync()
+    public async Task Remove_RemovingMembership_KeepsOtherGroupAndUser()
     {
         // Arrange
         await using var context = CreateContext();
@@ -242,7 +242,7 @@ public sealed class UserGroupMembershipTests
 
     /// <summary>Deleting a user through NestedSet also deletes its memberships in the database.</summary>
     [Fact]
-    public async Task DeletingUserSubtreeCascadesMembershipsAsync()
+    public async Task DeleteSubtreeAsync_DeletingUserSubtree_CascadesMemberships()
     {
         // Arrange
         await using var context = CreateContext();
@@ -297,7 +297,7 @@ public sealed class UserGroupMembershipTests
     /// A group with members cannot be removed without an explicit application decision about those links.
     /// </summary>
     [Fact]
-    public async Task DeletingGroupWithMembershipIsRestrictedAsync()
+    public async Task DeleteSubtreeAsync_DeletingGroupWithMembership_IsRestricted()
     {
         // Arrange
         await using var context = CreateContext();

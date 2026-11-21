@@ -8,7 +8,7 @@ public sealed class CompositionCoordinateWidthTests
 {
     /// <summary>A rebound query has its own deferred root while repeated use retains the original expression.</summary>
     [Fact]
-    public void RebindingDoesNotReuseAnEarlierCoordinateRoot()
+    public void Width_Rebinding_DoesNotReuseAnEarlierCoordinateRoot()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();

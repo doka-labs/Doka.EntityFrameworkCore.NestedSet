@@ -24,7 +24,7 @@ public sealed class NativeArrayKeyTests : ProviderTest,
     /// Provider-native array keys retain scalar parameter equality without jagged collection translation.
     /// </summary>
     [Fact]
-    public async Task ArrayKeysUseNativeScalarEquality()
+    public async Task Matches_ArrayKeys_UseNativeScalarEquality()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -32,11 +32,14 @@ public sealed class NativeArrayKeyTests : ProviderTest,
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         var options = new DbContextOptionsBuilder<NativeArrayContext>()
             .ConfigureTestWarnings()
-            .UseNpgsql(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseNpgsql(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .AddInterceptors(probe)
             .Options;
 
         await using var context = new NativeArrayContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         _ = NestedSetMapping<NativeArrayNode, int[], int>.For(
             context,
             context.Model.FindEntityType(typeof(NativeArrayNode))!);

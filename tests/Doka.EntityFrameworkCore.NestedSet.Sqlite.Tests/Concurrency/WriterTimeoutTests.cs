@@ -12,9 +12,11 @@ public sealed class WriterTimeoutTests : ProviderTest, IClassFixture<ProviderFix
         ProviderFixture<ProviderResources, SqliteEngine> fixture
     ) : base(fixture) { }
 
-    /// <summary>A blocked root insertion changes nothing and succeeds when retried after the writer releases its lock.</summary>
+    /// <summary>
+    /// A blocked root insertion changes nothing and succeeds when retried after the writer releases its lock.
+    /// </summary>
     [Fact]
-    public async Task BusyWriterPreservesStructureAndRegistryUntilFreshRetry()
+    public async Task InsertRootAsync_BusyWriter_PreservesStructureAndRegistryUntilFreshRetry()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(

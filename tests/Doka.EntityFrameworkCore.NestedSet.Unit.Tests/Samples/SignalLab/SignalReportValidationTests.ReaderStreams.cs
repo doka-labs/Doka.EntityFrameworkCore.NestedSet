@@ -10,55 +10,67 @@ public sealed partial class SignalReportValidationTests
     ) => new(rows, probe, cancellationToken);
 
     /// <summary>Supplies one row at a time and keeps reader failure distinct from asynchronous disposal.</summary>
-    private sealed class ProbeReader<T>(
-        IReadOnlyList<T> rows,
-        ReaderProbe probe,
-        CancellationToken cancellationToken
-    ) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
+    private sealed class ProbeReader<T> : IAsyncEnumerable<T>, IAsyncEnumerator<T>
     {
+        private readonly IReadOnlyList<T> _rows;
+        private readonly ReaderProbe _probe;
+        private readonly CancellationToken _cancellationToken;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ProbeReader(
+            IReadOnlyList<T> rows,
+            ReaderProbe probe,
+            CancellationToken cancellationToken
+        )
+        {
+            _rows = rows;
+            _probe = probe;
+            _cancellationToken = cancellationToken;
+        }
+
         private int _index;
 
         /// <summary>Checks the caller's cancellation before exposing the sole reader.</summary>
         public IAsyncEnumerator<T> GetAsyncEnumerator(
-            CancellationToken token
+            CancellationToken iterationCancellationToken
         )
         {
-            token.ThrowIfCancellationRequested();
-            probe.EnumerationToken = token;
+            iterationCancellationToken.ThrowIfCancellationRequested();
+            _probe.EnumerationToken = iterationCancellationToken;
 
             return this;
         }
 
         /// <summary>Gets the last supplied projection.</summary>
-        public T Current => rows[_index - 1];
+        public T Current => _rows[_index - 1];
 
         /// <summary>Reads all supplied rows before applying the selected EOF failure or cancellation.</summary>
         public ValueTask<bool> MoveNextAsync()
         {
-            if (cancellationToken.IsCancellationRequested)
+            if (_cancellationToken.IsCancellationRequested)
             {
-                return ValueTask.FromCanceled<bool>(cancellationToken);
+                return ValueTask.FromCanceled<bool>(_cancellationToken);
             }
 
-            if (_index < rows.Count)
+            if (_index < _rows.Count)
             {
                 _index++;
-                probe.ReadCount++;
+                _probe.ReadCount++;
 
                 // WHY: Prepared rows complete synchronously. An async state machine per row allocates in
                 // Debug and would measure this test reader instead of the report's temporary state.
                 return ValueTask.FromResult(true);
             }
 
-            return CompleteAsync(cancellationToken);
+            return CompleteAsync(_cancellationToken);
         }
 
         /// <summary>Records asynchronous disposal independently from successful EOF.</summary>
         public ValueTask DisposeAsync()
         {
-            probe.Disposed = true;
+            _probe.Disposed = true;
 
-            return probe.DisposeFailure is { } error
+            return _probe.DisposeFailure is { } error
                 ? ValueTask.FromException(error)
                 : ValueTask.CompletedTask;
         }
@@ -69,19 +81,19 @@ public sealed partial class SignalReportValidationTests
             CancellationToken cancellationToken
         )
         {
-            if (probe.CancelAfterRows is not null)
+            if (_probe.CancelAfterRows is not null)
             {
-                await probe.CancelAfterRows.CancelAsync();
+                await _probe.CancelAfterRows.CancelAsync();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (probe.ReadFailure is not null)
+            if (_probe.ReadFailure is not null)
             {
-                throw probe.ReadFailure;
+                throw _probe.ReadFailure;
             }
 
-            probe.EndReached = true;
+            _probe.EndReached = true;
 
             return false;
         }

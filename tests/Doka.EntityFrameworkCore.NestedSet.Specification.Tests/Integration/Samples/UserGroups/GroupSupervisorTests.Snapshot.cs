@@ -7,11 +7,14 @@ public abstract partial class GroupSupervisorTests
 {
     /// <summary>Role, routing, and membership changes between readers cannot produce a hybrid chain (U54).</summary>
     [Fact]
-    public async Task EveryHopReadsTheSameSnapshotAcrossConcurrentRoutingAndRoleChanges()
+    public async Task FollowOriginalPathAsync_EveryHop_ReadsTheSameSnapshotAcrossConcurrentRoutingAndRoleChanges()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -105,13 +108,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SupervisorReaderPropagatesCancellation(
+    public async Task ResolveAsync_SupervisorReader_PropagatesCancellation(
         bool duringRead
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         using var cancellation = new CancellationTokenSource();
         if (duringRead)
@@ -153,8 +159,19 @@ public abstract partial class GroupSupervisorTests
     /// Signals the writer's first real payload command before its provider can block on a reader lock.
     /// </summary>
     /// <param name="entered">The signal completed when the writer reaches its first payload command.</param>
-    private sealed class SupervisorWriterProbe(TaskCompletionSource entered) : DbCommandInterceptor
+    private sealed class SupervisorWriterProbe : DbCommandInterceptor
     {
+        private readonly TaskCompletionSource _entered;
+
+        /// <summary>Retains the observation inputs for the fixture operation.</summary>
+        /// <param name="entered">The signal completed when the intercepted command reaches its boundary.</param>
+        public SupervisorWriterProbe(
+            TaskCompletionSource entered
+        )
+        {
+            _entered = entered;
+        }
+
         /// <inheritdoc />
         public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
             DbCommand command,
@@ -163,7 +180,7 @@ public abstract partial class GroupSupervisorTests
             CancellationToken cancellationToken = default
         )
         {
-            entered.TrySetResult();
+            _entered.TrySetResult();
 
             return ValueTask.FromResult(result);
         }

@@ -9,7 +9,7 @@ public abstract partial class EnterpriseTests
     [InlineData("Move")]
     [InlineData("Validate")]
     [InlineData("Rebuild")]
-    public async Task StructuralOperationsDoNotReadPayload(
+    public async Task ApplyStructuralOperationAsync_StructuralOperations_DoNotReadPayload(
         string operation
     )
     {
@@ -19,7 +19,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -49,7 +50,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that an already valid forest incurs no hierarchy UPDATE commands.</summary>
     /// <returns>A task that completes after command and persisted-state checks.</returns>
     [Fact]
-    public async Task ValidRebuildDoesNotWriteNodes()
+    public async Task RebuildAsync_ValidRebuild_DoesNotWriteNodes()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -58,7 +59,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             expected,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
@@ -90,7 +92,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies bounded repair batches at the first size requiring a third batch.</summary>
     /// <returns>A task that completes after repair correctness and SQL-size checks.</returns>
     [Fact]
-    public async Task RebuildRepairs129NodesInThreeBoundedCommands()
+    public async Task RebuildAsync_Rebuild_Repairs129NodesInThreeBoundedCommands()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -100,7 +102,7 @@ public abstract partial class EnterpriseTests
             setup,
             expected,
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
@@ -134,7 +136,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that a second-batch failure rolls back the repair already persisted by batch one.</summary>
     /// <returns>A task that completes after checking the original corrupted snapshot.</returns>
     [Fact]
-    public async Task RepairFailureRollsBackCompletedFirstBatch()
+    public async Task RebuildAsync_RepairFailure_RollsBackCompletedFirstBatch()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -143,7 +145,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -179,7 +181,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies that cancellation at a repair boundary rolls back an executed earlier batch.</summary>
     /// <returns>A task that completes after checking atomic cancellation.</returns>
     [Fact]
-    public async Task RepairCancellationRollsBackCompletedFirstBatch()
+    public async Task RebuildAsync_RepairCancellation_RollsBackCompletedFirstBatch()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -188,7 +190,7 @@ public abstract partial class EnterpriseTests
             setup,
             EnterpriseForestTestSupport.CreateForest(129),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var registryBefore = await RegistryStateAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -228,7 +230,7 @@ public abstract partial class EnterpriseTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ValidationHandlesWideAndDeepForests(
+    public async Task ValidateAsync_Validation_HandlesWideAndDeepForests(
         bool deep
     )
     {
@@ -238,7 +240,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(2049, deep),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -263,7 +266,7 @@ public abstract partial class EnterpriseTests
     /// <summary>Verifies the shared observer counts real entities while isolating another context's counters.</summary>
     /// <returns>A task that completes after checking the materialization observer's positive control.</returns>
     [Fact]
-    public async Task MaterializationObserverCountsEntitiesOnlyForTheirOwningContext()
+    public async Task ToListAsync_SeparateContexts_CountMaterializationOnlyForTheirOwner()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -271,7 +274,8 @@ public abstract partial class EnterpriseTests
         await EnterpriseForestTestSupport.SeedForestAsync(
             setup,
             EnterpriseForestTestSupport.CreateForest(3),
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            corrupt: false);
 
         var firstProbe = new EnterpriseProbe();
         var secondProbe = new EnterpriseProbe();

@@ -217,6 +217,11 @@ state, and typed issues. `NestedSetRebuildPlan` is a read-only dry run with
 repairability, node count, changed-node count, bounded batch count, and changed
 structural roles.
 
+Both reports retain at most 1,024 individual issues. `TotalIssueCount` and
+`IssueCounts` report the complete counts; `IssuesTruncated` indicates omitted
+samples. A tree-wide issue such as a missing root has a null `NodeKey` and a
+stable code. The bound limits diagnostic retention, not the inspected tree.
+
 Rebuild uses Parent and sibling order as canonical data. It cannot repair a
 missing parent, cycle, duplicate identity, or ambiguous domain intent.
 

@@ -1,11 +1,15 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
-/// <summary>Shares equivalent normalized library bindings within one compilation, never application query trees.</summary>
+/// <summary>
+/// Shares equivalent normalized library bindings within one compilation, never application query trees.
+/// </summary>
 internal sealed class NestedSetNormalizedQueryRoots
 {
     private Dictionary<Expression, Expression>? _roots;
 
-    /// <summary>Canonicalizes only the two owned root arguments of an already recognized exact library marker.</summary>
+    /// <summary>
+    /// Canonicalizes only the two owned root arguments of an already recognized exact library marker.
+    /// </summary>
     internal MethodCallExpression Canonicalize(
         MethodCallExpression marker
     )
@@ -26,7 +30,9 @@ internal sealed class NestedSetNormalizedQueryRoots
         return marker.Update(marker.Object, arguments);
     }
 
-    /// <summary>Reuses a binding only after its entire grammar excludes application equality or virtual dispatch.</summary>
+    /// <summary>
+    /// Reuses a binding only after its entire grammar excludes application equality or virtual dispatch.
+    /// </summary>
     private Expression CanonicalizeRoot(
         Expression root
     )

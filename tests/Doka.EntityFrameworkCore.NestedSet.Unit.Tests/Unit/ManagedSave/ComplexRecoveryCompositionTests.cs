@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore.Update;
 using TopologyContext = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopologyRollbackTests.TopologyContext;
-using TopologyDetails = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopologyRollbackTests.TopologyDetails;
 using TopologyItem = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopologyRollbackTests.TopologyItem;
 using TopologyLeaf = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopologyRollbackTests.TopologyLeaf;
 using TopologyPayload = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopologyRollbackTests.TopologyPayload;
@@ -8,10 +6,18 @@ using TopologyPayload = Doka.EntityFrameworkCore.NestedSet.Tests.ComplexTopology
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks composed callback recovery against an independent exact CLR and native-lane preimage.</summary>
-public sealed partial class ComplexRecoveryCompositionTests(
-    ITestOutputHelper output
-)
+public sealed partial class ComplexRecoveryCompositionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    public ComplexRecoveryCompositionTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Provides bounded nullable-shape and callback-lifecycle combinations.</summary>
     public static IEnumerable<object[]> CallbackCases()
     {
@@ -65,7 +71,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
     /// <param name="boundary">The callback's detection or acceptance boundary.</param>
     [Theory]
     [MemberData(nameof(CallbackCases))]
-    public async Task ComposedCallbackRestoresExactNativeAndClrPreimage(
+    public async Task Restore_ComposedCallback_RestoresExactNativeAndClrPreimage(
         string shape,
         string change,
         string boundary
@@ -82,7 +88,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
         var captured = Observe(entry);
         Mutate(entry.Entity, change);
         FinishCallback(context, boundary);
-        output.WriteLine($"Shape={shape}; operations={change}; boundary={boundary}.");
+        _output.WriteLine($"Shape={shape}; operations={change}; boundary={boundary}.");
 
         // Act
         snapshot.Restore();
@@ -104,7 +110,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
     /// <param name="boundary">The callback's detection or acceptance boundary.</param>
     [Theory]
     [MemberData(nameof(PendingCases))]
-    public async Task PendingAddedCompositionRestoresExactNativeAndClrPreimage(
+    public async Task Restore_PendingAddedComposition_RestoresExactNativeAndClrPreimage(
         string change,
         bool detectPending,
         string boundary
@@ -130,7 +136,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
         // WHY: EF acceptance itself throws for this composed ordinal shape. Recovery must also handle that
         // callback failure; requiring the known exception below keeps unrelated setup failures visible.
         var callbackFailure = Record.Exception(() => FinishCallback(context, boundary));
-        output.WriteLine($"Pending={change}; detectPending={detectPending}; boundary={boundary}.");
+        _output.WriteLine($"Pending={change}; detectPending={detectPending}; boundary={boundary}.");
 
         // Act
         snapshot.Restore();
@@ -166,7 +172,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
     [InlineData(1821)]
     [InlineData(1855)]
     [InlineData(3603)]
-    public async Task ReviewSeedCompositionRestoresExactNativeLanes(
+    public async Task Restore_ReviewSeedComposition_RestoresExactNativeLanes(
         int seed
     )
     {
@@ -234,7 +240,7 @@ public sealed partial class ComplexRecoveryCompositionTests(
                 throw new ArgumentOutOfRangeException(nameof(seed));
         }
 
-        output.WriteLine($"Reduced review seed={seed}; pending outer addition and explicit callback operations.");
+        _output.WriteLine($"Reduced review seed={seed}; pending outer addition and explicit callback operations.");
 
         // Act
         snapshot.Restore();
@@ -248,226 +254,4 @@ public sealed partial class ComplexRecoveryCompositionTests(
             context.Database.GetDbConnection()
                 .State);
     }
-
-    /// <summary>Installs originals before pending CLR values and one explicitly marked scalar.</summary>
-    private static EntityEntry<TopologyPayload> Track(
-        TopologyContext context,
-        string shape
-    )
-    {
-        var payload = new TopologyPayload
-        {
-            Id = 31,
-            Rows = shape == "nullable"
-                ? [Item("First", 2), Item("Second", null), Item("Third", 0)]
-                : [Item("First", 1), Item("Second", 3), Item("Third", 2)],
-        };
-
-        var entry = context.Attach(payload);
-        _ = context.Model.GetRelationalModel();
-        InitializeEntries(entry.ComplexCollection(nameof(TopologyPayload.Rows)), payload.Rows!);
-        payload.Marker = "Pending marker";
-        payload.Rows![0].Text = "Pending first text";
-        payload.Rows![0].Details!.Code = "Pending first code";
-        payload.Rows![0].Leaves![0].Text = "Pending first leaf";
-        entry.Property(value => value.Marker)
-            .IsModified = true;
-
-        return entry;
-    }
-
-    /// <summary>Initializes stored ordinals before raw caller changes, without detecting those later changes.</summary>
-    private static void InitializeEntries(
-        ComplexCollectionEntry collection,
-        List<TopologyItem> rows
-    )
-    {
-        // WHY: Public ordinal access establishes only the stored baseline; pending raw additions stay uninstalled.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < rows.Count; index++)
-        {
-            var element = collection[index];
-            _ = element.Property(nameof(TopologyItem.Text))
-                .OriginalValue;
-
-            var leaves = rows[index].Leaves;
-
-            if (leaves is null)
-            {
-                continue;
-            }
-
-            var nested = element.ComplexCollection(nameof(TopologyItem.Leaves));
-
-            // WHY: The nested ordinal baseline must exist even when a later callback removes its outer owner.
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var leafIndex = 0; leafIndex < leaves.Count; leafIndex++)
-            {
-                _ = nested[leafIndex]
-                    .Property(nameof(TopologyLeaf.Text))
-                    .OriginalValue;
-            }
-        }
-    }
-
-    /// <summary>Builds a uniquely named synthetic element with null, empty or populated nested membership.</summary>
-    private static TopologyItem Item(
-        string name,
-        int? leaves
-    )
-        => new()
-        {
-            Text = name,
-            Details = new TopologyDetails
-            {
-                Text = $"{name} details",
-                Code = $"{name} code",
-            },
-            Leaves = leaves is null
-                ? null
-                : Enumerable
-                    .Range(0, leaves.Value)
-                    .Select(index => new TopologyLeaf { Text = $"{name} leaf {index}" })
-                    .ToList(),
-        };
-
-    /// <summary>Applies two operations so ordinal movement and nested membership interact in one callback.</summary>
-    private static void Mutate(
-        TopologyPayload payload,
-        string change
-    )
-    {
-        switch (change)
-        {
-            case "removeFirstTwice":
-                payload.Rows!.RemoveAt(0);
-                payload.Rows!.RemoveAt(0);
-                break;
-            case "nestedAddReverse":
-                payload.Rows![0].Leaves!.Add(new TopologyLeaf { Text = "Callback added leaf" });
-                payload.Rows!.Reverse();
-                break;
-            case "nestedAddInsertFirst":
-                payload.Rows![0].Leaves!.Add(new TopologyLeaf { Text = "Callback added leaf" });
-                payload.Rows!.Insert(0, Item("Callback inserted", 3));
-                break;
-            case "nestedNullThenNew":
-                payload.Rows![0].Leaves = null;
-                payload.Rows![1].Leaves = [new TopologyLeaf { Text = "Callback new leaf" }];
-                break;
-            case "outerNullThenNew":
-                payload.Rows = null;
-                payload.Rows = [Item("Callback replacement", 1)];
-                break;
-            case "replaceThenRemove":
-                payload.Rows = payload.Rows!.ToList();
-                payload.Rows.RemoveAt(0);
-                break;
-            case "nestedAddThenOuterNull":
-                payload.Rows![0].Leaves!.Add(new TopologyLeaf { Text = "Callback hidden leaf" });
-                payload.Rows = null;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(change));
-        }
-    }
-
-    /// <summary>Creates pending membership without implicitly forcing EF detection.</summary>
-    private static void AddPending(
-        TopologyPayload payload,
-        string change
-    )
-    {
-        switch (change)
-        {
-            case "outerEmptyThenNestedAdd":
-                payload.Rows!.Add(Item("Pending item", 0));
-                break;
-            case "outerNestedThenNestedClear":
-            case "outerNestedThenClear":
-                payload.Rows!.Add(Item("Pending item", 2));
-                break;
-            case "insertNestedThenReplace":
-                payload.Rows!.Insert(0, Item("Pending item", 2));
-                break;
-            case "nestedAddThenClear":
-            case "nestedAddThenNullReverse":
-                payload.Rows![0].Leaves!.Add(new TopologyLeaf { Text = "Pending nested leaf" });
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(change));
-        }
-    }
-
-    /// <summary>Changes pending Added owners and children independently of their stored neighbors.</summary>
-    private static void MutatePending(
-        TopologyPayload payload,
-        string change
-    )
-    {
-        switch (change)
-        {
-            case "outerEmptyThenNestedAdd":
-                payload.Rows!.Single(item => item.Text == "Pending item")
-                    .Leaves!
-                    .Add(new TopologyLeaf { Text = "Callback nested leaf" });
-
-                payload.Rows!.Reverse();
-                break;
-            case "outerNestedThenNestedClear":
-                payload.Rows!.Single(item => item.Text == "Pending item")
-                    .Leaves!.Clear();
-
-                payload.Rows!.RemoveAt(0);
-                break;
-            case "outerNestedThenClear":
-            case "nestedAddThenClear":
-                payload.Rows![0].Details = null;
-                payload.Rows!.Clear();
-                break;
-            case "insertNestedThenReplace":
-                payload.Rows![0].Leaves = [new TopologyLeaf { Text = "Callback replacement leaf" }];
-                payload.Rows!.Insert(0, Item("Callback item", 1));
-                break;
-            case "nestedAddThenNullReverse":
-                payload.Rows![0].Leaves = null;
-                payload.Rows!.Reverse();
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(change));
-        }
-    }
-
-    /// <summary>Models raw callbacks, explicit detection and payload acceptance before rollback.</summary>
-    private static void FinishCallback(
-        TopologyContext context,
-        string boundary
-    )
-    {
-        if (boundary != "raw")
-        {
-            context.ChangeTracker.DetectChanges();
-        }
-
-        if (boundary == "accepted")
-        {
-            context.ChangeTracker.AcceptAllChanges();
-        }
-    }
-
-    /// <summary>Gets the actual context-owned provider entry without global change detection.</summary>
-    private static IUpdateEntry Write(
-        DbContext context,
-        object entity
-    )
-        => context
-            .GetService<IUpdateAdapterFactory>()
-            .Create()
-            .Entries
-            .Single(entry => ReferenceEquals(
-                entry.ToEntityEntry()
-                    .Entity,
-                entity));
 }

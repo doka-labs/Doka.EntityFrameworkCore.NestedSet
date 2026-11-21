@@ -7,7 +7,7 @@ public sealed partial class SignalReportValidationTests
     /// <summary>A failed sparse reader does not reserve its 786432-cell grain before successful completion.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public async Task SparseReaderFailureDoesNotReserveTheCartesianGrid()
+    public async Task CreateGridAsync_SparseReaderFailure_DoesNotReserveTheCartesianGrid()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
@@ -45,7 +45,7 @@ public sealed partial class SignalReportValidationTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Sparse late failure: cells={512 * 512 * 3}; rows=2; allocated={allocated} B.");
+        _output.WriteLine($"Sparse late failure: cells={512 * 512 * 3}; rows=2; allocated={allocated} B.");
         Assert.Same(failure, error);
         Assert.True(rows.Disposed);
         Assert.Equal(thread, Environment.CurrentManagedThreadId);
@@ -55,12 +55,21 @@ public sealed partial class SignalReportValidationTests
     /// <summary>
     /// Supplies two completed reads and a completed fault, without introducing scheduler allocations.
     /// </summary>
-    private sealed class SparseFailureReader(
-        SignalReportTotal[] rows,
-        Exception failure
-    ) : IAsyncEnumerable<SignalReportTotal>, IAsyncEnumerator<SignalReportTotal>
+    private sealed class SparseFailureReader : IAsyncEnumerable<SignalReportTotal>, IAsyncEnumerator<SignalReportTotal>
     {
-        private readonly Task<bool> _failure = Task.FromException<bool>(failure);
+        private readonly SignalReportTotal[] _rows;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SparseFailureReader(
+            SignalReportTotal[] rows,
+            Exception failure
+        )
+        {
+            _rows = rows;
+            _failure = Task.FromException<bool>(failure);
+        }
+
+        private readonly Task<bool> _failure;
         private int _index = -1;
 
         /// <summary>Gets whether the failed reader was asynchronously disposed.</summary>
@@ -77,14 +86,14 @@ public sealed partial class SignalReportValidationTests
         }
 
         /// <summary>Gets the latest sparse scalar projection.</summary>
-        public SignalReportTotal Current => rows[_index];
+        public SignalReportTotal Current => _rows[_index];
 
         /// <summary>Returns completed values or the prepared late failure.</summary>
         public ValueTask<bool> MoveNextAsync()
         {
             _index++;
 
-            return _index < rows.Length
+            return _index < _rows.Length
                 ? ValueTask.FromResult(true)
                 : new ValueTask<bool>(_failure);
         }

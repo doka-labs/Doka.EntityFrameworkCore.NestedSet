@@ -11,7 +11,7 @@ public sealed class TemporalTests : ProviderTest, IClassFixture<ProviderFixture<
 
     /// <summary>Mutates current hierarchy rows while SQL Server retains queryable historical versions.</summary>
     [Fact]
-    public async Task CurrentTableMutationPreservesTemporalQuerySupportAsync()
+    public async Task InsertRootAsync_CurrentTableMutation_PreservesTemporalQuerySupport()
     {
         // Arrange
         var connection = await (await TestDatabaseServers.GetCurrentAsync(
@@ -21,10 +21,13 @@ public sealed class TemporalTests : ProviderTest, IClassFixture<ProviderFixture<
 
         var options = new DbContextOptionsBuilder<TemporalContext>()
             .ConfigureTestWarnings()
-            .UseSqlServer(connection, provider => provider.UseNestedSets())
+            .UseSqlServer(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new TemporalContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var hierarchy = context.NestedSet<TemporalNode>();
         var treeId = Guid.NewGuid();

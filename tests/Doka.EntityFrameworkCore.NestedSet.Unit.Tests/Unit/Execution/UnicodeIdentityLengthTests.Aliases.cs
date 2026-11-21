@@ -12,7 +12,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void PostgreSqlBpcharAliasUsesScalarBoundary(
+    public void Construct_PostgreSqlBpcharAlias_UsesScalarBoundary(
         bool scopeRole,
         bool overflow
     )
@@ -69,7 +69,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void PostgreSqlBpcharRuntimeCloneRetainsCharacterPolicy(
+    public void UsesUnicodeScalarLength_PostgreSqlBpcharRuntimeClone_RetainsCharacterPolicy(
         bool scopeRole
     )
     {

@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task BackingFieldRolesIgnoreDecoratedClrGetters(
+    public async Task QueryDepths_BackingFieldRoles_IgnoreDecoratedClrGetters(
         HierarchyCompositionOperation operation
     )
     {

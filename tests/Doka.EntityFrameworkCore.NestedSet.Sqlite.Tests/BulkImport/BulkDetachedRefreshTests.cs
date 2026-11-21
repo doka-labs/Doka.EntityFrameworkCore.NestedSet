@@ -25,7 +25,7 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
 
     /// <summary>Completed imports release their input objects while unrelated tracked state remains intact.</summary>
     [Fact]
-    public async Task CompletedImportDoesNotRetainDetachedInputs()
+    public async Task ImportWithoutRetainingInputsAsync_CompletedImport_DoesNotRetainDetachedInputs()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -66,7 +66,7 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
 
     /// <summary>Generated-value rollback releases input objects after restoring their original values.</summary>
     [Fact]
-    public async Task RolledBackGeneratedImportDoesNotRetainDetachedInputs()
+    public async Task FailImportWithoutRetainingInputsAsync_RolledBackGeneratedImport_DoesNotRetainDetachedInputs()
     {
         // Arrange
         var probe = new BulkRefreshFailure("BulkGeneratedNodes");
@@ -105,7 +105,7 @@ public sealed class BulkDetachedRefreshTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task EarlyFailurePreservesUnstagedGeneratedInputs(
+    public async Task InsertForestAsync_EarlyFailure_PreservesUnstagedGeneratedInputs(
         bool beforeStaging
     )
     {

@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Features.ManagedSave;
 
 /// <summary>Rejects uncoordinated hierarchy writes before Entity Framework Core sends database commands.</summary>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class NestedSetSaveGuardInterceptor : SaveChangesInterceptor
 {
     /// <inheritdoc />

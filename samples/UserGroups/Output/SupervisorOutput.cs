@@ -9,6 +9,7 @@ internal static class SupervisorOutput
     /// <param name="treeId">The selected supervisor tree.</param>
     /// <param name="heading">The heading for the displayed structure.</param>
     /// <param name="details">Whether to display persisted hierarchy coordinates.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for reads and output.</param>
     /// <returns>A task that completes when the tree has been printed.</returns>
     public static async Task TreeAsync(
@@ -17,10 +18,11 @@ internal static class SupervisorOutput
         Guid treeId,
         string heading,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
-        await SampleConsole.HeadingAsync(heading, cancellationToken);
+        await SampleConsole.HeadingAsync(output, heading, cancellationToken);
 
         var tree = context
             .NestedSet<User>()
@@ -138,11 +140,16 @@ internal static class SupervisorOutput
 
         if (details)
         {
-            await SampleConsole.WriteLineAsync($"TenantId={tenantId}; TreeId={treeId}", cancellationToken);
+            await SampleConsole.WriteLineAsync(output, $"TenantId={tenantId}; TreeId={treeId}", cancellationToken);
         }
 
-        foreach (var user in users)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var userIndex = 0; userIndex < users.Count; userIndex++)
         {
+            var user = users[userIndex];
+
             var groupNames = groupsByUser[user.Id];
             var groupLabel = groupsByUser.Contains(user.Id)
                 ? string.Join(", ", groupNames)
@@ -156,18 +163,20 @@ internal static class SupervisorOutput
                     + $"NestedSetPosition={user.NestedSetPosition}, Left={user.Left}, Right={user.Right}]";
             }
 
-            await SampleConsole.WriteLineAsync(line, cancellationToken);
+            await SampleConsole.WriteLineAsync(output, line, cancellationToken);
         }
     }
 
     /// <summary>Displays every stored supervisor tree during read-only sample inspection.</summary>
     /// <param name="context">The context opened for inspection.</param>
     /// <param name="details">Whether to display hierarchy coordinates.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for reads and output.</param>
     /// <returns>A task that completes after every root has been displayed.</returns>
     public static async Task InspectAsync(
         UserGroupContext context,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
@@ -184,14 +193,20 @@ internal static class SupervisorOutput
             })
             .ToListAsync(cancellationToken);
 
-        foreach (var root in roots)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var rootIndex = 0; rootIndex < roots.Count; rootIndex++)
         {
+            var root = roots[rootIndex];
+
             await TreeAsync(
                 context,
                 root.TenantId,
                 root.TreeId,
                 $"Stored supervisor tree: {root.Name}",
                 details,
+                output,
                 cancellationToken);
         }
     }

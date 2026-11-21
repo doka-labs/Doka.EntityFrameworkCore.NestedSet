@@ -13,7 +13,7 @@ public sealed class MutationContextGuardTests
     [InlineData(EntityState.Added, false)]
     [InlineData(EntityState.Modified, false)]
     [InlineData(EntityState.Deleted, false)]
-    public void CheapGuardRejectsRegisteredWritesWithoutDetecting(
+    public void RequireNoPendingWrites_CheapGuard_RejectsRegisteredWritesWithoutDetecting(
         EntityState state,
         bool automaticDetection
     )
@@ -53,7 +53,7 @@ public sealed class MutationContextGuardTests
 
     /// <summary>Cheap preflight leaves ordinary CLR edits for the detecting boundary after identity lookup.</summary>
     [Fact]
-    public void CheapGuardLeavesClrEditsUndetected()
+    public void RequireNoPendingWrites_CheapGuard_LeavesClrEditsUndetected()
     {
         // Arrange
         using var context = CreateContext();
@@ -87,7 +87,7 @@ public sealed class MutationContextGuardTests
 
     /// <summary>The mutation boundary detects ordinary CLR edits exactly once and rejects pending writes.</summary>
     [Fact]
-    public void FullGuardDetectsClrEditsExactlyOnce()
+    public void RequireMutationContext_FullGuard_DetectsClrEditsExactlyOnce()
     {
         // Arrange
         using var context = CreateContext();
@@ -127,7 +127,7 @@ public sealed class MutationContextGuardTests
 
     /// <summary>The detecting boundary respects applications that explicitly disable automatic detection.</summary>
     [Fact]
-    public void FullGuardPreservesDisabledAutomaticDetection()
+    public void RequireMutationContext_FullGuard_PreservesDisabledAutomaticDetection()
     {
         // Arrange
         using var context = CreateContext();

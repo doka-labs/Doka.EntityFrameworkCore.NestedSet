@@ -27,7 +27,7 @@ public sealed class HierarchyChangeDetectionAllocationTests
     [InlineData(1, 1)]
     [InlineData(1024, 1)]
     [InlineData(128, 64)]
-    public async Task GuardPlanCaptureAllocationDependsOnCandidateCount(
+    public async Task PlanCount_GuardPlanCaptureAllocation_DependsOnCandidateCount(
         int nodes,
         int candidates
     )
@@ -89,7 +89,7 @@ public sealed class HierarchyChangeDetectionAllocationTests
 
     /// <summary>Repeated exact-plan checks avoid scalar boxes and wrappers even with many clean entries.</summary>
     [Fact]
-    public async Task GuardPlanValidationKeepsFixedWarmAllocation()
+    public async Task PlanHasChanges_GuardPlanValidation_KeepsFixedWarmAllocation()
     {
         // Arrange
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();
@@ -151,7 +151,7 @@ public sealed class HierarchyChangeDetectionAllocationTests
     [Theory]
     [InlineData(1)]
     [InlineData(128)]
-    public async Task UnchangedHierarchyProbeHasBoundedTraversalAllocation(
+    public async Task HasHierarchyChanges_UnchangedHierarchyProbe_HasBoundedTraversalAllocation(
         int nodes
     )
     {
@@ -208,7 +208,7 @@ public sealed class HierarchyChangeDetectionAllocationTests
     [Theory]
     [InlineData(1)]
     [InlineData(64)]
-    public async Task PopulatedHierarchyProbeHasExplicitEnumerationBudget(
+    public async Task HasHierarchyChanges_PopulatedHierarchyProbe_HasExplicitEnumerationBudget(
         int parents
     )
     {
@@ -288,7 +288,7 @@ public sealed class HierarchyChangeDetectionAllocationTests
 
     /// <summary>An unchanged Int64 comparison does not box its current and original value on each probe.</summary>
     [Fact]
-    public async Task UnchangedValueTypeComparisonDoesNotAllocatePerProbe()
+    public async Task HasChanged_UnchangedValueTypeComparison_DoesNotAllocatePerProbe()
     {
         // Arrange
         await using var context = new HierarchyChangeDetectionTests.SnapshotContext();

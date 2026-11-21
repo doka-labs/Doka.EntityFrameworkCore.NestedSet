@@ -11,15 +11,18 @@ public sealed class ShadowPropertyTests : ProviderTest, IClassFixture<ProviderFi
 
     /// <summary>Assigns detached shadow values and persists a valid root and child.</summary>
     [Fact]
-    public async Task ShadowStructureSupportsInsertAndQueryAsync()
+    public async Task InsertRootAsync_ShadowStructure_SupportsInsertAndQuery()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<ShadowPropertyContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new ShadowPropertyContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var hierarchy = context.NestedSet<ShadowNode>();

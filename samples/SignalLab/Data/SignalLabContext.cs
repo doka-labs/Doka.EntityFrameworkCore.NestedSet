@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 
-/// <summary>Exposes independent synthetic instrument and acquisition sets with optional SaveChanges integration.</summary>
+/// <summary>
+/// Exposes independent synthetic instrument and acquisition sets with optional SaveChanges integration.
+/// </summary>
 public class SignalLabContext : NestedSetDbContext
 {
     /// <summary>Creates a context from caller-owned provider options without opening the database.</summary>

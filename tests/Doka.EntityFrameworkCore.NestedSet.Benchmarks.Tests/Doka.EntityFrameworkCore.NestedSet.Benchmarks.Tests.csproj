@@ -1,7 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="../Shared/TestRunnerReferences.props" />
 
   <ItemGroup>
     <ProjectReference Include="../../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks.csproj" />
+  </ItemGroup>
+  <ItemGroup Label="IDE file nesting">
+    <Compile Update="BenchmarkProvenanceTests.*.cs">
+      <DependentUpon>BenchmarkProvenanceTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="DatabaseBenchmarkTests.*.cs">
+      <DependentUpon>DatabaseBenchmarkTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="BenchmarkLauncherTests.*.cs">
+      <DependentUpon>BenchmarkLauncherTests.cs</DependentUpon>
+    </Compile>
+    <Compile Update="UserGroupChainBenchmarkTests.*.cs">
+      <DependentUpon>UserGroupChainBenchmarkTests.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

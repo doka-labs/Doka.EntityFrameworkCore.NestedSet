@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Independent owner ranges preserve global tenant visibility for matching and rejected bindings.</summary>
+    /// <summary>
+    /// Independent owner ranges preserve global tenant visibility for matching and rejected bindings.
+    /// </summary>
     /// <param name="includeSelf">Whether the selected source may also be an owner.</param>
     /// <param name="matchingScope">Whether the explicit Scope agrees with the application filter.</param>
     [Theory]
@@ -10,7 +12,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedAncestorsRetainApplicationTenantFilter(
+    public async Task SelectAncestors_IndexedAncestors_RetainApplicationTenantFilter(
         bool includeSelf,
         bool matchingScope
     )

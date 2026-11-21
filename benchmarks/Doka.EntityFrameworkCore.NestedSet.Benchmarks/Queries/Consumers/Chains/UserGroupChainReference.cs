@@ -29,7 +29,12 @@ internal static partial class UserGroupChainReference
 
         return ReadSnapshot.RunAsync(
             context,
-            token => FollowPathsAsync(context, tenantId, request, originalPath, token),
+            operationCancellationToken => FollowPathsAsync(
+                context,
+                tenantId,
+                request,
+                originalPath,
+                operationCancellationToken),
             cancellationToken);
     }
 
@@ -64,9 +69,13 @@ internal static partial class UserGroupChainReference
         var completed = new List<SupervisorChainBranch>();
         var active = new List<ReferencePath>();
 
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
-        foreach (var origin in first.Origins)
+        for (var originIndex = 0; originIndex < first.Origins.Count; originIndex++)
         {
+            var origin = first.Origins[originIndex];
+
             if (!Append(
                 origin,
                 null,
@@ -89,8 +98,13 @@ internal static partial class UserGroupChainReference
             var step = request.Steps[index];
             var next = new List<ReferencePath>();
 
-            foreach (var path in active)
+            // WHY: The completed input list is stable; preserve its order while updating separate result state.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var pathIndex = 0; pathIndex < active.Count; pathIndex++)
             {
+                var path = active[pathIndex];
+
                 var batch = await ReadAsync(
                     context,
                     tenantId,
@@ -114,9 +128,13 @@ internal static partial class UserGroupChainReference
                     continue;
                 }
 
+                // WHY: The completed input list is stable; preserve its order while updating separate result state.
+                // ReSharper disable once ForCanBeConvertedToForeach
                 // ReSharper disable once LoopCanBeConvertedToQuery
-                foreach (var origin in batch.Origins)
+                for (var originIndex = 0; originIndex < batch.Origins.Count; originIndex++)
                 {
+                    var origin = batch.Origins[originIndex];
+
                     if (!Append(
                         origin,
                         path,
@@ -135,9 +153,13 @@ internal static partial class UserGroupChainReference
             active = next;
         }
 
-        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach (var path in active)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var pathIndex = 0; pathIndex < active.Count; pathIndex++)
         {
+            var path = active[pathIndex];
+
             if (!Finish(path, SupervisorChainStatus.ReachedRequestedHop, budget, completed))
             {
                 return Limited(completed, path);
@@ -294,17 +316,27 @@ internal static partial class UserGroupChainReference
     );
 
     /// <summary>Separates physical reader rows from logical path and visited-state budgets.</summary>
-    private sealed class ReferenceBudget(SupervisorChainRequest request)
+    private sealed class ReferenceBudget
     {
+        private readonly SupervisorChainRequest _request;
+
+        /// <summary>Retains the same immutable budget limits as the compared application chain.</summary>
+        internal ReferenceBudget(
+            SupervisorChainRequest request
+        )
+        {
+            _request = request;
+        }
+
         private int _reads;
         private int _results;
         private int _visits;
 
         /// <summary>Admits a physical row before the reference buffers it.</summary>
-        internal bool Read() => _reads < request.MaxResultRows && ++_reads > 0;
+        internal bool Read() => _reads < _request.MaxResultRows && ++_reads > 0;
 
         /// <summary>Admits a retained person-path node before a path array is allocated.</summary>
-        internal bool Visit() => _visits < request.MaxVisitedStates && ++_visits > 0;
+        internal bool Visit() => _visits < _request.MaxVisitedStates && ++_visits > 0;
 
         /// <summary>Admits an overflow-safe logical append before copying result evidence.</summary>
         internal bool Append(
@@ -312,7 +344,7 @@ internal static partial class UserGroupChainReference
         )
         {
             if (count < 1
-                || count > request.MaxResultRows - _results)
+                || count > _request.MaxResultRows - _results)
             {
                 return false;
             }

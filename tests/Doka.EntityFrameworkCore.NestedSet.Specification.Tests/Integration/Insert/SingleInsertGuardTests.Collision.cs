@@ -7,7 +7,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SingleIdentityCollisionPreservesLegitimateTrackedRowAndReleasesInput(
+    public async Task InsertRootAsync_IdentityCollision_PreservesTrackedRowAndReleasesInput(
         bool callerTransaction
     )
     {

@@ -1,18 +1,26 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 /// <summary>Checks output-proportional person selection without copying an already complete winner bag.</summary>
-/// <param name="output">Receives observed allocations outside the measured operation.</param>
 [Trait("Category", "Allocation")]
-public sealed class CandidateReuseSelectionTests(
-    ITestOutputHelper output
-)
+public sealed class CandidateReuseSelectionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Receives observed allocations outside the measured operation.</param>
+    public CandidateReuseSelectionTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Repeated evidence for one winner needs no second occurrence-sized reference array.</summary>
     /// <param name="priority">Whether continuation first prefers business priority over distance.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CompleteWinnerEvidenceAvoidsOccurrenceSizedCopies(
+    public void SelectOwned_CompleteWinnerEvidence_AvoidsOccurrenceSizedCopies(
         bool priority
     )
     {
@@ -60,7 +68,7 @@ public sealed class CandidateReuseSelectionTests(
         // WHY: The input already contains the complete winning person's evidence. A second 131072-reference
         // buffer cannot fit this fixed allowance, which still admits the result and small selection state.
         Assert.InRange(allocated, 0, 8_192);
-        output.WriteLine($"Priority={priority}; occurrences={occurrences}; selection allocation={allocated} B.");
+        _output.WriteLine($"Priority={priority}; occurrences={occurrences}; selection allocation={allocated} B.");
         GC.KeepAlive(result);
     }
 
@@ -71,7 +79,7 @@ public sealed class CandidateReuseSelectionTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LowerPriorityResolvesEarlierAmbiguityWithoutDiscardingWinnerEvidence(
+    public void Select_LowerPriority_ResolvesEarlierAmbiguityWithoutDiscardingWinnerEvidence(
         bool reverse
     )
     {
@@ -109,7 +117,7 @@ public sealed class CandidateReuseSelectionTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FinalPriorityTieNeverSelectsAnIdentity(
+    public void Select_FinalPriorityTie_NeverSelectsAnIdentity(
         bool reverse
     )
     {
@@ -139,7 +147,7 @@ public sealed class CandidateReuseSelectionTests(
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CallerOwnedInputCannotMutateSelectedEvidence(
+    public void Candidate_CallerOwnedInput_CannotMutateSelectedEvidence(
         bool priority
     )
     {
@@ -172,7 +180,7 @@ public sealed class CandidateReuseSelectionTests(
     /// <param name="reverse">Whether the same bag arrives in reverse occurrence order.</param>
     [Theory]
     [MemberData(nameof(SelectionCases))]
-    public void OnePassSelectionMatchesIndependentGroupedReference(
+    public void Select_OnePassSelection_MatchesIndependentGroupedReference(
         string mode,
         int seed,
         bool reverse

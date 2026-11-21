@@ -1,13 +1,13 @@
-using System.ComponentModel;
+using UserGroupsProgram = Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups.Program;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
-/// <summary>Runs the actual UserGroups console entry point against isolated SQLite sample databases.</summary>
-public sealed class UserSupervisorCommandTests
+/// <summary>Runs the shared UserGroups entry point against isolated SQLite sample databases.</summary>
+public sealed partial class UserSupervisorCommandTests
 {
     /// <summary>The real supervisor command prints both group memberships and shadow positions after a move.</summary>
     [Fact]
-    public async Task SupervisorScenarioShowsShadowCoordinatesAndRetainedGrantsAsync()
+    public async Task RunAsync_SupervisorScenario_ShowsShadowCoordinatesAndRetainedGrants()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -38,7 +38,7 @@ public sealed class UserSupervisorCommandTests
 
     /// <summary>Inspection displays the persisted supervisor tree without changing the SQLite file.</summary>
     [Fact]
-    public async Task InspectionReadsSupervisorResultsWithoutMutationAsync()
+    public async Task RunAsync_Inspection_ReadsSupervisorResultsWithoutMutation()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -48,7 +48,7 @@ public sealed class UserSupervisorCommandTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         var databasePath = Path.Combine(directory.DirectoryPath, "nestedset_sample_usergroups.sqlite");
-        var before = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
+        var before = await File.ReadAllBytesAsync(databasePath, TestContext.Current.CancellationToken);
 
         // Act
         var result = await RunAsync(
@@ -56,7 +56,7 @@ public sealed class UserSupervisorCommandTests
             ["--provider", "sqlite", "--inspect", "--details"],
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var after = await File.ReadAllBytesAsync(databasePath, CancellationToken.None);
+        var after = await File.ReadAllBytesAsync(databasePath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -73,7 +73,7 @@ public sealed class UserSupervisorCommandTests
 
     /// <summary>The default invocation keeps the four previous workflows beside the new fifth one.</summary>
     [Fact]
-    public async Task AllScenariosIncludeSupervisorHierarchyAsync()
+    public async Task RunAsync_AllScenarios_IncludeSupervisorHierarchy()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -99,7 +99,7 @@ public sealed class UserSupervisorCommandTests
     /// Design-time creation accepts every name the console advertises without connecting to a server.
     /// </summary>
     [Fact]
-    public void DokaDesignTimeFactoryAcceptsSupervisorScenario()
+    public void CreateDbContext_DokaDesignTimeFactory_AcceptsSupervisorScenario()
     {
         // Arrange
         var factory = new UserGroupContextFactory();
@@ -111,104 +111,195 @@ public sealed class UserSupervisorCommandTests
         Assert.Equal("Doka.EntityFrameworkCore.MySql", context.Database.ProviderName);
     }
 
-    /// <summary>
-    /// The actual runner captures both streams and leaves its caller-owned process usable after reaping.
-    /// </summary>
-    /// <param name="exitCode">An ordinary success or an explicit child-command failure.</param>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(23)]
-    public async Task RunnerCapturesCompletedChildStreamsAsync(
-        int exitCode
-    )
+    /// <summary>Help uses only invocation-owned output and creates no sample database.</summary>
+    [Fact]
+    public async Task RunAsync_Help_DoesNotCreateDatabase()
     {
         // Arrange
-        using var process = CreateBlockingProcess(exitCode);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var directory = new SampleLifecycleDirectory();
 
         // Act
-        var run = RunAsync(process, timeout.Token);
-        await process.StandardInput.WriteLineAsync("release".AsMemory(), timeout.Token);
-        var result = await run;
+        var result = await RunAsync(directory.DirectoryPath, ["--help"], TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.True(process.HasExited);
-        Assert.Equal(exitCode, process.ExitCode);
-        Assert.Equal(exitCode, result.ExitCode);
-        Assert.Equal("child-output", result.Output.Trim());
-        Assert.Equal("child-error", result.Error.Trim());
+        Assert.Equal(0, result.ExitCode);
+        Assert.Empty(result.Error);
+        Assert.Contains("UserGroups sample", result.Output, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(directory.DirectoryPath));
+    }
+
+    /// <summary>Invalid options fail before endpoint construction and leave the owned directory untouched.</summary>
+    [Fact]
+    public async Task RunAsync_InvalidScenario_RejectsBeforeDatabaseAccess()
+    {
+        // Arrange
+        await using var directory = new SampleLifecycleDirectory();
+
+        // Act
+        var result = await RunAsync(
+            directory.DirectoryPath,
+            ["--scenario", "unknown-scenario"],
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(1, result.ExitCode);
+        Assert.NotEmpty(result.Error);
+        Assert.Empty(result.Output);
+        Assert.False(Directory.Exists(directory.DirectoryPath));
+    }
+
+    /// <summary>Concurrent invocations retain their own databases and output without process-wide settings.</summary>
+    [Fact]
+    public async Task RunAsync_ConcurrentInvocations_KeepOutputAndStorageIsolated()
+    {
+        // Arrange
+        await using var first = new SampleLifecycleDirectory();
+        await using var second = new SampleLifecycleDirectory();
+
+        // Act
+        var runs = await Task.WhenAll(
+            RunAsync(
+                first.DirectoryPath,
+                ["--provider", "sqlite", "--scenario", "commit"],
+                TestContext.Current.CancellationToken),
+            RunAsync(
+                second.DirectoryPath,
+                ["--provider", "sqlite", "--scenario", "supervisors"],
+                TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.All(runs, result => Assert.Equal(0, result.ExitCode));
+        Assert.All(runs, result => Assert.Empty(result.Error));
+        Assert.Contains(first.DirectoryPath, runs[0].Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(second.DirectoryPath, runs[0].Output, StringComparison.Ordinal);
+        Assert.Contains("COMMIT:", runs[0].Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("SUPERVISORS:", runs[0].Output, StringComparison.Ordinal);
+        Assert.Contains(second.DirectoryPath, runs[1].Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(first.DirectoryPath, runs[1].Output, StringComparison.Ordinal);
+        Assert.Contains("SUPERVISORS:", runs[1].Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("COMMIT:", runs[1].Output, StringComparison.Ordinal);
+        using var firstFile = File.Open(
+            Path.Combine(first.DirectoryPath, "nestedset_sample_usergroups.sqlite"),
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.None);
+
+        using var secondFile = File.Open(
+            Path.Combine(second.DirectoryPath, "nestedset_sample_usergroups.sqlite"),
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.None);
+
+        Assert.True(firstFile.Length > 0);
+        Assert.True(secondFile.Length > 0);
     }
 
     /// <summary>
-    /// Canceling a started stdin-blocked child terminates and reaps it before returning the original cancellation.
+    /// Cancellation requested by output interrupts forward preparation but still reports its outcome.
     /// </summary>
     [Fact]
-    public async Task RunnerReapsChildBeforePropagatingCancellationAsync()
+    public async Task RunAsync_CancellationDuringInvocation_ReturnsCanceledOutcome()
     {
         // Arrange
-        using var process = CreateBlockingProcess(0);
-        using var stop = new CancellationTokenSource();
+        await using var directory = new SampleLifecycleDirectory();
+        using var cancellation = new CancellationTokenSource();
+        using var output = new CancelOnWriteWriter(cancellation);
+        using var error = new StringWriter();
 
         // Act
-        // WHY: RunAsync starts synchronously before its first await; stdin remains open and unreleased.
-        var run = RunAsync(process, stop.Token);
-        await stop.CancelAsync();
-        var error = await Record.ExceptionAsync(async () => await run);
+        var result = await UserGroupsProgram.RunAsync(
+            ["--provider", "sqlite", "--scenario", "commit"],
+            output,
+            error,
+            directory.DirectoryPath,
+            cancellation.Token);
 
         // Assert
-        Assert.Equal(
-            stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error)
-                .CancellationToken);
-
-        Assert.True(process.HasExited);
+        Assert.Equal(130, result);
+        Assert.True(cancellation.IsCancellationRequested);
+        Assert.Contains("Sample canceled", error.ToString(), StringComparison.Ordinal);
     }
 
-    /// <summary>A capture setup failure after launch still terminates and reaps the owned child.</summary>
+    /// <summary>A failed output sink is reported before any sample database is prepared.</summary>
     [Fact]
-    public async Task RunnerReapsChildBeforePropagatingCaptureFailureAsync()
+    public async Task RunAsync_OutputFailure_ReportsFailureBeforeDatabaseAccess()
     {
         // Arrange
-        using var process = CreateBlockingProcess(0);
-        process.StartInfo.RedirectStandardError = false;
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await using var directory = new SampleLifecycleDirectory();
+        var failure = new IOException("The ordinary output sink failed.");
+        using var output = new ThrowOnWriteWriter(failure);
+        using var error = new StringWriter();
 
         // Act
-        var error = await Record.ExceptionAsync(() => RunAsync(process, timeout.Token));
+        var result = await UserGroupsProgram.RunAsync(
+            ["--provider", "sqlite", "--scenario", "commit"],
+            output,
+            error,
+            directory.DirectoryPath,
+            TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.IsType<InvalidOperationException>(error);
-        Assert.Contains("StandardError", error.Message, StringComparison.Ordinal);
-        Assert.True(process.HasExited);
+        Assert.Equal(1, result);
+        Assert.Contains(failure.Message, error.ToString(), StringComparison.Ordinal);
+        Assert.False(Directory.Exists(directory.DirectoryPath));
     }
 
-    /// <summary>
-    /// Cancellation before entry prevents process creation rather than launching work that already expired.
-    /// </summary>
+    /// <summary>A failed error sink retains the invalid command as the first failure.</summary>
     [Fact]
-    public async Task RunnerDoesNotStartChildForCanceledTokenAsync()
+    public async Task RunAsync_ErrorReportingFailure_PreservesOriginalFailure()
     {
         // Arrange
-        using var process = CreateBlockingProcess(0);
-        using var stop = new CancellationTokenSource();
-        await stop.CancelAsync();
+        await using var directory = new SampleLifecycleDirectory();
+        var failure = new IOException("The error output sink failed.");
+        using var output = new StringWriter();
+        using var error = new ThrowOnWriteWriter(failure);
 
         // Act
-        var error = await Record.ExceptionAsync(() => RunAsync(process, stop.Token));
-        var associationError = Record.Exception(() => _ = process.Id);
+        var result = await Record.ExceptionAsync(() => UserGroupsProgram.RunAsync(
+            ["--scenario", "unknown-scenario"],
+            output,
+            error,
+            directory.DirectoryPath,
+            TestContext.Current.CancellationToken));
 
         // Assert
-        Assert.Equal(
-            stop.Token,
-            Assert.IsAssignableFrom<OperationCanceledException>(error)
-                .CancellationToken);
-
-        Assert.IsType<InvalidOperationException>(associationError);
+        var aggregate = Assert.IsType<AggregateException>(result);
+        Assert.Equal(2, aggregate.InnerExceptions.Count);
+        Assert.IsType<ArgumentException>(aggregate.InnerExceptions[0]);
+        Assert.Same(failure, aggregate.InnerExceptions[1]);
+        Assert.False(Directory.Exists(directory.DirectoryPath));
     }
 
-    /// <summary>The sample command wrapper preserves caller cancellation before creating a child or database.</summary>
+    /// <summary>Terminal error-output failure cannot replace the cancellation that stopped forward work.</summary>
     [Fact]
-    public async Task SampleRunnerDoesNotStartForCanceledTokenAsync()
+    public async Task RunAsync_CancellationReportingFailure_PreservesCancellationIdentity()
+    {
+        // Arrange
+        await using var directory = new SampleLifecycleDirectory();
+        using var cancellation = new CancellationTokenSource();
+        var failure = new IOException("The cancellation output sink failed.");
+        using var output = new CancelOnWriteWriter(cancellation);
+        using var error = new ThrowOnWriteWriter(failure);
+
+        // Act
+        var result = await Record.ExceptionAsync(() => UserGroupsProgram.RunAsync(
+            ["--provider", "sqlite", "--scenario", "commit"],
+            output,
+            error,
+            directory.DirectoryPath,
+            cancellation.Token));
+
+        // Assert
+        var aggregate = Assert.IsType<AggregateException>(result);
+        Assert.Equal(2, aggregate.InnerExceptions.Count);
+        Assert.Equal(cancellation.Token,
+            Assert.IsAssignableFrom<OperationCanceledException>(aggregate.InnerExceptions[0]).CancellationToken);
+        Assert.Same(failure, aggregate.InnerExceptions[1]);
+    }
+
+    /// <summary>The sample entry preserves caller cancellation before creating its database.</summary>
+    [Fact]
+    public async Task RunAsync_SampleRunner_DoesNotStartForCanceledToken()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -228,229 +319,5 @@ public sealed class UserSupervisorCommandTests
                 .CancellationToken);
 
         Assert.False(Directory.Exists(directory.DirectoryPath));
-    }
-
-    /// <summary>Failure to launch retains its native error without attempting to reap an unstarted process.</summary>
-    [Fact]
-    public async Task RunnerPreservesStartFailureAsync()
-    {
-        // Arrange
-        using var process = CreateBlockingProcess(0);
-        process.StartInfo.FileName = Path.Combine(
-            Path.GetTempPath(),
-            Guid
-                .NewGuid()
-                .ToString("N"),
-            "missing-child");
-
-        // Act
-        var error = await Record.ExceptionAsync(() => RunAsync(process, CancellationToken.None));
-        var associationError = Record.Exception(() => _ = process.Id);
-
-        // Assert
-        Assert.IsType<Win32Exception>(error);
-        Assert.IsType<InvalidOperationException>(associationError);
-    }
-
-    /// <summary>Starts only the already-built sample assembly and returns its captured process result.</summary>
-    /// <param name="directory">A test-owned directory for the sample's fixed SQLite filename.</param>
-    /// <param name="arguments">The exact console options for one invocation.</param>
-    /// <param name="cancellationToken">The caller's token, linked with the independent command deadline.</param>
-    /// <returns>The exit code and separate standard streams.</returns>
-    private static async Task<(int ExitCode, string Output, string Error)> RunAsync(
-        string directory,
-        IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken
-    )
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var startInfo = new ProcessStartInfo("dotnet")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        startInfo.ArgumentList.Add(typeof(User).Assembly.Location);
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        startInfo.Environment["NESTEDSET_SAMPLE_SQLITE_DIRECTORY"] = directory;
-
-        using var process = new Process();
-        process.StartInfo = startInfo;
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(60));
-
-        try
-        {
-            return await RunAsync(process, timeout.Token);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            // WHY: The child is already reaped; expose the caller's identity rather than the linked deadline token.
-            throw new OperationCanceledException(cancellationToken);
-        }
-    }
-
-    /// <summary>
-    /// Owns a launched child's lifetime and stream reads; the caller retains ownership of its process wrapper.
-    /// </summary>
-    /// <param name="process">
-    /// The configured, unstarted process; its caller must dispose it after this method completes.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// Cancels forward waiting without abandoning termination, reaping or stream observation.
-    /// </param>
-    /// <returns>The exit code and separate standard streams after the child has exited.</returns>
-    private static async Task<(int ExitCode, string Output, string Error)> RunAsync(
-        Process process,
-        CancellationToken cancellationToken
-    )
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // WHY: Process.Start launches synchronously; asynchronous waiting and stream reads avoid blocking the test.
-        if (!process.Start())
-        {
-            throw new InvalidOperationException("The UserGroups sample process did not start.");
-        }
-
-        Task<string>? outputTask = null;
-        Task<string>? errorTask = null;
-        using var cleanup = new CancellationTokenSource();
-
-        try
-        {
-            // WHY: Stream reads must drain after cancellation kills the child; the canceled forward token
-            // must neither truncate its diagnostic output nor leave either read unobserved during cleanup.
-            // The independent cleanup token is bounded only if termination or capture fails.
-            outputTask = process.StandardOutput.ReadToEndAsync(cleanup.Token);
-            errorTask = process.StandardError.ReadToEndAsync(cleanup.Token);
-            await process.WaitForExitAsync(cancellationToken);
-            var output = await outputTask.WaitAsync(cancellationToken);
-            var error = await errorTask.WaitAsync(cancellationToken);
-
-            return (process.ExitCode, output, error);
-        }
-        catch (Exception failure)
-        {
-            var cleanupFailures = new List<Exception>();
-
-            // WHY: A failed kill or inherited open pipe must not leave the test waiting forever. This
-            // deadline belongs to recovery and remains independent of the expired forward operation.
-            cleanup.CancelAfter(TimeSpan.FromSeconds(10));
-
-            try
-            {
-                if (!process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-            }
-            catch (InvalidOperationException) when (process.HasExited)
-            {
-                // WHY: The child may exit between HasExited and Kill; it still must be reaped below.
-            }
-            catch (Exception cleanupFailure)
-            {
-                cleanupFailures.Add(cleanupFailure);
-            }
-
-            try
-            {
-                await process.WaitForExitAsync(cleanup.Token);
-            }
-            catch (Exception cleanupFailure)
-            {
-                cleanupFailures.Add(cleanupFailure);
-            }
-
-            foreach (var read in new[] { outputTask, errorTask })
-            {
-                if (read is null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    await read;
-                }
-                catch (Exception cleanupFailure)
-                {
-                    if (!ReferenceEquals(cleanupFailure, failure))
-                    {
-                        cleanupFailures.Add(cleanupFailure);
-                    }
-                }
-            }
-
-            if (cleanupFailures.Count > 0)
-            {
-                cleanupFailures.Insert(0, failure);
-
-                throw new AggregateException(
-                    "The sample command failed and its child cleanup also failed.",
-                    cleanupFailures);
-            }
-
-            throw;
-        }
-    }
-
-    /// <summary>Creates a child that emits separate streams and blocks on stdin until explicitly released.</summary>
-    /// <param name="exitCode">The exit code returned after the caller writes a release line.</param>
-    /// <returns>An unstarted process wrapper owned by the calling test.</returns>
-    private static Process CreateBlockingProcess(
-        int exitCode
-    )
-    {
-        var startInfo = new ProcessStartInfo(
-            OperatingSystem.IsWindows()
-                ? "cmd.exe"
-                : "/bin/sh")
-        {
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        startInfo.ArgumentList.Add(
-            OperatingSystem.IsWindows()
-                ? "/C"
-                : "-c");
-
-        startInfo.ArgumentList.Add(
-            OperatingSystem.IsWindows()
-                ? $"echo child-output& echo child-error 1>&2& set /p release=& exit /b {exitCode}"
-                : $"printf 'child-output\\n'; printf 'child-error\\n' >&2; IFS= read -r release; exit {exitCode}");
-
-        return new Process { StartInfo = startInfo };
-    }
-
-    /// <summary>Creates the prior sample database as test setup and stops on a failed seed command.</summary>
-    /// <param name="directory">A test-owned directory for the sample's fixed SQLite filename.</param>
-    /// <param name="arguments">The console options that produce the seed database.</param>
-    /// <returns>A task that completes when a successful prior run is available for inspection.</returns>
-    /// <param name="cancellationToken">The caller's cancellation token for this fixture operation.</param>
-    private static async Task SeedAsync(
-        string directory,
-        IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken
-    )
-    {
-        var result = await RunAsync(directory, arguments, cancellationToken: cancellationToken);
-
-        if (result.ExitCode != 0)
-        {
-            throw new InvalidOperationException("The UserGroups sample setup failed: " + result.Error);
-        }
     }
 }

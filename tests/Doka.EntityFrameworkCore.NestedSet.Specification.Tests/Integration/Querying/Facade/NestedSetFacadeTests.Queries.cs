@@ -5,7 +5,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>All key-based queries resolve their anchor in SQL and retain stable hierarchy order.</summary>
     [Theory]
     [MemberData(nameof(QueryCases))]
-    public async Task KeyQueryReturnsExpectedPreorder(
+    public async Task ParentOf_KeyQuery_ReturnsExpectedPreorder(
         string operation,
         int[] expected
     )
@@ -40,7 +40,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>Scope and TreeId isolate trees that use identical interval coordinates.</summary>
     [Fact]
-    public async Task TreeBindingIsolatesIdenticalBounds()
+    public async Task InTree_TreeBinding_IsolatesIdenticalBounds()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -62,7 +62,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>A composable key query executes as one database command without preloading its anchor.</summary>
     [Fact]
-    public async Task ComposedAnchorQueryUsesOneCommand()
+    public async Task AncestorsOf_ComposedAnchorQuery_UsesOneCommand()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -86,7 +86,7 @@ public abstract partial class NestedSetFacadeTests
 
     /// <summary>A missing visible anchor produces an empty composed query.</summary>
     [Fact]
-    public async Task MissingAnchorReturnsEmptyQuery()
+    public async Task SubtreeOf_MissingAnchor_ReturnsEmptyQuery()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

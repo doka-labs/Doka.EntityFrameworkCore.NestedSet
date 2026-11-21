@@ -7,10 +7,12 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 public abstract partial class AncestorIndexWorkTestBase
 {
-    /// <summary>Rejects repeated source-mode scans when independent application rows drive dense ancestor results.</summary>
+    /// <summary>
+    /// Rejects repeated source-mode scans when independent application rows drive dense ancestor results.
+    /// </summary>
     [Fact]
     [Trait("Category", "Capacity")]
-    public async Task DenseConsumerJoinRetainsPointSourceLookup()
+    public async Task AsAsyncEnumerable_DenseConsumerJoin_RetainsPointSourceLookup()
     {
         // Arrange
         const int nodes = 100_001;
@@ -141,7 +143,8 @@ public abstract partial class AncestorIndexWorkTestBase
             [
                 $"Nodes={nodes}; sources={sources}; binding={hasBinding}; orderedJoin={hasOrderedJoin}; "
                 + $"optimized={hasOptimizedPath}; expected={expected}; actual={count}; "
-                + $"commands={commandCount}; traversals={traversals}; budget={traversalBudget}; executedPlan={executedPlan}",
+                + $"commands={commandCount}; traversals={traversals}; budget={
+                    traversalBudget}; executedPlan={executedPlan}",
                 sql,
                 plan,
             ],

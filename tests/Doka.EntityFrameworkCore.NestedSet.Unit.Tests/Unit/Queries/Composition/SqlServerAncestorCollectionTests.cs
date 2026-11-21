@@ -16,7 +16,7 @@ public sealed class SqlServerAncestorCollectionTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task RealNavigationModelsTranslateCollectionsWithoutIo(
+    public async Task AsSingleQuery_RealNavigationModels_TranslateCollectionsWithoutIo(
         bool indexed,
         bool includeSelf,
         bool dto

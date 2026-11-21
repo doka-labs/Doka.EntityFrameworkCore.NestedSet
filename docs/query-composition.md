@@ -112,7 +112,7 @@ Some expression work therefore moves from `Build` into cold compilation.
 A shorter builder does not establish lower complete-read cost or a warm-cache
 speedup; measure both separately.
 
-Read [implementation design](implementation-design.md#optional-ancestor-index-and-statement-local-source-binding)
+Read the [provider strategy decision](decisions/D-019-optional-ancestor-index-and-source-binding.md)
 for structural source boundaries, narrow candidate matching, and the two
 local directed joins in the inclusive indexed path. Those mechanics do not provide result ordering, stronger
 isolation, or a universal optimizer guarantee. In particular, consumer
@@ -349,6 +349,28 @@ Composition starts no transaction and changes no isolation settings. One
 statement does not strengthen the provider's configured read isolation.
 Use the qualified [read-snapshot rules](transactions-and-locking.md#read-consistency)
 when the result must remain consistent with concurrent structural writers.
+
+Endpoint mapping, source stability, and visibility are separate checks. An
+endpoint must be a real alias of the exact configured mapping, including a
+named mapping. Stability only determines whether that resolution can be reused
+inside the same operation; it does not prove visibility. For example, a stable
+`IgnoreQueryFilters()` source does not authorize removing a required endpoint
+membership check. Independent payload roots remain legal without becoming
+hierarchy endpoints.
+
+Source inspection does not compile an application predicate or invoke an
+application property getter. It checks child expressions and actual
+runtime-owned metadata before derived type/assignability inspection. Opaque
+metadata wrappers and dynamic expressions receive conservative strategy
+selection rather than callback execution or dynamic reduction. This boundary
+starts after the caller has built the expression; public expression factories
+can themselves validate application metadata during construction.
+
+Repeated Scope/Tree bindings retain every earlier comparison and its captured
+identity; a contradictory binding returns no rows. Only library-owned binding
+comparisons are combined. Application predicates keep their separate deferred
+occurrences and ordinary EF query-filter behavior. Contexts, mutable captures,
+requests, and results are not global query-cache values.
 
 Query construction allocates expression nodes proportional to the expression
 shape, not to the stored tree size. It does not retain a materialized tree.

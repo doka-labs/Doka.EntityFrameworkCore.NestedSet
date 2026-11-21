@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class QueryPlanReplayTests
@@ -17,7 +19,7 @@ public sealed partial class QueryPlanReplayTests
     [InlineData(null, 30)]
     [InlineData(0, 0)]
     [InlineData(7, 7)]
-    public async Task StatisticsRefreshScansEachOwnedStatisticWithUnchangedTimeout(
+    public async Task RefreshStatisticsAsync_StatisticsRefresh_ScansEachOwnedStatisticWithUnchangedTimeout(
         int? configured,
         int expected
     )
@@ -27,7 +29,8 @@ public sealed partial class QueryPlanReplayTests
             () => Results(Statistics("z-primary", "a-stat]edge", "middle statistic")),
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
         context.Database.SetCommandTimeout(configured);
 
         // Act
@@ -37,6 +40,11 @@ public sealed partial class QueryPlanReplayTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal(4, connection.Commands.Count);
         var catalog = connection.Commands[0];
         Assert.Equal(1, catalog.ReaderExecutions);
@@ -62,7 +70,7 @@ public sealed partial class QueryPlanReplayTests
     /// The object identity is a bound value, so a foreign table's catalog cannot supply refresh names.
     /// </summary>
     [Fact]
-    public async Task StatisticsCatalogBindsOnlyTheOwnedTableIdentity()
+    public async Task RefreshStatisticsAsync_StatisticsCatalog_BindsOnlyTheOwnedTableIdentity()
     {
         // Arrange
         PlanReplayConnection connection = null!;
@@ -81,7 +89,8 @@ public sealed partial class QueryPlanReplayTests
             () => 0);
 
         await using var owned = connection;
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
@@ -112,7 +121,7 @@ public sealed partial class QueryPlanReplayTests
     [InlineData("MariaDb", "ANALYZE TABLE ")]
     [InlineData("PostgreSql", "ANALYZE ")]
     [InlineData("Sqlite", "ANALYZE ")]
-    public async Task OtherStatisticsRefreshBranchesRemainSingleStatements(
+    public async Task RefreshStatisticsAsync_OtherStatisticsRefreshBranches_RemainSingleStatements(
         string engine,
         string prefix
     )
@@ -122,7 +131,8 @@ public sealed partial class QueryPlanReplayTests
             () => throw new InvalidOperationException("No catalog query is expected."),
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
@@ -157,19 +167,21 @@ public sealed partial class QueryPlanReplayTests
     }
 
     /// <summary>Uses SQL Server's actual identifier delimiter while substituting only raw command execution.</summary>
-    private static StatisticsContext CreateStatisticsContext(
+    private static OwnedModelTestServices<StatisticsContext> CreateStatisticsServices(
         PlanReplayConnection connection
-    ) => new(
+    ) => OwnedModelTestServices<StatisticsContext>.Create(
         new DbContextOptionsBuilder<StatisticsContext>()
             .UseSqlServer(connection)
-            .EnableServiceProviderCaching(false)
             .Options);
 
     /// <summary>Maps an explicitly owned table with identifiers that require provider escaping.</summary>
-    private sealed class StatisticsContext(
-        DbContextOptions<StatisticsContext> options
-    ) : DbContext(options)
+    private sealed class StatisticsContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public StatisticsContext(
+            DbContextOptions<StatisticsContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

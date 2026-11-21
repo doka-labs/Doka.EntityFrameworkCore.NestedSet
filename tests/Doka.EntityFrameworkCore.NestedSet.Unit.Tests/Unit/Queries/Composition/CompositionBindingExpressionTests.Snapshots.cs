@@ -4,7 +4,7 @@ public sealed partial class CompositionBindingExpressionTests
 {
     /// <summary>Fused bindings own independent binary values even when configured snapshots are shallow.</summary>
     [Fact]
-    public async Task BinaryBindingSnapshotsRemainIndependentAndDeferred()
+    public async Task Select_BinaryBindingSnapshots_RemainIndependentAndDeferred()
     {
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -85,10 +85,13 @@ public sealed partial class CompositionBindingExpressionTests
     }
 
     /// <summary>Maps binary scope/tree identities with deliberately shallow application snapshots.</summary>
-    private sealed class SnapshotBindingContext(
-        DbContextOptions<SnapshotBindingContext> options
-    ) : DbContext(options)
+    private sealed class SnapshotBindingContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SnapshotBindingContext(
+            DbContextOptions<SnapshotBindingContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

@@ -60,8 +60,13 @@ internal static partial class NestedSetSaveChanges
 
         // WHY: The native write set identifies staged entities and callback writes without inspecting application
         // scalar state. A separate read-only hierarchy check also covers entries absent from that write set.
-        foreach (var entry in entries)
+        // WHY: Index this stable list directly without creating an enumerator or a copied buffer.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (int entryIndex = 0, entryCount = entries.Count; entryIndex < entryCount; entryIndex++)
         {
+            var entry = entries[entryIndex];
+
             var entity = entry.ToEntityEntry()
                 .Entity;
 

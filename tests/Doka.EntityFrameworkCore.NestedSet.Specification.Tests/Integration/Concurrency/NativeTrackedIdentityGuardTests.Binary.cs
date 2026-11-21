@@ -5,7 +5,7 @@ public abstract partial class NativeTrackedIdentityGuardTests
 {
     /// <summary>Binary NodeKeys fit one fixed-parameter membership probe beyond the former 64-key limit.</summary>
     [Fact]
-    public async Task BinaryKeysUseOneNativeProbeForSixtyFiveCandidates()
+    public async Task DeleteTreeAsync_BinaryKeys_UseOneNativeProbeForSixtyFiveCandidates()
     {
         // Arrange
         var probe = new NativeGuardProbe();
@@ -97,8 +97,14 @@ public abstract partial class NativeTrackedIdentityGuardTests
     }
 
     /// <summary>Maps binary key and parent columns with identical fixed maximum widths.</summary>
-    private sealed class BinaryGuardContext(DbContextOptions<BinaryGuardContext> options) : DbContext(options)
+    private sealed class BinaryGuardContext : DbContext
     {
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        public BinaryGuardContext(
+            DbContextOptions<BinaryGuardContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder

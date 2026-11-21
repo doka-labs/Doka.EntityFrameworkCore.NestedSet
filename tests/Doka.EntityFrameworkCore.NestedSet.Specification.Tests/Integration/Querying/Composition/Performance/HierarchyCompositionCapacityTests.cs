@@ -22,7 +22,7 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
     [InlineData(10_000)]
     [InlineData(100_000)]
     [Trait("Category", "Capacity")]
-    public async Task MediumCompositionKeepsCommandsMaterializationAndConstructionBounded(
+    public async Task MeasureAsync_MediumComposition_KeepsCommandsMaterializationAndConstructionBounded(
         int nodes
     )
     {
@@ -32,7 +32,12 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
         var observations = new List<CompositionCapacityObservation>();
         var consumers = new List<CompositionConsumerCapacityObservation>();
 
@@ -42,7 +47,9 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
                 database,
                 Engine,
                 nodes,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                balanced: false,
+                broad: false));
 
         observations.AddRange(
             await CompositionCapacityProfiles.MeasureAsync(
@@ -50,14 +57,17 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
                 Engine,
                 nodes,
                 broad: true,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                balanced: false));
 
         consumers.AddRange(
             await CompositionConsumerCapacityProfiles.MeasureAsync(
                 database,
                 Engine,
                 nodes,
-                TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                balanced: false,
+                deep: false));
 
         await CompositionCapacityProfiles.BalanceAsync(
             setup,
@@ -70,7 +80,8 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
                 Engine,
                 nodes,
                 balanced: true,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                broad: false));
 
         observations.AddRange(
             await CompositionCapacityProfiles.MeasureAsync(
@@ -86,14 +97,15 @@ public abstract partial class HierarchyCompositionCapacityTests : ProviderTest
                 database,
                 Engine,
                 nodes,
-                TestContext.Current.CancellationToken,
-                balanced: true));
+                cancellationToken: TestContext.Current.CancellationToken,
+                balanced: true,
+                deep: false));
 
         var validation = await setup
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty)
-            .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
+            .ValidateAsync(NestedSetValidationLevel.Full, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(validation.IsValid, string.Join(", ", validation.Issues.Select(issue => issue.Code)));

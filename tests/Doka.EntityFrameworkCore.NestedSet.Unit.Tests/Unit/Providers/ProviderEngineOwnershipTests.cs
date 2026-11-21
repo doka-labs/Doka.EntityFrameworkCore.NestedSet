@@ -14,7 +14,7 @@ public sealed class ProviderEngineOwnershipTests
     [InlineData("SqlServer", "Sqlite", false)]
     [InlineData("Sqlite", "Sqlite", true)]
     [InlineData("Sqlite", "MySql", false)]
-    public void SelectionMatchesOwningProvider(
+    public void Includes_Selection_MatchesOwningProvider(
         string project,
         string engine,
         bool expected
@@ -32,7 +32,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>An unregistered test project cannot silently execute integration cases.</summary>
     [Fact]
-    public void UnknownAssemblyIsRejected()
+    public void Includes_UnknownAssembly_IsRejected()
     {
         // Arrange
         const string assembly = "Doka.EntityFrameworkCore.NestedSet.Unknown.Tests";
@@ -46,7 +46,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>The specification library cannot become a runtime provider merely by defining the selector.</summary>
     [Fact]
-    public void SharedSpecificationAssemblyIsRejected()
+    public void Includes_SharedSpecificationAssembly_IsRejected()
     {
         // Arrange
         var assembly = typeof(ProviderEngineOwnership).Assembly.GetName()
@@ -62,7 +62,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>Runtime selection follows each current xUnit assembly without retaining a previous provider.</summary>
     [Fact]
-    public async Task RuntimeSelectionUsesCurrentAssemblyIdentity()
+    public async Task SetForTestAssembly_RuntimeSelection_UsesCurrentAssemblyIdentity()
     {
         // Arrange
         var sqlite = CreateTestAssembly("Sqlite");
@@ -95,7 +95,7 @@ public sealed class ProviderEngineOwnershipTests
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
     [InlineData("Sqlite")]
-    public void UnknownEngineIsRejectedBeforeFiltering(
+    public void Includes_UnknownEngine_IsRejectedBeforeFiltering(
         string project
     )
     {
@@ -118,7 +118,7 @@ public sealed class ProviderEngineOwnershipTests
     [InlineData("PostgreSql", typeof(PostgreSqlEngine), "PostgreSql")]
     [InlineData("SqlServer", typeof(SqlServerEngine), "SqlServer")]
     [InlineData("Sqlite", typeof(SqliteEngine), "Sqlite")]
-    public void CatalogEntriesMatchBuiltinMarkers(
+    public void Engines_CatalogEntries_MatchBuiltinMarkers(
         string engine,
         Type marker,
         string project
@@ -138,7 +138,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>A consumer cannot alter canonical ownership through a mutable collection interface.</summary>
     [Fact]
-    public void CatalogDoesNotExposeMutableEntries()
+    public void Engines_CallerMutation_IsRejected()
     {
         // Arrange
         var entries = ProviderEngineOwnership.Engines;
@@ -169,7 +169,7 @@ public sealed class ProviderEngineOwnershipTests
     [InlineData(null, false)]
     [InlineData("mysql", false)]
     [InlineData("Postgres", false)]
-    public void KnownEngineSelectionUsesExactNames(
+    public void IsKnown_KnownEngineSelection_UsesExactNames(
         string? engine,
         bool expected
     )
@@ -186,7 +186,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>An unknown executable cannot appear to own an empty engine set.</summary>
     [Fact]
-    public void UnknownAssemblyCannotAppearAsEmptyOwnership()
+    public void OwnedBy_UnknownAssembly_CannotAppearAsEmptyOwnership()
     {
         // Arrange
         const string assemblyName = "Doka.EntityFrameworkCore.NestedSet.Unknown.Tests";
@@ -201,7 +201,7 @@ public sealed class ProviderEngineOwnershipTests
 
     /// <summary>Runtime ownership fails visibly when no current xUnit test assembly is available.</summary>
     [Fact]
-    public async Task RuntimeSelectionRejectsMissingAssembly()
+    public async Task SuppressFlow_RuntimeSelection_RejectsMissingAssembly()
     {
         // Arrange
         var cancellationToken = TestContext.Current.CancellationToken;

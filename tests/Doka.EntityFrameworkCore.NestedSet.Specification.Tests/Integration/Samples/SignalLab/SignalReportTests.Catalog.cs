@@ -11,7 +11,7 @@ public abstract partial class SignalReportTests
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task CatalogReadsOnlyRequestedBindings(
+    public async Task Catalog_SelectedBindings_ReadsOnlyRequestedIdentities(
         bool nearest,
         bool withoutCriteria
     )
@@ -22,7 +22,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var input = data.Request(
             nearest
                 ? TagOwnerMode.Nearest
@@ -78,7 +83,7 @@ public abstract partial class SignalReportTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnusedCatalogPopulationDoesNotChangeReport(
+    public async Task ReadAsync_UnusedCatalogPopulation_DoesNotChangeReport(
         bool nearest
     )
     {
@@ -88,7 +93,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request(
             nearest
                 ? TagOwnerMode.Nearest
@@ -112,7 +122,7 @@ public abstract partial class SignalReportTests
 
     /// <summary>Values belonging to other requested fields cannot authorize a crossed scalar request.</summary>
     [Fact]
-    public async Task CatalogCannotAuthorizeCrossedFieldValues()
+    public async Task ReadAsync_Catalog_CannotAuthorizeCrossedFieldValues()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -120,7 +130,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var request = data.Request() with
         {
             Criteria =
@@ -157,7 +172,7 @@ public abstract partial class SignalReportTests
     [InlineData("value-case", true)]
     [InlineData("value-padding", false)]
     [InlineData("value-padding", true)]
-    public async Task CatalogRejectsNonOrdinalRequestAliases(
+    public async Task ReadAsync_Catalog_RejectsNonOrdinalRequestAliases(
         string shape,
         bool nearest
     )
@@ -168,7 +183,12 @@ public abstract partial class SignalReportTests
             probe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var data = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var data = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var criterion = new TagCriterion(
             SignalReportDataset.ModuleKind,
             "ModuleClass",
@@ -209,7 +229,7 @@ public abstract partial class SignalReportTests
 
     /// <summary>Deferred catalog templates retain their own context, tenant and requested scalar bindings.</summary>
     [Fact]
-    public async Task InterleavedCatalogsKeepTheirOwnRootsAndBindings()
+    public async Task Catalog_InterleavedCatalogs_KeepTheirOwnRootsAndBindings()
     {
         // Arrange
         var probe = new SignalReportProbe();
@@ -222,13 +242,18 @@ public abstract partial class SignalReportTests
             secondProbe,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var first = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, Guid.NewGuid());
+        var first = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
         var second = await SignalReportDataset.CreateAsync(
             secondContext,
             5,
             false,
-            CancellationToken.None,
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            TestContext.Current.CancellationToken);
 
         var firstRequest = SignalReportValidation.Snapshot(
             first.Request() with

@@ -9,7 +9,7 @@ public sealed partial class OptionsExtensionTests
     ///     Options registration installs exact hierarchy metadata without context-level registration hooks.
     /// </summary>
     [Fact]
-    public void RegistrationInstallsInfrastructureAndHierarchyConventions()
+    public void GetEntityTypes_Registration_InstallsInfrastructureAndHierarchyConventions()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<EnabledContext>()
@@ -30,110 +30,19 @@ public sealed partial class OptionsExtensionTests
             .GetEntityTypes()
             .Single(entity => entity.ClrType == typeof(NestedSetTreeRegistry));
 
-        var indexes = nodeEntity
-            .GetIndexes()
-            .Select(index => new
-            {
-                Properties = index
-                    .Properties
-                    .Select(property => property.Name)
-                    .ToArray(),
-                Descending = index.IsDescending?.ToArray() ?? new bool[index.Properties.Count],
-            })
-            .ToArray();
-
-        var checks = nodeEntity
-            .GetCheckConstraints()
-            .Select(constraint => constraint.Sql)
-            .OrderBy(expression => expression, StringComparer.Ordinal)
-            .ToArray();
-
-        var parent = nodeEntity
-            .GetForeignKeys()
-            .Single(foreignKey => foreignKey.Properties.Any(property => property.Name == nameof(Node.ParentId)));
-
         // Assert
-        Assert.StartsWith("DokaNestedSetTrees_", registry.GetTableName(), StringComparison.Ordinal);
-        Assert.Equal(["Scope", "TreeId"], registry.FindPrimaryKey()!.Properties.Select(property => property.Name));
-        Assert.Equal(typeof(int), registry.FindProperty("Scope")!.ClrType);
-        Assert.Equal(typeof(Guid), registry.FindProperty("TreeId")!.ClrType);
-        Assert.Equal(typeof(long), registry.FindProperty("Revision")!.ClrType);
-        Assert.Equal(typeof(byte), registry.FindProperty("Lifecycle")!.ClrType);
-        Assert.Equal(
-            nodeEntity.FindProperty(nameof(Node.Scope))!.GetColumnType(),
-            registry.FindProperty("Scope")!.GetColumnType());
-
-        Assert.Equal(
-            nodeEntity.FindProperty(nameof(Node.TreeId))!.GetColumnType(),
-            registry.FindProperty("TreeId")!.GetColumnType());
-
-        Assert.Equal(
-            nameof(Node.NodeKey),
-            nodeEntity.FindAnnotation("Doka:NestedSet:NodeKey")
-                ?.Value);
-
-        Assert.Equal(
-            nameof(Node.TreeId),
-            nodeEntity.FindAnnotation("Doka:NestedSet:TreeId")
-                ?.Value);
-
-        Assert.Equal(
-            nameof(Node.Scope),
-            nodeEntity.FindAnnotation("Doka:NestedSet:Scope")
-                ?.Value);
-
-        Assert.False(nodeEntity.FindProperty(nameof(Node.TreeId))!.IsNullable);
-        Assert.Equal(ValueGenerated.Never, nodeEntity.FindProperty(nameof(Node.TreeId))!.ValueGenerated);
-        Assert.Contains(
-            nodeEntity.GetKeys(),
-            key => key
-                .Properties
-                .Select(property => property.Name)
-                .SequenceEqual([nameof(Node.Scope), nameof(Node.NodeKey)]));
-
-        Assert.Equal(5, indexes.Length);
-        Assert.Contains(
-            indexes,
-            index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.Left)]));
-
-        Assert.Contains(
-            indexes,
-            index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.Right)]));
-
-        Assert.Contains(
-            indexes,
-            index => index.Properties.SequenceEqual(
-                [nameof(Node.Scope), nameof(Node.TreeId), nameof(Node.ParentId), nameof(Node.Position)]));
-
-        Assert.Contains(indexes, index => index.Properties.SequenceEqual([nameof(Node.Scope), nameof(Node.ParentId)]));
-
-        var order = Assert.Single(
-            indexes,
-            index => index.Properties.SequenceEqual(
-            [
-                nameof(Node.Scope),
-                nameof(Node.TreeId),
-                nameof(Node.ParentId),
-                nameof(Node.Name),
-                nameof(Node.Kind),
-                nameof(Node.NodeKey),
-            ]));
-
-        Assert.Equal([false, false, false, false, true, false], order.Descending);
-        Assert.Equal([nameof(Node.Scope), nameof(Node.ParentId)], parent.Properties.Select(property => property.Name));
-        Assert.Equal(
-            [nameof(Node.Scope), nameof(Node.NodeKey)],
-            parent.PrincipalKey.Properties.Select(property => property.Name));
-
-        Assert.Equal(DeleteBehavior.Restrict, parent.DeleteBehavior);
-        Assert.Equal(["\"Depth\" >= 0", "\"Left\" >= 1", "\"Position\" >= 0", "\"Right\" > \"Left\""], checks);
+        AssertRegistryMetadata(nodeEntity, registry);
+        AssertHierarchyRoles(nodeEntity);
+        AssertHierarchyIndexes(nodeEntity);
+        AssertParentRelationship(nodeEntity);
+        AssertHierarchyChecks(nodeEntity);
     }
 
     /// <summary>
     ///     A configured hierarchy without options registration fails before its first hierarchy operation.
     /// </summary>
     [Fact]
-    public async Task MissingRegistrationHasAnActionableFailure()
+    public async Task InsertRootAsync_MissingRegistration_HasAnActionableFailure()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<PlainContext>()
@@ -156,7 +65,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Options registration runs final validation after application key configuration completes.</summary>
     [Fact]
-    public void RegistrationRejectsNodeKeyWithoutUniqueModelKey()
+    public void FinalizeModel_Registration_RejectsNodeKeyWithoutUniqueModelKey()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<InvalidContext>()
@@ -175,7 +84,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Repeated registration retains one immutable options extension.</summary>
     [Fact]
-    public void RepeatedRegistrationIsIdempotent()
+    public void UseNestedSets_RepeatedRegistration_IsIdempotent()
     {
         // Arrange
         var optionsBuilder = new DbContextOptionsBuilder<EnabledContext>()
@@ -200,7 +109,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Different physical hierarchy tables receive independent technical registry tables.</summary>
     [Fact]
-    public void RegistryTableNameIncludesPhysicalHierarchyIdentity()
+    public void TableName_RegistryTableName_IncludesPhysicalHierarchyIdentity()
     {
         // Arrange
         const string schema = "app";
@@ -228,7 +137,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Keeps the options convention out of EF Core's internal migration-history model.</summary>
     [Fact]
-    public void RegistrationDoesNotPolluteMigrationHistoryModel()
+    public void GetCreateIfNotExistsScript_Registration_DoesNotPolluteMigrationHistoryModel()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<EnabledContext>()
@@ -250,7 +159,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Pooled contexts reuse the model produced by the stateless options extension.</summary>
     [Fact]
-    public async Task RegistrationReusesOneModelAcrossPooledContexts()
+    public async Task CreateDbContextAsync_Registration_ReusesOneModelAcrossPooledContexts()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -281,7 +190,7 @@ public sealed partial class OptionsExtensionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void RegistrationInstallsPersistenceHookInEitherExtensionOrder(
+    public void GetService_Registration_InstallsPersistenceHookInEitherExtensionOrder(
         bool nestedSetsFirst
     )
     {
@@ -318,7 +227,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>The standard relational database registration is replaced by exactly one persistence hook.</summary>
     [Fact]
-    public void RegistrationReplacesStandardRelationalDatabaseService()
+    public void ApplyServices_Registration_ReplacesStandardRelationalDatabaseService()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -343,7 +252,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>A provider-specific database service is rejected instead of being silently replaced.</summary>
     [Fact]
-    public void RegistrationRejectsProviderSpecificDatabaseService()
+    public void ApplyServices_Registration_RejectsProviderSpecificDatabaseService()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -373,117 +282,4 @@ public sealed partial class OptionsExtensionTests
         .HasPosition(node => node.Position)
         .OrderBy(node => node.Name)
         .ThenByDescending(node => node.Kind));
-
-    /// <summary>Provides a context whose only nested-set bootstrap is the options extension.</summary>
-    private sealed class EnabledContext : DbContext
-    {
-        /// <summary>Creates a context from externally configured options.</summary>
-        /// <param name="options">The context options.</param>
-        public EnabledContext(
-            DbContextOptions<EnabledContext> options
-        ) : base(options) { }
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            var entity = modelBuilder.Entity<Node>();
-            entity.HasKey(node => new
-            {
-                node.Scope,
-                node.RecordId,
-            });
-
-            entity.HasAlternateKey(node => new
-            {
-                node.Scope,
-                node.NodeKey,
-            });
-
-            ConfigureNestedSet(entity);
-        }
-    }
-
-    /// <summary>Provides an invalid model used to prove options-installed final validation.</summary>
-    private sealed class InvalidContext : DbContext
-    {
-        /// <summary>Creates a context from externally configured options.</summary>
-        /// <param name="options">The context options.</param>
-        public InvalidContext(
-            DbContextOptions<InvalidContext> options
-        ) : base(options) { }
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            var entity = modelBuilder.Entity<Node>();
-            entity.HasKey(node => new
-            {
-                node.RecordId,
-                node.TreeId,
-            });
-
-            ConfigureNestedSet(entity);
-        }
-    }
-
-    /// <summary>Provides a configured hierarchy without nested-set options registration.</summary>
-    private sealed class PlainContext : DbContext
-    {
-        /// <summary>Creates a context from externally configured options.</summary>
-        /// <param name="options">The context options.</param>
-        public PlainContext(
-            DbContextOptions<PlainContext> options
-        ) : base(options) { }
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            var entity = modelBuilder.Entity<Node>();
-            entity.HasKey(node => node.NodeKey);
-            ConfigureNestedSet(entity);
-        }
-    }
-
-    /// <summary>Supplies all structural properties used by the registered convention.</summary>
-    private sealed class Node
-    {
-        /// <summary>Gets or sets the scope-local record identity.</summary>
-        public int RecordId { get; set; }
-
-        /// <summary>Gets or sets the stable scalar hierarchy identity.</summary>
-        public Guid NodeKey { get; set; }
-
-        /// <summary>Gets or sets the optional application partition.</summary>
-        public int Scope { get; set; }
-
-        /// <summary>Gets or sets the stable tree identity.</summary>
-        public Guid TreeId { get; set; }
-
-        /// <summary>Gets or sets the parent node identity.</summary>
-        public Guid? ParentId { get; set; }
-
-        /// <summary>Gets or sets the first sibling order value.</summary>
-        public string Name { get; set; } = string.Empty;
-
-        /// <summary>Gets or sets the descending sibling order value.</summary>
-        public int Kind { get; set; }
-
-        /// <summary>Gets or sets the inclusive left boundary.</summary>
-        public long Left { get; set; }
-
-        /// <summary>Gets or sets the inclusive right boundary.</summary>
-        public long Right { get; set; }
-
-        /// <summary>Gets or sets the persisted depth.</summary>
-        public int Depth { get; set; }
-
-        /// <summary>Gets or sets the sibling position.</summary>
-        public long Position { get; set; }
-    }
 }

@@ -22,7 +22,7 @@ public abstract partial class RelationalTests
     /// <returns>A task that completes when the selected mutation has been verified.</returns>
     [Theory]
     [MemberData(nameof(MutationPrefixes))]
-    public async Task GeneratedMutationPreservesForestInvariants(
+    public async Task ApplyGeneratedMutationAsync_GeneratedMutation_PreservesForestInvariants(
         int prefix
     )
     {

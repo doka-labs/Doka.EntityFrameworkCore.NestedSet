@@ -1,7 +1,7 @@
 ---
 id: D-008
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -94,7 +94,7 @@ filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests.csproj -c Release` and expect generated migration lifecycle and physical index tests to pass without SafeMigrations references.
 - Run `dotnet test tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests/Doka.EntityFrameworkCore.NestedSet.SafeMigrations.Tests.csproj -c Release` and require optional adapter tests to pass before claiming compatibility with the published adapter. Include SQLite script rejection, foreign database qualifier rejection, safe replay, and same-name wrong-definition drift rejection. SQL Server additionally verifies directions, stamped CHECK enforcement/trust, valid populated predicates, rejected invalid rows, complete integer-upgrade rollback, and refused narrowing.
-- Run the PostgreSQL nullable-parent index tests: actual catalog predicates and public tree-query plans must match for native and converted TreeIds, while principal checks exclude generated structural paths.
+- Run the PostgreSQL nullable-parent index tests: catalog columns, order, predicates, validity, readiness, and nonunique root definitions must match. Preserve exact root keys and row counts; record ordinary plans separately from transaction-local eligibility controls. Missing or wrong-filter indexes must fail the proof, and rollback must restore the session setting. Generic-plan error and actual execution-cancellation controls must remove only owned statements; a preexisting name must preserve foreign session state. Native and converted TreeId checks must retain predicate proof while principal checks exclude generated structural paths.
 - Run the million-child public import with normal FK and automatic-maintenance settings. Require completed geometry/Full validation and the unchanged additional-heap budget; observe actual RI lookup after statistics-driven replanning.
 - Require positive convention-ownership and negative explicit/adopted-index tests, including custom filters, names, uniqueness, provider facets, and physical-name collisions.
 
@@ -157,12 +157,17 @@ values. Opaque predicates and other unproven conversions do not inherit those ap
 - 2026-10-06: Added the owner-approved optional SQL Server 10.4.8 adapter consumer and dbo/explicit-schema regressions; distinguished raw CHECK proof and stamped replay from unsupported historical integer-width upgrades. The local full optional suite passed 92/92 cases (including 30 SQL Server relational cases and its tooling control), while ordinary migrations passed 49/49. SQL Server ran under x86-64 emulation on ARM; this is not native hosted qualification.
 - 2026-10-08: Qualified the published SafeMigrations 10.4.9 adapters with 112/112 optional cases and 49/49 ordinary migration cases, without failures or skips. Replaced the superseded SQL Server rejection expectations with full generated Int32-to-Int64 upgrades on empty/valid populated tables, populated integer CHECK proof and stamped trusted replay, all four invalid predicates with complete upgrade rollback, and refused narrowing for fitting/oversized values. The full Release build and read-only style/import checks passed. Local SQL Server remains x86-64 emulation on ARM; native hosted qualification is separate.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+- 2026-11-19: Separated nullable-parent catalog and eligibility controls from ordinary plan observations; retained exact results, rejection controls, and session restoration without changing runtime planner settings.
+
 ### Implementation References
 
 - [Index roles](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexes.cs)
 - [Model index convention](../../src/Doka.EntityFrameworkCore.NestedSet/Configuration/NestedSetIndexConvention.cs)
 - [PostgreSQL parent convention](../../src/Doka.EntityFrameworkCore.NestedSet.Postgres/Configuration/PostgresParentIndexes.cs)
-- [PostgreSQL eligibility tests](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.Eligibility.cs)
+- [PostgreSQL nullable-parent contracts](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.cs)
+- [PostgreSQL predicate proof](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.Eligibility.cs)
+- [PostgreSQL eligibility rejection and session controls](../../tests/Doka.EntityFrameworkCore.NestedSet.PostgreSql.Tests/Indexes/NullableParentIndexTests.EligibilityControl.cs)
 - [Index ownership tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/IndexConventionTests.PostgreSqlParents.cs)
 - [Provider capabilities](../../src/Doka.EntityFrameworkCore.NestedSet/Providers)
 - [Ordinary migration tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests)

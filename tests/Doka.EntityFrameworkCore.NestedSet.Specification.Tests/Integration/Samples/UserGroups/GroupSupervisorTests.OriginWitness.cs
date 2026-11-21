@@ -24,14 +24,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("resolve", "hidden-group")]
     [InlineData("candidates", "missing-membership")]
     [InlineData("resolve", "missing-membership")]
-    public async Task NecessaryOriginWitnessRetainsVisibilityAndMembershipValidity(
+    public async Task ReadOriginWitnessAsync_NecessaryOriginWitness_RetainsVisibilityAndMembershipValidity(
         string api,
         string shape
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         var membership = context.UserGroupMemberships.Where(row => row.TenantId == data.TenantId
@@ -147,13 +150,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData("candidates")]
     [InlineData("resolve")]
-    public async Task NecessaryOriginWitnessPreservesIndependentOriginsAndEvidenceBag(
+    public async Task ReadOriginWitnessAsync_NecessaryOriginWitness_PreservesIndependentOriginsAndEvidenceBag(
         string api
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var independentTree = Guid.NewGuid();
         var emptyOrigin = new App.UserGroup

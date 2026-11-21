@@ -4,9 +4,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class SignalReportTests
 {
-    /// <summary>Repeated scenario seeds own every isolation scope and remain readable beside another explicit tenant.</summary>
+    /// <summary>
+    /// Repeated scenario seeds own every isolation scope and remain readable beside another explicit tenant.
+    /// </summary>
     [Fact]
-    public async Task RepeatedScenarioSeedsKeepTheirIsolationTenantsIndependent()
+    public async Task CreateAsync_RepeatedScenarioSeeds_KeepTheirIsolationTenantsIndependent()
     {
         // Arrange
         // WHY: An explicitly owned database makes the four-scope/six-tree oracle independent of
@@ -23,8 +25,18 @@ public abstract partial class SignalReportTests
         var secondTenant = Guid.NewGuid();
 
         // Act
-        var first = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, firstTenant);
-        var second = await SignalReportDataset.CreateAsync(context, 5, false, CancellationToken.None, secondTenant);
+        var first = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            firstTenant,
+            TestContext.Current.CancellationToken);
+        var second = await SignalReportDataset.CreateAsync(
+            context,
+            5,
+            false,
+            secondTenant,
+            TestContext.Current.CancellationToken);
         var firstReport = await SignalReportBuilder.ReadAsync(context, SingleAnchor(first), CancellationToken.None);
         var secondReport = await SignalReportBuilder.ReadAsync(context, SingleAnchor(second), CancellationToken.None);
         var tenants = await context

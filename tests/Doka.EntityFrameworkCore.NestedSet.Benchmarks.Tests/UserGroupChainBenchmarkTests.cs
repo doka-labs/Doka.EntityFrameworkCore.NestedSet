@@ -5,11 +5,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 
 /// <summary>Checks complete actual-chain/reference equivalence before observational benchmark timing.</summary>
 [Collection(BenchmarkEnvironmentOwnership.Name)]
-public sealed class UserGroupChainBenchmarkTests
+public sealed partial class UserGroupChainBenchmarkTests
 {
     /// <summary>Native code generation and the existing launcher classify the actual sample chain correctly.</summary>
     [Fact]
-    public void NativeValidationAcceptsActualChainLifecycle()
+    public void StructuralErrors_NativeValidation_AcceptsActualChainLifecycle()
     {
         // Arrange
         var configuration = ManualConfig
@@ -44,7 +44,7 @@ public sealed class UserGroupChainBenchmarkTests
     [InlineData(BenchmarkChainProfile.Hops4Fanout1, true, false)]
     [InlineData(BenchmarkChainProfile.Hops8Fanout1, false, false)]
     [InlineData(BenchmarkChainProfile.Hops8Fanout1, true, true)]
-    public async Task ActualHopCountAndCursorMatchIndependentPath(
+    public async Task ExecuteAsync_ActualHopCountAndCursor_MatchIndependentPath(
         BenchmarkChainProfile profile,
         bool reexpand,
         bool reference
@@ -77,48 +77,6 @@ public sealed class UserGroupChainBenchmarkTests
             });
     }
 
-    /// <summary>Convergent paths retain shared managers as independent valid provenance.</summary>
-    /// <param name="profile">The explicit branching workload.</param>
-    /// <param name="reference">Whether the independent path arrays are executed.</param>
-    [Theory]
-    [InlineData(BenchmarkChainProfile.Hops4Fanout2, false)]
-    [InlineData(BenchmarkChainProfile.Hops4Fanout2, true)]
-    [InlineData(BenchmarkChainProfile.Hops2Fanout4, false)]
-    [InlineData(BenchmarkChainProfile.Hops2Fanout4, true)]
-    public async Task ConvergentFanoutPreservesIndependentCompletePaths(
-        BenchmarkChainProfile profile,
-        bool reference
-    )
-    {
-        // Arrange
-        await using var benchmark = Create(profile, reexpand: true);
-        benchmark.Initialize();
-        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
-        var (hops, fanout) = UserGroupChainBenchmarkData.Dimensions(profile);
-        var expected = (int)Math.Pow(fanout, hops);
-
-        // Act
-        await ExecuteAsync(benchmark, reference, TestContext.Current.CancellationToken);
-
-        // Assert
-        await benchmark.VerifyAsync(TestContext.Current.CancellationToken);
-        Assert.True(benchmark.Result.Complete);
-        Assert.Equal(expected, benchmark.Result.Branches.Count);
-        Assert.All(
-            benchmark.Result.Branches,
-            branch =>
-                Assert.Equal(SupervisorChainStatus.ReachedRequestedHop, branch.Status));
-
-        Assert.Equal(
-            fanout,
-            benchmark
-                .Result
-                .Branches
-                .Select(branch => branch.Hops[^1].Evidence.CandidateUserId)
-                .Distinct()
-                .Count());
-    }
-
     /// <summary>Missing managers, ambiguity, cycles, and frontier overflow retain equal explicit outcomes.</summary>
     /// <param name="profile">The adversarial actual-model dataset.</param>
     /// <param name="expected">The explicit branch termination.</param>
@@ -132,7 +90,7 @@ public sealed class UserGroupChainBenchmarkTests
     [InlineData(BenchmarkChainProfile.Cycle, "CycleDetected", true)]
     [InlineData(BenchmarkChainProfile.FrontierLimit, "LimitExceeded", false)]
     [InlineData(BenchmarkChainProfile.FrontierLimit, "LimitExceeded", true)]
-    public async Task NegativeProfilesRetainStatusWithoutInventingHops(
+    public async Task ExecuteAsync_NegativeProfiles_RetainStatusWithoutInventingHops(
         BenchmarkChainProfile profile,
         string expected,
         bool reference
@@ -162,7 +120,7 @@ public sealed class UserGroupChainBenchmarkTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task RoutingPolicyRetainsItsExactSubjectAcrossHops(
+    public async Task ExecuteAsync_RoutingPolicy_RetainsItsExactSubjectAcrossHops(
         bool current,
         bool reference
     )
@@ -196,7 +154,7 @@ public sealed class UserGroupChainBenchmarkTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ReExpansionDoesNotSilentlyReplaceOriginalPath(
+    public async Task ExecuteAsync_ReExpansion_DoesNotSilentlyReplaceOriginalPath(
         bool reexpand,
         bool reference
     )
@@ -220,146 +178,12 @@ public sealed class UserGroupChainBenchmarkTests
                 .Any(hop => hop.Number > 1 && hop.Evidence.StartGroupId == benchmark.Data.Groups[9]));
     }
 
-    /// <summary>Ambiguity remains explicit even when the physical budget cannot buffer all candidates.</summary>
-    [Fact]
-    public async Task SmallReaderBudgetDoesNotTurnAmbiguityIntoOverflow()
-    {
-        // Arrange
-        await using var benchmark = Create(BenchmarkChainProfile.Ambiguous);
-        benchmark.Initialize();
-        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
-        var request = benchmark.Request with { MaxResultRows = 2 };
-
-        // Act
-        var actual = await benchmark.RunApiAsync(request, CancellationToken.None);
-        var reference = await UserGroupChainReference.FollowAsync(
-            benchmark.Context,
-            benchmark.Data.Tenant,
-            request,
-            true,
-            CancellationToken.None);
-
-        // Assert
-        Assert.Equal(UserGroupChainBenchmarks.Signature(actual), UserGroupChainBenchmarks.Signature(reference));
-        Assert.True(actual.Complete);
-        Assert.Equal(
-            SupervisorChainStatus.Ambiguous,
-            Assert.Single(actual.Branches)
-                .Status);
-    }
-
-    /// <summary>Explicit business priority and occupied person slots keep the same canonical continuation.</summary>
-    /// <param name="secondPerson">Whether the second person instead of the best priority is requested.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task BusinessPersonSelectionRetainsItsCanonicalCursor(
-        bool secondPerson
-    )
-    {
-        // Arrange
-        await using var benchmark = Create(BenchmarkChainProfile.Hops4Fanout2);
-        benchmark.Initialize();
-        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
-        var preferred = Enumerable
-            .Range(0, 8)
-            .Select(level => benchmark.Data.People[1 + level * 2])
-            .ToArray();
-
-        await benchmark
-            .Context
-            .UserGroupMemberships
-            .Where(member => Enumerable.Contains(preferred, member.UserId))
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(member => member.LeadershipPriority, 5),
-                CancellationToken.None);
-
-        var selection = secondPerson
-            ? SupervisorSelection.NthPerson(2)
-            : SupervisorSelection.HighestBusinessPriority;
-
-        var request = benchmark.Request with
-        {
-            Steps = benchmark
-                .Request
-                .Steps
-                .Select(step => step with { Selection = selection })
-                .ToArray(),
-        };
-
-        // Act
-        var actual = await benchmark.RunApiAsync(request, CancellationToken.None);
-        var reference = await UserGroupChainReference.FollowAsync(
-            benchmark.Context,
-            benchmark.Data.Tenant,
-            request,
-            true,
-            CancellationToken.None);
-
-        // Assert
-        Assert.Equal(UserGroupChainBenchmarks.Signature(actual), UserGroupChainBenchmarks.Signature(reference));
-        var branch = Assert.Single(actual.Branches);
-        Assert.Equal(SupervisorChainStatus.ReachedRequestedHop, branch.Status);
-        Assert.All(
-            branch.Hops,
-            hop => Assert.Equal(
-                secondPerson
-                    ? 10
-                    : 5,
-                hop.Evidence.LeadershipPriority));
-    }
-
-    /// <summary>A requested person slot inside a tie is ambiguous; a slot beyond all people is missing.</summary>
-    /// <param name="number">The explicitly requested one-based person slot.</param>
-    /// <param name="expected">The resulting explicit chain status.</param>
-    [Theory]
-    [InlineData(2, "Ambiguous")]
-    [InlineData(3, "NoSupervisor")]
-    public async Task PersonRankDoesNotInventWinnerOrFallback(
-        int number,
-        string expected
-    )
-    {
-        // Arrange
-        await using var benchmark = Create(BenchmarkChainProfile.Hops4Fanout2);
-        benchmark.Initialize();
-        await benchmark.PrepareAsync(TestContext.Current.CancellationToken);
-        var request = benchmark.Request with
-        {
-            Steps = benchmark
-                .Request
-                .Steps
-                .Select(step => step with { Selection = SupervisorSelection.NthPerson(number) })
-                .ToArray(),
-        };
-
-        // Act
-        var actual = await benchmark.RunApiAsync(request, CancellationToken.None);
-        var reference = await UserGroupChainReference.FollowAsync(
-            benchmark.Context,
-            benchmark.Data.Tenant,
-            request,
-            true,
-            CancellationToken.None);
-
-        // Assert
-        Assert.Equal(UserGroupChainBenchmarks.Signature(actual), UserGroupChainBenchmarks.Signature(reference));
-        Assert.Equal(
-            expected,
-            Assert
-                .Single(actual.Branches)
-                .Status
-                .ToString());
-
-        Assert.True(actual.Complete);
-    }
-
     /// <summary>The overflow probe rejects a row before buffering a misleadingly complete partial result.</summary>
     /// <param name="visited">Whether the visited limit instead of the physical reader limit is exhausted.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FiniteReaderAndVisitedLimitsRemainIncomplete(
+    public async Task RunApiAsync_FiniteReaderAndVisitedLimits_RemainIncomplete(
         bool visited
     )
     {
@@ -391,7 +215,7 @@ public sealed class UserGroupChainBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MissingRequestOriginsAreNotSuccessfulEmptyChains(
+    public async Task RunApiAsync_MissingRequestOrigins_AreNotSuccessfulEmptyChains(
         bool missingUser
     )
     {
@@ -425,7 +249,7 @@ public sealed class UserGroupChainBenchmarkTests
 
     /// <summary>An unknown role remains an invalid request without silently disabling the role filter.</summary>
     [Fact]
-    public async Task UnknownRoleIsNotConvertedIntoAnUnfilteredOrMissingChain()
+    public async Task RunApiAsync_UnknownRole_IsNotConvertedIntoAnUnfilteredOrMissingChain()
     {
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
@@ -456,7 +280,7 @@ public sealed class UserGroupChainBenchmarkTests
 
     /// <summary>Both complete chains use an adequate caller snapshot without replacing or committing it.</summary>
     [Fact]
-    public async Task AdequateCallerSnapshotRemainsOwnedByTheCaller()
+    public async Task RunApiAsync_AdequateCallerSnapshot_RemainsOwnedByTheCaller()
     {
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
@@ -482,7 +306,7 @@ public sealed class UserGroupChainBenchmarkTests
 
     /// <summary>A precanceled token is not translated into a missing or successful partial chain.</summary>
     [Fact]
-    public async Task CancellationIsNotAnEmptyBusinessResult()
+    public async Task RunApiAsync_Cancellation_IsNotAnEmptyBusinessResult()
     {
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);
@@ -507,7 +331,7 @@ public sealed class UserGroupChainBenchmarkTests
 
     /// <summary>Verification cannot treat a never-executed timed operation as a successful benchmark.</summary>
     [Fact]
-    public async Task VerificationRejectsAnUnexecutedChain()
+    public async Task VerifyAsync_Verification_RejectsAnUnexecutedChain()
     {
         // Arrange
         await using var benchmark = Create(BenchmarkChainProfile.Hops2Fanout1);

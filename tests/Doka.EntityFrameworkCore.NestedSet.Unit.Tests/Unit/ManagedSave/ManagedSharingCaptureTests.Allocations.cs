@@ -25,7 +25,7 @@ public sealed class ManagedSharingCaptureAllocationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task WarmCaptureAllocationDoesNotGrowWithUnrelatedTrackedRows(
+    public async Task Observe_WarmCaptureAllocation_DoesNotGrowWithUnrelatedTrackedRows(
         bool sharing
     )
     {

@@ -7,7 +7,7 @@ public abstract partial class AncestorIndexQueryTests
     [Theory]
     [InlineData(3L)]
     [InlineData(2L)]
-    public async Task IndexedModelRejectsNonPositiveWidthAtDatabaseBoundary(
+    public async Task ExecuteUpdateAsync_IndexedModel_RejectsNonPositiveWidthAtDatabaseBoundary(
         long right
     )
     {
@@ -19,7 +19,8 @@ public abstract partial class AncestorIndexQueryTests
             scope,
             tree,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            foreignTrees: false);
 
         var source = context
             .Set<CompositionNavigationNode>()
@@ -39,9 +40,11 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Bound ancestry from another named mapping cannot acquire endpoint authority from its CLR type or equal keys.</summary>
+    /// <summary>
+    /// Bound ancestry from another named mapping cannot acquire endpoint authority from its CLR type or equal keys.
+    /// </summary>
     [Fact]
-    public async Task IndexedForeignNamedEndpointsAreRejectedBeforeSql()
+    public async Task WherePathEdges_IndexedForeignNamedEndpoints_AreRejectedBeforeSql()
     {
         // Arrange
         var first = Interlocked.Add(ref s_mappingIdentity, 10);

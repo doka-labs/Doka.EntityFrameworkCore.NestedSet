@@ -5,7 +5,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A scoped hierarchy rejects query creation before Scope is bound.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ScopedHierarchyRequiresForScope()
+    public void InTree_ScopedHierarchy_RequiresForScope()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -21,7 +21,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A Scope argument whose type differs from the finalized model is rejected immediately.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ScopeTypeMustMatchFinalizedModel()
+    public void ForScope_ScopeType_MustMatchFinalizedModel()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -37,7 +37,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A scopeless hierarchy rejects an unnecessary Scope binding.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ScopelessHierarchyRejectsForScope()
+    public void ForScope_ScopelessHierarchy_RejectsForScope()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -53,7 +53,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>An entity that is not configured as a hierarchy is rejected at the standard entry point.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void NonHierarchyEntityIsRejectedImmediately()
+    public void NestedSet_NonHierarchyEntity_IsRejectedImmediately()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -68,7 +68,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A TreeId argument whose type differs from the finalized model is rejected immediately.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void TreeIdTypeMustMatchFinalizedModel()
+    public void InTree_TreeIdType_MustMatchFinalizedModel()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -86,7 +86,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A NodeKey argument whose type differs from the finalized model is rejected immediately.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void NodeKeyTypeMustMatchFinalizedModel()
+    public void AncestorsOf_NodeKeyType_MustMatchFinalizedModel()
     {
         // Arrange
         using var context = CreateMetadataContext();
@@ -104,7 +104,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A mutation cannot begin before a configured Scope is bound.</summary>
     [DatabaseIndependent]
     [Fact]
-    public async Task MutationRequiresConfiguredScopeBinding()
+    public async Task InsertRootAsync_Mutation_RequiresConfiguredScopeBinding()
     {
         // Arrange
         await using var context = CreateMetadataContext();
@@ -123,7 +123,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A mutation TreeId must have the exact finalized model type.</summary>
     [DatabaseIndependent]
     [Fact]
-    public async Task MutationTreeIdTypeMustMatchFinalizedModel()
+    public async Task InsertRootAsync_MutationTreeIdType_MustMatchFinalizedModel()
     {
         // Arrange
         await using var context = CreateMetadataContext();
@@ -144,7 +144,7 @@ public abstract partial class NestedSetFacadeTests
     /// <summary>A mutation NodeKey must have the exact finalized model type.</summary>
     [DatabaseIndependent]
     [Fact]
-    public async Task MutationNodeKeyTypeMustMatchFinalizedModel()
+    public async Task DeleteAsync_MutationNodeKeyType_MustMatchFinalizedModel()
     {
         // Arrange
         await using var context = CreateMetadataContext();
@@ -164,7 +164,9 @@ public abstract partial class NestedSetFacadeTests
     {
         var options = new DbContextOptionsBuilder<TreeContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         return new TreeContext(options);

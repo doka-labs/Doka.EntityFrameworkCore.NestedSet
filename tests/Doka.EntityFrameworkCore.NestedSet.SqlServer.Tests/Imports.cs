@@ -3,6 +3,7 @@ global using System.Data;
 global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
+global using Doka.EntityFrameworkCore.NestedSet.Testing;
 global using Doka.NestedSet;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Infrastructure;

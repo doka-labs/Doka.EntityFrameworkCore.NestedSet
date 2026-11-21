@@ -8,7 +8,7 @@ public sealed partial class DokaSourceBindingTests
 {
     /// <summary>The actual Doka operator retains its complete source and exact deferred composition.</summary>
     [Fact]
-    public void TypedOperatorRetainsItsExactSourceAndCompositionWithoutExecution()
+    public void TryBindSource_TypedOperator_RetainsItsExactSourceAndCompositionWithoutExecution()
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -38,7 +38,7 @@ public sealed partial class DokaSourceBindingTests
 
     /// <summary>Repeated typed calls cannot reuse a previous request's query or captured values.</summary>
     [Fact]
-    public void RepeatedCallsRetainEachFreshDeferredCapture()
+    public void TryBindSource_RepeatedCalls_RetainEachFreshDeferredCapture()
     {
         // Arrange
         var probe = new ProviderQueryProbe();
@@ -77,7 +77,7 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CompleteSourceRetainsDuplicatesAndEmptyPaging(
+    public void TryBindSource_CompleteSource_RetainsDuplicatesAndEmptyPaging(
         bool empty
     )
     {
@@ -110,7 +110,7 @@ public sealed partial class DokaSourceBindingTests
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public void PortableAdaptersLeaveCompletedSourceUnavailable(
+    public void TryBindSource_PortableAdapters_LeaveCompletedSourceUnavailable(
         string engine
     )
     {
@@ -131,7 +131,7 @@ public sealed partial class DokaSourceBindingTests
 
     /// <summary>The directly called public provider error remains unwrapped.</summary>
     [Fact]
-    public void ClientSourceIsRejectedWithoutReflectionWrapping()
+    public void TryBindSource_ClientSource_IsRejectedWithoutReflectionWrapping()
     {
         // Arrange
         var source = Array
@@ -150,7 +150,7 @@ public sealed partial class DokaSourceBindingTests
 
     /// <summary>An actual query provider's construction failure crosses the direct call unchanged.</summary>
     [Fact]
-    public void QueryProviderFailureIsNotWrapped()
+    public void TryBindSource_QueryProviderFailure_IsNotWrapped()
     {
         // Arrange
         var expected = new InvalidOperationException("The actual query provider rejected construction.");
@@ -171,7 +171,7 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NullInputsAreRejectedAtTheTypedBoundary(
+    public void TryBindSource_NullInputs_AreRejectedAtTheTypedBoundary(
         bool sourceMissing
     )
     {

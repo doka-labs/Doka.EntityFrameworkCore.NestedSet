@@ -13,7 +13,7 @@ public sealed class ValidationIssueTests
     [InlineData(NestedSetValidationCode.DuplicatePosition)]
     [InlineData(NestedSetValidationCode.MissingParent)]
     [InlineData(NestedSetValidationCode.CycleOrUnreachableNode)]
-    public void StructuredIssueRetainsOffendingKey(
+    public void Inspect_StructuredIssue_RetainsOffendingKey(
         NestedSetValidationCode code
     )
     {
@@ -45,9 +45,11 @@ public sealed class ValidationIssueTests
             nodes,
             null,
             EqualityComparer<int>.Default,
-            false,
-            CancellationToken.None,
-            collectIssues: true);
+            collectRepairs: false,
+            ordered: false,
+            collectIssues: true,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         var issue = Assert.Single(result.Issues, issue => issue.Code == code);

@@ -1,7 +1,7 @@
 ---
 id: D-009
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -108,6 +108,8 @@ issue and is documented as an explicit unbounded diagnostic operation.
 - 2026-09-28: The maintainer confirmed acceptance and designated the core-maintainers audience.
 - 2026-09-28: Status changed from accepted to implemented.
 - 2026-09-28: Confirmed bounded telemetry, the caller-owned context facade, and diagnostics and allocation regression specifications against the linked repository evidence.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

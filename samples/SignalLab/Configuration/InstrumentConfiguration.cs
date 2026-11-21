@@ -20,7 +20,8 @@ internal sealed class InstrumentConfiguration : IEntityTypeConfiguration<Instrum
             .HasMaxLength(128)
             .IsRequired();
 
-        // WHY: Explicit selectors preserve the custom instrument property names without requiring an interface or base entity.
+        // WHY: Explicit selectors preserve the custom instrument property names without requiring an interface or base
+        // entity.
         // No OrderBy is configured: presentation order is maintained by explicit hierarchy operations.
         builder.HasNestedSet(node => node
             .HasNodeKey(instrument => instrument.NodeId)

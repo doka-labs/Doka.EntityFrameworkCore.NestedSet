@@ -6,12 +6,13 @@ public abstract partial class OrderingTests
     ///     Verifies strict rebuild restores configured domain order instead of trusting stored positions.
     /// </summary>
     [Fact]
-    public async Task StrictRebuildDerivesSiblingOrderFromDomainValues()
+    public async Task RebuildAsync_StrictRebuild_DerivesSiblingOrderFromDomainValues()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         var treeId = await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -35,18 +36,18 @@ public abstract partial class OrderingTests
             4,
             2);
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies flexible rebuild repairs bounds while preserving a deliberate positional override.</summary>
     [Fact]
-    public async Task FlexibleRebuildPreservesStoredSiblingOrder()
+    public async Task RebuildAsync_FlexibleRebuild_PreservesStoredSiblingOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible");
+            mode: "Flexible");
 
         var tree = Tree(context);
         var treeId = await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -74,19 +75,20 @@ public abstract partial class OrderingTests
             3,
             5);
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>
     ///     Verifies strict validation detects otherwise valid coordinates whose payload order has drifted.
     /// </summary>
     [Fact]
-    public async Task StrictValidationReportsDomainOrderDrift()
+    public async Task ValidateAsync_StrictValidation_ReportsDomainOrderDrift()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         var treeId = await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -109,12 +111,13 @@ public abstract partial class OrderingTests
     ///     Verifies promoted child subtrees merge into their new sibling group using strict domain order.
     /// </summary>
     [Fact]
-    public async Task StrictDeletionSortsPromotedSubtreesAmongExistingSiblings()
+    public async Task DeleteAsync_StrictDeletion_SortsPromotedSubtreesAmongExistingSiblings()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await tree.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -146,19 +149,20 @@ public abstract partial class OrderingTests
                 .Select(node => node.Depth)
                 .SingleAsync(CancellationToken.None));
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>
     ///     Verifies deleting an intermediate node merges its promoted children into the ordered sibling group.
     /// </summary>
     [Fact]
-    public async Task StrictIntermediateDeletionSortsPromotedChildren()
+    public async Task DeleteAsync_StrictIntermediateDeletion_SortsPromotedChildren()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await tree.InsertRootAsync(Node(10, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -172,17 +176,18 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(10), cancellationToken: TestContext.Current.CancellationToken, 3, 2, 4);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies promotion across repair batches preserves every subtree and remains set-based.</summary>
     [Fact]
-    public async Task LargePromotionPreservesOverlappingIntervalsAcrossBatches()
+    public async Task DeleteAsync_LargePromotion_PreservesOverlappingIntervalsAcrossBatches()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(setup);
         await tree.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -227,8 +232,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         // Act
         await Tree(context)
@@ -267,8 +272,8 @@ public abstract partial class OrderingTests
             Assert.Equal(subtreeWidths[node.Id], node.Right - node.Left + 1);
         }
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, 2);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 2);
     }
 
     /// <summary>
@@ -277,14 +282,15 @@ public abstract partial class OrderingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ExactTreeInspectionPreservesPendingOrderingChanges(
+    public async Task PlanRebuildAsync_ExactTreeInspection_PreservesPendingOrderingChanges(
         bool planRebuild
     )
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var treeId = await SeedAsync(Tree(context), cancellationToken: TestContext.Current.CancellationToken);
         var renamed = await context

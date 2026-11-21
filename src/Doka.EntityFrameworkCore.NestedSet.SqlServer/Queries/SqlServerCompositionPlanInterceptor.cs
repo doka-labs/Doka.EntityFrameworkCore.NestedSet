@@ -1,6 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.SqlServer;
 
 /// <summary>Plans tagged hierarchy compositions for every selection size instead of the first sniffed values.</summary>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SqlServerCompositionPlanInterceptor : DbCommandInterceptor
 {
     // WHY: SQL Server reuses the plan compiled for the first parameter values. A plan built for one

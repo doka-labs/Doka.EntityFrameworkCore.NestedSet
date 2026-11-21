@@ -2,6 +2,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 /// <summary>Carries mapped direct-edge aliases inside a translated query without materializing either entity.</summary>
 /// <typeparam name="TEntity">The configured hierarchy entity.</typeparam>
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 internal sealed class NestedSetQueryEdge<TEntity>
     where TEntity : class
 {

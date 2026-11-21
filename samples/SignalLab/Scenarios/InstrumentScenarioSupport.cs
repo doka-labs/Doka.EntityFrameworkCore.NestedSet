@@ -40,8 +40,13 @@ internal static class InstrumentScenarioSupport
             .Nodes
             .ToListAsync(cancellationToken);
 
-        foreach (var instrument in nodes)
+        // WHY: The materialized node list is stable while output preserves hierarchy preorder.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
         {
+            var instrument = nodes[nodeIndex];
+
             var measurement = instrument.PulseCount is { } count
                 ? $" = {count}"
                 : string.Empty;
@@ -81,8 +86,13 @@ internal static class InstrumentScenarioSupport
             })
             .ToListAsync(cancellationToken);
 
-        foreach (var root in roots)
+        // WHY: The materialized root list is stable across the per-tree inspection awaits.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var rootIndex = 0; rootIndex < roots.Count; rootIndex++)
         {
+            var root = roots[rootIndex];
+
             var project = root.ProjectId == InstrumentDataset.ProjectId
                 ? "main project"
                 : "other project";
@@ -101,7 +111,8 @@ internal static class InstrumentScenarioSupport
         if (!reportingAvailable)
         {
             await SampleConsole.WriteLineAsync(
-                "No acquisition migration is applied; existing instrument results were inspected without schema changes.",
+                "No acquisition migration is applied; "
+                + "existing instrument results were inspected without schema changes.",
                 cancellationToken);
 
             return;

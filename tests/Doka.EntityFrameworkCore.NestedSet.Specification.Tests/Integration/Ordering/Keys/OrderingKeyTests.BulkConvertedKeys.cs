@@ -24,7 +24,7 @@ public abstract partial class OrderingKeyTests
     /// <param name="mode">The application's collection-translation preference.</param>
     [Theory]
     [MemberData(nameof(ConvertedBulkCollectionCases))]
-    public async Task ConvertedSortedBulkRefreshUsesScalarBindingsAndPreservesOtherTrees(
+    public async Task InsertSubtreeAsync_ConvertedSortedBulkRefresh_UsesScalarBindingsAndPreservesOtherTrees(
         ParameterTranslationMode mode
     )
     {
@@ -119,7 +119,7 @@ public abstract partial class OrderingKeyTests
     /// <param name="mode">The application's collection-translation preference.</param>
     [Theory]
     [MemberData(nameof(ConvertedBulkCollectionCases))]
-    public async Task ConvertedSortedBulkLateIdentityEditRestoresInputsAndAllTrees(
+    public async Task InsertSubtreeAsync_ConvertedSortedBulkLateIdentityEdit_RestoresInputsAndAllTrees(
         ParameterTranslationMode mode
     )
     {

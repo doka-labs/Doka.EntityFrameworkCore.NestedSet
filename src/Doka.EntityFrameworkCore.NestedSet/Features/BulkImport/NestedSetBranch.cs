@@ -7,6 +7,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 ///     the configured rule after generated keys and sort values exist. The copied topology is immutable; entity
 ///     payload remains caller-owned and must not be changed while an import is running.
 /// </remarks>
+[PublicAPI]
 public sealed class NestedSetBranch<TEntity>
     where TEntity : class
 {

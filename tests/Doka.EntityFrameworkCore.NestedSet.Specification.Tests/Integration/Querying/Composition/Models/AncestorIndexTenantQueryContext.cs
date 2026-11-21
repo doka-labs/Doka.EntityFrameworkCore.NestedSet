@@ -2,9 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Retains application-owned tenant visibility independently of explicit hierarchy bindings.</summary>
 /// <param name="options">The fixture-owned provider connection and observers.</param>
-internal sealed class AncestorIndexTenantQueryContext(DbContextOptions<AncestorIndexTenantQueryContext> options)
-    : DbContext(options)
+internal sealed class AncestorIndexTenantQueryContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public AncestorIndexTenantQueryContext(
+        DbContextOptions<AncestorIndexTenantQueryContext> options
+    ) : base(options) { }
+
     /// <summary>Gets or sets the application partition used by the ordinary global query filter.</summary>
     internal Guid Tenant { get; set; }
 

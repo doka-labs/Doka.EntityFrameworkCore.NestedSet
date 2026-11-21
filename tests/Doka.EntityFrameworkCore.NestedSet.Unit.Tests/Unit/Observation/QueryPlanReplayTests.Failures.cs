@@ -9,7 +9,7 @@ public sealed partial class QueryPlanReplayTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailureEvidenceRetainsOriginalQueryAfterFixtureCommands(
+    public async Task RetainFailureAsync_FailureEvidence_RetainsOriginalQueryAfterFixtureCommands(
         bool diagnosticFails
     )
     {
@@ -18,7 +18,8 @@ public sealed partial class QueryPlanReplayTests
             ? throw new InvalidOperationException("Estimated plan unavailable.")
             : Results(Plan("estimated target plan")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
         probe.Commands.Add("SELECT 2");
         probe.ParameterBindings.Add([]);
@@ -42,7 +43,6 @@ public sealed partial class QueryPlanReplayTests
                 profile,
                 probe,
                 original,
-                cancellationToken: TestContext.Current.CancellationToken,
                 1);
 
             var evidence = await File.ReadAllTextAsync(path, CancellationToken.None);

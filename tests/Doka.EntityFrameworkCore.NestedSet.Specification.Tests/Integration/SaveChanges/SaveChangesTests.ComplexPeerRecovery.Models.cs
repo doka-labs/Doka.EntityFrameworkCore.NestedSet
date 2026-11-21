@@ -48,14 +48,24 @@ public abstract partial class SaveChangesTests
     }
 
     /// <summary>Maps the same complex payload through ownership, table splitting or a separate ordinary row.</summary>
-    private sealed class ComplexPeerRecoveryContext(
-        DbContextOptions options,
-        string shape
-    )
-        : NestedSetDbContext(options), ITestModelVariant
+    private sealed class ComplexPeerRecoveryContext
+        : NestedSetDbContext, ITestModelVariant
     {
+        private readonly string _shape;
+
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        /// <param name="shape">The model variant whose identity must remain distinct in the cache.</param>
+        public ComplexPeerRecoveryContext(
+            DbContextOptions options,
+            string shape
+        ) : base(options)
+        {
+            _shape = shape;
+        }
+
         /// <inheritdoc />
-        object ITestModelVariant.ModelVariant => shape;
+        object ITestModelVariant.ModelVariant => _shape;
 
         /// <inheritdoc />
         protected override void OnModelCreating(
@@ -77,7 +87,7 @@ public abstract partial class SaveChangesTests
                 .HasParent(item => item.ParentId)
                 .OrderBy(item => item.Name));
 
-            if (shape == "owned")
+            if (_shape == "owned")
             {
                 var payload = node.OwnsOne(value => value.Details);
                 payload
@@ -95,11 +105,11 @@ public abstract partial class SaveChangesTests
                     .Navigation(value => value.Details)
                     .IsRequired();
             }
-            else if (shape is "split" or "separate")
+            else if (_shape is "split" or "separate")
             {
                 var payload = modelBuilder.Entity<ComplexPeerPayload>();
                 payload.ToTable(
-                    shape == "split"
+                    _shape == "split"
                         ? "NavigationSaveNodes"
                         : "SeparateComplexPayloads");
 
@@ -107,7 +117,7 @@ public abstract partial class SaveChangesTests
                     .Property(value => value.Id)
                     .ValueGeneratedNever();
 
-                ConfigureComplexPeerPayload(payload.Metadata, optionalPeer: shape == "split");
+                ConfigureComplexPeerPayload(payload.Metadata, optionalPeer: _shape == "split");
                 node
                     .HasOne(value => value.Details)
                     .WithOne(value => value.Node)

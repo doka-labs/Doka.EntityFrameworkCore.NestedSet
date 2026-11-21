@@ -22,7 +22,7 @@ internal abstract class NestedSetSaveGroup
         {
             Func<DbContext, IEntityType, EntityEntry[], NestedSetSaveGroup> factory;
 
-            lock (factories.Factories)
+            lock (factories.Gate)
             {
                 if (!factories.Factories.TryGetValue(group.Key, out factory!))
                 {
@@ -91,6 +91,7 @@ internal abstract class NestedSetSaveGroup
     );
 
     /// <summary>Creates the closed generic coordinator invoked by the cached metadata factory.</summary>
+    [UsedImplicitly]
     private static NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope> CreateTyped<TEntity, TKey, TTreeId, TScope>(
         DbContext context,
         IEntityType entityType,
@@ -104,7 +105,10 @@ internal abstract class NestedSetSaveGroup
     /// <summary>Keeps factory lifetime bounded by the EF model while permitting concurrent context creation.</summary>
     private sealed class FactoryCache
     {
-        /// <summary>Stores closed generic factories guarded by this dictionary's monitor.</summary>
+        /// <summary>Owns the synchronous publication boundary for this model's factory dictionary.</summary>
+        internal Lock Gate { get; } = new();
+
+        /// <summary>Stores closed generic factories guarded by the model-owned gate.</summary>
         internal Dictionary<IEntityType, Func<DbContext, IEntityType, EntityEntry[], NestedSetSaveGroup>>
             Factories { get; } = new();
     }

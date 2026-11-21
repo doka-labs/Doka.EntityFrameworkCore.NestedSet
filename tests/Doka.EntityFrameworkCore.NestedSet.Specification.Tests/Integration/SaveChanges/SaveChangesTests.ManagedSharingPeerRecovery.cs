@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData("split", false, false, false)]
     [InlineData("split", true, true, false)]
     [InlineData("split", true, false, true)]
-    public async Task ManagedSharingRollbackRestoresPromotedPeer(
+    public async Task InsertManagedSharingShapeAsync_ManagedSharingRollback_RestoresPromotedPeer(
         string shape,
         bool bulk,
         bool concurrency,
@@ -145,7 +145,7 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData("owned", true)]
     [InlineData("split", false)]
-    public async Task ManagedSharingRollbackAllowsExplicitWriteRetry(
+    public async Task SaveChangesAsync_ManagedSharingRollback_AllowsExplicitWriteRetry(
         string shape,
         bool bulk
     )
@@ -259,7 +259,7 @@ public abstract partial class SaveChangesTests
     [InlineData("owned", true, true)]
     [InlineData("split", true, false)]
     [InlineData("split", false, true)]
-    public async Task ManagedSharingSuccessPersistsOnlyExplicitCallbackWrites(
+    public async Task InsertManagedSharingShapeAsync_ManagedSharingSuccess_PersistsOnlyExplicitCallbackWrites(
         string shape,
         bool bulk,
         bool reverse

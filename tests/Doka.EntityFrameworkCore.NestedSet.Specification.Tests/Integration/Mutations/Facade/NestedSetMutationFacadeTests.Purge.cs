@@ -4,7 +4,7 @@ public abstract partial class NestedSetMutationFacadeTests
 {
     /// <summary>A completed administrative purge removes the selected scoped tombstone.</summary>
     [Fact]
-    public async Task PurgeRemovesTombstonedTreeIdentity()
+    public async Task PurgeTreeIdAsync_Purge_RemovesTombstonedTreeIdentity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -34,7 +34,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A deliberately purged TreeId can be used for a later logical tree generation.</summary>
     [Fact]
-    public async Task PurgedTreeIdCanBeReused()
+    public async Task InsertRootAsync_PurgedTreeId_CanBeReused()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -62,7 +62,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>An active identity cannot be purged as if its tree had been retired.</summary>
     [Fact]
-    public async Task ActiveTreeIdCannotBePurged()
+    public async Task PurgeTreeIdAsync_ActiveTreeId_CannotBePurged()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -89,7 +89,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>An unknown identity cannot be treated as proof of a previously deleted tree.</summary>
     [Fact]
-    public async Task UnknownTreeIdCannotBePurged()
+    public async Task PurgeTreeIdAsync_UnknownTreeId_CannotBePurged()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -108,7 +108,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A damaged tombstone retaining hierarchy rows is preserved for operator investigation.</summary>
     [Fact]
-    public async Task TombstoneWithNodesCannotBePurged()
+    public async Task PurgeTreeIdAsync_TombstoneWithNodes_CannotBePurged()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

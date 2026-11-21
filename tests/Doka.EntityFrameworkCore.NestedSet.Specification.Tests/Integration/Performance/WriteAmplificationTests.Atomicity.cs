@@ -10,7 +10,7 @@ public abstract partial class WriteAmplificationTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task CancellationAfterCombinedWriteRestoresForest(
+    public async Task DeleteAsync_CancellationAfterCombinedWrite_RestoresForest(
         bool callerTransaction,
         bool promote
     )
@@ -58,7 +58,7 @@ public abstract partial class WriteAmplificationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InsertUsesOnlyTheCoordinatorSavepoint(
+    public async Task InsertRootAsync_Insert_UsesOnlyTheCoordinatorSavepoint(
         bool callerTransaction
     )
     {
@@ -99,7 +99,7 @@ public abstract partial class WriteAmplificationTests
     /// A failed insert restores EF's caller-owned automatic savepoint setting as well as persisted rows.
     /// </summary>
     [Fact]
-    public async Task FailedInsertRestoresAutomaticSavepoints()
+    public async Task InsertRootAsync_FailedInsert_RestoresAutomaticSavepoints()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -129,7 +129,7 @@ public abstract partial class WriteAmplificationTests
 
     /// <summary>Transaction-only observations reuse EF services without adding unused materialization hooks.</summary>
     [Fact]
-    public async Task TransactionObservationReusesFixtureServices()
+    public async Task GetService_TransactionObservation_ReusesFixtureServices()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -162,24 +162,5 @@ public abstract partial class WriteAmplificationTests
             .Select(node =>
                 $"{node.NodeId}:{node.Tree}:{node.Parent}:{node.Start}:{node.End}:{node.Depth}:{node.Position}")
             .ToArray();
-    }
-}
-
-/// <summary>Counts database savepoint creation independently of ordinary EF commands.</summary>
-internal sealed class InsertSavepointProbe : DbTransactionInterceptor
-{
-    /// <summary>Gets savepoints actually created during the observed operation.</summary>
-    internal int Created { get; private set; }
-
-    /// <inheritdoc />
-    public override Task CreatedSavepointAsync(
-        DbTransaction transaction,
-        TransactionEventData eventData,
-        CancellationToken cancellationToken = default
-    )
-    {
-        Created++;
-
-        return Task.CompletedTask;
     }
 }

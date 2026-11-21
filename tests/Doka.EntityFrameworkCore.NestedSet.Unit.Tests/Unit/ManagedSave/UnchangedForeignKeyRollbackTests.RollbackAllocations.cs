@@ -22,7 +22,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     [Theory]
     [InlineData(128)]
     [InlineData(20000)]
-    public async Task NativeOnlySharedOwnerRecoveryKeepsLinearAllocation(
+    public async Task RestoreSnapshots_NativeOnlySharedOwnerRecovery_KeepsLinearAllocation(
         int nodes
     )
     {
@@ -147,7 +147,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     [InlineData(128)]
     [InlineData(2048)]
     [InlineData(20000)]
-    public async Task SupplementalRecoveryKeepsLinearAllocation(
+    public async Task Restore_SupplementalRecovery_KeepsLinearAllocation(
         int nodes
     )
     {

@@ -18,7 +18,7 @@ public sealed class JsonRowsetTests : ProviderTest, IClassFixture<ProviderFixtur
 
     /// <summary>Verifies SQLite orders more than five hundred tree identities from one JSON rowset.</summary>
     [Fact]
-    public async Task ResolvesMoreThanFiveHundredTreesInOneJsonRowset()
+    public async Task AcquireAsync_MoreThanFiveHundredTreesInOneJsonRowset_ReturnsAllRequestedTrees()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(

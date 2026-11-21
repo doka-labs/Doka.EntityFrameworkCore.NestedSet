@@ -29,12 +29,20 @@ public sealed partial class SqlServerCompositionStrategyTests
     };
 
     /// <summary>Combines an operator-free converted key with database-native case-insensitive tree identity.</summary>
-    private sealed class CoordinateBoundsContext(
-        DbContextOptions<CoordinateBoundsContext> options,
-        bool scoped = true
-    )
-        : DbContext(options)
+    private sealed class CoordinateBoundsContext
+        : DbContext
     {
+        private readonly bool _scoped;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public CoordinateBoundsContext(
+            DbContextOptions<CoordinateBoundsContext> options,
+            bool scoped = true
+        ) : base(options)
+        {
+            _scoped = scoped;
+        }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
@@ -42,7 +50,7 @@ public sealed partial class SqlServerCompositionStrategyTests
         {
             var node = modelBuilder.Entity<CoordinateBoundsNode>();
             var converter = new ValueConverter<BoundsKey, int>(key => key.Value, value => new BoundsKey(value));
-            if (scoped)
+            if (_scoped)
             {
                 node.HasKey(entity => new
                 {
@@ -83,7 +91,7 @@ public sealed partial class SqlServerCompositionStrategyTests
                     .HasDepth(entity => entity.Depth)
                     .HasPosition(entity => entity.Position);
 
-                if (scoped)
+                if (_scoped)
                 {
                     hierarchy.HasScope(entity => entity.Scope);
                 }
@@ -92,12 +100,18 @@ public sealed partial class SqlServerCompositionStrategyTests
     }
 
     /// <summary>Provides a converted identity without a CLR equality operator.</summary>
-    private readonly struct BoundsKey(
-        int value
-    )
+    private readonly struct BoundsKey
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public BoundsKey(
+            int value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets the synthetic scalar identity.</summary>
-        public int Value { get; } = value;
+        public int Value { get; }
     }
 
     /// <summary>Represents only the structural roles needed by adversarial key and path controls.</summary>

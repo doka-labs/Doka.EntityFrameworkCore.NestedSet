@@ -10,7 +10,7 @@ public sealed class TreeRegistryLockSqlTests
     [Theory]
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
-    public void RelationalValuesSourceUsesDirectCommonTableExpression(
+    public void BuildTreeRowsetSource_RelationalValuesSource_UsesDirectCommonTableExpression(
         string engine
     )
     {
@@ -50,7 +50,7 @@ public sealed class TreeRegistryLockSqlTests
             .GetDbConnection()
             .CreateCommand();
 
-        var parameters = new List<object>();
+        List<object> parameters = [];
         var adapter = NestedSetTestAdapters.ForEngine(engine);
 
         // Act

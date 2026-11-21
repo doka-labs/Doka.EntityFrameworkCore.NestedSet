@@ -7,7 +7,7 @@ public abstract partial class RelationalTests
     /// <summary>Moving a subtree before a sibling preserves dense sibling positions.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveBeforeShiftsSiblingPositions()
+    public async Task MoveBeforeAsync_MoveBefore_ShiftsSiblingPositions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -37,7 +37,7 @@ public abstract partial class RelationalTests
     /// <summary>Moving a subtree after a sibling preserves dense sibling positions.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveAfterShiftsSiblingPositions()
+    public async Task MoveAfterAsync_MoveAfter_ShiftsSiblingPositions()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -67,7 +67,7 @@ public abstract partial class RelationalTests
     /// <summary>Moving before the first existing child prepends the complete subtree.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveBeforePrependsSubtreeToDestinationChildren()
+    public async Task MoveBeforeAsync_MoveBefore_PrependsSubtreeToDestinationChildren()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -90,7 +90,7 @@ public abstract partial class RelationalTests
     /// <summary>Moving to a parent appends the subtree when manual ordering is configured.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveToAppendsSubtreeToDestinationChildren()
+    public async Task MoveToAsync_MoveTo_AppendsSubtreeToDestinationChildren()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -113,7 +113,7 @@ public abstract partial class RelationalTests
     /// <summary>Detaching a subtree creates a fresh TreeId with local bounds and root position zero.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DetachAsTreeCreatesIndependentRoot()
+    public async Task DetachAsTreeAsync_DetachAsTree_CreatesIndependentRoot()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -156,7 +156,7 @@ public abstract partial class RelationalTests
     /// <summary>A hierarchy stores root-zero depth through five levels.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task InsertedDeepHierarchyStoresEveryLevel()
+    public async Task InsertChildAsync_InsertedDeepHierarchy_StoresEveryLevel()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -188,177 +188,6 @@ public abstract partial class RelationalTests
         await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Moving a deep subtree updates every descendant level and its structural relation.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task MovingSubtreeDownIncreasesAllDescendantDepths()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        await tree.MoveToAsync(3, 8, CancellationToken.None);
-
-        // Assert
-        await AssertDepthsAsync(
-            context,
-            1,
-            cancellationToken: TestContext.Current.CancellationToken,
-            (3, 3),
-            (4, 4),
-            (5, 5));
-
-        await AssertOrderAsync(
-            tree.AncestorsOf(5),
-            cancellationToken: TestContext.Current.CancellationToken,
-            6,
-            7,
-            8,
-            3,
-            4);
-
-        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Moving a deep subtree updates every descendant level and its structural relation.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task MovingSubtreeUpDecreasesAllDescendantDepths()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await tree.MoveToAsync(3, 8, CancellationToken.None);
-
-        // Act
-        await tree.MoveToAsync(3, 1, CancellationToken.None);
-
-        // Assert
-        await AssertDepthsAsync(
-            context,
-            1,
-            cancellationToken: TestContext.Current.CancellationToken,
-            (3, 1),
-            (4, 2),
-            (5, 3));
-
-        await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 2, 3);
-        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Moving a deep subtree updates every descendant level and its structural relation.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task MovingDeepSubtreeAfterSiblingPreservesDepth()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await tree.MoveBeforeAsync(3, 2, CancellationToken.None);
-
-        // Act
-        await tree.MoveAfterAsync(3, 2, CancellationToken.None);
-
-        // Assert
-        await AssertDepthsAsync(
-            context,
-            1,
-            cancellationToken: TestContext.Current.CancellationToken,
-            (3, 1),
-            (4, 2),
-            (5, 3));
-
-        await AssertOrderAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 2, 3);
-        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Moving a branch into another tree updates every descendant depth.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task MovingDeepSubtreeToEmptyParentUpdatesDepth()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        await tree.MoveToAsync(3, 8, CancellationToken.None);
-
-        // Assert
-        await AssertDepthsAsync(
-            context,
-            1,
-            cancellationToken: TestContext.Current.CancellationToken,
-            (3, 3),
-            (4, 4),
-            (5, 5));
-
-        await AssertOrderAsync(tree.ChildrenOf(8), cancellationToken: TestContext.Current.CancellationToken, 3);
-        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
-    /// <summary>Detaching a deep branch rebases its root and every descendant depth.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task DetachingDeepSubtreeRebasesEveryDescendantDepth()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        await tree.DetachAsTreeAsync(3, Guid.NewGuid(), CancellationToken.None);
-
-        // Assert
-        await AssertDepthsAsync(
-            context,
-            1,
-            cancellationToken: TestContext.Current.CancellationToken,
-            (3, 0),
-            (4, 1),
-            (5, 2));
-
-        await AssertOrderAsync(
-            context
-                .Set<TreeNode>()
-                .AsNoTracking()
-                .Where(node => node.Tree == 1)
-                .Where(node => node.Parent == null)
-                .OrderBy(node => node.NodeId),
-            cancellationToken: TestContext.Current.CancellationToken,
-            1,
-            3,
-            6);
-
-        await AssertValidAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-    }
-
     /// <summary>Every mutation leaves another scoped hierarchy byte-for-byte unchanged.</summary>
     /// <param name="operation">The single operation performed in the first scope.</param>
     /// <returns>A task that completes when the scenario has been verified.</returns>
@@ -376,7 +205,7 @@ public abstract partial class RelationalTests
     [InlineData("Delete")]
     [InlineData("DeleteSubtree")]
     [InlineData("Rebuild")]
-    public async Task MutationPreservesOtherScope(
+    public async Task ApplyScopedMutationAsync_Mutation_PreservesOtherScope(
         string operation
     )
     {

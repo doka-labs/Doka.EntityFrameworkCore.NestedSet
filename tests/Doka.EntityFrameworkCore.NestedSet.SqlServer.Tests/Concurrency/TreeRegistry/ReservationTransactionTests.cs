@@ -21,7 +21,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
     /// A duplicate SQL Server reservation leaves earlier caller work committable with XACT_ABORT OFF.
     /// </summary>
     [Fact]
-    public async Task DuplicateReservationPreservesCallerTransaction()
+    public async Task AcquireAsync_DuplicateReservation_PreservesCallerTransaction()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -72,7 +72,7 @@ public sealed class ReservationTransactionTests : ProviderTest,
 
     /// <summary>XACT_ABORT ON is rejected before a duplicate can invalidate the caller transaction.</summary>
     [Fact]
-    public async Task XactAbortOnRejectsAndPreservesCallerTransaction()
+    public async Task AcquireAsync_XactAbortOn_RejectsAndPreservesCallerTransaction()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

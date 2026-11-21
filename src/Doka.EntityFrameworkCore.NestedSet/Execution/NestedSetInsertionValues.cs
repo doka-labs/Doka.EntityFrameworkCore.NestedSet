@@ -46,7 +46,7 @@ internal static class NestedSetInsertionValues
             : new Snapshot(entity, values.ToArray());
     }
 
-    /// <summary>Reads raw mapped dictionary values without normalizing missing or null entries through EF getters.</summary>
+    /// <summary>Reads raw mapped dictionary values without normalizing missing or null entries through EF.</summary>
     /// <param name="property">The mapped CLR or indexer property.</param>
     /// <param name="entity">The containing root object used by EF's configured accessor.</param>
     /// <returns>The original representation, a missing-entry marker, or the sentinel for shadow state.</returns>

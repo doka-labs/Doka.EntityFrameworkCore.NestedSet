@@ -11,15 +11,18 @@ public sealed class StrongIdTests : ProviderTest, IClassFixture<ProviderFixture<
 
     /// <summary>Uses strong IDs in the public API while the provider compares and indexes integers.</summary>
     [Fact]
-    public async Task CompatibleStrongIdConvertersSupportHierarchyOperationsAsync()
+    public async Task InsertRootAsync_CompatibleStrongIdConverters_SupportHierarchyOperations()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<StrongIdContext>()
             .ConfigureTestWarnings()
-            .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+            .UseSqlite("Data Source=:memory:", provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StrongIdContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var hierarchy = context.NestedSet<StrongIdNode>();

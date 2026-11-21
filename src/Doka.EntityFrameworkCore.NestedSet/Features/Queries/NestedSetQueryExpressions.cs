@@ -168,7 +168,8 @@ internal static class NestedSetQueryExpressions
 
         if (unwrapped is MemberInitExpression initialized)
         {
-            // WHY: These immutable bindings expose an interface enumerator; indexing avoids it on each member reduction.
+            // WHY: These immutable bindings expose an interface enumerator; indexing avoids it on each member
+            // reduction.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
             for (int index = 0, count = initialized.Bindings.Count; index < count; index++)
@@ -198,11 +199,21 @@ internal static class NestedSetQueryExpressions
     }
 
     /// <summary>Retains the general binding-list behavior for larger and mismatched argument counts.</summary>
-    private sealed class ArgumentsReplacement(
-        IReadOnlyList<ParameterExpression> parameters,
-        IReadOnlyList<Expression> arguments
-    ) : ProjectionReplacement
+    private sealed class ArgumentsReplacement : ProjectionReplacement
     {
+        private readonly IReadOnlyList<ParameterExpression> _parameters;
+        private readonly IReadOnlyList<Expression> _arguments;
+
+        /// <summary>Retains the simultaneous parameter and argument vectors without copying them.</summary>
+        internal ArgumentsReplacement(
+            IReadOnlyList<ParameterExpression> parameters,
+            IReadOnlyList<Expression> arguments
+        )
+        {
+            _parameters = parameters;
+            _arguments = arguments;
+        }
+
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
@@ -211,12 +222,12 @@ internal static class NestedSetQueryExpressions
             // WHY: Match parameter identity to its replacement argument at the same ordinal.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var index = 0; index < parameters.Count; index++)
+            for (var index = 0; index < _parameters.Count; index++)
             {
                 // WHY: Identical parameter names in nested lambdas do not mean identical bindings.
-                if (ReferenceEquals(node, parameters[index]))
+                if (ReferenceEquals(node, _parameters[index]))
                 {
-                    return arguments[index];
+                    return _arguments[index];
                 }
             }
 
@@ -225,68 +236,115 @@ internal static class NestedSetQueryExpressions
     }
 
     /// <summary>Substitutes one exact projection binding without visiting the supplied argument.</summary>
-    private sealed class ParameterReplacement(
-        ParameterExpression parameter,
-        Expression argument
-    ) : ProjectionReplacement
+    private sealed class ParameterReplacement : ProjectionReplacement
     {
+        private readonly ParameterExpression _parameter;
+        private readonly Expression _argument;
+
+        /// <summary>Retains one exact parameter identity and its unvisited replacement expression.</summary>
+        internal ParameterReplacement(
+            ParameterExpression parameter,
+            Expression argument
+        )
+        {
+            _parameter = parameter;
+            _argument = argument;
+        }
+
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
-        ) => ReferenceEquals(node, parameter)
-            ? argument
+        ) => ReferenceEquals(node, _parameter)
+            ? _argument
             : node;
     }
 
     /// <summary>Stores two supplied expressions directly while retaining exact parameter identity.</summary>
-    private sealed class PairReplacement(
-        IReadOnlyList<ParameterExpression> parameters,
-        Expression first,
-        Expression second
-    ) : ProjectionReplacement
+    private sealed class PairReplacement : ProjectionReplacement
     {
+        private readonly IReadOnlyList<ParameterExpression> _parameters;
+        private readonly Expression _first;
+        private readonly Expression _second;
+
+        /// <summary>Retains two simultaneous arguments without allocating a replacement array.</summary>
+        internal PairReplacement(
+            IReadOnlyList<ParameterExpression> parameters,
+            Expression first,
+            Expression second
+        )
+        {
+            _parameters = parameters;
+            _first = first;
+            _second = second;
+        }
+
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
-        ) => ReferenceEquals(node, parameters[0])
-            ? first
-            : ReferenceEquals(node, parameters[1])
-                ? second
-                : node;
+        ) => node switch
+        {
+            _ when ReferenceEquals(node, _parameters[0]) => _first,
+            _ when ReferenceEquals(node, _parameters[1]) => _second,
+            _ => node,
+        };
     }
 
     /// <summary>Stores three supplied expressions directly without recursively replacing their bindings.</summary>
-    private sealed class TripleReplacement(
-        IReadOnlyList<ParameterExpression> parameters,
-        Expression first,
-        Expression second,
-        Expression third
-    ) : ProjectionReplacement
+    private sealed class TripleReplacement : ProjectionReplacement
     {
+        private readonly IReadOnlyList<ParameterExpression> _parameters;
+        private readonly Expression _first;
+        private readonly Expression _second;
+        private readonly Expression _third;
+
+        /// <summary>Retains three simultaneous arguments without allocating a replacement array.</summary>
+        internal TripleReplacement(
+            IReadOnlyList<ParameterExpression> parameters,
+            Expression first,
+            Expression second,
+            Expression third
+        )
+        {
+            _parameters = parameters;
+            _first = first;
+            _second = second;
+            _third = third;
+        }
+
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
         )
         {
-            if (ReferenceEquals(node, parameters[0]))
+            if (ReferenceEquals(node, _parameters[0]))
             {
-                return first;
+                return _first;
             }
 
-            if (ReferenceEquals(node, parameters[1]))
+            if (ReferenceEquals(node, _parameters[1]))
             {
-                return second;
+                return _second;
             }
 
-            return ReferenceEquals(node, parameters[2])
-                ? third
+            return ReferenceEquals(node, _parameters[2])
+                ? _third
                 : node;
         }
     }
 
     /// <summary>Stops after finding the requested binding, including references inside nested lambdas.</summary>
-    private sealed class ParameterReference(ParameterExpression parameter) : ExpressionVisitor
+    private sealed class ParameterReference : ExpressionVisitor
     {
+        private readonly ParameterExpression _parameter;
+
+        /// <summary>Retains the exact parameter identity searched during this syntax visit.</summary>
+        internal ParameterReference(
+            ParameterExpression parameter
+        )
+        {
+            _parameter = parameter;
+        }
+
         /// <summary>Gets whether the exact supplied parameter occurs in the expression.</summary>
         internal bool Found { get; private set; }
 
@@ -302,7 +360,7 @@ internal static class NestedSetQueryExpressions
             ParameterExpression node
         )
         {
-            Found |= ReferenceEquals(node, parameter);
+            Found |= ReferenceEquals(node, _parameter);
 
             return node;
         }

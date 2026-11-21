@@ -13,7 +13,7 @@ public sealed class NestedSetKeyFilterTests
     [InlineData(1, ExpressionType.Equal)]
     [InlineData(2, ExpressionType.Call)]
     [InlineData(64, ExpressionType.Call)]
-    public void NativeMappedBatchUsesBoundedPredicate(
+    public void Matches_NativeMappedBatch_UsesBoundedPredicate(
         int count,
         ExpressionType expected
     )
@@ -39,7 +39,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>A converter on a qualified CLR type selects scalar equality using the actual mapping.</summary>
     [Fact]
-    public void ConvertedNativeClrBatchRetainsScalarEquality()
+    public void Matches_ConvertedNativeClrBatch_RetainsScalarEquality()
     {
         // Arrange
         using var services = CreateServices();
@@ -67,7 +67,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>A string-to-string converter also excludes an otherwise qualified native CLR collection.</summary>
     [Fact]
-    public void ConvertedStringBatchRetainsScalarEquality()
+    public void Matches_ConvertedStringBatch_RetainsScalarEquality()
     {
         // Arrange
         using var services = CreateServices();
@@ -95,7 +95,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>Native PostgreSQL array keys retain scalar equality without jagged collection translation.</summary>
     [Fact]
-    public void NativeArrayBatchRetainsEqualityFallback()
+    public void Matches_NativeArrayBatch_RetainsEqualityFallback()
     {
         // Arrange
         using var services = CreateServices();
@@ -117,7 +117,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>A generic value mismatch fails before a property expression can be translated or executed.</summary>
     [Fact]
-    public void MismatchedMappedTypeIsRejected()
+    public void Matches_MismatchedMappedType_IsRejected()
     {
         // Arrange
         using var services = CreateServices();
@@ -134,7 +134,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>The explicit scalar helper compares one captured value without a collection allocation.</summary>
     [Fact]
-    public void ScalarEqualityUsesOneMappedComparison()
+    public void ToQueryString_ScalarEquality_UsesOneMappedComparison()
     {
         // Arrange
         using var services = CreateServices();
@@ -155,7 +155,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>Metadata equality reuses the exact surrounding alias without invoking its CLR accessors.</summary>
     [Fact]
-    public void MetadataEqualityRetainsTheSuppliedAlias()
+    public void Lambda_MetadataEquality_RetainsTheSuppliedAlias()
     {
         // Arrange
         using var services = CreateServices();
@@ -185,7 +185,7 @@ public sealed class NestedSetKeyFilterTests
     [Theory]
     [InlineData(null)]
     [InlineData(12)]
-    public void MetadataEqualityPreservesNullableReferences(
+    public void Lambda_MetadataEquality_PreservesNullableReferences(
         int? value
     )
     {
@@ -211,7 +211,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>Reused aliases retain converted value equality without equality operators.</summary>
     [Fact]
-    public void MetadataEqualityRetainsOperatorFreeConversion()
+    public void Lambda_MetadataEquality_RetainsOperatorFreeConversion()
     {
         // Arrange
         using var services = CreateServices();
@@ -239,7 +239,7 @@ public sealed class NestedSetKeyFilterTests
 
     /// <summary>The reused-alias route rejects a mismatched value before building a comparison.</summary>
     [Fact]
-    public void MetadataEqualityRejectsMismatchedValueTypes()
+    public void Equal_MismatchedMetadataValueTypes_AreRejected()
     {
         // Arrange
         using var services = CreateServices();
@@ -286,10 +286,13 @@ public sealed class NestedSetKeyFilterTests
     ) => context.Model.FindEntityType(typeof(KeyFilterNode))!.FindProperty(name)!;
 
     /// <summary>Provides native integer, converted integer, and native array mappings for policy boundaries.</summary>
-    private sealed class KeyFilterContext(
-        DbContextOptions<KeyFilterContext> options
-    ) : DbContext(options)
+    private sealed class KeyFilterContext : DbContext
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public KeyFilterContext(
+            DbContextOptions<KeyFilterContext> options
+        ) : base(options) { }
+
         /// <inheritdoc />
         protected override void OnModelCreating(
             ModelBuilder modelBuilder
@@ -333,12 +336,18 @@ public sealed class NestedSetKeyFilterTests
     }
 
     /// <summary>Exposes value equality without operator overloads for metadata-aware SQL comparison.</summary>
-    private readonly struct OperatorFreeKey(
-        int value
-    ) : IEquatable<OperatorFreeKey>
+    private readonly struct OperatorFreeKey : IEquatable<OperatorFreeKey>
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public OperatorFreeKey(
+            int value
+        )
+        {
+            Value = value;
+        }
+
         /// <summary>Gets the scalar representation used by the provider converter.</summary>
-        public int Value { get; } = value;
+        public int Value { get; }
 
         /// <inheritdoc />
         public bool Equals(

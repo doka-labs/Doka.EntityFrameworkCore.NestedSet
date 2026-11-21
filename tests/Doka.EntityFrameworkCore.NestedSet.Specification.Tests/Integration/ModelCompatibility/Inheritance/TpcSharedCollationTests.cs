@@ -13,7 +13,7 @@ public abstract class TpcSharedCollationTests : ProviderTest
     /// <summary>Scope-qualified parent keys are declared on the EF root and serve concrete TPC relationships.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ScopedConcreteParentKeyBelongsToInheritanceRoot()
+    public void FinalizeModel_ScopedConcreteParentKey_BelongsToInheritanceRoot()
     {
         // Arrange
         using var context = new CollatedTpcContext(ModelCompatibilityDatabase.Options<CollatedTpcContext>(Engine));

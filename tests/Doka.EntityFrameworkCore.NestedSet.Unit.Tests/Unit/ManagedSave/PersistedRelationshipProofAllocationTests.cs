@@ -5,13 +5,21 @@ using SnapshotContext = Doka.EntityFrameworkCore.NestedSet.Tests.HierarchyChange
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Bounds persisted-FK observation when the provider write set needs no relationship proof.</summary>
-/// <param name="output">The result log receiving observations outside the measured interval.</param>
 [Trait("Category", "Allocation")]
 [Collection("Allocation measurements")]
-public sealed class PersistedRelationshipProofAllocationTests(
-    ITestOutputHelper output
-)
+public sealed class PersistedRelationshipProofAllocationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">The result log receiving observations outside the measured interval.</param>
+    public PersistedRelationshipProofAllocationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Skipped native write entries do not allocate a lambda capture for each row.</summary>
     /// <param name="nodes">The number of entries in the actual EF update adapter.</param>
     /// <param name="hierarchy">Whether entries are new hierarchy nodes or modified ordinary owners.</param>
@@ -22,7 +30,7 @@ public sealed class PersistedRelationshipProofAllocationTests(
     [InlineData(1, true)]
     [InlineData(128, true)]
     [InlineData(8000, true)]
-    public async Task SkippedWriteEntriesRetainFixedCaptureAllocation(
+    public async Task CapturePersisted_SkippedWriteEntries_RetainFixedCaptureAllocation(
         int nodes,
         bool hierarchy
     )
@@ -90,7 +98,7 @@ public sealed class PersistedRelationshipProofAllocationTests(
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Persisted FK capture: nodes={nodes}; hierarchy={hierarchy}; passes={repetitions}; "
             + $"allocated={allocated} B; maximum=2048 B.");
 
@@ -114,7 +122,7 @@ public sealed class PersistedRelationshipProofAllocationTests(
 
     /// <summary>An owner already in the insertion journal does not allocate another filtering closure.</summary>
     [Fact]
-    public async Task KnownOwnerCaptureRetainsFixedWarmAllocation()
+    public async Task Capture_KnownOwnerCapture_RetainsFixedWarmAllocation()
     {
         // Arrange
         await using var context = new SnapshotContext();
@@ -159,7 +167,7 @@ public sealed class PersistedRelationshipProofAllocationTests(
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Known owner capture: passes={repetitions}; allocated={allocated} B; maximum=0 B.");
+        _output.WriteLine($"Known owner capture: passes={repetitions}; allocated={allocated} B; maximum=0 B.");
         Assert.NotNull(initial);
         Assert.Same(initial, baseline);
         Assert.Equal(members, owner.ScopeNodes);

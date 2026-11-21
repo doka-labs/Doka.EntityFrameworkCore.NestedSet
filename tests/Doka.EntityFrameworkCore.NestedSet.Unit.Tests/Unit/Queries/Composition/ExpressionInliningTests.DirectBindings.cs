@@ -20,7 +20,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1, true)]
     [InlineData(2, true)]
     [InlineData(3, true)]
-    public void UnboundMembersAvoidVisitorAllocationAndGetterEvaluation(
+    public void Inline_UnboundMembers_AvoidVisitorAllocationAndGetterEvaluation(
         int arity,
         bool staticMember
     )
@@ -83,7 +83,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(3, 0)]
     [InlineData(3, 1)]
     [InlineData(3, 2)]
-    public void DirectIdentityBindingReusesEverySuppliedArgument(
+    public void Inline_DirectIdentityBinding_ReusesEverySuppliedArgument(
         int arity,
         int selected
     )
@@ -115,7 +115,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(3, 0)]
     [InlineData(3, 1)]
     [InlineData(3, 2)]
-    public void DirectMemberBindingReusesSelectedAssignment(
+    public void Inline_DirectMemberBinding_ReusesSelectedAssignment(
         int arity,
         int selected
     )
@@ -160,7 +160,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void DirectMemberBindingRetainsForeignParameterIdentity(
+    public void Inline_DirectMemberBinding_RetainsForeignParameterIdentity(
         int arity
     )
     {
@@ -193,7 +193,7 @@ public sealed partial class ExpressionInliningTests
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
-    public void DirectMemberAssignmentDoesNotRevisitAnotherBinding(
+    public void Inline_DirectMemberAssignment_DoesNotRevisitAnotherBinding(
         int arity
     )
     {
@@ -230,7 +230,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void DirectMemberBindingRetainsInvalidTargetRejection(
+    public void Inline_DirectMemberBinding_RetainsInvalidTargetRejection(
         int arity
     )
     {
@@ -269,7 +269,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1, true)]
     [InlineData(2, true)]
     [InlineData(3, true)]
-    public void DirectBindingAvoidsVisitorAllocation(
+    public void Inline_DirectBinding_AvoidsVisitorAllocation(
         int arity,
         bool member
     )
@@ -324,7 +324,7 @@ public sealed partial class ExpressionInliningTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        output.WriteLine($"Arity={arity}; member={member}; operations={repetitions}; allocated={allocated} B.");
+        _output.WriteLine($"Arity={arity}; member={member}; operations={repetitions}; allocated={allocated} B.");
 
         // WHY: Fixed noise headroom rejects the former per-call visitor without imposing a timing gate.
         Assert.InRange(allocated, 0, 4096);

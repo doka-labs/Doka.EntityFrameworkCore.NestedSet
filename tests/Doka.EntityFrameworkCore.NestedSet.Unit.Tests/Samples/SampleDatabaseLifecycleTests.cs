@@ -5,7 +5,7 @@ public sealed class SampleDatabaseLifecycleTests
 {
     /// <summary>The first execution applies migrations and creates the fixed sample file.</summary>
     [Fact]
-    public async Task FreshRunAppliesTheOwnedMigrationChain()
+    public async Task PrepareAsync_FreshRun_AppliesOwnedMigrationChain()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -28,7 +28,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>An explicit reset removes prior application rows while applying the complete schema again.</summary>
     [Fact]
-    public async Task ExplicitResetRecreatesTheSchemaWithoutEarlierRows()
+    public async Task PrepareAsync_ExplicitReset_RecreatesTheSchemaWithoutEarlierRows()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -51,7 +51,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>Resetting one sample does not delete a different sample's persistent results.</summary>
     [Fact]
-    public async Task ExplicitResetPreservesAnotherSamplesResults()
+    public async Task PrepareAsync_ExplicitReset_PreservesAnotherSamplesResults()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -81,7 +81,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>A second run explains reset or inspection instead of appending data or mutating the schema.</summary>
     [Fact]
-    public async Task ExistingResultsRequireAnExplicitReset()
+    public async Task PrepareAsync_ExistingResults_RequireAnExplicitReset()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -113,7 +113,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>Migration history identifies an earlier run even when every application row was deleted.</summary>
     [Fact]
-    public async Task EmptyApplicationTablesStillRequireAnExplicitReset()
+    public async Task PrepareAsync_EmptyApplicationTablesStill_RequireAnExplicitReset()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -146,7 +146,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>A context bound to a different file cannot reset it under another sample's ownership.</summary>
     [Fact]
-    public async Task ForeignSqliteContextIsRejectedAndItsDataSurvives()
+    public async Task PrepareAsync_ForeignSqliteContext_IsRejectedAndItsDataSurvives()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -176,7 +176,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>Server ownership is checked before a destructive command or connection attempt can occur.</summary>
     [Fact]
-    public async Task ForeignServerDatabaseIsRejectedBeforeConnecting()
+    public async Task PrepareAsync_ForeignServerDatabase_IsRejectedBeforeConnecting()
     {
         // Arrange
         const string endpoint = "Server=127.0.0.1;Port=1;User ID=sample;Password=test-secret;";
@@ -212,7 +212,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>An already canceled reset leaves the owned data and schema intact.</summary>
     [Fact]
-    public async Task CanceledResetPreservesEarlierData()
+    public async Task PrepareAsync_CanceledReset_PreservesEarlierData()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -244,7 +244,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>An already canceled first run does not create its storage directory or file.</summary>
     [Fact]
-    public async Task CanceledFirstRunDoesNotCreateStorage()
+    public async Task PrepareAsync_CanceledFirstRun_DoesNotCreateStorage()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -271,7 +271,7 @@ public sealed class SampleDatabaseLifecycleTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MissingInspectionDoesNotCreateAFile(
+    public async Task EnsureAvailableForInspectionAsync_MissingInspection_DoesNotCreateAFile(
         bool readOnly
     )
     {
@@ -297,7 +297,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>Inspection rejects an unmigrated database without changing its schema or rows.</summary>
     [Fact]
-    public async Task InspectionRejectsUnmigratedDataWithoutChangingIt()
+    public async Task EnsureAvailableForInspectionAsync_Inspection_RejectsUnmigratedDataWithoutChangingIt()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();
@@ -343,7 +343,7 @@ public sealed class SampleDatabaseLifecycleTests
 
     /// <summary>Read-only inspection preserves rows and the complete database file.</summary>
     [Fact]
-    public async Task InspectionPreservesExistingDataAndSchema()
+    public async Task EnsureAvailableForInspectionAsync_Inspection_PreservesExistingDataAndSchema()
     {
         // Arrange
         await using var directory = new SampleLifecycleDirectory();

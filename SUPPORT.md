@@ -153,7 +153,7 @@ without expanding the support matrix.
 
 ## Version and Compatibility Lifecycle
 
-Version `10.3.0` defines the stable source contract across the common libraries
+Version `10.4.0` defines the stable source contract across the common libraries
 and four provider adapters.
 Reports must identify the actual package version or the exact source revision
 and build for unreleased changes. The earlier `10.0.0-rc.1` has no separate
@@ -179,7 +179,7 @@ establish NestedSet compatibility: EF providers generally do not work across
 major EF Core versions, and every provider or engine line requires explicit
 NestedSet qualification.
 
-The current `10.3.0` API is recorded in the shipped baselines. Historical
+The current `10.4.0` API is recorded in the shipped baselines. Historical
 `10.0.0` and `10.2.0` contracts remain in their release tags; SDK compatibility
 validation still uses `10.0.0`. Compatibility decisions and version exceptions
 follow the [version policy](docs/release-governance.md#version-policy).

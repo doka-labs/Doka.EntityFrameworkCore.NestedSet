@@ -1,7 +1,7 @@
 ---
 id: D-005
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -68,7 +68,7 @@ filtered run does not establish coverage for a provider introduced later.
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~Ordering|FullyQualifiedName~SaveChanges|FullyQualifiedName~PostCommitOutcomeTests"` and expect all selected tests to pass.
 - Require equal sort keys, database collation, manual flexible placement, rename reorder, callback-introduced changes, rollback restoration, and `SaveChangesAsync(false, cancellationToken)` coverage. Expect unsupported synchronous ordered saves to reject before partial structural work.
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx -c Release --filter "FullyQualifiedName~ManagedSaveCallbackTests|FullyQualifiedName~SingleInsertGuardTests|FullyQualifiedName~OptionsExtensionTests"` and expect the persistence boundary on every provider, in both extension orders, with post-save inspection, audit writes, suppression rejection, and restored accepted callback writes after rollback.
-- Run `OrderingTrackerTests.LateFailureRestoresAddedIdentityAndAllowsRetry` and `ManagedSaveCallbackTests.RolledBackCallbackWritesCanBeSavedAgain` on all five providers. The first covers a temporary key after a coordinated save fails; the second must persist restored Added, Modified, and Deleted callback entries after an insertion fails.
+- Run `OrderingTrackerTests.SaveChangesAsync_LateFailure_RestoresAddedIdentityAndAllowsRetry` and `ManagedSaveCallbackTests.SaveChangesAsync_RolledBackCallback_WritesCanBeSavedAgain` on all five providers. The first covers a temporary key after a coordinated save fails; the second must persist restored Added, Modified, and Deleted callback entries after an insertion fails.
 - Run `ManagedHierarchyPayloadTests` on all five providers. Payload writes to an unaffected tree must commit or restore with the insertion, while a structural write must fail before persistence.
 - Run the mixed TPH/TPT managed-save regressions on every provider. Cross-type
   Parent changes, dependent cross-tree moves, base ordering, tracked refresh,
@@ -239,7 +239,7 @@ provider writes, genuine concurrency and completion/later structural faults,
 identical retry and successful persistence. Managed single, subtree and forest
 cases exercise their actual capture boundary. Complete capture and exceptional
 recovery resource checks remain separate from metadata/warmup and successful-save
-measurements. The [regression inventory](../regression-coverage.md#manual-detection-and-hierarchy-guards)
+measurements. The [manual-detection contract](../configuration.md#manual-change-detection)
 maps these contracts to concrete controls. The [support matrix](../support-and-qualification.md#provider-and-engine-matrix)
 keeps native SQL Server and hosted qualification boundaries explicit.
 
@@ -302,11 +302,13 @@ all supported providers. This internal EF contract must be checked when upgradin
 - 2026-11-02: Preserved post-capture complex topology through the D-004 journal, without changing coordinated versus managed callback timing. Added lifecycle, ordinal-identity, failure/retry and complete resource controls.
 - 2026-11-03: Consolidated public recovery contracts, regression references and resource guidance in their maintained guides. Removed development-stage report dependencies; decision and runtime contracts are unchanged.
 
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
 ### Implementation References
 
 - [Manual-detection and callback recovery contract](../configuration.md#manual-change-detection)
-- [Coordinated-save ownership and persisted membership](../implementation-design.md#ordering-and-coordinated-saves)
-- [Recovery regression inventory](../regression-coverage.md#manual-detection-and-hierarchy-guards)
+- [Coordinated-save ownership and persisted membership](../configuration.md#manual-change-detection)
+- [Tracker recovery contract](../transactions-and-locking.md#tracker-and-complex-value-restoration)
 - [Prepared-import and recovery costs](../performance.md#prepared-imports-and-recovery-costs)
 - [Complex topology controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexTopologyRollbackTests.cs)
 - [Complex callback provider controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/SaveChanges/SaveChangesTests.ComplexCallbackRecovery.cs)

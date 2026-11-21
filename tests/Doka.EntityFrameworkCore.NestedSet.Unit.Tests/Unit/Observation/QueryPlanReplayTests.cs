@@ -1,25 +1,28 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks diagnostic command ownership and complete plan result handling without a database server.</summary>
 public sealed partial class QueryPlanReplayTests
 {
     /// <summary>
-    /// A plan-only watchdog honors explicit context settings without changing ordinary query options.
+    /// Plan replay honors explicit context settings without adding a diagnostic-only latency gate.
     /// </summary>
     /// <param name="configured">An explicit context timeout, or null for the untouched provider default.</param>
-    /// <param name="expected">The deadline applied only to the raw diagnostic command.</param>
+    /// <param name="expected">The timeout applied only to the raw diagnostic command.</param>
     [Theory]
-    [InlineData(null, 120)]
+    [InlineData(null, 0)]
     [InlineData(0, 0)]
     [InlineData(7, 7)]
-    public async Task DiagnosticTimeoutDoesNotMutateOrdinaryQueryOptions(
+    public async Task ExplainAsync_DiagnosticTimeout_DoesNotMutateOrdinaryQueryOptions(
         int? configured,
         int expected
     )
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(Plan("complete plan")));
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         context.Database.SetCommandTimeout(configured);
         var probe = Probe();
 
@@ -32,6 +35,11 @@ public sealed partial class QueryPlanReplayTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Contains("complete plan", plan, StringComparison.Ordinal);
         Assert.NotNull(connection.Command);
         Assert.Equal(expected, connection.Command.CommandTimeout);
@@ -40,7 +48,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>Successful MySQL replay contains both plan documents but never warning metadata or notes.</summary>
     [Fact]
-    public async Task CompleteMySqlReplayExcludesWarningRows()
+    public async Task ExplainAsync_CompleteMySql_ReplayExcludesWarningRows()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(
@@ -48,7 +56,8 @@ public sealed partial class QueryPlanReplayTests
             Plan("-> Filter (actual time=1..2 rows=5 loops=1)"),
             Warnings(1003, "optimizer note")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -70,7 +79,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>Warning 1317 prevents an interrupted TREE document from becoming accepted plan evidence.</summary>
     [Fact]
-    public async Task InterruptedMySqlReplayRejectsPartialPlan()
+    public async Task ExplainAsync_InterruptedMySql_ReplayRejectsPartialPlan()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(
@@ -78,7 +87,8 @@ public sealed partial class QueryPlanReplayTests
             Plan("-> Filter (actual time=1..2 rows=3 loops=1)"),
             Warnings(1317, "Query execution was interrupted")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -99,14 +109,15 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>SQL Server's ordinary result values are drained before its separate XML plan is retained.</summary>
     [Fact]
-    public async Task SqlServerReplayDrainsDataBeforeXmlPlan()
+    public async Task ExplainAsync_SqlServer_ReplayDrainsDataBeforeXmlPlan()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(
             ScalarRows(),
             Plan("<ShowPlanXML />", "Microsoft SQL Server 2005 XML Showplan")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -121,13 +132,12 @@ public sealed partial class QueryPlanReplayTests
         Assert.Equal("<ShowPlanXML />" + Environment.NewLine, plan);
     }
 
-    /// <summary>Creates a small provider graph owned entirely by the test's context.</summary>
-    private static DbContext CreateContext(
+    /// <summary>Owns the real replay provider without involving EF's process-global provider cache.</summary>
+    private static OwnedModelTestServices<DbContext> CreateServices(
         PlanReplayConnection connection
-    ) => new(
-        new DbContextOptionsBuilder()
+    ) => OwnedModelTestServices<DbContext>.Create(
+        new DbContextOptionsBuilder<DbContext>()
             .UseSqlite(connection)
-            .EnableServiceProviderCaching(false)
             .Options);
 
     /// <summary>Supplies an exact recorded statement without creating an unrelated EF command.</summary>

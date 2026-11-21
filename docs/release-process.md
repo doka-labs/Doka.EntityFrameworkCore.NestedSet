@@ -6,7 +6,7 @@ authority is in [Release governance](release-governance.md).
 The [release-line contract](operations/release-lines.md) governs exact branch
 eligibility, framework ownership, preparation and ongoing servicing.
 
-Version `10.3.0` is the stable six-package source contract; `10.0.0` is the
+Version `10.4.0` is the stable six-package source contract; `10.0.0` is the
 first stable contract. Each version, including the
 earlier `10.0.0-rc.1`, retains its own exact packages and qualification evidence.
 RC archives are never renamed into stable packages.
@@ -33,7 +33,7 @@ leading `v`. It must match the reviewed source version and one dated changelog
 section. All six NuGet identities must be unused, the release tag must not exist,
 and dispatch must target that line's exact current protected head. The version
 major must match the line's approved framework/toolchain and package major.
-Current source is .NET 10 with `10.3.0`; additional lines remain inactive.
+Current source is .NET 10 with `10.4.0`; additional lines remain inactive.
 
 ## Qualification stages
 
@@ -96,14 +96,14 @@ not restore dependencies or set up .NET. Only then does it seal the candidate
 and pass its artifact ID unchanged to `attest` and `publish`. Job timeouts and a
 bounded per-process budget limit each job; there is no shared deadline.
 
-All six shipping projects under `src/` commit dependency locks. RC
+Every solution project commits its dependency lock. RC
 qualification copies those locks into its owned workspace and verifies that
 restore preserves them. Tests, samples, benchmarks, and tools restore their
-own graphs without additional committed lockfiles.
+own reviewed graphs from their committed lockfiles.
 
 | Stage | Required evidence |
 | --- | --- |
-| `quality` | Offline release-tooling tests, shell syntax, reviewed shipping package locks, Roslyn style/import checks, warning-free Release build |
+| `quality` | Offline release-tooling tests, shell syntax, reviewed solution dependency locks, Roslyn style/import checks, warning-free Release build |
 | `tests` | Docker readiness, every test project, all provider cells, ordinary and optional migrations, coverage artifacts, query plans, and runnable samples |
 | `packages` | One pack per shipping package from the release build; exact primary/symbol metadata, assembly, PDB, XML docs, source, dependencies, and archive inventory |
 | `consumer` | Six isolated package roots plus the actual FileSystem sample restore the exact archives; bounds/SQLite/sample execution and real provider API/model/query translation are checked without external databases |

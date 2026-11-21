@@ -71,8 +71,13 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
         cancellationToken.ThrowIfCancellationRequested();
         RequireMatchingHierarchy(requests);
 
-        foreach (var request in requests)
+        // WHY: Validated lock-request order stays stable while membership and registry ownership are checked.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var requestIndex = 0; requestIndex < requests.Count; requestIndex++)
         {
+            var request = requests[requestIndex];
+
             if (request.Mode != NestedSetTreeLockMode.Existing)
             {
                 throw new ArgumentException("Consistent reads require existing tree locks.", nameof(requests));
@@ -116,13 +121,13 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
         CancellationToken cancellationToken
     ) => NestedSetTransaction.ExecuteAsync(
         _context,
-        async token =>
+        async operationCancellationToken =>
         {
             await NestedSetTreeLocks
-                .AcquireAsync(_context, requests, token)
+                .AcquireAsync(_context, requests, operationCancellationToken)
                 .ConfigureAwait(false);
 
-            await operation(token)
+            await operation(operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);
@@ -138,12 +143,12 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
         using (guard)
         {
             await ExecuteLockedAsync(
-                    async token =>
+                    async operationCancellationToken =>
                     {
                         if (guard.HasCandidates)
                         {
                             await guard
-                                .RequireUnaffectedAsync(token)
+                                .RequireUnaffectedAsync(operationCancellationToken)
                                 .ConfigureAwait(false);
 
                             // WHY: Native membership reads add an application callback boundary. Detect payload edits
@@ -160,7 +165,7 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
                         guard.VerifyUnchanged();
                         guard.Dispose();
 
-                        await operation(token)
+                        await operation(operationCancellationToken)
                             .ConfigureAwait(false);
                     },
                     requests,
@@ -174,8 +179,13 @@ internal sealed class NestedSetMutationExecutor<TEntity, TKey, TTreeId, TScope>
         IReadOnlyList<NestedSetTreeLockRequest<TTreeId, TScope>> requests
     )
     {
-        foreach (var request in requests)
+        // WHY: Validated lock-request order stays stable while membership and registry ownership are checked.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var requestIndex = 0; requestIndex < requests.Count; requestIndex++)
         {
+            var request = requests[requestIndex];
+
             // WHY: Inherited hierarchy aliases share one physical registry mapping. Comparing that exact cached
             // mapping accepts their common lock domain while rejecting other entity types or context models.
             if (!ReferenceEquals(request.Mapping, _registry))

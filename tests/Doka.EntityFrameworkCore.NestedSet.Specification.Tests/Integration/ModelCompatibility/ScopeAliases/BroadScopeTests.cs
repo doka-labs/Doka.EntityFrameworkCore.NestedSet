@@ -17,7 +17,7 @@ public abstract class BroadScopeTests : ProviderTest
     /// <summary>Compares the stored representation instead of the value object's broad equality.</summary>
     [DatabaseIndependent]
     [Fact]
-    public void ProviderComparerSeparatesReferenceAliases()
+    public void Equals_ProviderComparer_SeparatesReferenceAliases()
     {
         // Arrange
         using var context = new BroadScopeContext(ModelCompatibilityDatabase.Options<BroadScopeContext>(Engine));
@@ -37,7 +37,7 @@ public abstract class BroadScopeTests : ProviderTest
 
     /// <summary>Reorders both provider-distinct scopes during one coordinated save.</summary>
     [Fact]
-    public async Task SortedSaveKeepsStoredScopesSeparateAsync()
+    public async Task SaveNestedSetChangesAsync_SortedSave_KeepsStoredScopesSeparate()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
@@ -96,7 +96,7 @@ public abstract class BroadScopeTests : ProviderTest
 
     /// <summary>Refreshes a moved branch without adopting a matching node key from another scope.</summary>
     [Fact]
-    public async Task ParentSaveRefreshesOnlyItsStoredScopeAsync()
+    public async Task SaveNestedSetChangesAsync_ParentSave_RefreshesOnlyItsStoredScope()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
@@ -152,7 +152,7 @@ public abstract class BroadScopeTests : ProviderTest
 
     /// <summary>A save callback cannot redirect a single insert into a database-distinct scope.</summary>
     [Fact]
-    public async Task SingleInsertRejectsCallbackScopeAliasAsync()
+    public async Task InsertRootAsync_SingleInsert_RejectsCallbackScopeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(
@@ -193,7 +193,7 @@ public abstract class BroadScopeTests : ProviderTest
 
     /// <summary>A save callback cannot redirect a bulk import into a database-distinct scope.</summary>
     [Fact]
-    public async Task BulkInsertRejectsCallbackScopeAliasAsync()
+    public async Task InsertForestAsync_BulkInsert_RejectsCallbackScopeAlias()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<BroadScopeContext>(

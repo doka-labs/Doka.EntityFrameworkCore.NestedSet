@@ -10,7 +10,7 @@ public abstract partial class HierarchyCompositionTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task InterleavedPathAndNearestRulesRetainTheirOwnAliases(
+    public async Task SelectSubtrees_InterleavedPathAndNearestRules_RetainTheirOwnAliases(
         bool reverseConstruction,
         bool rowAware
     )
@@ -21,7 +21,12 @@ public abstract partial class HierarchyCompositionTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            closed: null,
+            planProbe: null,
+            chainNodes: null,
+            ownerMode: CompositionTestData.ChainOwnerMode.RootValue);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

@@ -17,7 +17,7 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     /// <summary>A complete field-model reset permits a fresh reservation of a previously retired identity.</summary>
     /// <returns>A task that completes after verifying the replacement tree is valid.</returns>
     [Fact]
-    public async Task FieldModelResetRemovesTombstonedIdentity()
+    public async Task CreateFieldContextAsync_FieldModelReset_RemovesTombstonedIdentity()
     {
         // Arrange
         await using (var previous = await _fixture.CreateFieldContextAsync(
@@ -60,7 +60,7 @@ public abstract class FixtureTreeLifecycleTests : ProviderTest
     /// <summary>A complete generated-model reset removes lifecycle state independently of the base model.</summary>
     /// <returns>A task that completes after verifying identity generation and fresh tree reservation.</returns>
     [Fact]
-    public async Task GeneratedModelResetRemovesTombstonedIdentity()
+    public async Task CreateGeneratedContextAsync_GeneratedModelReset_RemovesTombstonedIdentity()
     {
         // Arrange
         await using (var previous = await _fixture.CreateGeneratedContextAsync(

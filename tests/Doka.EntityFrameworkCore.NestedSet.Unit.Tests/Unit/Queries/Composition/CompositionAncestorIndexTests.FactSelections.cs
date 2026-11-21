@@ -29,7 +29,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("raw-sql", true)]
     [InlineData("custom-root", true)]
     [InlineData("enumerable-custom-root", true)]
-    public async Task FactSelectionKeepsHierarchyAndOpaqueSourcesDecorrelatable(
+    public async Task RequiresAncestorDecorrelation_FactSelection_KeepsHierarchyAndOpaqueSourcesDecorrelatable(
         string shape,
         bool requiresCorrelation
     )
@@ -125,7 +125,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task FactSelectedAncestorTranslationRemainsDeferred(
+    public async Task SelectAncestorsOrSelf_FactSelectedAncestorTranslation_RemainsDeferred(
         string engine,
         bool includeSelf
     )
@@ -290,15 +290,22 @@ public sealed partial class CompositionAncestorIndexTests
     private sealed class DerivedHierarchyFilteredFact : HierarchyFilteredFact;
 
     /// <summary>Proves conservative inspection never calls application query getters.</summary>
-    private sealed class QueryHolder(
-        IQueryable<SelectionFact> query
-    )
+    private sealed class QueryHolder
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public QueryHolder(
+            IQueryable<SelectionFact> query
+        )
+        {
+            Field = query;
+            Untyped = query;
+        }
+
         /// <summary>Retains an opaque captured query without exposing its expression as owned syntax.</summary>
-        public readonly IQueryable<SelectionFact> Field = query;
+        public readonly IQueryable<SelectionFact> Field;
 
         /// <summary>Hides a captured query behind a non-query declared type.</summary>
-        public readonly object Untyped = query;
+        public readonly object Untyped;
 
         /// <summary>Gets the number of application getter invocations.</summary>
         public int GetterCalls { get; private set; }
@@ -316,11 +323,14 @@ public sealed partial class CompositionAncestorIndexTests
     }
 
     /// <summary>A derived EF root must not obtain trust or execute its application visitor callback.</summary>
-    /// <param name="entityType">The otherwise valid fact metadata hidden behind the opaque root.</param>
-    private sealed class OpaqueFactRoot(
-        IEntityType entityType
-    ) : EntityQueryRootExpression(entityType)
+    private sealed class OpaqueFactRoot : EntityQueryRootExpression
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        /// <param name="entityType">The otherwise valid fact metadata hidden behind the opaque root.</param>
+        public OpaqueFactRoot(
+            IEntityType entityType
+        ) : base(entityType) { }
+
         /// <summary>Gets the number of application-controlled child dispatches.</summary>
         public int Visits { get; private set; }
 

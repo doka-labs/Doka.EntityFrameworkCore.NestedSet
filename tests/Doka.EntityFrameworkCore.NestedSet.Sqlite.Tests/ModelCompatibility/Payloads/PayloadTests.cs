@@ -11,11 +11,12 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
 
     /// <summary>Persists an owned aggregate together with the detached root node.</summary>
     [Fact]
-    public async Task OwnedPayloadIsInsertedWithNodeAsync()
+    public async Task InsertRootAsync_OwnedPayload_IsInsertedWithNode()
     {
         // Arrange
         var options = Options();
         await using var context = new PayloadContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var node = new OwnedPayloadNode
@@ -42,11 +43,12 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
 
     /// <summary>Persists inline complex payload without treating it as a relationship graph.</summary>
     [Fact]
-    public async Task ComplexPayloadIsInsertedWithNodeAsync()
+    public async Task InsertRootAsync_ComplexPayload_IsInsertedWithNode()
     {
         // Arrange
         var options = Options();
         await using var context = new PayloadContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var node = new ComplexPayloadNode
@@ -73,11 +75,12 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
 
     /// <summary>Persists owned payload for every node in a bulk subtree import.</summary>
     [Fact]
-    public async Task BulkImportIncludesOwnedPayloadAsync()
+    public async Task InsertSubtreeAsync_BulkImport_IncludesOwnedPayload()
     {
         // Arrange
         var options = Options();
         await using var context = new PayloadContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context.Database.OpenConnectionAsync(CancellationToken.None);
         await context.Database.EnsureCreatedAsync(CancellationToken.None);
         var hierarchy = context.NestedSet<OwnedPayloadNode>();
@@ -126,6 +129,8 @@ public sealed class PayloadTests : ProviderTest, IClassFixture<ProviderFixture<P
     /// <summary>Builds one options instance with automatic nested-set integration.</summary>
     private static DbContextOptions<PayloadContext> Options() => new DbContextOptionsBuilder<PayloadContext>()
         .ConfigureTestWarnings()
-        .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
+        .UseSqlite("Data Source=:memory:", provider => provider
+            .CommandTimeout(0)
+            .UseNestedSets())
         .Options;
 }

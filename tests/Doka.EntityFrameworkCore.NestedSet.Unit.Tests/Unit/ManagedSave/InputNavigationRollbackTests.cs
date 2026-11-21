@@ -10,7 +10,7 @@ public sealed partial class InputNavigationRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CompletedWaveRollbackRestoresReplacedInputCollection(
+    public async Task CaptureRelationships_CompletedWaveRollback_RestoresReplacedInputCollection(
         bool initiallyNull
     )
     {
@@ -27,7 +27,7 @@ public sealed partial class InputNavigationRollbackTests
         };
 
         var entry = context.Entry(input);
-        var replacement = new List<RollbackNode>();
+        List<RollbackNode> replacement = [];
         var writes = new NestedSetCallbackWrites();
         var introducedEntries = new HashSet<IUpdateEntry>(
             [NestedSetInsertionContract.Instance.Entry(entry)],
@@ -84,7 +84,7 @@ public sealed partial class InputNavigationRollbackTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task OwnedGraphRollbackRespectsValidationBoundary(
+    public async Task StageBatch_OwnedGraphRollback_RespectsValidationBoundary(
         bool populatedForeignReference,
         bool changePayload
     )

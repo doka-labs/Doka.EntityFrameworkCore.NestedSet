@@ -26,12 +26,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Verifies automatic insertion orders every sibling group and preserves whole-tree preorder.</summary>
     [Fact]
-    public async Task OutOfOrderInsertsMaintainEveryLevel()
+    public async Task SeedAsync_OutOfOrderInserts_MaintainEveryLevel()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
 
@@ -53,17 +54,18 @@ public abstract partial class OrderingTests
             4);
 
         await AssertIdsAsync(tree.SubtreeOf(2), cancellationToken: TestContext.Current.CancellationToken, 2, 6, 7);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies automatic child placement uses domain order rather than append order.</summary>
     [Fact]
-    public async Task ChildrenAreInsertedInConfiguredOrder()
+    public async Task InsertChildAsync_Children_AreInsertedInConfiguredOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await tree.InsertRootAsync(Node(10, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -75,17 +77,18 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(10), cancellationToken: TestContext.Current.CancellationToken, 2, 3, 1);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies equal configured values fall back to ascending primary-key order.</summary>
     [Fact]
-    public async Task EqualValuesUseAscendingPrimaryKeyTieBreaker()
+    public async Task InsertChildAsync_EqualValues_UseAscendingPrimaryKeyTieBreaker()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await tree.InsertRootAsync(Node(1, "Root"), Guid.NewGuid(), CancellationToken.None);
@@ -97,19 +100,20 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(1), cancellationToken: TestContext.Current.CancellationToken, 2, 5, 8);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>
     ///     Verifies null placement, case comparison, descending secondary values, and ties use database ordering.
     /// </summary>
     [Fact]
-    public async Task MixedDirectionsAndNullsMatchNativeDatabaseOrder()
+    public async Task InsertChildAsync_MixedDirectionsAndNulls_MatchNativeDatabaseOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         OrderingNode[] nodes =
@@ -150,18 +154,18 @@ public abstract partial class OrderingTests
                 tree.ChildrenOf(100),
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies converted sort values follow provider values rather than CLR enum ordinals.</summary>
     [Fact]
-    public async Task ConvertedPayloadSortUsesPersistedRepresentation()
+    public async Task InsertChildAsync_ConvertedPayloadSort_UsesPersistedRepresentation()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Converted");
+            mode: "Converted");
 
         var tree = Tree(context);
         var zeta = Node(1, "Same");
@@ -179,17 +183,18 @@ public abstract partial class OrderingTests
 
         // Assert
         await AssertIdsAsync(tree.ChildrenOf(10), cancellationToken: TestContext.Current.CancellationToken, 2, 3, 1);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies automatic reparenting moves the subtree into its sorted sibling location.</summary>
     [Fact]
-    public async Task MoveToUsesDestinationOrderAndRetainsDescendants()
+    public async Task MoveToAsync_MoveTo_UsesDestinationOrderAndRetainsDescendants()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -208,19 +213,20 @@ public abstract partial class OrderingTests
                 .Select(node => node.Depth)
                 .SingleAsync(CancellationToken.None));
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>
     ///     Verifies detaching an ordered subtree creates independent local bounds and preserves descendants.
     /// </summary>
     [Fact]
-    public async Task DetachAsTreePreservesOrderedSubtree()
+    public async Task DetachAsTreeAsync_DetachAsTree_PreservesOrderedSubtree()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -239,20 +245,21 @@ public abstract partial class OrderingTests
 
         await AssertIdsAsync(tree.TreeContaining(1), cancellationToken: TestContext.Current.CancellationToken, 1, 2, 4);
         await AssertIdsAsync(tree.TreeContaining(5), cancellationToken: TestContext.Current.CancellationToken, 3, 5);
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Verifies strict mode rejects each positional override without changing any row.</summary>
     [Theory]
     [MemberData(nameof(ExplicitPlacements))]
-    public async Task StrictModeRejectsExplicitPlacement(
+    public async Task PlaceAsync_StrictMode_RejectsExplicitPlacement(
         string placement
     )
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tree = Tree(context);
         await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -274,7 +281,7 @@ public abstract partial class OrderingTests
     /// </summary>
     [Theory]
     [MemberData(nameof(ExplicitPlacements))]
-    public async Task FlexibleModeAllowsExplicitPlacement(
+    public async Task PlaceAsync_FlexibleMode_AllowsExplicitPlacement(
         string placement
     )
     {
@@ -282,7 +289,7 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible");
+            mode: "Flexible");
 
         var tree = Tree(context);
         await SeedAsync(tree, cancellationToken: TestContext.Current.CancellationToken);
@@ -310,7 +317,7 @@ public abstract partial class OrderingTests
                 tree.ChildrenOf(1),
                 cancellationToken: TestContext.Current.CancellationToken));
 
-        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken);
+        await AssertForestAsync(context, cancellationToken: TestContext.Current.CancellationToken, scope: 1);
     }
 
     /// <summary>Invokes public placement APIs for leaf and subtree moves, including both edge positions.</summary>

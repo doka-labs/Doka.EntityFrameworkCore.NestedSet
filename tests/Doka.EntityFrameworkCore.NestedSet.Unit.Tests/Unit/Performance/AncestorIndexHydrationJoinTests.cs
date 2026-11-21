@@ -13,7 +13,7 @@ public sealed class AncestorIndexHydrationJoinTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ReadsImmediatePayloadJoinKinds(
+    public void Read_ImmediatePayloadJoinKinds_Reads(
         bool derived,
         bool swapped
     )
@@ -57,7 +57,7 @@ public sealed class AncestorIndexHydrationJoinTests
     [InlineData("unbalanced")]
     [InlineData("literal")]
     [InlineData("unsupported-edge")]
-    public void InvalidPayloadAttributionFailsClosed(
+    public void Read_InvalidPayloadAttribution_FailsClosed(
         string shape
     )
     {

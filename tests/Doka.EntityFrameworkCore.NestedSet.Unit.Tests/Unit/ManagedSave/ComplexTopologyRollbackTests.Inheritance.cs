@@ -7,7 +7,7 @@ public sealed partial class ComplexTopologyRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InheritedDocumentRestoresDerivedEntryAfterCallback(
+    public async Task Restore_InheritedDocument_RestoresDerivedEntryAfterCallback(
         bool accepted
     )
     {

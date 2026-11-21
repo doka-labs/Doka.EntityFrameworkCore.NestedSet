@@ -168,7 +168,7 @@ signal, resource boundary, or release trust boundary changes.
 
 ## Supported Versions
 
-Version `10.3.0` defines the stable source contract across the common libraries
+Version `10.4.0` defines the stable source contract across the common libraries
 and four provider adapters.
 Security fixes target the latest stable 10.x release. Reports against the
 earlier `10.0.0-rc.1` are accepted and triaged, but the RC has no separate

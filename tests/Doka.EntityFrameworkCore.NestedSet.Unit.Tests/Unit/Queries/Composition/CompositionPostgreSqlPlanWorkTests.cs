@@ -5,7 +5,7 @@ public sealed class CompositionPostgreSqlPlanWorkTests
 {
     /// <summary>The observed quadratic join cannot pass merely because its final result is small.</summary>
     [Fact]
-    public void RejectedCartesianJoinWorkExceedsTheOriginalLinearBudget()
+    public void ReadPostgreSqlJson_RejectedCartesianJoinWork_ExceedsTheOriginalLinearBudget()
     {
         // Arrange
         const long budget = 320_448;
@@ -27,7 +27,7 @@ public sealed class CompositionPostgreSqlPlanWorkTests
 
     /// <summary>Fractional per-loop observations are multiplied; absent rejection counters mean zero.</summary>
     [Fact]
-    public void AveragedObservationsAndExecutedLoopsAreCountedExactly()
+    public void ReadPostgreSqlJson_AveragedObservationsAndExecutedLoops_AreCountedExactly()
     {
         // Arrange
         const string plan = """
@@ -46,7 +46,7 @@ public sealed class CompositionPostgreSqlPlanWorkTests
 
     /// <summary>Empty actual output is valid when the root executed and has no rejected join tuples.</summary>
     [Fact]
-    public void AnExecutedEmptyResultDoesNotBecomeMissingEvidence()
+    public void ReadPostgreSqlJson_AnExecutedEmptyResult_DoesNotBecomeMissingEvidence()
     {
         // Arrange
         const string plan = """[{"Plan":{"Actual Rows":0,"Actual Loops":1}}]""";
@@ -77,7 +77,7 @@ public sealed class CompositionPostgreSqlPlanWorkTests
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Rows Removed by Join Filter\":-1}}]")]
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Plans\":null}}]")]
     [InlineData("[{\"Plan\":{\"Actual Rows\":1,\"Actual Loops\":1,\"Plans\":[null]}}]")]
-    public void MissingOrMalformedNativeWorkIsRejected(
+    public void ReadPostgreSqlJson_MissingOrMalformedNativeWork_IsRejected(
         string plan
     )
     {

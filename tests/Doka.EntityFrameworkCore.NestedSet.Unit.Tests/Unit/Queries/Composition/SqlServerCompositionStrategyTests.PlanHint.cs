@@ -47,7 +47,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData(Tag + " extra\nSELECT 1", false)]
     [InlineData("-- caller\n\nSELECT 1\n" + Tag, false)]
     [InlineData("", false)]
-    public void CompositionTagMarksOnlyLeadingTagComments(
+    public void Marks_CompositionTag_MarksOnlyLeadingTagComments(
         string commandText,
         bool expected
     )
@@ -68,7 +68,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     /// <param name="expected">The exact command text after interception.</param>
     [Theory]
     [MemberData(nameof(PlanHintCases))]
-    public async Task PlanInterceptorAppendsTheHintOnceToTaggedStatements(
+    public async Task ReaderExecuting_PlanInterceptor_AppendsTheHintOnceToTaggedStatements(
         string kind,
         string commandText,
         string expected
@@ -107,7 +107,7 @@ public sealed partial class SqlServerCompositionStrategyTests
 
     /// <summary>The SQL Server adapter registers its policy and tags composition, never ordinary reads.</summary>
     [Fact]
-    public async Task SqlServerTagsCompositionAndRegistersItsPlanPolicy()
+    public async Task SelectSubtrees_SqlServer_TagsCompositionAndRegistersItsPlanPolicy()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -155,7 +155,7 @@ public sealed partial class SqlServerCompositionStrategyTests
     [InlineData("Sqlite")]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task OtherAdaptersKeepCompositionSqlUntagged(
+    public async Task SelectSubtrees_OtherAdapters_KeepCompositionSqlUntagged(
         string engine
     )
     {

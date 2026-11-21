@@ -12,7 +12,7 @@ public sealed class CompositionAnyConstructionTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task EntityAndDirectEdgePredicatesKeepTheirTypedDeferredLambdas(
+    public async Task WherePathEdges_EntityAndDirectEdgePredicates_KeepTheirTypedDeferredLambdas(
         string engine
     )
     {
@@ -105,7 +105,7 @@ public sealed class CompositionAnyConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ForeignNamedEndpointIsRejectedWithoutEvaluatingTheEdgeRule(
+    public void WherePathEdges_ForeignNamedEndpoint_IsRejectedWithoutEvaluatingTheEdgeRule(
         bool foreignAnchor
     )
     {

@@ -249,30 +249,41 @@ internal static partial class SupervisorQueries
     );
 
     /// <summary>Substitutes a finite known parameter set and leaves unchanged expression subtrees shared.</summary>
-    private sealed class RoutingBindingVisitor(
-        IReadOnlyList<ParameterExpression> parameters,
-        Expression[] values,
-        ParameterExpression row
-    ) : ExpressionVisitor
+    private sealed class RoutingBindingVisitor : ExpressionVisitor
     {
+        private readonly IReadOnlyList<ParameterExpression> _parameters;
+        private readonly Expression[] _values;
+        private readonly ParameterExpression _row;
+
+        /// <summary>Retains the exact parameter identities and request-local replacement expressions.</summary>
+        internal RoutingBindingVisitor(
+            IReadOnlyList<ParameterExpression> parameters,
+            Expression[] values,
+            ParameterExpression row
+        )
+        {
+            _parameters = parameters;
+            _values = values;
+            _row = row;
+        }
         /// <inheritdoc />
         protected override Expression VisitParameter(
             ParameterExpression node
         )
         {
-            if (ReferenceEquals(node, parameters[0]))
+            if (ReferenceEquals(node, _parameters[0]))
             {
-                return row;
+                return _row;
             }
 
             // WHY: Match parameters by reference and read the replacement at the corresponding offset.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var index = 1; index < parameters.Count; index++)
+            for (var index = 1; index < _parameters.Count; index++)
             {
-                if (ReferenceEquals(node, parameters[index]))
+                if (ReferenceEquals(node, _parameters[index]))
                 {
-                    return values[index - 1];
+                    return _values[index - 1];
                 }
             }
 

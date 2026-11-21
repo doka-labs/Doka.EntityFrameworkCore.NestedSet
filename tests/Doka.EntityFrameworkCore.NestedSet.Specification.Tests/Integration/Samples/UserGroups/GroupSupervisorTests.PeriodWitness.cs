@@ -14,13 +14,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OverlappingPeriodWitnessesPreserveIndependentExpandedOrigins(
+    public async Task FollowAllMembershipsAsync_OverlappingPeriodWitnesses_PreserveIndependentExpandedOrigins(
         bool blocked
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         for (var index = 0; index < 25; index++)
         {
             await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);

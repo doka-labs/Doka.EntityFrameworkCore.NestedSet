@@ -1,7 +1,7 @@
 ---
 id: D-007
 status: implemented
-date: 2026-09-19
+date: 2026-11-19
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -226,6 +226,8 @@ configured comparer is still evaluated on each probe.
 - 2026-11-01: Replaced repeated full-owner sets with tracked-removal scratch and grouped saved-member scans. Kept live callback/FK inspection and added malformed-owned, replaced-collection and late-owner rollback controls.
 - 2026-11-02: Qualified cached getter metadata and complete 1,000-8,000-node comparisons on MariaDB/MySQL. Allocation observations decrease for prepared imports; timing remains mixed under recorded background load.
 - 2026-11-03: Consolidated prepared-import cost and measurement guidance in the performance guide while retaining this decision, its implementation references and unchanged import/recovery contracts.
+
+- 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 ### Implementation References
 

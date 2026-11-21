@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks tracing, metrics, and privacy for operations and coordinated saves.</summary>
-public abstract class DiagnosticsTests : ProviderTest
+public abstract partial class DiagnosticsTests : ProviderTest
 {
     private readonly OrderingFixture _fixture;
     private readonly RelationalFixture _relational;
@@ -20,7 +20,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>One completed mutation emits one duration/count and a distinct lock-wait measurement.</summary>
     [Fact]
-    public async Task SuccessfulMutationMeasuresOperationAndLockWithoutPayloadTags()
+    public async Task InsertRootAsync_SuccessfulMutation_MeasuresOperationAndLockWithoutPayloadTags()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -38,7 +38,7 @@ public abstract class DiagnosticsTests : ProviderTest
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await service.InsertRootAsync(node, Guid.Empty, CancellationToken.None);
+        await service.InsertRootAsync(node, Guid.Empty, TestContext.Current.CancellationToken);
 
         // Assert
         var operation = Assert.Single(
@@ -75,7 +75,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>Rebuild emits exact node, batch, and affected-row measurements without identity tags.</summary>
     [Fact]
-    public async Task RebuildPublishesBoundedWorkMeasurements()
+    public async Task RebuildAsync_Rebuild_PublishesBoundedWorkMeasurements()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -85,19 +85,21 @@ public abstract class DiagnosticsTests : ProviderTest
             .ForScope(1);
 
         var treeId = Guid.Parse("8f1f3065-baca-4a03-a179-a6d6d09cf935");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, CancellationToken.None);
-        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, TestContext.Current.CancellationToken);
+        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, TestContext.Current.CancellationToken);
         _ = await context
             .Set<TreeNode>()
             .Where(node => node.NodeId == 2)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Depth, 7), CancellationToken.None);
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(node => node.Depth, 7),
+                TestContext.Current.CancellationToken);
 
         using var capture = new DiagnosticsCapture();
 
         // Act
         await hierarchy
             .InTree(treeId)
-            .RebuildAsync(CancellationToken.None);
+            .RebuildAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -118,330 +120,9 @@ public abstract class DiagnosticsTests : ProviderTest
         AssertPrivate(capture, "rebuild", "lock", "success");
     }
 
-    /// <summary>Rejected operations produce typed errors and one failure count without revealing the key.</summary>
-    [Fact]
-    public async Task MissingNodeFailureHasBoundedClassification()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var service = context
-            .NestedSet<TreeNode>()
-            .ForScope(934857);
-
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var error = await Assert.ThrowsAsync<NestedSetException>(() => service.DeleteAsync(
-            842653,
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(NestedSetErrorCode.NodeNotFound, error.Code);
-        var operation = Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.delete");
-        Assert.Equal(ActivityStatusCode.Error, operation.Status);
-        Assert.Equal("node_not_found", operation.GetTagItem("error.type"));
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
-                .Value);
-
-        AssertPrivate(capture, "delete", "lock", "success", "failure", "node_not_found");
-    }
-
-    /// <summary>Canceled requests have a separate outcome without increasing the failure counter.</summary>
-    [Fact]
-    public async Task CancellationHasItsOwnOutcomeAndDoesNotAcquireALock()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var service = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            service.InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, cancellation.Token));
-
-        // Assert
-        Assert.Equal(cancellation.Token, error.CancellationToken);
-        Assert.Equal(
-            "canceled",
-            Assert
-                .Single(capture.Activities)
-                .GetTagItem("nestedset.outcome"));
-
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
-                .Value);
-
-        Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.operation.failures");
-        Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
-        AssertPrivate(capture, "insert_root", "canceled");
-    }
-
-    /// <summary>Cancellation inside measured acquisition records wait time and preserves the forest.</summary>
-    [Fact]
-    public async Task CancellationDuringLockAcquisitionRecordsTheCanceledWait()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        IInterceptor probe = Engine == "Sqlite"
-            ? new LockCancellationProbe(reached)
-            : new LockCommandCancellationProbe(reached);
-
-        await using var context = database.CreateContext(probe);
-        var service = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var operation = service.InsertRootAsync(new TreeNode { NodeId = 1 }, Guid.Empty, cancellation.Token);
-        await reached.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        await cancellation.CancelAsync();
-        var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation);
-
-        // Assert
-        Assert.Equal(cancellation.Token, error.CancellationToken);
-        var wait = Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
-        Assert.True(wait.Value > 0);
-        Assert.Contains(wait.Tags, tag => tag is { Key: "nestedset.outcome", Value: "canceled" });
-        Assert.DoesNotContain(capture.Measurements, item => item.Name == "nestedset.operation.failures");
-        Assert.Empty(
-            await service
-                .InTree(Guid.Empty)
-                .Nodes
-                .ToArrayAsync(CancellationToken.None));
-
-        AssertPrivate(capture, "insert_root", "lock", "canceled");
-    }
-
-    /// <summary>Normal SaveChanges reordering has its own operation measurement and lock latency.</summary>
-    [Fact]
-    public async Task CoordinatedSaveIsObservedOnce()
-    {
-        // Arrange
-        await using var context = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var service = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
-        await service.InsertRootAsync(
-            new OrderingNode
-            {
-                Id = 1,
-                Name = "Before",
-            },
-            Guid.Empty,
-            CancellationToken.None);
-
-        var node = await context
-            .Set<OrderingNode>()
-            .SingleAsync(CancellationToken.None);
-
-        node.Name = "private-updated-name";
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        await context.SaveChangesAsync(CancellationToken.None);
-
-        // Assert
-        var operation = Assert.Single(
-            capture.Activities,
-            activity => activity.OperationName == "nestedset.save_changes");
-
-        Assert.Equal(ActivityStatusCode.Ok, operation.Status);
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
-                .Value);
-
-        Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
-        AssertPrivate(capture, "save_changes", "lock", "success");
-    }
-
-    /// <summary>A managed Parent move contributes rows to one public SaveChanges operation.</summary>
-    [Fact]
-    public async Task ParentSaveDoesNotCountItsInternalMove()
-    {
-        // Arrange
-        await using var context = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var hierarchy = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
-        await hierarchy.InsertRootAsync(
-            new OrderingNode
-            {
-                Id = 1,
-                Name = "Root",
-            },
-            Guid.NewGuid(),
-            CancellationToken.None);
-
-        await hierarchy.InsertChildAsync(
-            new OrderingNode
-            {
-                Id = 2,
-                Name = "A",
-            },
-            1,
-            CancellationToken.None);
-
-        await hierarchy.InsertChildAsync(
-            new OrderingNode
-            {
-                Id = 3,
-                Name = "B",
-            },
-            1,
-            CancellationToken.None);
-
-        context.ChangeTracker.Clear();
-        var moved = await context
-            .Set<OrderingNode>()
-            .SingleAsync(node => node.Id == 2, CancellationToken.None);
-
-        moved.ParentId = 3;
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        await context.SaveChangesAsync(CancellationToken.None);
-
-        // Assert
-        Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.save_changes");
-        Assert.DoesNotContain(capture.Activities, activity => activity.OperationName == "nestedset.move_to");
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
-                .Value);
-
-        Assert.True(
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.rows.affected")
-                .Value
-            > 0);
-    }
-
-    /// <summary>An unrelated native EF save does not claim a hierarchy operation occurred.</summary>
-    [Fact]
-    public async Task UnrelatedNativeSaveDoesNotEmitHierarchyMetrics()
-    {
-        // Arrange
-        await using var context = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        context.Add(new OrderingMarker { Id = 1 });
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        await context.SaveChangesAsync(CancellationToken.None);
-
-        // Assert
-        Assert.Empty(capture.Activities);
-        Assert.Empty(capture.Measurements);
-    }
-
-    /// <summary>A rejected lock write emits its bounded library error without recording identifiers.</summary>
-    [Fact]
-    public async Task UnacquiredWriteLockHasBoundedClassification()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var probe = new LockCommandFailureProbe();
-        await using var context = database.CreateContext(probe);
-        var service = context
-            .NestedSet<TreeNode>()
-            .ForScope(934857);
-
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var error = await Assert.ThrowsAsync<NestedSetException>(() =>
-            service.InsertRootAsync(new TreeNode { NodeId = 842653 }, Guid.Empty, CancellationToken.None));
-
-        // Assert
-        Assert.Equal(NestedSetErrorCode.LockAcquisitionFailed, error.Code);
-        var operation = Assert.Single(
-            capture.Activities,
-            activity => activity.OperationName == "nestedset.insert_root");
-
-        Assert.Equal(ActivityStatusCode.Error, operation.Status);
-        Assert.Equal("lock_acquisition_failed", operation.GetTagItem("error.type"));
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
-                .Value);
-
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
-                .Value);
-
-        Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
-        AssertPrivate(capture, "insert_root", "lock", "success", "failure", "lock_acquisition_failed");
-    }
-
-    /// <summary>A provider error retains its instance while telemetry exposes only the database category.</summary>
-    [Fact]
-    public async Task ProviderLockFailureDoesNotExposeItsMessage()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        var failure = new LockProviderFailureException();
-        var probe = new LockCommandFailureProbe(failure);
-        await using var context = database.CreateContext(probe);
-        var service = context
-            .NestedSet<TreeNode>()
-            .ForScope(934857);
-
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var error = await Assert.ThrowsAsync<LockProviderFailureException>(() =>
-            service.InsertRootAsync(new TreeNode { NodeId = 842653 }, Guid.Empty, CancellationToken.None));
-
-        // Assert
-        Assert.Same(failure, error);
-        var operation = Assert.Single(
-            capture.Activities,
-            activity => activity.OperationName == "nestedset.insert_root");
-
-        Assert.Equal(ActivityStatusCode.Error, operation.Status);
-        Assert.Equal("database", operation.GetTagItem("error.type"));
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.count")
-                .Value);
-
-        Assert.Equal(
-            1,
-            Assert.Single(capture.Measurements, item => item.Name == "nestedset.operation.failures")
-                .Value);
-
-        Assert.Single(capture.Measurements, item => item.Name == "nestedset.lock.wait.duration");
-        AssertPrivate(capture, "insert_root", "lock", "success", "failure", "database");
-    }
-
     /// <summary>The target facade observes a forest import exactly once.</summary>
     [Fact]
-    public async Task ForestImportIsObservedOnce()
+    public async Task InsertForestAsync_ForestImport_IsObservedOnce()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -458,7 +139,7 @@ public abstract class DiagnosticsTests : ProviderTest
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await hierarchy.InsertForestAsync([import], CancellationToken.None);
+        await hierarchy.InsertForestAsync([import], TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.insert_forest");
@@ -467,7 +148,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>The target facade observes a cross-tree move exactly once.</summary>
     [Fact]
-    public async Task CrossTreeMoveIsObservedOnce()
+    public async Task MoveToAsync_CrossTreeMove_IsObservedOnce()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -478,13 +159,13 @@ public abstract class DiagnosticsTests : ProviderTest
 
         var sourceTree = Guid.Parse("f28b5de5-a11b-4da4-b48f-3be6cdb129db");
         var targetTree = Guid.Parse("e6a06c13-c7fd-496b-bec1-fc6d284358cc");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, sourceTree, CancellationToken.None);
-        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 3 }, targetTree, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, sourceTree, TestContext.Current.CancellationToken);
+        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, TestContext.Current.CancellationToken);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 3 }, targetTree, TestContext.Current.CancellationToken);
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await hierarchy.MoveToAsync(2, 3, CancellationToken.None);
+        await hierarchy.MoveToAsync(2, 3, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.move_to");
@@ -493,7 +174,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>The target facade observes detaching a subtree exactly once.</summary>
     [Fact]
-    public async Task DetachAsTreeIsObservedOnce()
+    public async Task DetachAsTreeAsync_DetachAsTree_IsObservedOnce()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -504,12 +185,12 @@ public abstract class DiagnosticsTests : ProviderTest
 
         var sourceTree = Guid.Parse("8e265248-8932-49dc-8aec-40cdb48f06da");
         var detachedTree = Guid.Parse("00adfbda-25fc-4752-af78-9cc9cc533f67");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, sourceTree, CancellationToken.None);
-        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, sourceTree, TestContext.Current.CancellationToken);
+        await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, TestContext.Current.CancellationToken);
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await hierarchy.DetachAsTreeAsync(2, detachedTree, CancellationToken.None);
+        await hierarchy.DetachAsTreeAsync(2, detachedTree, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.detach_as_tree");
@@ -518,7 +199,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>The target facade observes identity-based whole-tree deletion exactly once.</summary>
     [Fact]
-    public async Task DeleteTreeIsObservedOnce()
+    public async Task DeleteTreeAsync_DeleteTree_IsObservedOnce()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -528,11 +209,11 @@ public abstract class DiagnosticsTests : ProviderTest
             .ForScope(7);
 
         var treeId = Guid.Parse("edc0049e-6f8e-460a-a3f9-a1ad52610104");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, TestContext.Current.CancellationToken);
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await hierarchy.DeleteTreeAsync(treeId, CancellationToken.None);
+        await hierarchy.DeleteTreeAsync(treeId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.delete_tree");
@@ -541,7 +222,7 @@ public abstract class DiagnosticsTests : ProviderTest
 
     /// <summary>The administrative purge reports one bounded operation without exposing its TreeId.</summary>
     [Fact]
-    public async Task PurgeTreeIdIsObservedOnce()
+    public async Task PurgeTreeIdAsync_PurgeTreeId_IsObservedOnce()
     {
         // Arrange
         var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -551,45 +232,16 @@ public abstract class DiagnosticsTests : ProviderTest
             .ForScope(7);
 
         var treeId = Guid.Parse("d5291350-2428-42f3-9205-0c8e55dd0125");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, CancellationToken.None);
-        await hierarchy.DeleteTreeAsync(treeId, CancellationToken.None);
+        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, TestContext.Current.CancellationToken);
+        await hierarchy.DeleteTreeAsync(treeId, TestContext.Current.CancellationToken);
         using var capture = new DiagnosticsCapture();
 
         // Act
-        await hierarchy.PurgeTreeIdAsync(treeId, CancellationToken.None);
+        await hierarchy.PurgeTreeIdAsync(treeId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(capture.Activities, activity => activity.OperationName == "nestedset.purge_tree_id");
         AssertPrivate(capture, "purge_tree_id", "lock", "success");
-    }
-
-    /// <summary>An active-tree purge reports a stable bounded failure classification.</summary>
-    [Fact]
-    public async Task ActiveTreePurgeHasBoundedClassification()
-    {
-        // Arrange
-        var database = await _relational.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var hierarchy = context
-            .NestedSet<TreeNode>()
-            .ForScope(7);
-
-        var treeId = Guid.Parse("5d9e4a55-9992-4b53-8fa5-11ef36306b6f");
-        await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, treeId, CancellationToken.None);
-        using var capture = new DiagnosticsCapture();
-
-        // Act
-        var error = await Assert.ThrowsAsync<NestedSetException>(() =>
-            hierarchy.PurgeTreeIdAsync(treeId, CancellationToken.None));
-
-        // Assert
-        Assert.Equal(NestedSetErrorCode.TreeIdNotTombstoned, error.Code);
-        var operation = Assert.Single(
-            capture.Activities,
-            activity => activity.OperationName == "nestedset.purge_tree_id");
-
-        Assert.Equal("tree_id_not_tombstoned", operation.GetTagItem("error.type"));
-        AssertPrivate(capture, "purge_tree_id", "lock", "success", "failure", "tree_id_not_tombstoned");
     }
 
     /// <summary>Checks every emitted tag and forbids exception payloads on all recorded activities.</summary>

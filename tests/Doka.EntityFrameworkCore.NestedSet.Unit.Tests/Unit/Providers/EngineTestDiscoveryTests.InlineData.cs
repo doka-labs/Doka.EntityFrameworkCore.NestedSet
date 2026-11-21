@@ -6,7 +6,7 @@ public sealed partial class EngineTestDiscoveryTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task MethodExclusionDoesNotInvokeDataFactories(
+    public async Task Discover_MethodExclusion_DoesNotInvokeDataFactories(
         bool preEnumerate
     )
     {
@@ -29,7 +29,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData("PostgreSql", true)]
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
-    public async Task InlineExclusionsPreserveArguments(
+    public async Task GetData_InlineExclusions_PreserveArguments(
         string engine,
         bool expected
     )
@@ -62,7 +62,7 @@ public sealed partial class EngineTestDiscoveryTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void ExclusionsRequireAReason(
+    public void AppliesToEngine_Exclusions_RequireAReason(
         string? reason
     )
     {
@@ -79,7 +79,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Every excluded engine is validated before the applicable-row decision.</summary>
     [Fact]
-    public void UnknownExcludedEngineIsRejected()
+    public void AppliesToEngine_UnknownExcludedEngine_IsRejected()
     {
         // Arrange
         var excluded = new[] { "Sqlite", "Postgres" };

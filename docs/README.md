@@ -5,7 +5,7 @@ guide by the task you need to complete. Feature guides define supported
 behavior, architecture records explain why material decisions exist, and
 runbooks own operational procedures.
 
-These guides describe the stable `10.3.0` source contract, including explicit
+These guides describe the stable `10.4.0` source contract, including explicit
 cancellation arguments, optional registry naming, manual detection and save
 recovery. The historical `10.1.0` provider-package/registration transition still
 applies when upgrading from `10.0.0`.
@@ -15,7 +15,9 @@ See the [upgrade guide](upgrading-provider-packages.md) and
 
 ## Use NestedSet
 
-- [Package Upgrade](upgrading-provider-packages.md) covers the source-breaking 10.3.0 cancellation update, the compatible 10.2.0 update and the earlier adapter/native-callback transition.
+- [Package Upgrade](upgrading-provider-packages.md) covers compatible 10.4.0
+  maintenance, the earlier 10.3.0 cancellation transition, the 10.2.0 update
+  and the adapter/native-callback transition.
 - [Getting Started](getting-started.md) builds a complete Doka MySQL/MariaDB
   application and its first hierarchy.
 - [Hierarchy Model](hierarchy-model.md) defines scopes, forests, roots, parent
@@ -30,8 +32,6 @@ See the [upgrade guide](upgrading-provider-packages.md) and
   upward and mixed-direction walks, complete paths, Any/Nearest visibility,
   multiplicity, and ordinary EF execution.
 - [Bulk Import](bulk-import.md) covers atomic forest and subtree insertion.
-- [API Reference](api-reference.md) maps the public types and methods to their
-  inputs, outputs, ordering, transaction behavior, and failure contracts.
 - [Runnable Samples](../samples/README.md) provides three independent console
   projects: unscoped file systems, a fictional signal lab, and tenant user groups with
   role and privilege relationships. Each has Doka and SQLite migrations,
@@ -77,13 +77,11 @@ See the [upgrade guide](upgrading-provider-packages.md) and
   consumers, SBOMs, coverage reports, and independent ADR checks.
 - [Development Benchmarks](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
   explains optional measurements outside CI and release gates.
-- [Implementation Design](implementation-design.md) describes package
-  boundaries, mapping metadata, query and mutation execution, and provider
-  integration.
-- [Regression Coverage](regression-coverage.md) maps typed runtime risks to
-  positive, negative, and adversarial tests and explains evidence limits.
-- [Query Composition Coverage](query-composition-regression-coverage.md) maps
-  all 160 generic and consumer contracts to their concrete test cases.
+- [Testing](testing.md) explains project and fixture ownership, discovery,
+  selecting positive/negative checks, property-based regressions, and evidence
+  limits. Actual regression behavior stays in the test source.
+- [Provider Package Decision](decisions/D-020-provider-owned-runtime-packages.md)
+  explains common/native responsibilities and exact internal package coupling.
 - [Security Design](security/security-design.md) defines assets, trust
   boundaries, abuse cases, controls, and residual application responsibilities.
 - [Secure Development](security/secure-development.md) defines security review,
@@ -104,11 +102,25 @@ See the [upgrade guide](upgrading-provider-packages.md) and
   controls, evidence, and remaining application responsibilities.
 - [OpenSSF Best Practices Evidence](openssf-best-practices.md) maps repository
   and dated hosted evidence to all 67 Passing criteria for project 15143.
-- [Architecture Decisions](decisions/README.md) indexes the MADR 4.0 decision
-  corpus and its status.
+- [Architecture Decisions](decisions/README.md) links the MADR 4.0 decision
+  corpus; each record owns its current status and history.
 - [Contributing](../CONTRIBUTING.md), [Support](../SUPPORT.md),
   [Security Policy](../SECURITY.md), [Governance](../GOVERNANCE.md), and
   [Roadmap](../ROADMAP.md) define repository participation and ownership.
+
+## API contracts
+
+Public types and members carry XML documentation in source and the packages.
+Their prerequisites, parameters, results, ownership, and failure boundaries are
+the API contract. The six shipped baselines record exact released declarations:
+[Core](../src/Doka.NestedSet/PublicAPI.Shipped.txt),
+[common EF](../src/Doka.EntityFrameworkCore.NestedSet/PublicAPI.Shipped.txt),
+[MySql](../src/Doka.EntityFrameworkCore.NestedSet.MySql/PublicAPI.Shipped.txt),
+[Postgres](../src/Doka.EntityFrameworkCore.NestedSet.Postgres/PublicAPI.Shipped.txt),
+[Sqlite](../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/PublicAPI.Shipped.txt), and
+[SqlServer](../src/Doka.EntityFrameworkCore.NestedSet.SqlServer/PublicAPI.Shipped.txt).
+Unshipped baseline files identify subsequent additions. Feature guides explain
+how to use these APIs together rather than maintaining another signature list.
 
 ## Document ownership
 
@@ -117,9 +129,9 @@ See the [upgrade guide](upgrading-provider-packages.md) and
 | Contributor guide | Setup, checks, contribution rules and review process | Private working procedures |
 | Root README | Installation, first use, and high-level contracts | Complete edge cases and operator procedures |
 | Feature guide | Supported behavior, examples, and failures | Decision history |
-| API reference | Public entry points and exact method contracts | Tutorials |
-| Implementation design | Runtime structure and responsibility boundaries | Operator commands |
+| Source XML documentation and API baselines | Member contracts and exact released declarations | Tutorials and duplicated Markdown signatures |
 | Architecture decision | Context, alternatives, and consequences | Repeated feature documentation |
+| Test guide and source | Selecting checks and executable regression scenarios | A second public contract or a claim of a fresh run |
 | Runbook | Diagnosis, recovery, and operator steps | Architecture rationale |
 | Qualification document | Test matrix and evidence boundaries | Claims about an unexecuted run |
 | Release document | Release gates, identity, and publication recovery | Runtime incident response |

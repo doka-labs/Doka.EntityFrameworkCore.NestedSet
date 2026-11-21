@@ -15,7 +15,14 @@ Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasDepth(string! pr
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeRegistryTable(string! tableName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeId<TTreeId>(System.Linq.Expressions.Expression<System.Func<TEntity!, TTreeId>!>! property) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.HasTreeId(string! propertyName) -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!)
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).NestedSet<TEntity>() -> Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).NestedSet<TEntity>(string! entityTypeName) -> Doka.EntityFrameworkCore.NestedSet.NestedSet<TEntity!>!
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).SaveNestedSetChanges(bool acceptAllChangesOnSuccess, System.Func<int>! saveChanges) -> int
+Doka.EntityFrameworkCore.NestedSet.NestedSetDbContextExtensions.extension(Microsoft.EntityFrameworkCore.DbContext!).SaveNestedSetChangesAsync(bool acceptAllChangesOnSuccess, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<int>!>! saveChanges, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions
+Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions.extension<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!)
+Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions.extension<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!).HasNestedSet(System.Action<Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!>! configure) -> Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!
 static Doka.EntityFrameworkCore.NestedSet.NestedSetEntityTypeBuilderExtensions.HasNestedSet<TEntity>(this Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>! builder, System.Action<Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!>! configure) -> Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity>.PreserveApplicationConcurrencyTokens() -> Doka.EntityFrameworkCore.NestedSet.NestedSetBuilder<TEntity!>!
 Doka.EntityFrameworkCore.NestedSet.NestedSetOrderMode

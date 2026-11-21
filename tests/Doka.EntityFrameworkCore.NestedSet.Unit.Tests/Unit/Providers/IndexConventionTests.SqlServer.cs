@@ -9,7 +9,7 @@ public sealed partial class IndexConventionTests
     [InlineData("online")]
     [InlineData("fillfactor")]
     [InlineData("sort")]
-    public void SqlServerPhysicalIndexOptionsDoNotCreateDuplicateIndexes(
+    public void FinalizeModel_SqlServerPhysicalIndexOptions_DoNotCreateDuplicateIndexes(
         string option
     )
     {

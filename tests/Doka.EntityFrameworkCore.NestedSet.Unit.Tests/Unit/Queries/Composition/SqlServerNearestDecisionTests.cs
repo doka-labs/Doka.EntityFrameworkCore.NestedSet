@@ -23,7 +23,7 @@ public sealed class SqlServerNearestDecisionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NearestDecisionSelectsCoordinateOnceWithoutIo(
+    public async Task Matches_NearestDecision_SelectsCoordinateOnceWithoutIo(
         bool rowAware
     )
     {

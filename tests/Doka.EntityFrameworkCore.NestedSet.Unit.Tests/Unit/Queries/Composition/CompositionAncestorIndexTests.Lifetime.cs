@@ -18,7 +18,7 @@ public sealed partial class CompositionAncestorIndexTests
     [InlineData(true, "any")]
     [InlineData(false, "nearest")]
     [InlineData(true, "nearest")]
-    public async Task DeferredCompilationCacheDoesNotRetainContextOrQueryable(
+    public async Task CollectDeferredCompilationWitnesses_DeferredCompilationCache_DoesNotRetainContextOrQueryable(
         bool retainContext,
         string operation
     )

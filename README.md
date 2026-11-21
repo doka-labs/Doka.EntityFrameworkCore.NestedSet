@@ -47,17 +47,17 @@ source remains .NET/EF Core 10; additional release lines are registered inactive
 
 ## Install
 
-Version `10.3.0` is the stable six-package source contract. Owned asynchronous
+Version `10.4.0` is the stable six-package source contract. Owned asynchronous
 operations require an explicit `CancellationToken`; use the caller's token or
 choose `CancellationToken.None` deliberately. For migration instructions, see the
 [upgrade guide](docs/upgrading-provider-packages.md) and [changelog](CHANGELOG.md).
 For Doka MySQL/MariaDB, install the selected adapter:
 
 ```bash
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.4.0
 ```
 
-Keep all selected NestedSet adapters and the common EF package at `10.3.0`.
+Keep all selected NestedSet adapters and the common EF package at `10.4.0`.
 Each adapter requires its exact matching common EF kernel version.
 
 The provider qualification matrix is:
@@ -70,14 +70,14 @@ The provider qualification matrix is:
 | SQL Server | `.SqlServer` | `Microsoft.EntityFrameworkCore.SqlServer` |
 
 Adapter names in this table are suffixes of `Doka.EntityFrameworkCore.NestedSet`.
-The MySQL adapter supports Doka `[10.6.4,10.7.0)`; its effective EF Relational
+The MySQL adapter supports Doka `[10.7.0,10.8.0)`; its effective EF Relational
 range is `[10.0.12,10.1.0)` after intersecting the common kernel and Doka ranges.
 See [supported versions](docs/support-and-qualification.md#provider-and-engine-matrix)
 for the other adapter ranges and actual qualification evidence.
 
 Pomelo is not a supported provider. Ordinary EF migrations are the required
 baseline. SafeMigrations is an optional integration. Repository qualification
-uses published Doka 10.6.4 and SafeMigrations 10.7.0. The optional tests retain
+uses published Doka 10.7.0 and SafeMigrations 10.7.3. The optional tests retain
 the current adapter contract without a legacy mode or compatibility skip. See the
 [adapter qualification](docs/support-and-qualification.md#migration-matrix)
 for the current graph, the earlier 2026-10-25 executed local qualification, separate

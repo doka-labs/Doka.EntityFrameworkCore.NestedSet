@@ -38,12 +38,17 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
     public static async Task<AncestorIndexDatabase> CreateAsync(
         MigrationFixture fixture,
         string engine,
-        CancellationToken cancellationToken,
-        Action<DbContextOptionsBuilder>? configureOptions = null,
-        Action<IServiceCollection, DbContext>? configureDesignServices = null
+        Action<DbContextOptionsBuilder>? configureOptions,
+        Action<IServiceCollection, DbContext>? configureDesignServices,
+        CancellationToken cancellationToken
     )
     {
-        var database = await fixture.CreateDatabaseAsync(engine, cancellationToken: cancellationToken);
+        var database = await fixture.CreateDatabaseAsync(
+            engine,
+            cancellationToken: cancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
         await using var context = database.CreateContext();
         var connection = context.Database.GetConnectionString()
             ?? throw new InvalidOperationException("The migration fixture did not configure a connection string.");
@@ -77,6 +82,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                 options.UseSqlite(
                     _connection,
                     x => x
+                        .CommandTimeout(0)
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
 
@@ -85,6 +91,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                 options.UseNpgsql(
                     _connection,
                     x => x
+                        .CommandTimeout(0)
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
 
@@ -93,6 +100,7 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
                 options.UseSqlServer(
                     _connection,
                     x => x
+                        .CommandTimeout(0)
                         .UseNestedSets()
                         .MigrationsAssembly(assembly));
 
@@ -125,7 +133,16 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
             options.UseModel(model);
         }
 
-        return new AncestorIndexContext(options.Options, enabled, PhysicalDatabase.Schema, adoptIndex, splitStructure);
+        var context = new AncestorIndexContext(
+            options.Options,
+            enabled,
+            PhysicalDatabase.Schema,
+            adoptIndex,
+            splitStructure);
+
+        FunctionalTestContextPolicy.Configure(context);
+
+        return context;
     }
 
     /// <summary>Generates and compiles an actual migration and its complete snapshot.</summary>
@@ -196,12 +213,12 @@ public sealed class AncestorIndexDatabase : IAsyncDisposable
     /// <returns>A task that completes when the provider migration finishes.</returns>
     public async Task MigrateAsync(
         MigrationChain chain,
-        CancellationToken cancellationToken,
-        bool enabled = true,
-        string? target = null,
-        bool adoptIndex = false,
-        bool enableIntegration = true,
-        bool splitStructure = false
+        bool enabled,
+        string? target,
+        bool adoptIndex,
+        bool enableIntegration,
+        bool splitStructure,
+        CancellationToken cancellationToken
     )
     {
         await using var context = CreateContext(

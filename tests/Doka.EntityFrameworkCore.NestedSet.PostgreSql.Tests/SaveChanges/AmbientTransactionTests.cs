@@ -22,12 +22,13 @@ public sealed class AmbientTransactionTests : ProviderTest,
     ///     Allows the PostgreSQL provider to enlist ordinary saves in the application's ambient transaction.
     /// </summary>
     [Fact]
-    public async Task UnrelatedSavePreservesAmbientTransactionOwnership()
+    public async Task AddAsync_UnrelatedSave_PreservesAmbientTransactionOwnership()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var probe = new SaveBoundaryProbe();
         var options = SaveBoundaryTestSupport.Options(setup, probe)
@@ -45,6 +46,7 @@ public sealed class AmbientTransactionTests : ProviderTest,
             TransactionScopeAsyncFlowOption.Enabled))
         {
             await using var context = new SaveBoundaryContext(options);
+            FunctionalTestContextPolicy.Configure(context);
             await context.AddAsync(
                 new OrderingMarker
                 {

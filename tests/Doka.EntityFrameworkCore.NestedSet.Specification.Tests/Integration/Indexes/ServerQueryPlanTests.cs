@@ -49,7 +49,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
         ExcludedEngines = ["Sqlite"],
         Reason = "The assertion requires a server database and server execution plans rather than a SQLite file.")]
     [MemberData(nameof(HierarchyQueryCases))]
-    public async Task ScopedHierarchyQueriesHaveServerPlanEvidence(
+    public async Task ExplainAsync_ScopedHierarchyQueries_HaveServerPlanEvidence(
         int scope,
         int offset,
         string query,
@@ -120,7 +120,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
     [EngineFact(
         ExcludedEngines = ["Sqlite"],
         Reason = "The assertion requires a server database and server execution plans rather than a SQLite file.")]
-    public async Task ConfiguredPredecessorHasServerPlanEvidence()
+    public async Task ResolveAsync_ConfiguredPredecessor_HasServerPlanEvidence()
     {
         // Arrange
         var probe = new EnterpriseProbe(captureParameterBindings: true);
@@ -140,7 +140,8 @@ public abstract class ServerQueryPlanTests : ProviderTest
         await new NestedSetOrderer<OrderingNode, int, Guid, int>(store).ResolveAsync(
             10100,
             new NestedSetParent<int>(true, 10000),
-            CancellationToken.None);
+            knownParent: null,
+            TestContext.Current.CancellationToken);
 
         var plan = await QueryPlanTestSupport.ExplainAsync(
             context,
@@ -213,6 +214,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
         {
             yield return value;
 
+            // WHY: Walk nested provider plan objects lazily without assuming a fixed wrapper shape.
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var property in value.EnumerateObject())
             {
@@ -224,6 +226,7 @@ public abstract class ServerQueryPlanTests : ProviderTest
         }
         else if (value.ValueKind == JsonValueKind.Array)
         {
+            // WHY: Walk nested provider plan objects lazily without assuming a fixed wrapper shape.
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var item in value.EnumerateArray())
             {

@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Observes attempted database access while adapter or supplied-model configuration is being rejected.</summary>
+/// <summary>
+/// Observes attempted database access while adapter or supplied-model configuration is being rejected.
+/// </summary>
 internal sealed class ConfigurationIoBoundary : DbConnectionInterceptor
 {
     private readonly CommandBoundary _commands = new();

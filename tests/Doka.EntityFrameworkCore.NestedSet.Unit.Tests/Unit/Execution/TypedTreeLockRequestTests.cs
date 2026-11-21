@@ -7,7 +7,7 @@ public sealed class TypedTreeLockRequestTests
     ///     Snapshots both mutable identity roles while exposing the same values to native lock consumers.
     /// </summary>
     [Fact]
-    public void BinaryRequestRetainsIndependentTypedSnapshots()
+    public void Construct_BinaryRequestSourceMutation_RetainsIndependentTypedSnapshots()
     {
         // Arrange
         using var context = new RequestContext();
@@ -46,7 +46,7 @@ public sealed class TypedTreeLockRequestTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GenericRoleMismatchIsRejectedBeforeDatabaseAccess(
+    public void Construct_GenericRoleMismatch_IsRejectedBeforeDatabaseAccess(
         bool wrongScope
     )
     {
@@ -93,7 +93,7 @@ public sealed class TypedTreeLockRequestTests
 
     /// <summary>Represents an omitted Scope using a typed marker and erases only its native parameter view.</summary>
     [Fact]
-    public void ScopelessRequestUsesMarkerWithoutInventingAStoredScope()
+    public void Construct_ScopelessRequest_UsesMarkerWithoutInventingAStoredScope()
     {
         // Arrange
         using var context = new RequestContext();
@@ -120,7 +120,7 @@ public sealed class TypedTreeLockRequestTests
 
     /// <summary>Rejects an unrelated role even when the mapped hierarchy omits its Scope column.</summary>
     [Fact]
-    public void ScopelessRequestRejectsAnUnrelatedGenericScopeRole()
+    public void Construct_ScopelessRequest_RejectsAnUnrelatedGenericScopeRole()
     {
         // Arrange
         using var context = new RequestContext();
@@ -151,7 +151,7 @@ public sealed class TypedTreeLockRequestTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SameModelForeignNamedHierarchyIsRejectedBeforeDatabaseAccess(
+    public async Task ExecuteReadAsync_SameModelForeignNamedHierarchy_IsRejectedBeforeDatabaseAccess(
         bool readOnly
     )
     {
@@ -188,10 +188,10 @@ public sealed class TypedTreeLockRequestTests
         return;
 
         Task Operation(
-            CancellationToken token
+            CancellationToken cancellationToken
         )
         {
-            token.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             attempts++;
 
             return Task.CompletedTask;

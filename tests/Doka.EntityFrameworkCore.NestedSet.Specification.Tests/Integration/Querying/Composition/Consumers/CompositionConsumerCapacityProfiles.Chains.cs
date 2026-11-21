@@ -25,6 +25,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             .Options;
 
         await using var context = new CompositionCapacityGroupContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         var materialized = 0;
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var steps = Enumerable

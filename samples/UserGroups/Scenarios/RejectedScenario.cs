@@ -9,15 +9,18 @@ internal static class RejectedScenario
     /// <summary>Rejects a cyclic move and checks that the complete persisted structure is unchanged.</summary>
     /// <param name="configuration">The sample-owned database configuration.</param>
     /// <param name="details">Whether tree output includes structural columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for setup, rejection, and persisted-state verification.</param>
     /// <returns>A task that completes after the expected classified rejection has been verified.</returns>
     public static async Task RunAsync(
         SampleDatabaseConfiguration configuration,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         await SampleConsole.HeadingAsync(
+            output,
             "REJECTED: an ancestor cannot become a child of its own descendant",
             cancellationToken);
 
@@ -34,6 +37,7 @@ internal static class RejectedScenario
                 s_treeId,
                 "Before rejected move:",
                 details,
+                output,
                 cancellationToken);
         }
 
@@ -51,7 +55,7 @@ internal static class RejectedScenario
             catch (NestedSetException exception) when (exception.Code == NestedSetErrorCode.CycleDetected)
             {
                 rejected = true;
-                await SampleConsole.WriteLineAsync($"Expected rejection: {exception.Code}.", cancellationToken);
+                await SampleConsole.WriteLineAsync(output, $"Expected rejection: {exception.Code}.", cancellationToken);
             }
         }
 
@@ -70,10 +74,12 @@ internal static class RejectedScenario
             s_treeId,
             "After rejected move:",
             details,
+            output,
             cancellationToken);
 
         await GroupScenarioData.ValidateAsync(verification, s_tenantId, s_treeId, cancellationToken);
         await SampleConsole.WriteLineAsync(
+            output,
             "The rejection preserved every parent, boundary, depth and sibling position.",
             cancellationToken);
     }

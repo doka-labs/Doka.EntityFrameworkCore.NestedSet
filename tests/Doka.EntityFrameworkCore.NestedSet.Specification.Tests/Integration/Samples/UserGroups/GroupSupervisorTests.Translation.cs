@@ -7,11 +7,14 @@ public abstract partial class GroupSupervisorTests
 {
     /// <summary>The actual candidate builder translates and executes without entity preloads (U06,U60).</summary>
     [Fact]
-    public async Task CandidateBuilderExecutesAsOneDeferredScalarQuery()
+    public async Task Candidates_CandidateBuilder_ExecutesAsOneDeferredScalarQuery()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var request = data.Request(group: data.Groups[5]);
         probe.Enabled = true;

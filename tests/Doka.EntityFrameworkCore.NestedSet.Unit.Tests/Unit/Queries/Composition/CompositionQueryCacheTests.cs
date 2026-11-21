@@ -18,7 +18,7 @@ public sealed class CompositionQueryCacheTests
     [InlineData("path-bound")]
     [InlineData("any-bound")]
     [InlineData("nearest-bound")]
-    public async Task FixedCardinalityParameterChangesReuseTheCompiledQuery(
+    public async Task Select_FixedCardinalityParameterChanges_ReuseTheCompiledQuery(
         string operation
     )
     {

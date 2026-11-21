@@ -14,7 +14,7 @@ public sealed class CompositionDeferredTests
     [InlineData("Path")]
     [InlineData("Any")]
     [InlineData("Nearest")]
-    public void ScopelessComposersBuildWithoutIo(
+    public void Build_ScopelessComposers_BuildWithoutIo(
         string operation
     )
     {
@@ -49,7 +49,7 @@ public sealed class CompositionDeferredTests
     [InlineData("Path")]
     [InlineData("Any")]
     [InlineData("Nearest")]
-    public void ScopedComposersBuildWithoutIo(
+    public void Build_ScopedComposers_BuildWithoutIo(
         string operation
     )
     {
@@ -87,7 +87,7 @@ public sealed class CompositionDeferredTests
     [InlineData("Path")]
     [InlineData("Any")]
     [InlineData("Nearest")]
-    public void TreeBoundComposersBuildWithoutIo(
+    public void Build_TreeBoundComposers_BuildWithoutIo(
         string operation
     )
     {
@@ -119,7 +119,7 @@ public sealed class CompositionDeferredTests
 
     /// <summary>A composed upward-to-downward path stays deferred across independent pair queries.</summary>
     [Fact]
-    public void MixedDirectionCompositionBuildsWithoutIo()
+    public void WherePathEdges_MixedDirectionComposition_BuildsWithoutIo()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();

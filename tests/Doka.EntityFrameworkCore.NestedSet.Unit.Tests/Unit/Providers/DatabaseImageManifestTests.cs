@@ -5,7 +5,7 @@ public sealed class DatabaseImageManifestTests
 {
     /// <summary>Comments, blank lines, CRLF, and stage order preserve all four embedded vendor references.</summary>
     [Fact]
-    public void CompleteManifestPreservesEveryEmbeddedImage()
+    public void ParseImages_CompleteManifest_PreservesEveryEmbeddedImage()
     {
         // Arrange
         var manifest = $"""
@@ -30,7 +30,7 @@ public sealed class DatabaseImageManifestTests
 
     /// <summary>A registry port does not substitute for the image's required version tag.</summary>
     [Fact]
-    public void RegistryPortWithVersionTagIsAccepted()
+    public void ParseImages_RegistryPortWithVersionTag_IsAccepted()
     {
         // Arrange
         var reference = $"registry.example:5000/mysql:8.4.11@sha256:{new string('a', 64)}";
@@ -51,7 +51,7 @@ public sealed class DatabaseImageManifestTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CapabilityVersionMatchesEmbeddedImageTag(
+    public void Version_CapabilityVersion_MatchesEmbeddedImageTag(
         bool mariaDb
     )
     {
@@ -91,7 +91,7 @@ public sealed class DatabaseImageManifestTests
     [InlineData("NonHexDigest", "FROM")]
     [InlineData("AdditionalInstruction", "FROM")]
     [InlineData("Empty", "all four")]
-    public void InvalidManifestIsRejected(
+    public void ParseImages_InvalidManifest_IsRejected(
         string fault,
         string message
     )
@@ -109,7 +109,7 @@ public sealed class DatabaseImageManifestTests
 
     /// <summary>A null manifest receives a direct argument error rather than a later resource failure.</summary>
     [Fact]
-    public void NullManifestIsRejected()
+    public void ParseImages_NullManifest_IsRejected()
     {
         // Arrange
         string? manifest = null;

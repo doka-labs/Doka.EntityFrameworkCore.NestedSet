@@ -19,7 +19,7 @@ public sealed class CompositionComparerTests
     [InlineData("right-join", "path")]
     [InlineData("right-join", "any")]
     [InlineData("right-join", "nearest")]
-    public void ComparerJoinOverloadsRejectEndpointsBeforeIo(
+    public void Filter_ComparerJoinOverloads_RejectEndpointsBeforeIo(
         string join,
         string operation
     )
@@ -57,7 +57,7 @@ public sealed class CompositionComparerTests
     [InlineData("right-join", "path")]
     [InlineData("right-join", "any")]
     [InlineData("right-join", "nearest")]
-    public void OrdinaryJoinOverloadsRetainMappedEndpoints(
+    public void Filter_OrdinaryJoinOverloads_RetainMappedEndpoints(
         string join,
         string operation
     )

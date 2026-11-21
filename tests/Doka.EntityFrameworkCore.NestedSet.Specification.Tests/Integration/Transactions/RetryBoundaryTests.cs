@@ -1,10 +1,9 @@
-using System.Transactions;
 using DatabaseIsolationLevel = System.Data.IsolationLevel;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Guards mutation boundaries against configured and already executing EF retry strategies.</summary>
-public abstract class RetryBoundaryTests : ProviderTest
+public abstract partial class RetryBoundaryTests : ProviderTest
 {
     private readonly OrderingFixture _fixture;
 
@@ -21,14 +20,15 @@ public abstract class RetryBoundaryTests : ProviderTest
     [InlineData("direct")]
     [InlineData("outer")]
     [InlineData("external")]
-    public async Task ServiceMutationRejectsConfiguredAndOuterRetries(
+    public async Task InsertRootAsync_ServiceMutation_RejectsConfiguredAndOuterRetries(
         string mode
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = RetryBoundaryServices.Create(Engine);
         var commands = new EnterpriseProbe();
@@ -96,7 +96,7 @@ public abstract class RetryBoundaryTests : ProviderTest
     [InlineData("outer", false)]
     [InlineData("external", true)]
     [InlineData("external", false)]
-    public async Task OrderedSaveRejectsConfiguredAndOuterRetriesWithoutAcceptingChanges(
+    public async Task SaveChangesAsync_OrderedSave_RejectsConfiguredAndOuterRetriesWithoutAcceptingChanges(
         string mode,
         bool acceptChanges
     )
@@ -104,7 +104,8 @@ public abstract class RetryBoundaryTests : ProviderTest
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var services = RetryBoundaryServices.Create(Engine);
@@ -164,73 +165,17 @@ public abstract class RetryBoundaryTests : ProviderTest
                 .SingleAsync(CancellationToken.None));
     }
 
-    /// <summary>Rejects an ambient coordinated save while preserving application-owned pending values.</summary>
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task OrderedSaveRejectsAmbientTransactionsBeforeSql(
-        bool acceptChanges
-    )
-    {
-        // Arrange
-        await using var setup = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
-        var commands = new EnterpriseProbe();
-        var transactions = new RetryBoundaryTransactionProbe();
-        await using var context = Create(setup, null, commands, transactions);
-        var renamed = await context
-            .Set<OrderingNode>()
-            .SingleAsync(row => row.Id == 1, CancellationToken.None);
-
-        renamed.Name = "Zulu";
-        commands.Commands.Clear();
-        Exception? failure;
-
-        // Act
-        using (var ambient = new TransactionScope(
-            TransactionScopeAsyncFlowOption.Enabled))
-        {
-            failure = await Record.ExceptionAsync(() => context.SaveChangesAsync(
-                acceptChanges,
-                CancellationToken.None));
-        }
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.InvalidTransaction,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        Assert.Empty(commands.Commands);
-        Assert.Equal(0, transactions.Starts);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(renamed)
-                .State);
-
-        Assert.Equal("Zulu", renamed.Name);
-        Assert.Equal(
-            "Alpha",
-            await setup
-                .Set<OrderingNode>()
-                .Where(row => row.Id == 1)
-                .Select(row => row.Name)
-                .SingleAsync(CancellationToken.None));
-    }
-
     /// <summary>
     ///     Leaves native outer-strategy retry intact when the save contains no hierarchy ordering changes.
     /// </summary>
     [Fact]
-    public async Task OuterStrategyStillRetriesAnUnrelatedSave()
+    public async Task ExecuteAsync_OuterStrategyStill_RetriesAnUnrelatedSave()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = RetryBoundaryServices.Create(Engine);
         var probe = new SaveBoundaryProbe { FailNextPayload = true };
@@ -262,12 +207,13 @@ public abstract class RetryBoundaryTests : ProviderTest
 
     /// <summary>An outer EF strategy with no retries remains safe for a hierarchy operation.</summary>
     [Fact]
-    public async Task NonRetryingOuterStrategyAllowsHierarchyWrites()
+    public async Task ExecuteAsync_NonRetryingOuterStrategy_AllowsHierarchyWrites()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var context = Create(setup, null);
         var strategy = new RetryBoundaryNonRetryStrategy(context);
@@ -304,12 +250,13 @@ public abstract class RetryBoundaryTests : ProviderTest
 
     /// <summary>Replays hierarchy and domain writes through one application-owned transaction boundary.</summary>
     [Fact]
-    public async Task RetryingUnitUsesCallerTransactionForHierarchyAndDomainWrites()
+    public async Task ExecuteAsync_RetryingUnit_UsesCallerTransactionForHierarchyAndDomainWrites()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await using var services = RetryBoundaryServices.Create(Engine);
         await using var strategyContext = Create(setup, services);
@@ -356,7 +303,8 @@ public abstract class RetryBoundaryTests : ProviderTest
                 if (attempts == 1)
                 {
                     // WHY: The deterministic transient failure proves the complete delegate, including its transaction,
-                    // is replayed. A failure inside an individual nested-set command would test the wrong retry boundary.
+                    // is replayed. A failure inside an individual nested-set command would test the wrong retry
+                    // boundary.
                     throw new SaveBoundaryTransientException();
                 }
 
@@ -380,118 +328,5 @@ public abstract class RetryBoundaryTests : ProviderTest
                 .Set<OrderingMarker>()
                 .Select(marker => marker.Value)
                 .SingleAsync(CancellationToken.None));
-    }
-
-    /// <summary>Rejects a configured retry policy when its caller transaction lives outside a retry delegate.</summary>
-    [Fact]
-    public async Task CallerTransactionRequiresRetryStrategyBoundary()
-    {
-        // Arrange
-        await using var setup = await _fixture.ResetAsync(
-            Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        await using var services = RetryBoundaryServices.Create(Engine);
-        var commands = new EnterpriseProbe();
-        await using var context = Create(setup, services, commands);
-        await using var transaction = await context.Database.BeginTransactionAsync(
-            Engine == "Sqlite"
-                ? DatabaseIsolationLevel.Serializable
-                : DatabaseIsolationLevel.ReadCommitted,
-            CancellationToken.None);
-
-        var tree = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
-        commands.Commands.Clear();
-
-        // Act
-        var failure = await Record.ExceptionAsync(() => tree.InsertRootAsync(
-            new OrderingNode
-            {
-                Id = 1,
-                Name = "Alpha",
-            },
-            Guid.Empty,
-            CancellationToken.None));
-
-        // Assert
-        Assert.Equal(
-            NestedSetErrorCode.InvalidTransaction,
-            Assert.IsType<NestedSetException>(failure)
-                .Code);
-
-        Assert.Same(transaction, context.Database.CurrentTransaction);
-        Assert.Empty(commands.Commands);
-        Assert.Empty(
-            await setup
-                .Set<OrderingNode>()
-                .ToArrayAsync(CancellationToken.None));
-    }
-
-    /// <summary>
-    ///     Preserves the real provider options while explicitly owning intentional retry-service variants.
-    /// </summary>
-    private static SaveBoundaryContext Create(
-        DbContext source,
-        IServiceProvider? services,
-        params IInterceptor[] interceptors
-    )
-    {
-        var extensions = source
-            .GetService<IDbContextOptions>()
-            .Extensions
-            .ToDictionary(extension => extension.GetType());
-
-        var options = new DbContextOptionsBuilder<SaveBoundaryContext>(
-                new DbContextOptions<SaveBoundaryContext>(extensions))
-            .ConfigureTestWarnings()
-            .AddInterceptors(interceptors);
-
-        if (services is not null)
-        {
-            options.UseInternalServiceProvider(services);
-        }
-
-        return new SaveBoundaryContext(options.Options);
-    }
-
-    /// <summary>Seeds two siblings whose rename requires automatic reordering inside one tree.</summary>
-    private static async Task SeedAsync(
-        DbContext context,
-        CancellationToken cancellationToken
-    )
-    {
-        var tree = context
-            .NestedSet<OrderingNode>()
-            .ForScope(1);
-
-        await tree.InsertRootAsync(
-            new OrderingNode
-            {
-                Id = 100,
-                Name = "Root",
-            },
-            Guid.Empty,
-            cancellationToken);
-
-        await tree.InsertChildAsync(
-            new OrderingNode
-            {
-                Id = 1,
-                Name = "Alpha",
-            },
-            100,
-            cancellationToken);
-
-        await tree.InsertChildAsync(
-            new OrderingNode
-            {
-                Id = 2,
-                Name = "Bravo",
-            },
-            100,
-            cancellationToken);
     }
 }

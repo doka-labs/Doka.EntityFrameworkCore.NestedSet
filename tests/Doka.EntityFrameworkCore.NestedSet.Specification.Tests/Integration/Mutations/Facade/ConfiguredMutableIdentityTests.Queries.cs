@@ -5,7 +5,7 @@ public abstract partial class ConfiguredMutableIdentityTests
     /// <summary>Deferred anchor execution retains its configured Scope and NodeKey snapshots.</summary>
     /// <returns>A task that completes after verifying the original visible sibling group.</returns>
     [Fact]
-    public async Task DeferredAnchorQueryOwnsConfiguredScopeAndNodeKey()
+    public async Task ChildrenOf_DeferredAnchorQuery_OwnsConfiguredScopeAndNodeKey()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync(
@@ -39,7 +39,7 @@ public abstract partial class ConfiguredMutableIdentityTests
     /// <summary>Deferred tree queries retain the same owned TreeId used by the tree facade.</summary>
     /// <returns>A task that completes after verifying the original Scope and complete tree.</returns>
     [Fact]
-    public async Task DeferredTreeQueryOwnsConfiguredScopeAndTreeId()
+    public async Task Nodes_DeferredTreeQuery_OwnsConfiguredScopeAndTreeId()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync(
@@ -73,7 +73,7 @@ public abstract partial class ConfiguredMutableIdentityTests
     /// <summary>Tree validation cannot be redirected by edits to the caller's already bound identities.</summary>
     /// <returns>A task that completes after verifying the original two-node tree.</returns>
     [Fact]
-    public async Task TreeValidationOwnsConfiguredScopeAndTreeId()
+    public async Task ValidateAsync_TreeValidation_OwnsConfiguredScopeAndTreeId()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync(
@@ -112,7 +112,7 @@ public abstract partial class ConfiguredMutableIdentityTests
     /// <summary>Rebuild planning shares the owned tree identity and preserves every persisted row.</summary>
     /// <returns>A task that completes after verifying the original tree needs no repair.</returns>
     [Fact]
-    public async Task RebuildPlanOwnsConfiguredScopeAndTreeId()
+    public async Task PlanRebuildAsync_RebuildPlan_OwnsConfiguredScopeAndTreeId()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync(

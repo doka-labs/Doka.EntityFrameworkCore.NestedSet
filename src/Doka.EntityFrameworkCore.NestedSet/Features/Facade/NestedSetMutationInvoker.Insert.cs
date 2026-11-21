@@ -33,7 +33,7 @@ internal sealed partial class
         return NestedSetTelemetry.ExecuteAsync(
             binding.Context,
             "insert_root",
-            token => insert.InsertRootAsync(entity, token),
+            operationCancellationToken => insert.InsertRootAsync(entity, operationCancellationToken),
             cancellationToken);
     }
 
@@ -64,11 +64,11 @@ internal sealed partial class
     ) => NestedSetTelemetry.ExecuteAsync(
         binding.Context,
         InsertOperationName(placement, automatic),
-        async token =>
+        async operationCancellationToken =>
         {
-            RequireNoPendingWrites(binding, token);
+            RequireNoPendingWrites(binding, operationCancellationToken);
             var key = SnapshotKey(binding, parent);
-            var treeId = await ResolveTreeIdAsync(binding, key, token)
+            var treeId = await ResolveTreeIdAsync(binding, key, operationCancellationToken)
                 .ConfigureAwait(false);
 
             var insert = Insert(binding, Store(binding, treeId));
@@ -76,8 +76,9 @@ internal sealed partial class
             await ExecuteResolvedAsync(
                     binding,
                     [(key, treeId)],
-                    () => InsertRelativeAsync(insert, entity, key, placement, automatic, token),
-                    token)
+                    callbackCancellationToken => InsertRelativeAsync(
+                        insert, entity, key, placement, automatic, callbackCancellationToken),
+                    operationCancellationToken)
                 .ConfigureAwait(false);
         },
         cancellationToken);

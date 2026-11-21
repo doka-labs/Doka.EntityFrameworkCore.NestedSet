@@ -7,9 +7,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks.Tests;
 /// <summary>Guards process isolation, one-operation iterations and observational export contracts.</summary>
 public sealed class BenchmarkConfigurationTests
 {
-    /// <summary>Owned benchmark operations require explicit cancellation while EF overrides keep their contract.</summary>
+    /// <summary>
+    /// Owned benchmark operations require cancellation; EF overrides retain their framework contract.
+    /// </summary>
     [Fact]
-    public void OwnedBenchmarkTokensAreRequired()
+    public void GetMethods_OwnedBenchmarkOperations_RequireExplicitTokens()
     {
         // Arrange
         var assembly = typeof(BenchmarkRunOptions).Assembly;
@@ -41,7 +43,7 @@ public sealed class BenchmarkConfigurationTests
 
     /// <summary>Database mutations use one invocation and no unrolling against each restored state.</summary>
     [Fact]
-    public void DatabaseJobRunsOncePerIteration()
+    public void GetJobs_DatabaseJob_RunsOncePerIteration()
     {
         // Arrange
         var configuration = new DatabaseBenchmarkConfiguration();
@@ -68,7 +70,7 @@ public sealed class BenchmarkConfigurationTests
     /// Framework iteration delegates synchronously complete the awaited preparation and verification.
     /// </summary>
     [Fact]
-    public void IterationHooksExposeSynchronousActions()
+    public void GetMethods_IterationHooks_ExposeSynchronousActions()
     {
         // Arrange
         var type = typeof(DatabaseBenchmark);
@@ -95,7 +97,7 @@ public sealed class BenchmarkConfigurationTests
     /// Results retain raw measurements and allocation diagnostics without handwritten acceptance ceilings.
     /// </summary>
     [Fact]
-    public void ObservationConfigExportsMeasurementsWithoutBudgetTypes()
+    public void Create_ObservationConfig_ExportsMeasurementsWithoutBudgetTypes()
     {
         // Arrange
         var options = new BenchmarkRunOptions();
@@ -117,12 +119,14 @@ public sealed class BenchmarkConfigurationTests
                 "Doka.EntityFrameworkCore.NestedSet.Benchmarks.BenchmarkMeasurement"));
     }
 
-    /// <summary>Read-only signal families leave warmup, invocation calibration and precision stopping adaptive.</summary>
+    /// <summary>
+    /// Read-only signal families keep adaptive warmup, invocation calibration and precision stopping.
+    /// </summary>
     /// <param name="type">The expression-construction or complete-read family.</param>
     [Theory]
     [InlineData(typeof(SignalReportConstructionBenchmarks))]
     [InlineData(typeof(SignalReportingBenchmarks))]
-    public void SignalFamiliesPreserveAdaptiveMeasurementStages(
+    public void TypeToBenchmarks_SignalFamilies_PreserveAdaptiveMeasurementStages(
         Type type
     )
     {
@@ -153,7 +157,7 @@ public sealed class BenchmarkConfigurationTests
     [Theory]
     [InlineData(typeof(SignalReportConstructionBenchmarks))]
     [InlineData(typeof(SignalReportingBenchmarks))]
-    public void NativeAdaptiveProtocolPreservesEffectiveSignalJobSettings(
+    public void Parse_NativeAdaptiveProtocol_PreservesEffectiveSignalJobSettings(
         Type type
     )
     {
@@ -205,7 +209,7 @@ public sealed class BenchmarkConfigurationTests
     [InlineData(typeof(SignalReportConstructionBenchmarks), true)]
     [InlineData(typeof(SignalReportingBenchmarks), false)]
     [InlineData(typeof(SignalReportingBenchmarks), true)]
-    public void NativeValidationRejectsReversedAdaptiveRanges(
+    public void GetValidators_NativeValidation_RejectsReversedAdaptiveRanges(
         Type type,
         bool warmup
     )
@@ -244,7 +248,7 @@ public sealed class BenchmarkConfigurationTests
 
     /// <summary>The pure core benchmark consumes every prepared calculation result.</summary>
     [Fact]
-    public void CoreBoundsBenchmarkReportsAllContainedLeaves()
+    public void CountContainedLeaves_CoreBoundsBenchmark_ReportsAllContainedLeaves()
     {
         // Arrange
         var benchmark = new BoundsBenchmarks { Nodes = 100 };
@@ -265,7 +269,7 @@ public sealed class BenchmarkConfigurationTests
     [InlineData("Invocation", "invocation count and unroll factor")]
     [InlineData("Unroll", "invocation count and unroll factor")]
     [InlineData("InProcess", "isolated child process")]
-    public void ConfigurationRejectsInvalidMeasurementOverrides(
+    public void GetValidators_Configuration_RejectsInvalidMeasurementOverrides(
         string overrideName,
         string message
     )

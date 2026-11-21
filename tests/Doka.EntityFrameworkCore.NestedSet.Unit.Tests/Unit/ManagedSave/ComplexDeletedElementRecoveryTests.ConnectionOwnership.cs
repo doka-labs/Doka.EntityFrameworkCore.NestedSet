@@ -7,7 +7,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CanceledInitializationAlwaysDisposesOwnedConnection(
+    public async Task CreateAsync_CanceledInitializationAlways_DisposesOwnedConnection(
         bool cleanupFails
     )
     {
@@ -48,7 +48,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
 
     /// <summary>Transfers an initialized connection to the returned context until that context is disposed.</summary>
     [Fact]
-    public async Task InitializedStoreTransfersConnectionOwnershipToReturnedContext()
+    public async Task CreateAsync_InitializedStore_TransfersConnectionOwnershipToReturnedContext()
     {
         // Arrange
         await using var connection = new ObservedConnection("Data Source=:memory:");
@@ -82,7 +82,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
 
     /// <summary>Releases the opened connection when the seed violates the store's required scalar constraint.</summary>
     [Fact]
-    public async Task FailedSeedDisposesConnectionBeforeOwnershipTransfer()
+    public async Task CreateAsync_FailedSeed_DisposesConnectionBeforeOwnershipTransfer()
     {
         // Arrange
         await using var connection = new ObservedConnection("Data Source=:memory:");
@@ -108,7 +108,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
 
     /// <summary>Releases a connection even when opening fails before a seeding context can be created.</summary>
     [Fact]
-    public async Task FailedOpenDisposesConnectionBeforeOwnershipTransfer()
+    public async Task CreateAsync_Failed_OpenDisposesConnectionBeforeOwnershipTransfer()
     {
         // Arrange
         var missingDirectory = Path.Combine(
@@ -142,7 +142,7 @@ public sealed partial class ComplexDeletedElementRecoveryTests
 
     /// <summary>Retains the initiating provider error alongside a cleanup error after releasing the store.</summary>
     [Fact]
-    public async Task FailedSeedRetainsProviderAndCleanupFailures()
+    public async Task CreateAsync_FailedSeed_RetainsProviderAndCleanupFailures()
     {
         // Arrange
         var cleanupFailure = new ConnectionCleanupFailure();
@@ -176,13 +176,19 @@ public sealed partial class ComplexDeletedElementRecoveryTests
     }
 
     /// <summary>Observes real disposal and can fail once after the provider releases the connection.</summary>
-    private sealed class ObservedConnection(
-        string connectionString,
-        Exception? disposalFailure = null
-    )
-        : SqliteConnection(connectionString)
+    private sealed class ObservedConnection
+        : SqliteConnection
     {
-        private Exception? _disposalFailure = disposalFailure;
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public ObservedConnection(
+            string connectionString,
+            Exception? disposalFailure = null
+        ) : base(connectionString)
+        {
+            _disposalFailure = disposalFailure;
+        }
+
+        private Exception? _disposalFailure;
 
         /// <summary>Gets whether asynchronous disposal has been requested.</summary>
         internal bool WasDisposed { get; private set; }

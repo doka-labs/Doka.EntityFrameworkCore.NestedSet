@@ -20,7 +20,7 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("MariaDb", 1, 4)]
     [InlineData("MariaDb", 16, 1)]
     [InlineData("MariaDb", 16, 4)]
-    public async Task WarmResolutionConstructionKeepsItsAllocationBudget(
+    public async Task ResolutionRows_WarmResolutionConstruction_KeepsItsAllocationBudget(
         string engine,
         int origins,
         int fields
@@ -52,7 +52,7 @@ public sealed class SupervisorProjectionCacheTests
                 .Options);
 
         var tenantId = Guid.Parse("a296dbcb-a9c1-4c70-9bbb-ff506af5d546");
-        var catalog = new[] { "Route", "ChannelClass", "ManagerRoute", "RoutingZone" };
+        string[] catalog = ["Route", "ChannelClass", "ManagerRoute", "RoutingZone"];
         var request = new SupervisorRequest
         {
             SourceUserId = 17,
@@ -131,7 +131,7 @@ public sealed class SupervisorProjectionCacheTests
 
     /// <summary>Every actual cached selector contains only parameters, members, and literal constants.</summary>
     [Fact]
-    public void CachedSelectorsDoNotRetainInvocationState()
+    public void Visit_CachedSelectors_DoNotRetainInvocationState()
     {
         // Arrange
         var fields = typeof(SupervisorQueries)
@@ -165,7 +165,7 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("request")]
     [InlineData("closure")]
     [InlineData("extension")]
-    public async Task CaptureInspectionRejectsInvocationOwnedNodes(
+    public async Task Visit_CaptureInspection_RejectsInvocationOwnedNodes(
         string shape
     )
     {
@@ -212,7 +212,7 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("s_singleGroupRowProjection", 0L)]
     [InlineData("s_singleGroupRowProjection", 1L)]
     [InlineData("s_singleGroupRowProjection", 2L)]
-    public void ReadRowsUseEachAuthorizedMembershipWithoutCapturingASource(
+    public void ResolutionRows_AuthorizedMemberships_RemainIndependentOfCapturedSources(
         string field,
         long? count
     )
@@ -250,7 +250,7 @@ public sealed class SupervisorProjectionCacheTests
 
     /// <summary>Single-group outcomes receive their source key from each origin's exact membership.</summary>
     [Fact]
-    public void OriginOutcomeMarkersReadEachAuthorizedMembershipWithoutCapturingASource()
+    public void Compile_OriginOutcomeMarkers_ReadEachAuthorizedMembershipWithoutCapturingASource()
     {
         // Arrange
         var selector = (LambdaExpression)typeof(SupervisorQueries)

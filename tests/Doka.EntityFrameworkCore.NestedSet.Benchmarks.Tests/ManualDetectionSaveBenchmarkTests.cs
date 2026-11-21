@@ -35,7 +35,7 @@ public sealed class ManualDetectionSaveBenchmarkTests
     /// <param name="shape">The topology prepared before measurement begins.</param>
     [Theory]
     [MemberData(nameof(SaveCases))]
-    public async Task MeasuredSavePersistsExpectedWorkWithDetectionDisabled(
+    public async Task Save_MeasuredSave_PersistsExpectedWorkWithDetectionDisabled(
         string operation,
         BenchmarkShape shape
     )
@@ -83,7 +83,7 @@ public sealed class ManualDetectionSaveBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task VerificationRejectsUnexecutedSave(
+    public async Task VerifyAsync_Verification_RejectsUnexecutedSave(
         bool coordinated
     )
     {

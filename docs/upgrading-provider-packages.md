@@ -1,5 +1,31 @@
 # Upgrade NestedSet packages
 
+## Upgrade from 10.3.0 to 10.4.0
+
+`10.4.0` is a compatible maintenance update on .NET 10 and EF Core 10. Update
+all selected NestedSet adapters and the common EF package together; each
+adapter requires kernel `[10.4.0]`.
+
+Existing hierarchy operations, ordinary extension calls and explicit static
+calls retain their contracts. The shipped API files additionally record the
+C# 14 extension-block views of those operations; they do not introduce new
+hierarchy operations or replace the existing static-method declarations.
+
+The MySql adapter now requires Doka `[10.7.0,10.8.0)`. Update an application's
+direct Doka reference into that range as well. Repository qualification uses
+MySqlConnector 3.0.0 through the provider-admitted driver range; the NestedSet
+adapter adds no direct shipping driver dependency. Optional SafeMigrations
+qualification uses Core and all four adapters at 10.7.3. The
+[support matrix](support-and-qualification.md) owns the exact package and engine
+graph.
+
+Existing NestedSet mappings, registry identities and provider-callback
+registration remain unchanged. No NestedSet schema migration is required for
+this update. Cancellation, atomic hierarchy/application writes, structure guards
+and rollback guarantees remain in force. Query diagnostics preserve the original
+failure if writing evidence also fails, and protected cleanup remains
+uninterruptible.
+
 ## Upgrade from 10.2.0 to 10.3.0
 
 `10.3.0` keeps .NET 10 and EF Core 10. Update all selected NestedSet adapters
@@ -79,11 +105,11 @@ preserve the removed registration API.
 Install the adapter matching each context's database. It brings the common EF
 kernel, `Doka.NestedSet`, and the matching EF database provider transitively.
 Use one qualified NestedSet version for all NestedSet packages in an application.
-The commands below install the stable `10.3.0` source contract. Applications
+The commands below install the stable `10.4.0` source contract. Applications
 coming from `10.0.0` must also apply the registration transition described here.
 
 Each adapter depends on exactly that release of the common EF kernel:
-`[10.3.0]` for this release. The adapter implements assembly-internal kernel
+`[10.4.0]` for this release. The adapter implements assembly-internal kernel
 contracts, so a different kernel patch is not an advertised compatible
 combination. Update all selected adapters together, including applications
 using different providers in separate contexts. The public-only dependency
@@ -97,7 +123,7 @@ not an unconditional runtime barrier.
 
 | Database | Package to install | Native dependency range |
 | --- | --- | --- |
-| MySQL or MariaDB | `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka `[10.6.4,10.7.0)` |
+| MySQL or MariaDB | `Doka.EntityFrameworkCore.NestedSet.MySql` | Doka `[10.7.0,10.8.0)` |
 | PostgreSQL | `Doka.EntityFrameworkCore.NestedSet.Postgres` | Npgsql `[10.0.3,11.0.0)` |
 | SQLite | `Doka.EntityFrameworkCore.NestedSet.Sqlite` | Microsoft SQLite `[10.0.13,11.0.0)` |
 | SQL Server | `Doka.EntityFrameworkCore.NestedSet.SqlServer` | Microsoft SQL Server `[10.0.13,11.0.0)` |
@@ -105,12 +131,12 @@ not an unconditional runtime barrier.
 For example:
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.3.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.MySql --version 10.4.0
 ```
 
 A provider already referenced directly by the application must satisfy the
 adapter's range. The common kernel declares EF/Relational
-`[10.0.12,11.0.0)`. Doka 10.6.4 also requires EF Relational below `10.1.0`, so
+`[10.0.12,11.0.0)`. Doka 10.7.0 also requires EF Relational below `10.1.0`, so
 the effective MySQL/MariaDB intersection is `[10.0.12,10.1.0)`. The SQLite and
 SQL Server adapters require their native provider from `10.0.13`; they do not
 extend the common kernel's supported EF major. Restore and review the resulting

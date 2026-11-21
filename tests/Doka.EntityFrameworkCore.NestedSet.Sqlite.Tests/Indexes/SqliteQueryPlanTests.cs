@@ -20,7 +20,7 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     /// </summary>
     /// <returns>A task that completes after explaining the actual repair UPDATE with its original parameters.</returns>
     [Fact]
-    public async Task RepairBatchQueryPlanUsesScopeAndNodeKeyConstraint()
+    public async Task RebuildAsync_RepairBatchQueryPlan_UsesScopeAndNodeKeyConstraint()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -35,7 +35,7 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
             setup,
             EnterpriseForestTestSupport.CreateForest(4097),
             cancellationToken: TestContext.Current.CancellationToken,
-            true);
+            corrupt: true);
 
         var probe = new EnterpriseProbe();
         await using var context = database.CreateContext((IInterceptor)probe);
@@ -80,7 +80,7 @@ public sealed partial class SqliteQueryPlanTests : ProviderTest,
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task PlansUseIndexedParentOrDescendantLookup(
+    public async Task OpenConnectionAsync_Plans_UseIndexedParentOrDescendantLookup(
         bool parentQuery
     )
     {

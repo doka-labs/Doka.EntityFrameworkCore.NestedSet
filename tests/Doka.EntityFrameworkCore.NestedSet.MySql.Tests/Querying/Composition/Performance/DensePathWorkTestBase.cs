@@ -35,7 +35,7 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     [InlineData("DenseOnPath", 1_000_000)]
     [InlineData("CleanLongPath", 1_000_000)]
     [Trait("Category", "Capacity")]
-    public async Task DenseChainsKeepFailureEvidenceAndFringesBounded(
+    public async Task ObserveAsync_DenseChains_KeepFailureEvidenceAndFringesBounded(
         string shape,
         int nodes
     )
@@ -78,7 +78,7 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     [InlineData("DenseCandidatesPriorAccept")]
     [InlineData("DenseCandidatesPriorReject")]
     [Trait("Category", "Capacity")]
-    public async Task DensePriorCandidatesStayWithinTheirForestIdentity(
+    public async Task ObserveAsync_DensePriorCandidates_StayWithinTheirForestIdentity(
         string shape
     )
     {
@@ -133,7 +133,7 @@ public abstract partial class DensePathWorkTestBase : ProviderTest
     [InlineData("RootAboveSiblingFailures", false)]
     [InlineData("RootAboveSiblingFailures", true)]
     [Trait("Category", "Capacity")]
-    public async Task DisjointPathsKeepScopeTreeAndFailureWorkIndependent(
+    public async Task ObserveAsync_DisjointPaths_KeepScopeTreeAndFailureWorkIndependent(
         string shape,
         bool forest
     )

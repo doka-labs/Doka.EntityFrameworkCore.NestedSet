@@ -2,7 +2,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class AncestorIndexQueryTests
 {
-    /// <summary>Generated dictionary keys and index flags require no normalized sentinel values from consumers.</summary>
+    /// <summary>
+    /// Generated dictionary keys and index flags require no normalized sentinel values from consumers.
+    /// </summary>
     /// <param name="bulk">Whether insertion uses the detached branch API.</param>
     /// <param name="nullKey">Whether the input explicitly contains a null key instead of omitting it.</param>
     [Theory]
@@ -10,7 +12,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagInsertionAcceptsMissingOrNullIdentity(
+    public async Task InsertGeneratedBagAsync_IndexedGeneratedBagInsertion_AcceptsMissingOrNullIdentity(
         bool bulk,
         bool nullKey
     )
@@ -65,7 +67,9 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Accepted generated identities disappear on rollback when the original dictionary omitted them or stored null.</summary>
+    /// <summary>
+    /// Accepted generated identities disappear on rollback when the original dictionary omitted them or stored null.
+    /// </summary>
     /// <param name="bulk">Whether the failed operation imports a detached branch.</param>
     /// <param name="nullKey">Whether a null identity was explicitly supplied before tracking.</param>
     [Theory]
@@ -73,7 +77,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagLateFailureRestoresExactRawInput(
+    public async Task InsertGeneratedBagAsync_IndexedGeneratedBagLateFailure_RestoresExactRawInput(
         bool bulk,
         bool nullKey
     )
@@ -126,7 +130,9 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>The same detached dictionaries can be retried after an accepted generated identity was rolled back.</summary>
+    /// <summary>
+    /// The same detached dictionaries can be retried after an accepted generated identity was rolled back.
+    /// </summary>
     /// <param name="bulk">Whether both attempts use the branch import API.</param>
     /// <param name="nullKey">Whether the caller uses an explicit null identity.</param>
     [Theory]
@@ -134,7 +140,7 @@ public abstract partial class AncestorIndexQueryTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IndexedGeneratedBagCanRetryAfterLateFailure(
+    public async Task InsertGeneratedBagAsync_IndexedGeneratedBag_CanRetryAfterLateFailure(
         bool bulk,
         bool nullKey
     )
@@ -199,7 +205,9 @@ public abstract partial class AncestorIndexQueryTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>Preserves the exact consumer distinction between an absent and an explicitly null generated key.</summary>
+    /// <summary>
+    /// Preserves the exact consumer distinction between an absent and an explicitly null generated key.
+    /// </summary>
     private static Dictionary<string, object?> GeneratedBag(
         string label,
         bool nullKey

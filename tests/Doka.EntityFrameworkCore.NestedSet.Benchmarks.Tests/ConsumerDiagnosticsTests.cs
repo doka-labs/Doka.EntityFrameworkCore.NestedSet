@@ -9,7 +9,7 @@ public sealed class ConsumerDiagnosticsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NativeDiagnosticsUseTheActualConsumerContext(
+    public async Task RunAsync_NativeDiagnostics_UseTheActualConsumerContext(
         bool groups
     )
     {

@@ -39,7 +39,7 @@ public sealed class SignalMaterializationBenchmarkTests
     /// <param name="interleaved">Whether totals arrive grouped by source rather than reversed selection order.</param>
     [Theory]
     [MemberData(nameof(Conditions))]
-    public async Task EveryConditionPreservesIndependentCellsAndReaderCounts(
+    public async Task MaterializeAsync_EveryCondition_PreservesIndependentCellsAndReaderCounts(
         int cells,
         SignalMaterializationDensity density,
         bool suspend,
@@ -81,7 +81,7 @@ public sealed class SignalMaterializationBenchmarkTests
     [InlineData(0, SignalMaterializationDensity.Dense)]
     [InlineData(25, SignalMaterializationDensity.Sparse)]
     [InlineData(24, (SignalMaterializationDensity)99)]
-    public async Task InvalidPreparationIsRejected(
+    public async Task SetupAsync_InvalidPreparation_IsRejected(
         int cells,
         SignalMaterializationDensity density
     )
@@ -107,7 +107,7 @@ public sealed class SignalMaterializationBenchmarkTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UninitializedFixtureIsRejected(
+    public async Task MaterializeOrVerifyAsync_UninitializedFixture_IsRejected(
         bool verify
     )
     {
@@ -127,7 +127,7 @@ public sealed class SignalMaterializationBenchmarkTests
 
     /// <summary>The untimed setup control does not count as a measured operation for global cleanup.</summary>
     [Fact]
-    public async Task CleanupRejectsSetupWithoutAnExecutedOperation()
+    public async Task VerifyAsync_Cleanup_RejectsSetupWithoutAnExecutedOperation()
     {
         // Arrange
         var benchmark = new SignalMaterializationBenchmarks { Cells = 24 };
@@ -145,7 +145,7 @@ public sealed class SignalMaterializationBenchmarkTests
     /// Failed reconfiguration cannot expose an older successfully prepared result under new parameters.
     /// </summary>
     [Fact]
-    public async Task FailedReconfigurationInvalidatesThePreviousFixture()
+    public async Task SetupAsync_FailedReconfiguration_InvalidatesThePreviousFixture()
     {
         // Arrange
         var benchmark = new SignalMaterializationBenchmarks { Cells = 24 };
@@ -171,7 +171,7 @@ public sealed class SignalMaterializationBenchmarkTests
     [InlineData("missing")]
     [InlineData("value")]
     [InlineData("order")]
-    public async Task CleanupRejectsAlteredResult(
+    public async Task VerifyAsync_Cleanup_RejectsAlteredResult(
         string change
     )
     {
@@ -209,7 +209,7 @@ public sealed class SignalMaterializationBenchmarkTests
 
     /// <summary>The native benchmark discovers all conditions with adaptive throughput and both diagnostics.</summary>
     [Fact]
-    public void NativeDiscoveryPreservesTwentyFourAdaptiveConditions()
+    public void BenchmarksCases_NativeDiscovery_PreservesTwentyFourAdaptiveConditions()
     {
         // Arrange
         var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
@@ -269,6 +269,9 @@ public sealed class SignalMaterializationBenchmarkTests
 
         CapturePort[] sources = [CapturePort.Sweep, CapturePort.Pulse, CapturePort.Burst];
         var expected = new SignalReportCell[cells];
+        // WHY: Each flat slot independently determines its expected anchor, channel and capture port.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
         for (var position = 0; position < expected.Length; position++)
         {
             var anchor = SignalReportDataset.Id(position / (signals * 3) + 1);

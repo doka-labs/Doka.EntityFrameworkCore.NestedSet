@@ -218,6 +218,7 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
 
             yield return (value, block);
 
+            // WHY: Walk nested plan objects lazily while retaining the enclosing SELECT block identity.
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var property in value.EnumerateObject())
             {
@@ -229,6 +230,7 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
         }
         else if (value.ValueKind == JsonValueKind.Array)
         {
+            // WHY: Walk nested plan objects lazily while retaining the enclosing SELECT block identity.
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var item in value.EnumerateArray())
             {
@@ -247,7 +249,9 @@ internal readonly partial record struct AncestorIndexBaseTableWork(
     private static partial Regex AliasesRegex();
 
     [GeneratedRegex(
-        @"-> (?:Single-row (?:covering )?index lookup|Covering index (?:range scan|scan|lookup)|Index (?:range scan|scan|lookup)|Table scan) on `?(?<alias>[A-Za-z_][A-Za-z0-9_]*)`?\b",
+        @"-> (?:Single-row (?:covering )?index lookup|Covering index (?:range "
+        + @"scan|scan|lookup)|Index (?:range "
+                + @"scan|scan|lookup)|Table scan) on `?(?<alias>[A-Za-z_][A-Za-z0-9_]*)`?\b",
         RegexOptions.IgnoreCase,
         "en-DE")]
     private static partial Regex AccessRegex();

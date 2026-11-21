@@ -13,6 +13,15 @@ internal static class UnitTestProgram
         string[] args
     )
     {
+        if (args is [ManagedHeapProbe.CancellationCommand, "wait"])
+        {
+            // WHY: This private lifecycle control cannot finish ahead of cancellation on a faster machine.
+            // Its parent owns termination, observes exit and drains the streams before releasing the process.
+            await Task.Delay(Timeout.InfiniteTimeSpan, CancellationToken.None);
+
+            return 0;
+        }
+
         if (args is [ManagedHeapProbe.Command, var shape])
         {
             var measurement = ManagedHeapProbe.Measure(shape);

@@ -17,7 +17,7 @@ public sealed class SupervisorGroupOrdinalKeyTests
     [InlineData(-1, true, 3, false)]
     [InlineData(-1, false, 2, true)]
     [InlineData(-1, false, 3, false)]
-    public async Task GroupOrdinalAbsenceDoesNotReserveARealGroupKey(
+    public async Task ResolveAsync_GroupOrdinalAbsence_DoesNotReserveARealGroupKey(
         int rootKey,
         bool typeFirst,
         int number,

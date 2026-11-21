@@ -3,14 +3,24 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class SaveChangesTests
 {
     /// <summary>Coordinates equivalent ordered-node models with owned, ordinary split or unsplit payload.</summary>
-    private sealed class TableSharingRecoveryContext(
-        DbContextOptions options,
-        string shape
-    )
-        : NestedSetDbContext(options), ITestModelVariant
+    private sealed class TableSharingRecoveryContext
+        : NestedSetDbContext, ITestModelVariant
     {
+        private readonly string _shape;
+
+        /// <summary>Uses the configured model and database connection.</summary>
+        /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+        /// <param name="shape">The model variant whose identity must remain distinct in the cache.</param>
+        public TableSharingRecoveryContext(
+            DbContextOptions options,
+            string shape
+        ) : base(options)
+        {
+            _shape = shape;
+        }
+
         /// <inheritdoc />
-        object ITestModelVariant.ModelVariant => shape;
+        object ITestModelVariant.ModelVariant => _shape;
 
         /// <inheritdoc />
         protected override void OnModelCreating(
@@ -45,7 +55,7 @@ public abstract partial class SaveChangesTests
                 .OrderBy(item => item.Name)
                 .PreserveApplicationConcurrencyTokens());
 
-            switch (shape)
+            switch (_shape)
             {
                 case "owned":
                     node.Ignore(value => value.Peer);

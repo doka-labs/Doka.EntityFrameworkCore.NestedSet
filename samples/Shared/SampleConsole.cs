@@ -10,7 +10,18 @@ internal static class SampleConsole
     public static Task WriteLineAsync(
         string text,
         CancellationToken cancellationToken
-    ) => Console.Out.WriteLineAsync(text.AsMemory(), cancellationToken);
+    ) => WriteLineAsync(Console.Out, text, cancellationToken);
+
+    /// <summary>Writes to the invocation-owned output without changing the process console.</summary>
+    /// <param name="output">The writer retained by the invocation until all output has completed.</param>
+    /// <param name="text">The line to display.</param>
+    /// <param name="cancellationToken">The token canceling the awaited output.</param>
+    /// <returns>A task completing when the line has been written.</returns>
+    public static Task WriteLineAsync(
+        TextWriter output,
+        string text,
+        CancellationToken cancellationToken
+    ) => output.WriteLineAsync(text.AsMemory(), cancellationToken);
 
     /// <summary>Separates a selected scenario or before/after state from the preceding output.</summary>
     /// <param name="heading">The label describing the next displayed state.</param>
@@ -23,6 +34,21 @@ internal static class SampleConsole
     {
         await WriteLineAsync(string.Empty, cancellationToken);
         await WriteLineAsync(heading, cancellationToken);
+    }
+
+    /// <summary>Separates output on the writer owned by one sample invocation.</summary>
+    /// <param name="output">The writer retained by the invocation until all output has completed.</param>
+    /// <param name="heading">The label describing the next displayed state.</param>
+    /// <param name="cancellationToken">The token canceling the awaited output.</param>
+    /// <returns>A task completing when the heading has been written.</returns>
+    public static async Task HeadingAsync(
+        TextWriter output,
+        string heading,
+        CancellationToken cancellationToken
+    )
+    {
+        await WriteLineAsync(output, string.Empty, cancellationToken);
+        await WriteLineAsync(output, heading, cancellationToken);
     }
 
     /// <summary>Reports a precise failed sample expectation instead of a combined generic assertion.</summary>

@@ -3,7 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 internal static partial class CompositionCapacityProfiles
 {
     /// <summary>Retains original failures and diagnostic plans without changing the qualification outcome.</summary>
-    /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The failed query's provider context.</param>
     /// <param name="engine">The native engine used for an optional estimated plan.</param>
     /// <param name="profile">The unique synthetic workload evidence name.</param>
@@ -17,7 +16,6 @@ internal static partial class CompositionCapacityProfiles
         string profile,
         EnterpriseProbe probe,
         Exception failure,
-        CancellationToken cancellationToken,
         int commandIndex = 0
     )
     {
@@ -37,7 +35,8 @@ internal static partial class CompositionCapacityProfiles
             if (engine is "PostgreSql" or "MySql" or "MariaDb"
                 && probe.Commands.Count > commandIndex)
             {
-                await context.Database.OpenConnectionAsync(cancellationToken);
+                // WHY: Terminal diagnostics observe failed or canceled work; their completion is protected.
+                await context.Database.OpenConnectionAsync(CancellationToken.None);
                 await using var command = context
                     .Database
                     .GetDbConnection()
@@ -47,6 +46,7 @@ internal static partial class CompositionCapacityProfiles
                         ? "EXPLAIN (FORMAT JSON) "
                         : "EXPLAIN FORMAT=JSON ")
                     + probe.Commands[commandIndex];
+                command.CommandTimeout = 0;
 
                 // WHY: A failed actual-plan replay may still own its bindings; independent native clones
                 // preserve provider metadata without attaching one parameter to two command collections.
@@ -55,9 +55,9 @@ internal static partial class CompositionCapacityProfiles
                     command.Parameters.Add(((ICloneable)parameter).Clone());
                 }
 
-                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
 
-                while (await reader.ReadAsync(cancellationToken))
+                while (await reader.ReadAsync(CancellationToken.None))
                 {
                     evidence.Add(reader.GetString(0));
                 }
@@ -69,9 +69,18 @@ internal static partial class CompositionCapacityProfiles
             evidence.Add("Estimated-plan capture also failed: " + diagnosticFailure);
         }
 
-        await QueryPlanTestSupport.WriteEvidenceAsync(
-            engine + "-composition-capacity-failed-" + profile,
-            evidence,
-            cancellationToken: cancellationToken);
+        try
+        {
+            await QueryPlanTestSupport.WriteEvidenceAsync(
+                engine + "-composition-capacity-failed-" + profile,
+                evidence,
+                cancellationToken: CancellationToken.None);
+        }
+        catch (Exception evidenceFailure)
+        {
+            // WHY: Evidence is secondary to the failed query. Retain its own failure on that same exception
+            // so the caller's original throw preserves cancellation, identity and the query's stack trace.
+            failure.Data["NestedSet.CapacityEvidenceFailure"] = evidenceFailure;
+        }
     }
 }

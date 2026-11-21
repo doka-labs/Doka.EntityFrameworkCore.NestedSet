@@ -10,15 +10,18 @@ internal static class InheritanceScenario
     /// <summary>Creates independent tenant data, changes the hierarchy, and verifies the SQL grant result.</summary>
     /// <param name="configuration">The database owned by this sample.</param>
     /// <param name="details">Whether tree output includes structural columns.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used throughout the scenario.</param>
     /// <returns>A task that completes after the inherited and direct grants have been verified.</returns>
     public static async Task RunAsync(
         SampleDatabaseConfiguration configuration,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         await SampleConsole.HeadingAsync(
+            output,
             "INHERITANCE: own grants stay; ancestor grants follow the new branch",
             cancellationToken);
 
@@ -84,13 +87,14 @@ internal static class InheritanceScenario
         }
 
         await using var context = UserGroupContexts.Create(configuration);
-        await GroupOutput.TreeAsync(context, s_tenantId, s_treeId, "Before move:", details, cancellationToken);
+        await GroupOutput.TreeAsync(context, s_tenantId, s_treeId, "Before move:", details, output, cancellationToken);
 
         var before = await GroupOutput.PrivilegesAsync(
             context,
             s_tenantId,
             hierarchy.ApiTeam.Id,
             "API team effective privileges",
+            output,
             cancellationToken);
 
         SampleConsole.Require(
@@ -108,6 +112,7 @@ internal static class InheritanceScenario
             s_treeId,
             "After moving API team under Finance:",
             details,
+            output,
             cancellationToken);
 
         var after = await GroupOutput.PrivilegesAsync(
@@ -115,6 +120,7 @@ internal static class InheritanceScenario
             s_tenantId,
             hierarchy.ApiTeam.Id,
             "API team effective privileges",
+            output,
             cancellationToken);
 
         SampleConsole.Require(
@@ -155,10 +161,12 @@ internal static class InheritanceScenario
         await GroupScenarioData.ValidateAsync(context, s_tenantId, s_treeId, cancellationToken);
         await GroupScenarioData.ValidateAsync(context, s_otherTenantId, s_treeId, cancellationToken);
         await SampleConsole.WriteLineAsync(
+            output,
             "Own logs.read remains; old branch grants disappear; admin.root stays in the other tenant.",
             cancellationToken);
 
         await SampleConsole.WriteLineAsync(
+            output,
             "Normal tracked payload save also ran the application's UTC timestamp customization.",
             cancellationToken);
     }

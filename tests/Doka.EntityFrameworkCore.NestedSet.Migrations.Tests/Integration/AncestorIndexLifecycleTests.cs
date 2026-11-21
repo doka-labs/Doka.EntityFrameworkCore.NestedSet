@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore.Diagnostics;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 /// <summary>Verifies generated shadow flags follow committed and rolled-back structural writes.</summary>
@@ -52,7 +50,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("SqlServer", "promote")]
     [InlineData("SqlServer", "subtree")]
     [InlineData("SqlServer", "bulk")]
-    public async Task StructuralMutationRecomputesGeneratedShadowFlag(
+    public async Task InsertChildAsync_StructuralMutation_RecomputesGeneratedShadowFlag(
         string engine,
         string operation
     )
@@ -61,10 +59,19 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorLifecycle");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(
+            chain,
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false);
         await using var context = database.CreateContext();
         await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var hierarchy = context
@@ -144,7 +151,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task RebuildRefreshesGeneratedFlagAfterCoordinateRepair(
+    public async Task RebuildAsync_Rebuild_RefreshesGeneratedFlagAfterCoordinateRepair(
         string engine
     )
     {
@@ -152,10 +159,19 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorRebuild");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(
+            chain,
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false);
         await using var context = database.CreateContext();
         await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var root = await context
@@ -206,7 +222,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task FailedInsertionRestoresTrackedAndPersistedFlags(
+    public async Task InsertChildAsync_FailedInsertion_RestoresTrackedAndPersistedFlags(
         string engine
     )
     {
@@ -216,10 +232,18 @@ public sealed partial class AncestorIndexLifecycleTests
             _fixture,
             engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            options => options.AddInterceptors(failure));
+            configureOptions: options => options.AddInterceptors(failure),
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorRollback");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(
+            chain,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false,
+            cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
         await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         var before = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -241,122 +265,6 @@ public sealed partial class AncestorIndexLifecycleTests
         Assert.Empty(tracked);
     }
 
-    /// <summary>Refreshes tracked shadow flags during coordinated same-tree and cross-tree saves.</summary>
-    /// <param name="engine">The actual relational provider.</param>
-    /// <param name="crossTree">Whether the parent change crosses a stable tree boundary.</param>
-    [Theory]
-    [InlineData("Sqlite", false)]
-    [InlineData("Sqlite", true)]
-    [InlineData("MySql", false)]
-    [InlineData("MySql", true)]
-    [InlineData("MariaDb", false)]
-    [InlineData("MariaDb", true)]
-    [InlineData("PostgreSql", false)]
-    [InlineData("PostgreSql", true)]
-    [InlineData("SqlServer", false)]
-    [InlineData("SqlServer", true)]
-    public async Task ParentSaveRefreshesAllAffectedTrackedGeneratedFlags(
-        string engine,
-        bool crossTree
-    )
-    {
-        // Arrange
-        await using var database = await AncestorIndexDatabase.CreateAsync(
-            _fixture,
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var chain = database.Scaffold(true, "AncestorTrackedSave");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var rows = await context
-            .Set<MigrationNode>()
-            .OrderBy(x => x.NodeId)
-            .ToArrayAsync(CancellationToken.None);
-
-        var moved = rows.Single(x => x.NodeId
-            == (crossTree
-                ? 2
-                : 3));
-
-        moved.ParentId = crossTree
-            ? 4
-            : 1;
-
-        // Act
-        await context.SaveChangesAsync(CancellationToken.None);
-        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var tracked = ReadTrackedStates(context);
-        int[] expectedBranches = crossTree
-            ? [2, 4]
-            : [1];
-
-        // Assert
-        Assert.Equal(persisted, tracked);
-        Assert.All(persisted, row => Assert.Equal(row.Right > row.Left + 1, row.Flag));
-        Assert.Equal(
-            expectedBranches,
-            persisted
-                .Where(x => x.Flag)
-                .Select(x => x.Id));
-
-        Assert.All(
-            context.ChangeTracker.Entries<MigrationNode>(),
-            entry => Assert.Equal(EntityState.Unchanged, entry.State));
-    }
-
-    /// <summary>Restores tracked generated values when a parent save fails after payload persistence.</summary>
-    /// <param name="engine">The actual relational provider.</param>
-    [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("MySql")]
-    [InlineData("MariaDb")]
-    [InlineData("PostgreSql")]
-    [InlineData("SqlServer")]
-    public async Task FailedParentSaveRestoresTrackedGeneratedFlags(
-        string engine
-    )
-    {
-        // Arrange
-        var failure = new LateSaveFailure();
-        await using var database = await AncestorIndexDatabase.CreateAsync(
-            _fixture,
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken,
-            options => options.AddInterceptors(failure));
-
-        var chain = database.Scaffold(true, "AncestorParentRollback");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        await SeedAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var rows = await context
-            .Set<MigrationNode>()
-            .OrderBy(x => x.NodeId)
-            .ToArrayAsync(CancellationToken.None);
-
-        var before = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var moved = rows.Single(x => x.NodeId == 2);
-        moved.ParentId = 4;
-        failure.Armed = true;
-
-        // Act
-        var exception = await Record.ExceptionAsync(() => context.SaveChangesAsync(CancellationToken.None));
-        var persisted = await ReadStatesAsync(context, cancellationToken: TestContext.Current.CancellationToken);
-        var tracked = ReadTrackedStates(context);
-
-        // Assert
-        var actual = Assert.IsType<InvalidOperationException>(exception);
-        Assert.Equal(LateSaveFailure.Message, actual.Message);
-        Assert.Equal(before, persisted);
-        Assert.Equal(before, tracked);
-        Assert.Equal(4, moved.ParentId);
-        Assert.Equal(
-            EntityState.Modified,
-            context.Entry(moved)
-                .State);
-    }
-
     /// <summary>Evaluates the generated predicate safely at the largest representable valid Int64 bounds.</summary>
     /// <param name="engine">The actual relational provider.</param>
     [Theory]
@@ -365,7 +273,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task GeneratedFlagHandlesLargestValidInt64LeafAndBranchBounds(
+    public async Task InsertNodeDirectlyAsync_GeneratedFlag_HandlesLargestValidInt64LeafAndBranchBounds(
         string engine
     )
     {
@@ -373,10 +281,19 @@ public sealed partial class AncestorIndexLifecycleTests
         await using var database = await AncestorIndexDatabase.CreateAsync(
             _fixture,
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         var chain = database.Scaffold(true, "AncestorInt64Edge");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(
+            chain,
+            cancellationToken: TestContext.Current.CancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false);
         var leaf = new MigrationNode
         {
             NodeId = 61,
@@ -410,83 +327,5 @@ public sealed partial class AncestorIndexLifecycleTests
         // Assert
         Assert.Equal([false, true], rows.Select(x => x.Flag));
         Assert.All(rows, row => Assert.Equal(long.MaxValue, row.Right));
-    }
-
-    /// <summary>Creates two tracked trees, including one leaf root and a three-level branch.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static async Task SeedAsync(
-        AncestorIndexContext context,
-        CancellationToken cancellationToken
-    )
-    {
-        var hierarchy = context
-            .NestedSet<MigrationNode>()
-            .ForScope(7);
-
-        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 1 }, 11, cancellationToken);
-        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 2 }, 1, cancellationToken);
-        await hierarchy.InsertChildAsync(new MigrationNode { NodeId = 3 }, 2, cancellationToken);
-        await hierarchy.InsertRootAsync(new MigrationNode { NodeId = 4 }, 12, cancellationToken);
-    }
-
-    /// <summary>Reads database values without identity resolution hiding stale tracker values.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static Task<FlagState[]> ReadStatesAsync(
-        AncestorIndexContext context,
-        CancellationToken cancellationToken
-    ) => context
-        .Set<MigrationNode>()
-        .AsNoTracking()
-        .OrderBy(x => x.NodeId)
-        .Select(x => new FlagState(x.NodeId, x.Left, x.Right, EF.Property<bool>(x, AncestorIndexContext.FlagProperty)))
-        .ToArrayAsync(cancellationToken);
-
-    /// <summary>Captures generated shadow sidecars without any database I/O.</summary>
-    private static FlagState[] ReadTrackedStates(
-        AncestorIndexContext context
-    ) => context
-        .ChangeTracker
-        .Entries<MigrationNode>()
-        .Where(x => x.State is not EntityState.Detached and not EntityState.Deleted)
-        .Select(x => new FlagState(
-            x.Entity.NodeId,
-            x.Entity.Left,
-            x.Entity.Right,
-            x.Property<bool>(AncestorIndexContext.FlagProperty)
-                .CurrentValue))
-        .OrderBy(x => x.Id)
-        .ToArray();
-
-    /// <summary>A detached comparison of persisted or tracked bounds and the generated shadow value.</summary>
-    /// <param name="Id">The application-assigned node key.</param>
-    /// <param name="Left">The current left boundary.</param>
-    /// <param name="Right">The current right boundary.</param>
-    /// <param name="Flag">The database-derived branch marker.</param>
-    private sealed record FlagState(
-        int Id,
-        long Left,
-        long Right,
-        bool Flag
-    );
-
-    /// <summary>Fails after the payload has been persisted inside the library-owned transaction boundary.</summary>
-    private sealed class LateSaveFailure : SaveChangesInterceptor
-    {
-        /// <summary>The exact deliberate failure used to distinguish rollback from an unrelated exception.</summary>
-        internal const string Message = "Deliberate ancestor-index payload failure.";
-
-        /// <summary>Gets or sets whether the next payload-save completion must fail.</summary>
-        internal bool Armed { get; set; }
-
-        /// <inheritdoc />
-        public override ValueTask<int> SavedChangesAsync(
-            SaveChangesCompletedEventData eventData,
-            int result,
-            CancellationToken cancellationToken = default
-        ) => Armed
-            ? throw new InvalidOperationException(Message)
-            : ValueTask.FromResult(result);
     }
 }

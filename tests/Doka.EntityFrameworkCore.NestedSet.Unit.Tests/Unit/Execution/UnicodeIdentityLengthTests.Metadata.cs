@@ -15,7 +15,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData("PostgreSql", true)]
     [InlineData("Sqlite", false)]
     [InlineData("SqlServer", false)]
-    public void RuntimeModelRetainsPrimitiveNativeIdentityPolicies(
+    public void For_RuntimeModel_RetainsPrimitiveNativeIdentityPolicies(
         string engine,
         bool expected
     )
@@ -57,7 +57,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData(true, "false")]
     [InlineData(false, 1)]
     [InlineData(true, 0)]
-    public void InvalidCapturedIdentityPolicyRequiresRegeneration(
+    public void CapturedPolicy_InvalidCapturedIdentityPolicy_RequiresRegeneration(
         bool scopeRole,
         object? invalid
     )
@@ -95,7 +95,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void CapturedIdentityPolicyKeepsBothBooleanDecisions(
+    public void CapturedPolicy_CapturedIdentityPolicy_KeepsBothBooleanDecisions(
         bool scopeRole,
         bool expected
     )
@@ -123,7 +123,7 @@ public sealed partial class UnicodeIdentityLengthTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("PostgreSql")]
-    public void NamesakeProviderAssemblyCannotAuthorizeCharacterPolicy(
+    public void UsesUnicodeScalarLength_NamesakeProviderAssembly_CannotAuthorizeCharacterPolicy(
         string engine
     )
     {
@@ -177,7 +177,7 @@ public sealed partial class UnicodeIdentityLengthTests
 
     /// <summary>A derived native mapping keeps the conservative policy rather than inheriting authorization.</summary>
     [Fact]
-    public void NativeMappingSubclassDoesNotAuthorizeCharacterPolicy()
+    public void UsesUnicodeScalarLength_NativeMappingSubclass_DoesNotAuthorizeCharacterPolicy()
     {
         // Arrange
         using var context = new UnicodeContext("PostgreSql");

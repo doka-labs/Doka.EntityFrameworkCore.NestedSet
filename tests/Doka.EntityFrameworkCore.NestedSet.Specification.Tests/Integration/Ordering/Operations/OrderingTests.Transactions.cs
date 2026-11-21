@@ -6,12 +6,13 @@ public abstract partial class OrderingTests
     ///     Verifies a repair failure after a completed payload save rolls back both kinds of database change.
     /// </summary>
     [Fact]
-    public async Task LateOrderingFailureRollsBackPayloadAndPreservesPendingRename()
+    public async Task SaveChangesAsync_LateOrderingFailure_RollsBackPayloadAndPreservesPendingRename()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -19,8 +20,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var renamed = await context
             .Set<OrderingNode>()
@@ -51,7 +52,8 @@ public abstract partial class OrderingTests
         Assert.Null(context.Database.CurrentTransaction);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,
@@ -62,12 +64,13 @@ public abstract partial class OrderingTests
 
     /// <summary>Verifies cancellation after payload execution rolls back with a live recovery token.</summary>
     [Fact]
-    public async Task CancellationAfterPayloadSaveRollsBackTheRename()
+    public async Task SaveChangesAsync_CancellationAfterPayloadSave_RollsBackTheRename()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -76,8 +79,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var renamed = await context
             .Set<OrderingNode>()
@@ -99,7 +102,8 @@ public abstract partial class OrderingTests
 
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,
@@ -112,12 +116,13 @@ public abstract partial class OrderingTests
     ///     Verifies cancellation before save issues no database command and retains caller-owned changes.
     /// </summary>
     [Fact]
-    public async Task AlreadyCanceledSaveDoesNotWriteOrAcceptChanges()
+    public async Task SaveChangesAsync_AlreadyCanceledSave_DoesNotWriteOrAcceptChanges()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -125,8 +130,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var renamed = await context
             .Set<OrderingNode>()
@@ -153,7 +158,8 @@ public abstract partial class OrderingTests
 
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,
@@ -166,12 +172,13 @@ public abstract partial class OrderingTests
     ///     Verifies a failed reorder preserves earlier work in a caller transaction without committing it.
     /// </summary>
     [Fact]
-    public async Task LateFailurePreservesEarlierCallerWorkAndTransactionOwnership()
+    public async Task SaveChangesAsync_LateFailure_PreservesEarlierCallerWorkAndTransactionOwnership()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
@@ -179,8 +186,8 @@ public abstract partial class OrderingTests
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         await using var transaction = await BeginAsync(
             context,
@@ -217,7 +224,8 @@ public abstract partial class OrderingTests
 
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,
@@ -237,12 +245,13 @@ public abstract partial class OrderingTests
     ///     Verifies caller rollback reverses an otherwise successful payload save and subtree relocation.
     /// </summary>
     [Fact]
-    public async Task CallerRollbackUndoesSuccessfulRenameAndUnrelatedInsert()
+    public async Task SaveChangesAsync_CallerRollback_UndoesSuccessfulRenameAndUnrelatedInsert()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(context), cancellationToken: TestContext.Current.CancellationToken);
         var before = await SnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
@@ -272,7 +281,8 @@ public abstract partial class OrderingTests
         Assert.True(retainedOwnership);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,
@@ -290,12 +300,13 @@ public abstract partial class OrderingTests
     ///     Verifies domain failure in SaveChanges prevents both payload acceptance and hierarchy movement.
     /// </summary>
     [Fact]
-    public async Task FailedApplicationInsertDoesNotCommitTheRename()
+    public async Task SaveChangesAsync_FailedApplicationInsert_DoesNotCommitTheRename()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(Tree(setup), cancellationToken: TestContext.Current.CancellationToken);
         await setup.AddAsync(
@@ -310,7 +321,8 @@ public abstract partial class OrderingTests
         var before = await SnapshotAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         await using var context = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var renamed = await context
             .Set<OrderingNode>()
@@ -344,7 +356,8 @@ public abstract partial class OrderingTests
 
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         AssertSnapshot(
             before,

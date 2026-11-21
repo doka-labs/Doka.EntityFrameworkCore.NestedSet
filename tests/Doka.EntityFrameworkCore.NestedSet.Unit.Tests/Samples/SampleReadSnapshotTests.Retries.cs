@@ -9,7 +9,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>A transient failure replays all participating reads in a new owned native snapshot.</summary>
     /// <returns>A task completing after the actual configured EF execution strategy has retried once.</returns>
     [Fact]
-    public async Task TransientFailureReplaysTheCompleteReadInsideANewOwnedSnapshot()
+    public async Task RunAsync_TransientFailure_ReplaysTheCompleteReadInsideANewOwnedSnapshot()
     {
         // Arrange
         var observer = new SnapshotTransactionObserver();
@@ -45,20 +45,20 @@ public sealed partial class SampleReadSnapshotTests
 
         await context.SaveChangesAsync(CancellationToken.None);
         observer.Reset();
-        var attempts = new List<SqliteTransaction>();
+        List<SqliteTransaction> attempts = [];
         var reads = 0;
 
         // Act
         var result = await SampleReadSnapshot.RunAsync(
             context,
-            async token =>
+            async callbackCancellationToken =>
             {
                 attempts.Add((SqliteTransaction)context.Database.CurrentTransaction!.GetDbTransaction());
                 var first = await context
                     .Sentinels
                     .AsNoTracking()
                     .Select(row => row.Value)
-                    .SingleAsync(token);
+                    .SingleAsync(callbackCancellationToken);
 
                 reads++;
 
@@ -71,7 +71,7 @@ public sealed partial class SampleReadSnapshotTests
                     .Sentinels
                     .AsNoTracking()
                     .Select(row => row.Value)
-                    .SingleAsync(token);
+                    .SingleAsync(callbackCancellationToken);
 
                 reads++;
 
@@ -102,21 +102,32 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Installs one narrowly defined transient retry through EF's public strategy registration.</summary>
-    private sealed class SnapshotRetryingStrategyFactory(
-        ExecutionStrategyDependencies dependencies
-    )
+    private sealed class SnapshotRetryingStrategyFactory
         : IExecutionStrategyFactory
     {
+        private readonly ExecutionStrategyDependencies _dependencies;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SnapshotRetryingStrategyFactory(
+            ExecutionStrategyDependencies dependencies
+        )
+        {
+            _dependencies = dependencies;
+        }
+
         /// <inheritdoc />
-        public IExecutionStrategy Create() => new SnapshotRetryingStrategy(dependencies);
+        public IExecutionStrategy Create() => new SnapshotRetryingStrategy(_dependencies);
     }
 
     /// <summary>Retries only the deliberate first-read failure, without timing or arbitrary retries in tests.</summary>
-    private sealed class SnapshotRetryingStrategy(
-        ExecutionStrategyDependencies dependencies
-    )
-        : ExecutionStrategy(dependencies, maxRetryCount: 1, maxRetryDelay: TimeSpan.Zero)
+    private sealed class SnapshotRetryingStrategy
+        : ExecutionStrategy
     {
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public SnapshotRetryingStrategy(
+            ExecutionStrategyDependencies dependencies
+        ) : base(dependencies, maxRetryCount: 1, maxRetryDelay: TimeSpan.Zero) { }
+
         /// <inheritdoc />
         protected override bool ShouldRetryOn(
             Exception exception

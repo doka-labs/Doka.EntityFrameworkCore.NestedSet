@@ -1,0 +1,10 @@
+<Project>
+  <!-- WHY: Engineering executables inherit the product compiler baseline without becoming shipping packages. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup Label="Engineering tool defaults">
+    <OutputType>Exe</OutputType>
+    <IsTestProject>false</IsTestProject>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+</Project>

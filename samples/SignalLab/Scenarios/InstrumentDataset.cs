@@ -98,7 +98,9 @@ internal sealed record InstrumentDataset(
         PulseCount = pulses,
     };
 
-    /// <summary>Produces fixed fake keys for repeatable reset output without prescribing application key generation.</summary>
+    /// <summary>
+    /// Produces fixed fake keys for repeatable reset output without prescribing application key generation.
+    /// </summary>
     /// <param name="scenarioNumber">The sample-local scenario prefix.</param>
     /// <param name="ordinal">The instrument number within the scenario.</param>
     /// <returns>A deterministic synthetic identity.</returns>

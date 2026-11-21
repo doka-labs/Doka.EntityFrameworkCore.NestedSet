@@ -8,7 +8,7 @@ public abstract partial class HierarchyCompositionCapacityTests
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "Capacity")]
-    public async Task TopologyChangesCoverSecondBatchAndPreserveRootIdentity(
+    public async Task CorruptWideForRepairAsync_TopologyChanges_CoverSecondBatchAndPreserveRootIdentity(
         bool repair
     )
     {
@@ -19,7 +19,12 @@ public abstract partial class HierarchyCompositionCapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var setup = database.CreateContext();
-        await CapacitySeed.SeedAsync(setup, nodes, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(
+            setup,
+            nodes,
+            cancellationToken: TestContext.Current.CancellationToken,
+            deep: false,
+            corrupt: false);
 
         if (repair)
         {
@@ -67,7 +72,7 @@ public abstract partial class HierarchyCompositionCapacityTests
                 node.Depth,
                 node.Position,
             })
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(

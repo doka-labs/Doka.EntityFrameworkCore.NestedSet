@@ -5,7 +5,7 @@ public abstract partial class RelationalTests
     /// <summary>An invalid target is rejected without changing the forest.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveIntoDescendantIsRejected()
+    public async Task MoveToAsync_MoveIntoDescendant_IsRejected()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -29,7 +29,7 @@ public abstract partial class RelationalTests
     /// <summary>An invalid target is rejected without changing the forest.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveToMissingSiblingIsRejected()
+    public async Task MoveAfterAsync_MoveToMissingSibling_IsRejected()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -53,7 +53,7 @@ public abstract partial class RelationalTests
     /// <summary>A sibling in another scope cannot be used as a mutation target.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveToSiblingFromAnotherScopeIsRejected()
+    public async Task MoveAfterAsync_MoveToSiblingFromAnotherScope_IsRejected()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -91,7 +91,7 @@ public abstract partial class RelationalTests
     /// <summary>An invalid target is rejected without changing the forest.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteMissingNodeIsRejected()
+    public async Task DeleteAsync_DeleteMissingNode_IsRejected()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -115,7 +115,7 @@ public abstract partial class RelationalTests
     /// <summary>A failed insert restores assigned structure and the caller-owned entity.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DuplicateKeyRestoresDatabaseAndDetachedEntity()
+    public async Task InsertBeforeAsync_DuplicateKey_RestoresDatabaseAndDetachedEntity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -157,7 +157,7 @@ public abstract partial class RelationalTests
     /// <summary>Cancellation before mutation leaves all persisted structure unchanged.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task CanceledDeleteLeavesForestUnchanged()
+    public async Task DeleteSubtreeAsync_CanceledDelete_LeavesForestUnchanged()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -182,7 +182,7 @@ public abstract partial class RelationalTests
     /// <summary>Failure after range writes rolls the entire mutation back.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task CommandFailureRollsBackWrittenBounds()
+    public async Task InsertAsFirstChildAsync_CommandFailure_RollsBackWrittenBounds()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -210,7 +210,7 @@ public abstract partial class RelationalTests
     /// <summary>Cancellation during range writes rolls the entire mutation back.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MidWriteCancellationRollsBackWrittenBounds()
+    public async Task InsertAsFirstChildAsync_MidWriteCancellation_RollsBackWrittenBounds()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -240,7 +240,7 @@ public abstract partial class RelationalTests
     /// <summary>A failure after the database changed depth still rolls every structural value back.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task MoveFailureRollsBackExecutedDepthUpdate()
+    public async Task MoveToAsync_MoveFailure_RollsBackExecutedDepthUpdate()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -270,7 +270,7 @@ public abstract partial class RelationalTests
     /// <summary>A failure after the database changed depth still rolls every structural value back.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DeleteFailureRollsBackExecutedDepthUpdate()
+    public async Task DeleteAsync_DeleteFailure_RollsBackExecutedDepthUpdate()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -303,7 +303,7 @@ public abstract partial class RelationalTests
     [Theory]
     [InlineData(18)]
     [InlineData(36)]
-    public async Task InsertUsesConstantSetBasedUpdateCount(
+    public async Task InsertAsFirstChildAsync_Insert_UsesConstantSetBasedUpdateCount(
         int existingChildren
     )
     {
@@ -345,7 +345,7 @@ public abstract partial class RelationalTests
     /// <summary>The derived database constraint rejects a negative depth without changing the tree.</summary>
     /// <returns>A task that completes when the scenario has been verified.</returns>
     [Fact]
-    public async Task DatabaseConstraintRejectsNegativeDepthWithoutPartialWrites()
+    public async Task ExecuteUpdateAsync_DatabaseConstraint_RejectsNegativeDepthWithoutPartialWrites()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -367,127 +367,6 @@ public abstract partial class RelationalTests
 
         // Assert
         Assert.IsAssignableFrom<DbException>(error);
-        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>Moving a subtree rejects descendant depth overflow without partial writes.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task DescendantDepthOverflowRejectsMove()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDepthFailureTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await context
-            .Set<TreeNode>()
-            .AsNoTracking()
-            .Where(node => node.Tree == 1)
-            .Where(x => x.NodeId == 4)
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, int.MaxValue), CancellationToken.None);
-
-        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => tree.MoveToAsync(2, 7, CancellationToken.None));
-
-        // Assert
-        Assert.IsType<OverflowException>(error);
-        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>Inserting below the maximum depth cannot wrap the child depth.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task ParentDepthOverflowRejectsInsert()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await SeedDeepTreeAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-        await context
-            .Set<TreeNode>()
-            .AsNoTracking()
-            .Where(node => node.Tree == 1)
-            .Where(x => x.NodeId == 8)
-            .ExecuteUpdateAsync(x => x.SetProperty(n => n.Depth, int.MaxValue), CancellationToken.None);
-
-        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => tree.InsertChildAsync(
-            Node(9),
-            8,
-            cancellationToken: CancellationToken.None));
-
-        // Assert
-        Assert.IsType<OverflowException>(error);
-        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>The derived database constraint rejects a negative boundary without changing the tree.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task DatabaseConstraintRejectsNegativeBoundaryWithoutPartialWrites()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => context
-            .Set<TreeNode>()
-            .AsNoTracking()
-            .Where(node => node.Tree == 1)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(node => node.Start, -1), CancellationToken.None));
-
-        // Assert
-        Assert.IsAssignableFrom<DbException>(error);
-        Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
-    }
-
-    /// <summary>A full coordinate range is rejected instead of wrapping boundaries.</summary>
-    /// <returns>A task that completes when the scenario has been verified.</returns>
-    [Fact]
-    public async Task BoundaryOverflowRejectsInsert()
-    {
-        // Arrange
-        var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext();
-        var tree = context
-            .NestedSet<TreeNode>()
-            .ForScope(1);
-
-        await tree.InsertRootAsync(Node(1), Guid.Empty, CancellationToken.None);
-        await context
-            .Set<TreeNode>()
-            .AsNoTracking()
-            .Where(node => node.Tree == 1)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(node => node.End, long.MaxValue - 1),
-                CancellationToken.None);
-
-        var before = await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        var error = await Record.ExceptionAsync(() => tree.InsertChildAsync(Node(2), 1, CancellationToken.None));
-
-        // Assert
-        Assert.IsType<OverflowException>(error);
         Assert.Equal(before, await SnapshotAsync(context, 1, cancellationToken: TestContext.Current.CancellationToken));
     }
 }

@@ -1,0 +1,3 @@
+[*.cs]
+# WHY: Test names describe Method_Scenario_ExpectedBehavior; underscores are intentional in test code.
+dotnet_diagnostic.CA1707.severity = none

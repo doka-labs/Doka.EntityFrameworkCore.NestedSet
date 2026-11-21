@@ -18,7 +18,7 @@ public sealed class InspectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MillionNodeForestNeedsNoRepairs(
+    public void Inspect_MillionNodeForest_NeedsNoRepairs(
         bool deep
     )
     {
@@ -30,8 +30,11 @@ public sealed class InspectionTests
             nodes,
             parents,
             EqualityComparer<int>.Default,
-            true,
-            CancellationToken.None);
+            collectRepairs: true,
+            ordered: false,
+            collectIssues: false,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.True(result.CanRebuild);
@@ -44,7 +47,7 @@ public sealed class InspectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MillionCorruptNodesDoNotRetainValidationRepairs(
+    public void Inspect_MillionCorruptNodes_DoNotRetainValidationRepairs(
         bool deep
     )
     {
@@ -69,8 +72,11 @@ public sealed class InspectionTests
             nodes,
             parents,
             EqualityComparer<int>.Default,
-            false,
-            CancellationToken.None);
+            collectRepairs: false,
+            ordered: false,
+            collectIssues: false,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.True(result.CanRebuild);
@@ -80,7 +86,7 @@ public sealed class InspectionTests
 
     /// <summary>Verifies that persisted 64-bit coordinates are repaired without narrowing to 32 bits.</summary>
     [Fact]
-    public void RepairPlanPreservesTheLongCoordinateContract()
+    public void Inspect_RepairPlan_PreservesTheLongCoordinateContract()
     {
         // Arrange
         var (nodes, parents) = CreateForest(128, false);
@@ -96,8 +102,11 @@ public sealed class InspectionTests
             nodes,
             parents,
             EqualityComparer<int>.Default,
-            true,
-            CancellationToken.None);
+            collectRepairs: true,
+            ordered: false,
+            collectIssues: false,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.True(result.CanRebuild);
@@ -107,7 +116,7 @@ public sealed class InspectionTests
 
     /// <summary>Verifies cancellation before even an empty snapshot can be accepted as valid.</summary>
     [Fact]
-    public void CanceledInspectionDoesNotReturnAValidationResult()
+    public void Inspect_CanceledInspection_DoesNotReturnAValidationResult()
     {
         // Arrange
         var cancellationToken = new CancellationToken(true);
@@ -118,8 +127,11 @@ public sealed class InspectionTests
             [],
             parents,
             EqualityComparer<int>.Default,
-            false,
-            cancellationToken));
+            collectRepairs: false,
+            ordered: false,
+            collectIssues: false,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: cancellationToken));
 
         // Assert
         Assert.IsType<OperationCanceledException>(exception);
@@ -127,7 +139,7 @@ public sealed class InspectionTests
 
     /// <summary>Counts every damaged coordinate while retaining at most the requested diagnostic sample.</summary>
     [Fact]
-    public void FullInspectionBoundsIssueKeysWithoutLosingCounts()
+    public void Inspect_FullInspectionBoundsIssueKeysWithoutLosing_Counts()
     {
         // Arrange
         const int count = 20_000;
@@ -150,9 +162,11 @@ public sealed class InspectionTests
             nodes,
             parents,
             EqualityComparer<int>.Default,
-            false,
-            CancellationToken.None,
-            collectIssues: true);
+            collectRepairs: false,
+            ordered: false,
+            collectIssues: true,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.True(result.CanRebuild);
@@ -164,7 +178,7 @@ public sealed class InspectionTests
 
     /// <summary>An empty selected tree reports its root invariant with a typed tree-wide issue.</summary>
     [Fact]
-    public void EmptyTreeHasTypedRootIssue()
+    public void Inspect_EmptyTree_HasTypedRootIssue()
     {
         // Arrange
         var parents = new Dictionary<int, int>();
@@ -174,9 +188,11 @@ public sealed class InspectionTests
             [],
             parents,
             EqualityComparer<int>.Default,
-            false,
-            CancellationToken.None,
-            collectIssues: true);
+            collectRepairs: false,
+            ordered: false,
+            collectIssues: true,
+            issueLimit: NestedSetIssueCollector<int>.ReportLimit,
+            cancellationToken: CancellationToken.None);
 
         // Assert
         Assert.False(result.CanRebuild);

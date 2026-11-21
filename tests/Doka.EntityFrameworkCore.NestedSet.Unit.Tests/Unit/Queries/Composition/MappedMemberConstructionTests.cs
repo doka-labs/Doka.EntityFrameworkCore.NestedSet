@@ -1,18 +1,15 @@
-using System.Globalization;
 using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks deferred member construction, metadata isolation and the lifetime of mapped query reads.</summary>
 [Collection("Allocation measurements")]
-public sealed class MappedMemberConstructionTests
+public sealed partial class MappedMemberConstructionTests
 {
     /// <summary>Mapped reads bind each compatible alias and retain markers for unrelated aliases.</summary>
     [Fact]
-    public void MappedMemberUsesTheCurrentAliasWithoutReadingItsClrValue()
+    public void QueryProperty_MappedMember_UsesTheCurrentAliasWithoutReadingItsClrValue()
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
@@ -49,7 +46,7 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MappedMemberDoesNotCrossNamedMappingsOrModels(
+    public void QueryProperty_MappedMember_DoesNotCrossNamedMappingsOrModels(
         bool sameModel
     )
     {
@@ -89,7 +86,7 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MutableMetadataIsInspectedAgainAfterItsMappingIsRemoved(
+    public void RemoveProperty_MutableMetadata_IsInspectedAgainAfterItsMappingIsRemoved(
         bool convention
     )
     {
@@ -123,7 +120,7 @@ public sealed class MappedMemberConstructionTests
 
     /// <summary>Custom metadata wrappers retain their per-call property inspection.</summary>
     [Fact]
-    public void CustomMetadataKeepsItsPerCallInspection()
+    public void QueryProperty_CustomMetadata_KeepsItsPerCallInspection()
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
@@ -147,7 +144,7 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CustomReflectionIsNeverTreatedAsImmutable(
+    public void QueryProperty_CustomReflection_IsNeverTreatedAsImmutable(
         bool customDeclaringType
     )
     {
@@ -189,7 +186,7 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CustomExpressionTypeDoesNotAcquireAdditionalMetadataReads(
+    public void QueryProperty_CustomExpressionType_DoesNotAcquireAdditionalMetadataReads(
         bool warm
     )
     {
@@ -222,7 +219,7 @@ public sealed class MappedMemberConstructionTests
 
     /// <summary>Concurrent construction never retains another caller's query alias.</summary>
     [Fact]
-    public void ConcurrentConstructionKeepsEveryAliasIndependent()
+    public void For_ConcurrentConstruction_KeepsEveryAliasIndependent()
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
@@ -256,7 +253,7 @@ public sealed class MappedMemberConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ConstructionDoesNotRootModelsOrQueryAliases(
+    public void CollectGarbage_Construction_DoesNotRootModelsOrQueryAliases(
         bool retainModel
     )
     {
@@ -276,7 +273,7 @@ public sealed class MappedMemberConstructionTests
 
     /// <summary>Warm mapped reads add no per-call metadata allocation beyond the required member expression.</summary>
     [Fact]
-    public void MappedReadDoesNotAllocatePerCallMetadataState()
+    public void MeasureAllocations_MappedRead_DoesNotAllocatePerCallMetadataState()
     {
         // Arrange
         var (_, _, property) = RuntimeProperty();
@@ -326,282 +323,5 @@ public sealed class MappedMemberConstructionTests
                 .Options);
 
         return Assert.IsType<RuntimeModel>(context.Model);
-    }
-
-    /// <summary>Builds the mapped read on detached runtime metadata before dropping its construction frames.</summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] PopulateWeakMembers(
-        bool retainModel,
-        out IModel? retained
-    )
-    {
-        var options = new DbContextOptionsBuilder<ModelContext>().UseSqlite("Data Source=:memory:");
-        var services = new ServiceCollection();
-
-        foreach (var extension in options.Options.Extensions)
-        {
-            extension.ApplyServices(services);
-        }
-
-        using var provider = services.BuildServiceProvider();
-        using var context = new ModelContext(
-            options
-                .UseInternalServiceProvider(provider)
-                .Options);
-
-        var builder = new ModelBuilder(
-            context
-                .GetService<IConventionSetBuilder>()
-                .CreateConventionSet());
-
-        builder.SharedTypeEntity<MemberNode>(
-            "Mapped",
-            mapping =>
-            {
-                mapping.HasNoKey();
-                mapping.Property(node => node.Value);
-            });
-
-        // WHY: Pending DI resolver compilation can retain the provider and its cached context model.
-        // Initialize this independent model through EF's public services without entering ModelSource's
-        // cache, so that unrelated background work cannot become a root in this ownership counterexample.
-        var model = Assert.IsType<RuntimeModel>(
-            context
-                .GetService<IModelRuntimeInitializer>()
-                .Initialize(builder.FinalizeModel(), designTime: false));
-
-        var entity = ((IModel)model).FindEntityType("Mapped")!;
-        var property = entity.FindProperty(nameof(MemberNode.Value))!;
-
-        var alias = Expression.Parameter(typeof(MemberNode), "node");
-        _ = NestedSetExpressions.QueryProperty(alias, property);
-        retained = retainModel
-            ? model
-            : null;
-
-        return
-        [
-            new WeakReference(model), new WeakReference(entity), new WeakReference(property),
-            new WeakReference(alias),
-        ];
-    }
-
-    /// <summary>
-    /// Separates garbage collection from weak-target observation to avoid extending JIT local lifetimes.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void CollectGarbage()
-    {
-        // WHY: Complete repeated collect/finalizer passes before observing collectible model and member witnesses.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var attempt = 0; attempt < 8; attempt++)
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-        }
-    }
-
-    /// <summary>Measures only warm construction with preexisting alias and metadata objects.</summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureAllocations(
-        ParameterExpression alias,
-        IProperty property,
-        bool mapped
-    )
-    {
-        Expression? last = null;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Count repeated construction over the same prepared alias and property within one allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 1_024; index++)
-        {
-            last = mapped
-                ? NestedSetExpressions.QueryProperty(alias, property)
-                : Expression.MakeMemberAccess(alias, property.PropertyInfo!);
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        GC.KeepAlive(last);
-
-        return allocated;
-    }
-
-    /// <summary>Exposes metadata without ever permitting query construction to execute a CLR getter.</summary>
-    private class MemberNode
-    {
-        /// <summary>Supplies a real field for changing the mutable model's storage mapping.</summary>
-        public int Stored = -1;
-
-        /// <summary>Throws if a query builder accidentally reads the application instance.</summary>
-        public int Value => throw new InvalidOperationException($"{GetType().Name}.Value must remain deferred.");
-
-        /// <summary>Supplies an alternative member name for the mutable reflection counterexample.</summary>
-        public int Other => throw new InvalidOperationException($"{GetType().Name}.Other must remain deferred.");
-    }
-
-    /// <summary>Provides a compatible but distinct alias type for the same mapped CLR declaration.</summary>
-    private sealed class DerivedMemberNode : MemberNode;
-
-    /// <summary>Provides an incompatible alias with no relation to the mapped CLR declaration.</summary>
-    private sealed class UnrelatedNode;
-
-    /// <summary>Lets EF initialize an independent empty runtime model through its ordinary context services.</summary>
-    private sealed class ModelContext(
-        DbContextOptions<ModelContext> options
-    ) : DbContext(options);
-
-    /// <summary>
-    /// Exposes observable Type reads while behaving as a readable expression with an ordinary CLR type.
-    /// </summary>
-    private sealed class TypeObservationExpression : Expression
-    {
-        /// <summary>Gets the number of times query construction observed this expression's CLR type.</summary>
-        internal int TypeReads { get; private set; }
-
-        /// <inheritdoc />
-        public override ExpressionType NodeType => ExpressionType.Extension;
-
-        /// <inheritdoc />
-        public override Type Type
-        {
-            get
-            {
-                TypeReads++;
-
-                return typeof(MemberNode);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Wraps metadata to prove that custom implementations retain their original per-call inspection.
-    /// </summary>
-    public class MetadataProbe : DispatchProxy
-    {
-        /// <summary>Gets or sets the immutable metadata delegated by this custom implementation.</summary>
-        internal IProperty Target { get; set; } = null!;
-
-        /// <summary>Gets the number of actual property-member inspections.</summary>
-        internal int PropertyReads { get; private set; }
-
-        /// <inheritdoc />
-        protected override object? Invoke(
-            MethodInfo? targetMethod,
-            object?[]? args
-        )
-        {
-            var method = targetMethod ?? throw new InvalidOperationException("The proxy call requires metadata.");
-
-            if (method.Name == "get_PropertyInfo")
-            {
-                PropertyReads++;
-            }
-
-            return method.Invoke(Target, BindingFlags.DoNotWrapExceptions, null, args, null);
-        }
-    }
-
-    /// <summary>Changes assignability without changing the represented CLR type.</summary>
-    private sealed class MutableDeclaringType(
-        Type type
-    ) : TypeDelegator(type)
-    {
-        /// <summary>Gets or sets whether the next alias check accepts the represented type.</summary>
-        internal bool AcceptsAlias { get; set; } = true;
-
-        /// <inheritdoc />
-        public override bool IsAssignableFrom(
-            Type? candidate
-        ) => AcceptsAlias && base.IsAssignableFrom(candidate);
-    }
-
-    /// <summary>Preserves a real getter while deliberately exposing mutable reflection facts.</summary>
-    private sealed class MutableProperty(
-        PropertyInfo property,
-        Type declaringType
-    ) : PropertyInfo
-    {
-        /// <summary>Gets or sets the name reported to EF's exact mapped-member lookup.</summary>
-        internal string ReportedName { get; set; } = property.Name;
-
-        /// <inheritdoc />
-        public override PropertyAttributes Attributes => property.Attributes;
-
-        /// <inheritdoc />
-        public override bool CanRead => property.CanRead;
-
-        /// <inheritdoc />
-        public override bool CanWrite => property.CanWrite;
-
-        /// <inheritdoc />
-        public override Type PropertyType => property.PropertyType;
-
-        /// <inheritdoc />
-        public override Type DeclaringType => declaringType;
-
-        /// <inheritdoc />
-        public override string Name => ReportedName;
-
-        /// <inheritdoc />
-        public override Type? ReflectedType => property.ReflectedType;
-
-        /// <inheritdoc />
-        public override MethodInfo[] GetAccessors(
-            bool nonPublic
-        ) => property.GetAccessors(nonPublic);
-
-        /// <inheritdoc />
-        public override MethodInfo? GetGetMethod(
-            bool nonPublic
-        ) => property.GetGetMethod(nonPublic);
-
-        /// <inheritdoc />
-        public override MethodInfo? GetSetMethod(
-            bool nonPublic
-        ) => property.GetSetMethod(nonPublic);
-
-        /// <inheritdoc />
-        public override ParameterInfo[] GetIndexParameters() => property.GetIndexParameters();
-
-        /// <inheritdoc />
-        public override object? GetValue(
-            object? obj,
-            BindingFlags invokeAttr,
-            Binder? binder,
-            object?[]? index,
-            CultureInfo? culture
-        ) => property.GetValue(obj, invokeAttr, binder, index, culture);
-
-        /// <inheritdoc />
-        public override void SetValue(
-            object? obj,
-            object? value,
-            BindingFlags invokeAttr,
-            Binder? binder,
-            object?[]? index,
-            CultureInfo? culture
-        ) => property.SetValue(obj, value, invokeAttr, binder, index, culture);
-
-        /// <inheritdoc />
-        public override object[] GetCustomAttributes(
-            bool inherit
-        ) => property.GetCustomAttributes(inherit);
-
-        /// <inheritdoc />
-        public override object[] GetCustomAttributes(
-            Type attributeType,
-            bool inherit
-        )
-            => property.GetCustomAttributes(attributeType, inherit);
-
-        /// <inheritdoc />
-        public override bool IsDefined(
-            Type attributeType,
-            bool inherit
-        ) => property.IsDefined(attributeType, inherit);
     }
 }

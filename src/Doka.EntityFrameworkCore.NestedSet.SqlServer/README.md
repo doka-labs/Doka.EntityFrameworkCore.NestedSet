@@ -8,28 +8,28 @@ transaction/lifecycle coordination.
 ## Install
 
 ```sh
-dotnet package add Doka.EntityFrameworkCore.NestedSet.SqlServer --version 10.3.0
+dotnet package add Doka.EntityFrameworkCore.NestedSet.SqlServer --version 10.4.0
 ```
 
 The adapter brings in `Doka.EntityFrameworkCore.NestedSet`, `Doka.NestedSet`,
 and `Microsoft.EntityFrameworkCore.SqlServer` `[10.0.13,11.0.0)` transitively. Use one qualified
-NestedSet version across the application's NestedSet packages. Version `10.3.0`
+NestedSet version across the application's NestedSet packages. Version `10.4.0`
 is the stable six-package source contract. Owned asynchronous operations
 require an explicit `CancellationToken`; use the caller's token or deliberately
 pass `CancellationToken.None`. See the [upgrade guide](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/main/docs/upgrading-provider-packages.md#upgrade-from-1020-to-1030)
 when updating from an earlier release.
 
-The adapter requires exactly the matching common EF kernel version, `[10.3.0]`
+The adapter requires exactly the matching common EF kernel version, `[10.4.0]`
 for this release. Update all selected NestedSet adapters together.
 
-`10.3.0` retains the common `HasTreeRegistryTable(...)` configuration and
+`10.4.0` retains the common `HasTreeRegistryTable(...)` configuration and
 manual-detection/save-recovery corrections introduced in `10.2.0`. Registration
 remains in the native provider callback; the default registry schema is unchanged.
 
 The shipping dependency graph explicitly raises `System.Security.Cryptography.Pkcs`
 to a minimum of `9.0.21`, without an upper bound, for the native SQL Client path.
 That security floor is a SQL Server adapter dependency, not a dependency of
-the common kernel. Repository qualification uses PKCS 10.0.14 for .NET 10;
+the common kernel. Repository qualification uses PKCS 10.0.15 for .NET 10;
 applications already using the patched 9.0.21 need no forced update.
 Native SQL Server qualification requires supported Linux x86-64 hosts; ARM emulation
 is not the supported qualification environment.

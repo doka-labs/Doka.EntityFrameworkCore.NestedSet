@@ -46,7 +46,9 @@ internal static class NestedSetExpressions
         Type resultType
     ) => Property(ContainingInstance(entity, property.DeclaringType), property.Name, resultType);
 
-    /// <summary>Reads an exact mapped CLR member in a query, retaining EF markers for shadow or complex storage.</summary>
+    /// <summary>
+    /// Reads an exact mapped CLR member in a query, retaining EF markers for shadow or complex storage.
+    /// </summary>
     /// <param name="entity">The mapped query alias, never an application value to evaluate.</param>
     /// <param name="property">The exact finalized scalar metadata.</param>
     /// <returns>A typed server-side member access or the equivalent EF property marker.</returns>

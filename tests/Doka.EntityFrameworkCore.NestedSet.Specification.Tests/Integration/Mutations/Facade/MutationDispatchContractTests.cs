@@ -52,7 +52,7 @@ public abstract class MutationDispatchContractTests : ProviderTest
     /// <returns>A task that completes after verifying early rejection and every observable state boundary.</returns>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task WrongArgumentTypeRejectsBeforeSqlAndPreservesState(
+    public async Task DispatchAsync_WrongArgumentType_RejectsBeforeSqlAndPreservesState(
         string route
     )
     {

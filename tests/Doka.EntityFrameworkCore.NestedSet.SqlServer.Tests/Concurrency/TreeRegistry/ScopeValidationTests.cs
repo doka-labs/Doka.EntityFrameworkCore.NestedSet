@@ -22,7 +22,7 @@ public sealed class ScopeValidationTests : ProviderTest,
 
     /// <summary>Verifies a bounded Scope cannot be truncated into another persisted tree identity.</summary>
     [Fact]
-    public async Task OversizedStringScopeIsRejectedBeforeSql()
+    public async Task Parse_OversizedStringScope_IsRejectedBeforeSql()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(

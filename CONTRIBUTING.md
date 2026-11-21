@@ -52,10 +52,10 @@ dotnet test Doka.EntityFrameworkCore.NestedSet.slnx \
 
 The ordinary migration project must have no SafeMigrations reference.
 SafeMigrations tests extend the contract; they do not define runtime support.
-The current optional suite retains the adapter contract now declared with
-published Doka 10.6.3 and SafeMigrations Core/adapters 10.6.1. Use the central
-package graph; do not add legacy expectations, compatibility skips or weaker
-assertions to make it green. The
+The optional suite uses the declared adapter graph from the
+[support matrix](docs/support-and-qualification.md) and central package file.
+Do not add legacy expectations, compatibility skips or weaker assertions to
+make it green. The
 [provider qualification](docs/qualification/provider-migrations.md) separates
 fresh published-package verification from the earlier same-source local
 Core/adapter measurements. A package update alone does not rerun those tests.
@@ -179,9 +179,10 @@ Place runtime tests in the existing C# projects. Share fixtures while isolating
 test data, and preserve provider coverage and the separation between ordinary EF
 migrations and optional SafeMigrations tests. Migration changes need real empty
 and upgrade database checks, including relevant data/history/replay assertions.
-See [test project ownership](docs/implementation-design.md#test-project-ownership),
-[generated property maintenance](docs/regression-coverage.md#maintaining-generated-properties)
-and [regression coverage](docs/regression-coverage.md) for technical details.
+Use `Method_Scenario_ExpectedBehavior` for test names. Preserve discovery,
+reflection lookup, theory variants, and qualification filters when renaming.
+See the [test guide](docs/testing.md) for fixture ownership, generated-property
+maintenance, and choosing the relevant checks.
 Allocation and GC-lifetime controls retain the existing
 [uninstrumented partition](docs/performance.md#coverage-collector-18110-and-unloadability).
 
@@ -203,10 +204,10 @@ private review notes or local workspace files.
 
 ## Dependency updates
 
-A dependency change requires project-owner approval. The six shipping
-packages under `src/` commit `packages.lock.json`; tests, samples, benchmarks,
-and engineering tools restore their own graphs without committed locks.
-Review affected shipping locks, including transitive changes. After approval,
+A dependency change requires project-owner approval. Every solution project
+commits its `packages.lock.json`, including tests, samples, benchmarks, and
+engineering tools. Review all affected graphs, including transitive changes;
+nonshipping pins must not leak into shipping dependency declarations. After approval,
 update the dependency declarations and restore:
 
 ```sh

@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
-    <Compile Update="Registry/MySqlNestedSetProvider.Rowsets.cs">
-      <DependentUpon>MySqlNestedSetProvider.Registry.cs</DependentUpon>
+    <Compile Update="**/MySqlNestedSetProvider.*.cs">
+      <DependentUpon>../MySqlNestedSetProvider.cs</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

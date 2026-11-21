@@ -10,7 +10,7 @@ public sealed partial class SignalReportConstructionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NearestCandidatesRetainIndependentClassificationSlots(
+    public void FirstMatches_NearestCandidates_RetainIndependentClassificationSlots(
         bool sameType
     )
     {
@@ -41,15 +41,15 @@ public sealed partial class SignalReportConstructionTests
             .Compile();
 
         // Act
-        var actual = new[]
-        {
+        bool[] actual =
+        [
             firstMatches(firstNode),
             firstMatches(secondNode),
             firstMatches(otherNode),
             secondMatches(firstNode),
             secondMatches(secondNode),
             secondMatches(otherNode),
-        };
+        ];
 
         // Assert
         Assert.Equal([true, sameType, false, sameType, true, false], actual);

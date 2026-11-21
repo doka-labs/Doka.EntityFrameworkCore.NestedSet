@@ -5,19 +5,27 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Protects allocation-free fixed-syntax reuse on the real shadow-property reporting model.</summary>
-/// <param name="output">Records all measured allocation observations.</param>
 [Collection("Allocation measurements")]
-public sealed class SignalPathConstructionAllocationTests(
-    ITestOutputHelper output
-)
+public sealed class SignalPathConstructionAllocationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Records all measured allocation observations.</param>
+    public SignalPathConstructionAllocationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Independent bound proofs reuse their literals without retaining another endpoint alias.</summary>
     /// <param name="engine">The real configured dialect; no server discovery or database access is needed.</param>
     [Theory]
     [InlineData("Sqlite")]
     [InlineData("MariaDb")]
     [InlineData("MySql")]
-    public void IndependentPathBuildsReuseFixedSyntaxWithoutRetainingAliases(
+    public void Build_IndependentPathBuilds_ReuseFixedSyntaxWithoutRetainingAliases(
         string engine
     )
     {
@@ -65,7 +73,7 @@ public sealed class SignalPathConstructionAllocationTests(
         var allocated = QueryConstructionAllocation.Measure(operation);
 
         // Assert
-        output.WriteLine($"Complete path: engine={engine}; observed bytes/build={allocated}.");
+        _output.WriteLine($"Complete path: engine={engine}; observed bytes/build={allocated}.");
         var firstLiterals = Literals(first);
         var secondLiterals = Literals(second);
 

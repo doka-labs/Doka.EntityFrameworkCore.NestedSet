@@ -10,15 +10,18 @@ internal static class SupervisorScenario
     /// <summary>Creates users, selects supervisors without loading an anchor, and moves one reporting line.</summary>
     /// <param name="configuration">The sample-owned database.</param>
     /// <param name="details">Whether output includes persisted hierarchy coordinates.</param>
+    /// <param name="output">The writer owned by this invocation.</param>
     /// <param name="cancellationToken">The token used for every database call.</param>
     /// <returns>A task that completes after both hierarchies and group grants have been verified.</returns>
     public static async Task RunAsync(
         SampleDatabaseConfiguration configuration,
         bool details,
+        TextWriter output,
         CancellationToken cancellationToken
     )
     {
         await SampleConsole.HeadingAsync(
+            output,
             "SUPERVISORS: business Position and hidden nested-set coordinates",
             cancellationToken);
 
@@ -132,6 +135,7 @@ internal static class SupervisorScenario
             s_userTreeId,
             "Before the reporting-line change:",
             details,
+            output,
             cancellationToken);
 
         var originalManagers = await users
@@ -152,6 +156,7 @@ internal static class SupervisorScenario
             s_userTreeId,
             "After Taylor moves below the Finance director:",
             details,
+            output,
             cancellationToken);
 
         // WHY: AncestorsOf starts from a key; no tracked User or shadow coordinate must be loaded first.
@@ -193,6 +198,7 @@ internal static class SupervisorScenario
 
         await GroupScenarioData.ValidateAsync(context, s_tenantId, s_groupTreeId, cancellationToken);
         await SampleConsole.WriteLineAsync(
+            output,
             "Filtered supervisor: Jordan (Director); Taylor keeps logs.read and invoices.read from two groups.",
             cancellationToken);
     }

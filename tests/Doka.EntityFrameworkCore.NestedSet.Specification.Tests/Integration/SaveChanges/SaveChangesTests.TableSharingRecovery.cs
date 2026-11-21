@@ -16,7 +16,7 @@ public abstract partial class SaveChangesTests
     [InlineData("none", "completion", true)]
     [InlineData("owned", "completion", true)]
     [InlineData("split", "completion", true)]
-    public async Task TableSharingRollbackRestoresUnchangedPeer(
+    public async Task SaveChangesAsync_TableSharingRollback_RestoresUnchangedPeer(
         string shape,
         string fault,
         bool rawUnmarkedPayload
@@ -123,7 +123,7 @@ public abstract partial class SaveChangesTests
     [InlineData("owned", true)]
     [InlineData("split", false)]
     [InlineData("split", true)]
-    public async Task TableSharingRollbackAllowsIdenticalRetry(
+    public async Task SaveChangesAsync_TableSharingRollback_AllowsIdenticalRetry(
         string shape,
         bool hierarchyFailure
     )
@@ -194,7 +194,7 @@ public abstract partial class SaveChangesTests
     [InlineData("owned", true)]
     [InlineData("split", false)]
     [InlineData("split", true)]
-    public async Task TableSharingSuccessfulSavePreservesUnmarkedPayload(
+    public async Task SaveChangesAsync_TableSharingSuccessfulSave_PreservesUnmarkedPayload(
         string shape,
         bool rawUnmarkedPayload
     )

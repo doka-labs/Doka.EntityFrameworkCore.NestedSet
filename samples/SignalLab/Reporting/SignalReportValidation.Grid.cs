@@ -3,21 +3,30 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 internal static partial class SignalReportValidation
 {
     /// <summary>Indexes selected scalar sums and preserves every foreign identity for duplicate rejection.</summary>
-    private struct GridAccumulator(
-        ValidatedSignalReport request,
-        int capacity
-    )
+    private struct GridAccumulator
     {
         // WHY: Two optional ordinal buffers use at most 512 stack bytes, independent of selection size.
         private const int StackOrdinalLimit = 64;
 
-        private readonly Dictionary<int, double> _values = new(capacity);
-        private readonly bool _canIndex = CanIndexSelectedCells(request);
+        private readonly Dictionary<int, double> _values;
+        private readonly bool _canIndex;
+        private readonly ValidatedSignalReport _request;
         private Dictionary<Guid, int>? _anchors;
         private Dictionary<Guid, int>? _channels;
         private Dictionary<CapturePort, int>? _sources;
         private HashSet<(Guid AnchorId, Guid ChannelId, CapturePort Source)>? _foreignKeys;
         private (Guid AnchorId, Guid ChannelId, CapturePort Source)? _duplicate;
+
+        /// <summary>Owns the same bounded state and retained immutable selection as the streamed reader.</summary>
+        internal GridAccumulator(
+            ValidatedSignalReport request,
+            int capacity
+        )
+        {
+            _request = request;
+            _values = new Dictionary<int, double>(capacity);
+            _canIndex = CanIndexSelectedCells(request);
+        }
 
         /// <summary>Checks complete tuple identity without retaining materialized aggregate DTOs.</summary>
         internal bool Add(
@@ -25,15 +34,15 @@ internal static partial class SignalReportValidation
         )
         {
             var anchor = _canIndex
-                ? FindIndex(request.AnchorIds, ref _anchors, total.AnchorId)
+                ? FindIndex(_request.AnchorIds, ref _anchors, total.AnchorId)
                 : -1;
 
             var channel = anchor >= 0
-                ? FindIndex(request.ChannelIds, ref _channels, total.ChannelId)
+                ? FindIndex(_request.ChannelIds, ref _channels, total.ChannelId)
                 : -1;
 
             var source = channel >= 0
-                ? FindIndex(request.Sources, ref _sources, total.Source)
+                ? FindIndex(_request.Sources, ref _sources, total.Source)
                 : -1;
 
             var selected = anchor >= 0 && channel >= 0 && source >= 0;
@@ -74,7 +83,7 @@ internal static partial class SignalReportValidation
 
             // WHY: The offset index never reserves the Cartesian grain or throws on an unrepresentable one.
             // Only this final check may reject its size, after complete reading and duplicate validation.
-            var count = checked(request.AnchorIds.Length * request.ChannelIds.Length * request.Sources.Length);
+            var count = checked(_request.AnchorIds.Length * _request.ChannelIds.Length * _request.Sources.Length);
             var result = new SignalReportCell[count];
 
             if (_values.Count == 0)
@@ -83,11 +92,11 @@ internal static partial class SignalReportValidation
                 // Missing-only grids need no membership maps, ordinal buffers, or per-cell dictionary probes.
                 var missing = 0;
 
-                foreach (var anchor in request.AnchorIds)
+                foreach (var anchor in _request.AnchorIds)
                 {
-                    foreach (var channel in request.ChannelIds)
+                    foreach (var channel in _request.ChannelIds)
                     {
-                        foreach (var source in request.Sources)
+                        foreach (var source in _request.Sources)
                         {
                             result[missing++] = new SignalReportCell(anchor, channel, source, false, 0);
                         }
@@ -97,56 +106,56 @@ internal static partial class SignalReportValidation
                 return result;
             }
 
-            var repeatAnchors = HasRepeatedSelections(request.AnchorIds, _anchors);
-            var repeatChannels = HasRepeatedSelections(request.ChannelIds, _channels);
-            var repeatSources = HasRepeatedSelections(request.Sources, _sources);
+            var repeatAnchors = HasRepeatedSelections(_request.AnchorIds, _anchors);
+            var repeatChannels = HasRepeatedSelections(_request.ChannelIds, _channels);
+            var repeatSources = HasRepeatedSelections(_request.Sources, _sources);
 
             // WHY: Normal snapshotted selections need no ordinal buffers. Repeated internal-adapter choices
             // are resolved once; bounded stack storage avoids small arrays without risking a large stack frame.
             var channels = repeatChannels
-                ? request.ChannelIds.Length <= StackOrdinalLimit
-                    ? stackalloc int[request.ChannelIds.Length]
-                    : new int[request.ChannelIds.Length]
+                ? _request.ChannelIds.Length <= StackOrdinalLimit
+                    ? stackalloc int[_request.ChannelIds.Length]
+                    : new int[_request.ChannelIds.Length]
                 : [];
 
             var sources = repeatSources
-                ? request.Sources.Length <= StackOrdinalLimit
-                    ? stackalloc int[request.Sources.Length]
-                    : new int[request.Sources.Length]
+                ? _request.Sources.Length <= StackOrdinalLimit
+                    ? stackalloc int[_request.Sources.Length]
+                    : new int[_request.Sources.Length]
                 : [];
 
-            FillRepeatedOrdinals(request.ChannelIds, _channels, channels);
-            FillRepeatedOrdinals(request.Sources, _sources, sources);
+            FillRepeatedOrdinals(_request.ChannelIds, _channels, channels);
+            FillRepeatedOrdinals(_request.Sources, _sources, sources);
             var index = 0;
 
             // WHY: Preserve requested anchor order and resolve each repeated anchor ordinal once per output row group.
             // ReSharper disable once ForCanBeConvertedToForeach
             // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var anchor = 0; anchor < request.AnchorIds.Length; anchor++)
+            for (var anchor = 0; anchor < _request.AnchorIds.Length; anchor++)
             {
                 // WHY: This outer loop resolves each anchor position only once. Its repeated first ordinal
                 // needs no buffer; larger selections already have the membership map populated by Add.
                 var anchorIndex = !repeatAnchors
                     ? anchor
                     : _anchors is null
-                        ? Array.IndexOf(request.AnchorIds, request.AnchorIds[anchor], 0, anchor + 1)
-                        : _anchors[request.AnchorIds[anchor]];
+                        ? Array.IndexOf(_request.AnchorIds, _request.AnchorIds[anchor], 0, anchor + 1)
+                        : _anchors[_request.AnchorIds[anchor]];
 
                 // WHY: Reuse precomputed channel ordinals while preserving requested output order.
                 // ReSharper disable once ForCanBeConvertedToForeach
                 // ReSharper disable once LoopCanBeConvertedToQuery
-                for (var channel = 0; channel < request.ChannelIds.Length; channel++)
+                for (var channel = 0; channel < _request.ChannelIds.Length; channel++)
                 {
                     var channelIndex = channels.IsEmpty
                         ? channel
                         : channels[channel];
 
-                    var prefix = (anchorIndex * request.ChannelIds.Length + channelIndex) * request.Sources.Length;
+                    var prefix = (anchorIndex * _request.ChannelIds.Length + channelIndex) * _request.Sources.Length;
 
                     // WHY: Fill the flat output grid using the matching anchor, channel and source ordinals.
                     // ReSharper disable once ForCanBeConvertedToForeach
                     // ReSharper disable once LoopCanBeConvertedToQuery
-                    for (var source = 0; source < request.Sources.Length; source++)
+                    for (var source = 0; source < _request.Sources.Length; source++)
                     {
                         var sourceIndex = sources.IsEmpty
                             ? source
@@ -154,9 +163,9 @@ internal static partial class SignalReportValidation
 
                         var exists = _values.TryGetValue(prefix + sourceIndex, out var value);
                         result[index++] = new SignalReportCell(
-                            request.AnchorIds[anchor],
-                            request.ChannelIds[channel],
-                            request.Sources[source],
+                            _request.AnchorIds[anchor],
+                            _request.ChannelIds[channel],
+                            _request.Sources[source],
                             exists,
                             value);
                     }
@@ -180,7 +189,7 @@ internal static partial class SignalReportValidation
                 // WHY: A stored total passed _canIndex and every axis membership. The complete grain is
                 // therefore positive and fits Int32; deriving it only at a full boundary cannot move overflow
                 // rejection ahead of EOF. Reading actual BCL capacity avoids duplicated capacity-tracking state.
-                var maximum = request.AnchorIds.Length * request.ChannelIds.Length * request.Sources.Length;
+                var maximum = _request.AnchorIds.Length * _request.ChannelIds.Length * _request.Sources.Length;
                 if (maximum > _values.Count
                     && maximum < (long)_values.Count * 2
                     && !_values.ContainsKey(offset))
@@ -199,7 +208,7 @@ internal static partial class SignalReportValidation
             int anchor,
             int channel,
             int source
-        ) => (anchor * request.ChannelIds.Length + channel) * request.Sources.Length + source;
+        ) => (anchor * _request.ChannelIds.Length + channel) * _request.Sources.Length + source;
 
         /// <summary>Checks offset representability without moving overflow rejection ahead of reader EOF.</summary>
         private static bool CanIndexSelectedCells(

@@ -2,9 +2,15 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Maps real navigation identifiers for entity and collection-DTO subtree projections.</summary>
 /// <param name="options">The provider-owned connection and context-specific observers.</param>
-internal sealed class CompositionNavigationContext(DbContextOptions<CompositionNavigationContext> options)
-    : DbContext(options)
+internal sealed class CompositionNavigationContext
+    : DbContext
 {
+    /// <summary>Uses the configured model and database connection.</summary>
+    /// <param name="options">The exact Entity Framework options supplied by the fixture.</param>
+    public CompositionNavigationContext(
+        DbContextOptions<CompositionNavigationContext> options
+    ) : base(options) { }
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder modelBuilder

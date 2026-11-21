@@ -17,7 +17,7 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
 
     /// <summary>A shadow assignment rejected before tracking still leaves its root under import ownership.</summary>
     [Fact]
-    public async Task ShadowAssignmentFailureReleasesTheUntrackedRoot()
+    public async Task ImportShadowWithoutRetainingInputAsync_ShadowAssignmentFailure_ReleasesTheUntrackedRoot()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -27,10 +27,13 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<ShadowStagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new ShadowStagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -73,7 +76,7 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedStagingReleasesItsInputAndPreservesUnrelatedTracking(
+    public async Task ImportWithoutRetainingInputAsync_FailedStaging_ReleasesItsInputAndPreservesUnrelatedTracking(
         bool getter
     )
     {
@@ -85,10 +88,13 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);
@@ -100,7 +106,9 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         var result = await ImportWithoutRetainingInputAsync(
             context,
             getter,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            tracking: false,
+            payload: false);
 
         // Assert
         Assert.True(result.Error?.GetBaseException() is InjectedCommandException, result.Error?.ToString());
@@ -133,7 +141,7 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task IdentityConflictReleasesInputWithoutRemovingExistingIdentity(
+    public async Task InsertForestAsync_IdentityConflict_ReleasesInputWithoutRemovingExistingIdentity(
         bool alternate
     )
     {
@@ -145,10 +153,13 @@ public sealed partial class BulkStagingRetentionTests : ProviderTest,
         await using var source = database.CreateContext();
         var options = new DbContextOptionsBuilder<StagingContext>()
             .ConfigureTestWarnings()
-            .UseSqlite(source.Database.GetConnectionString(), provider => provider.UseNestedSets())
+            .UseSqlite(source.Database.GetConnectionString(), provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets())
             .Options;
 
         await using var context = new StagingContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         await context
             .GetService<IRelationalDatabaseCreator>()
             .CreateTablesAsync(CancellationToken.None);

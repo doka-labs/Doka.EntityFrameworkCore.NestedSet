@@ -2,9 +2,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public abstract partial class NestedSetMutationFacadeTests
 {
-    /// <summary>Explicit mutations reject a tracked entity from the affected tree before changing the database.</summary>
+    /// <summary>
+    /// Explicit mutations reject a tracked entity from the affected tree before changing the database.
+    /// </summary>
     [Fact]
-    public async Task MutationRejectsTrackedEntityFromAffectedTree()
+    public async Task InsertChildAsync_Mutation_RejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -42,7 +44,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Explicit mutations allow unchanged tracked entities belonging only to an unaffected tree.</summary>
     [Fact]
-    public async Task MutationAllowsTrackedEntityFromUnaffectedTree()
+    public async Task InsertChildAsync_Mutation_AllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -78,7 +80,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Subtree import accepts an unchanged tracked node in another tree.</summary>
     [Fact]
-    public async Task SubtreeImportAllowsTrackedEntityFromUnaffectedTree()
+    public async Task InsertSubtreeAsync_SubtreeImport_AllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -117,7 +119,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Repair of one exact tree accepts an unchanged tracked node in another tree.</summary>
     [Fact]
-    public async Task RebuildAllowsTrackedEntityFromUnaffectedTree()
+    public async Task RebuildAsync_Rebuild_AllowsTrackedEntityFromUnaffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -148,7 +150,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Subtree import still rejects tracking in the tree it will rewrite.</summary>
     [Fact]
-    public async Task SubtreeImportRejectsTrackedEntityFromAffectedTree()
+    public async Task InsertSubtreeAsync_SubtreeImport_RejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -183,7 +185,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>Rebuild still rejects tracking in the tree it will repair.</summary>
     [Fact]
-    public async Task RebuildRejectsTrackedEntityFromAffectedTree()
+    public async Task RebuildAsync_Rebuild_RejectsTrackedEntityFromAffectedTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -211,7 +213,7 @@ public abstract partial class NestedSetMutationFacadeTests
 
     /// <summary>A cross-tree mutation rejects tracked entities from either affected tree.</summary>
     [Fact]
-    public async Task CrossTreeMoveRejectsTrackedEntityFromDestinationTree()
+    public async Task MoveToAsync_CrossTreeMove_RejectsTrackedEntityFromDestinationTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

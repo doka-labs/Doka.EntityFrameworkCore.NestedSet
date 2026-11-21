@@ -54,10 +54,15 @@ internal static class Program
 
             var selected = command.Scenario == "all"
                 ? ScenarioNames
-                : new[] { command.Scenario };
+                : [command.Scenario];
 
-            foreach (var scenario in selected)
+            // WHY: The scenario list is indexable and runs in the documented introductory order.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
+            for (var scenarioIndex = 0; scenarioIndex < selected.Count; scenarioIndex++)
             {
+                var scenario = selected[scenarioIndex];
+
                 // WHY: A fresh EF unit of work prevents tracked state from an earlier scenario affecting this flow.
                 await using var context = CreateContext(configuration, readOnly: false);
 

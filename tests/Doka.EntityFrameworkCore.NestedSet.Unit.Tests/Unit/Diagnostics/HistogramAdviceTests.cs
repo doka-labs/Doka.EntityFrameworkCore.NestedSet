@@ -11,7 +11,7 @@ public sealed class HistogramAdviceTests
     [Theory]
     [InlineData("nestedset.operation.duration")]
     [InlineData("nestedset.lock.wait.duration")]
-    public async Task DurationHistogramPublishesSecondsBasedBucketAdvice(
+    public async Task ExecuteAsync_DurationHistogram_PublishesSecondsBasedBucketAdvice(
         string name
     )
     {

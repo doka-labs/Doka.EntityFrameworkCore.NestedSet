@@ -9,7 +9,7 @@ public sealed partial class HierarchyChangeDetectionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SupplementalParentCapturePreservesUnexpectedMembershipCleanup(
+    public async Task Restore_SupplementalParentCapture_PreservesUnexpectedMembershipCleanup(
         bool installed
     )
     {

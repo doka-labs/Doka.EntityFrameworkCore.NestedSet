@@ -52,7 +52,7 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
 
         NestedSetGuards.RequireBounds(source);
 
-        var destination = await ResolveAsync(key, source.Parent, cancellationToken)
+        var destination = await ResolveAsync(key, source.Parent, knownParent: null, cancellationToken)
             .ConfigureAwait(false);
 
         var changed = await new NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>(_store)
@@ -89,8 +89,8 @@ internal sealed class NestedSetOrderer<TEntity, TKey, TTreeId, TScope>
     internal async Task<NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination> ResolveAsync(
         TKey key,
         NestedSetParent<TKey> parent,
-        CancellationToken cancellationToken,
-        NestedSetNode<TKey>? knownParent = null
+        NestedSetNode<TKey>? knownParent,
+        CancellationToken cancellationToken
     )
     {
         long firstBoundary = 1;

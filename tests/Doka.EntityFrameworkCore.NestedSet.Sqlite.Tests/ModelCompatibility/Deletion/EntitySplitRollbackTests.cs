@@ -19,7 +19,7 @@ public sealed class EntitySplitRollbackTests : ProviderTest
 
     /// <summary>A later fragment failure rolls back earlier fragment deletes and parent unlinking.</summary>
     [Fact]
-    public async Task EntitySplitDeleteFailureRestoresWholeSubtree()
+    public async Task DeleteSubtreeAsync_EntitySplitDeleteFailure_RestoresWholeSubtree()
     {
         // Arrange
         await using var context = await _fixture.CreateContextAsync<EntitySplitContext>(
@@ -70,7 +70,8 @@ public sealed class EntitySplitRollbackTests : ProviderTest
                 context,
                 "EntitySplitPayload",
                 scenario.Seed,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                lastOffset: 4));
 
         Assert.Equal(
             5,
@@ -78,7 +79,8 @@ public sealed class EntitySplitRollbackTests : ProviderTest
                 context,
                 "EntitySplitStructure",
                 scenario.Seed,
-                cancellationToken: TestContext.Current.CancellationToken));
+                cancellationToken: TestContext.Current.CancellationToken,
+                lastOffset: 4));
 
         Assert.True(
             (await context

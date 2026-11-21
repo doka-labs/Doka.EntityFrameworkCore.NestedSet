@@ -3,7 +3,20 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Doka.EntityFrameworkCore.NestedSet.Samples.UserGroups</RootNamespace>
   </PropertyGroup>
+  <ItemGroup Label="Provider adapters and design tooling">
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.MySql/Doka.EntityFrameworkCore.NestedSet.MySql.csproj" />
+    <ProjectReference Include="../../src/Doka.EntityFrameworkCore.NestedSet.Sqlite/Doka.EntityFrameworkCore.NestedSet.Sqlite.csproj" />
+    <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
   <ItemGroup Label="IDE file nesting">
+    <Compile Update="Scenarios/GroupSupervisorScenario.*.cs">
+      <DependentUpon>GroupSupervisorScenario.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Program.*.cs">
+      <DependentUpon>Program.cs</DependentUpon>
+    </Compile>
     <Compile Update="Queries/Supervisors/SupervisorQueries.*.cs">
       <DependentUpon>SupervisorQueries.cs</DependentUpon>
     </Compile>

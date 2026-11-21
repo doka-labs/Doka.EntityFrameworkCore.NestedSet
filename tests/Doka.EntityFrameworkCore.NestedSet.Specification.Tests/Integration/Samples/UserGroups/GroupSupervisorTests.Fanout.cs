@@ -14,14 +14,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData("frontier", 1)]
     [InlineData("visited", 1)]
     [InlineData("logical", 2)]
-    public async Task DeduplicatedPhysicalReadsCannotBypassLogicalBudgets(
+    public async Task FollowAllMembershipsAsync_DeduplicatedPhysicalReads_CannotBypassLogicalBudgets(
         string limit,
         int expectedReaders
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await SeedOriginProfileAsync(context, data, 8, 1, cancellationToken: TestContext.Current.CancellationToken);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);

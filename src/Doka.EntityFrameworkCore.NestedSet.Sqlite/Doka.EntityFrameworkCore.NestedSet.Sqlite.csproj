@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
-    <Compile Update="Registry/SqliteNestedSetProvider.Rowsets.cs">
-      <DependentUpon>SqliteNestedSetProvider.Registry.cs</DependentUpon>
+    <Compile Update="**/SqliteNestedSetProvider.*.cs">
+      <DependentUpon>../SqliteNestedSetProvider.cs</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

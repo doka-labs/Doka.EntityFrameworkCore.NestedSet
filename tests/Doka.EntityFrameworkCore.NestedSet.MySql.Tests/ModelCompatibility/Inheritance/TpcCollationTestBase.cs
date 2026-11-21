@@ -16,7 +16,7 @@ public abstract class TpcCollationTestBase : ProviderTest
 
     /// <summary>Inherited string properties retain a separate effective capture for each physical table.</summary>
     [Fact]
-    public void SharedPropertiesRetainConcreteTableCollations()
+    public void Resolve_SharedProperties_RetainConcreteTableCollations()
     {
         // Arrange
         using var context = new CollatedTpcContext(ModelCompatibilityDatabase.Options<CollatedTpcContext>(Engine));
@@ -46,7 +46,7 @@ public abstract class TpcCollationTestBase : ProviderTest
 
     /// <summary>The binary table allows two independent case-distinct Scopes with the same TreeId.</summary>
     [Fact]
-    public async Task BinaryConcreteTableCanReserveIndependentScopes()
+    public async Task InsertRootAsync_BinaryConcreteTable_CanReserveIndependentScopes()
     {
         // Arrange
         await using var context = await CreateContextAsync(
@@ -116,7 +116,7 @@ public abstract class TpcCollationTestBase : ProviderTest
 
     /// <summary>The CI table rejects a native Scope alias reserving an already active TreeId.</summary>
     [Fact]
-    public async Task CaseInsensitiveConcreteTableRejectsScopeAliasReservation()
+    public async Task InsertRootAsync_CaseInsensitiveConcreteTable_RejectsScopeAliasReservation()
     {
         // Arrange
         await using var context = await CreateContextAsync(
@@ -182,7 +182,7 @@ public abstract class TpcCollationTestBase : ProviderTest
 
     /// <summary>Parent lookup follows the concrete CI principal key despite its shared inherited property.</summary>
     [Fact]
-    public async Task CaseInsensitiveConcreteParentAcceptsKeyAlias()
+    public async Task InsertChildAsync_CaseInsensitiveConcreteParent_AcceptsKeyAlias()
     {
         // Arrange
         await using var context = await CreateContextAsync(
@@ -232,7 +232,7 @@ public abstract class TpcCollationTestBase : ProviderTest
 
     /// <summary>Parent lookup cannot reuse CI semantics from the other concrete table.</summary>
     [Fact]
-    public async Task BinaryConcreteParentRejectsKeyAlias()
+    public async Task InsertChildAsync_BinaryConcreteParent_RejectsKeyAlias()
     {
         // Arrange
         await using var context = await CreateContextAsync(

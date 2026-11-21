@@ -30,7 +30,7 @@ public abstract partial class KeyFilterComparisonTests
     /// <param name="includeExisting">Whether one requested key identifies a persisted row.</param>
     [Theory]
     [MemberData(nameof(CollectionModeCases))]
-    public Task CollectionModesPreserveParameterizedNativeMembership(
+    public Task CompareCollectionModeAsync_CollectionModes_PreserveParameterizedNativeMembership(
         ParameterTranslationMode mode,
         string key,
         bool includeExisting
@@ -50,7 +50,7 @@ public abstract partial class KeyFilterComparisonTests
                 Right = 2,
             },
             cancellationToken: TestContext.Current.CancellationToken,
-            Engine == "PostgreSql"
+            alias: Engine == "PostgreSql"
                 ? null
                 : static value => value.ToLowerInvariant()),
         "Binary" => CompareCollectionModeAsync<BinaryNode, byte[]>(
@@ -66,7 +66,8 @@ public abstract partial class KeyFilterComparisonTests
                 Left = 1,
                 Right = 2,
             },
-            cancellationToken: TestContext.Current.CancellationToken),
+            cancellationToken: TestContext.Current.CancellationToken,
+            alias: null),
         _ => throw new ArgumentOutOfRangeException(nameof(key)),
     };
 
@@ -88,8 +89,8 @@ public abstract partial class KeyFilterComparisonTests
         bool includeExisting,
         Func<int, TKey> createKey,
         Func<TKey, TEntity> createNode,
-        CancellationToken cancellationToken,
-        Func<TKey, TKey>? alias = null
+        Func<TKey, TKey>? alias,
+        CancellationToken cancellationToken
     )
         where TEntity : class
         where TKey : notnull

@@ -9,14 +9,15 @@ public abstract partial class SaveChangesTests
     [InlineData("Success")]
     [InlineData("Failure")]
     [InlineData("Canceled")]
-    public async Task PooledContextReusesCleanSaveIntegration(
+    public async Task SaveChangesAsync_PooledContext_ReusesCleanSaveIntegration(
         string outcome
     )
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var callback = new SaveBoundaryCallback();

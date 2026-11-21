@@ -12,7 +12,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, false, true)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task ModelWithoutOrderingUsesNativeDetection(
+    public async Task SaveChanges_ModelWithoutOrdering_UsesNativeDetection(
         bool synchronous,
         bool automaticDetection,
         bool acceptChanges
@@ -21,7 +21,8 @@ public abstract partial class SaveChangesTests
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var extensions = setup
             .GetService<IDbContextOptions>()
@@ -74,12 +75,13 @@ public abstract partial class SaveChangesTests
 
     /// <summary>Leaves an undetected callback edit pending when the application disables native detection.</summary>
     [Fact]
-    public async Task UnorderedManualDetectionDoesNotPersistUndetectedCallbackChanges()
+    public async Task SaveChangesAsync_UnorderedManualDetection_DoesNotPersistUndetectedCallbackChanges()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         await setup.AddAsync(
             new OrderingMarker
@@ -125,12 +127,13 @@ public abstract partial class SaveChangesTests
 
     /// <summary>Retains native pending callback state and detection settings after an unordered failure.</summary>
     [Fact]
-    public async Task UnorderedFailureRetainsNativeCallbackState()
+    public async Task SaveChangesAsync_UnorderedFailure_RetainsNativeCallbackState()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var extensions = setup
             .GetService<IDbContextOptions>()

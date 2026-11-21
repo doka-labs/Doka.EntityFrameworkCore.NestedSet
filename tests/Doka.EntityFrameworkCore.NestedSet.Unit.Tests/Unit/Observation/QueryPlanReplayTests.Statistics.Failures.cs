@@ -4,12 +4,13 @@ public sealed partial class QueryPlanReplayTests
 {
     /// <summary>A failed catalog command cannot silently fall back to all-table or sampled updates.</summary>
     [Fact]
-    public async Task StatisticsCatalogFailurePropagatesWithoutUpdates()
+    public async Task RefreshStatisticsAsync_StatisticsCatalogFailure_PropagatesWithoutUpdates()
     {
         // Arrange
         var failure = new InvalidOperationException("Catalog lookup failed.");
         await using var connection = new PlanReplayConnection(() => throw failure, () => 0);
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -27,7 +28,7 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>A failed catalog reader prevents every update instead of accepting incomplete names.</summary>
     [Fact]
-    public async Task StatisticsCatalogReaderFailurePreventsUpdates()
+    public async Task RefreshStatisticsAsync_StatisticsCatalogReaderFailure_PreventsUpdates()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(
@@ -40,7 +41,8 @@ public sealed partial class QueryPlanReplayTests
             },
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -58,11 +60,12 @@ public sealed partial class QueryPlanReplayTests
 
     /// <summary>Missing or invisible keyed-table statistics cannot become a successful no-op qualification.</summary>
     [Fact]
-    public async Task EmptyStatisticsCatalogFailsClosed()
+    public async Task RefreshStatisticsAsync_EmptyStatisticsCatalog_FailsClosed()
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(Statistics()), () => 0);
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -82,7 +85,7 @@ public sealed partial class QueryPlanReplayTests
     /// A failed statistic update remains the original failure and prevents later statistics from running.
     /// </summary>
     [Fact]
-    public async Task StatisticsUpdateFailureStopsBeforeLaterStatistics()
+    public async Task RefreshStatisticsAsync_StatisticsUpdateFailure_StopsBeforeLaterStatistics()
     {
         // Arrange
         var failure = new InvalidOperationException("Statistic update failed.");
@@ -93,7 +96,8 @@ public sealed partial class QueryPlanReplayTests
                 ? throw failure
                 : 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>

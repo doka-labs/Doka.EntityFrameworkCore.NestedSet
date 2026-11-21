@@ -82,9 +82,9 @@ public sealed class CompiledModelFixture : IAsyncLifetime
     /// <returns>The complete options for the requested context.</returns>
     public async Task<DbContextOptions<TContext>> CreateOptionsAsync<TContext>(
         string engine,
-        CancellationToken cancellationToken,
-        IModel? model = null,
-        bool enableNestedSets = true
+        IModel? model,
+        bool enableNestedSets,
+        CancellationToken cancellationToken
     )
         where TContext : DbContext
     {
@@ -130,19 +130,36 @@ public sealed class CompiledModelFixture : IAsyncLifetime
                 await CreateOptionsAsync<CompiledTreeContext>(
                     engine,
                     cancellationToken: cancellationToken,
-                    model),
+                    model: model,
+                    enableNestedSets: true),
                 model is not null),
         "MySql" => new CompiledMySqlContext(
-            await CreateOptionsAsync<CompiledMySqlContext>(engine, cancellationToken: cancellationToken, model),
+            await CreateOptionsAsync<CompiledMySqlContext>(
+                engine,
+                cancellationToken: cancellationToken,
+                model: model,
+                enableNestedSets: true),
             model is not null),
         "MariaDb" => new CompiledMariaDbContext(
-            await CreateOptionsAsync<CompiledMariaDbContext>(engine, cancellationToken: cancellationToken, model),
+            await CreateOptionsAsync<CompiledMariaDbContext>(
+                engine,
+                cancellationToken: cancellationToken,
+                model: model,
+                enableNestedSets: true),
             model is not null),
         "PostgreSql" => new CompiledPostgreSqlContext(
-            await CreateOptionsAsync<CompiledPostgreSqlContext>(engine, cancellationToken: cancellationToken, model),
+            await CreateOptionsAsync<CompiledPostgreSqlContext>(
+                engine,
+                cancellationToken: cancellationToken,
+                model: model,
+                enableNestedSets: true),
             model is not null),
         "SqlServer" => new CompiledSqlServerContext(
-            await CreateOptionsAsync<CompiledSqlServerContext>(engine, cancellationToken: cancellationToken, model),
+            await CreateOptionsAsync<CompiledSqlServerContext>(
+                engine,
+                cancellationToken: cancellationToken,
+                model: model,
+                enableNestedSets: true),
             model is not null),
         _ => throw new ArgumentOutOfRangeException(nameof(engine)),
     };

@@ -8,7 +8,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData(CompositionTrackingPolicy.NoTracking)]
     [InlineData(CompositionTrackingPolicy.Tracking)]
     [InlineData(CompositionTrackingPolicy.IdentityResolution)]
-    public async Task FinalTrackingPolicyControlsRepeatedEntityOccurrences(
+    public async Task SelectAncestors_FinalTrackingPolicy_ControlsRepeatedEntityOccurrences(
         CompositionTrackingPolicy policy
     )
     {
@@ -18,7 +18,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()
@@ -71,7 +74,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Tracking reuses existing instances while scalar columns retain SQL snapshot values.</summary>
     [Fact]
-    public async Task TrackingDoesNotRefreshAnExistingEntityFromTheQuerySnapshot()
+    public async Task SelectAncestors_Tracking_DoesNotRefreshAnExistingEntityFromTheQuerySnapshot()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -79,7 +82,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var tracked = await context
             .Set<CompositionNode>()
@@ -121,7 +127,7 @@ public abstract partial class HierarchyCompositionSemanticTests
 
     /// <summary>Scalar projections materialize no hierarchy objects when the final query requests tracking.</summary>
     [Fact]
-    public async Task ScalarProjectionDoesNotAddTrackedEntities()
+    public async Task SelectSubtrees_ScalarProjection_DoesNotAddTrackedEntities()
     {
         // Arrange
         var scope = Guid.NewGuid();
@@ -129,7 +135,10 @@ public abstract partial class HierarchyCompositionSemanticTests
         await using var context = await CreateContextAsync(
             scope,
             probe,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            hidden: null,
+            sql: null,
+            chainNodes: null);
 
         var hierarchy = context
             .NestedSet<CompositionNode>()

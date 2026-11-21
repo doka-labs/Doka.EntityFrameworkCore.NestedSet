@@ -6,6 +6,7 @@ namespace Doka.EntityFrameworkCore.NestedSet;
 ///     operation, outcome, and error classifications. Node keys, forest scopes, entity names, SQL, exception messages,
 ///     and domain payloads are never emitted. Deferred IQueryable execution is observed through EF's own diagnostics.
 /// </remarks>
+[PublicAPI]
 public static class NestedSetDiagnostics
 {
     // WHY: A fixed query tag lets provider tests and database operators distinguish the final scalar refresh from

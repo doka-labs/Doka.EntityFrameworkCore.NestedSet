@@ -10,7 +10,7 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task ConfiguredProviderUsesItsActualPublicIdentityWithoutIo(
+    public async Task TryBindSource_ConfiguredProvider_UsesItsActualPublicIdentityWithoutIo(
         string engine
     )
     {
@@ -65,7 +65,7 @@ public sealed partial class DokaSourceBindingTests
 
     /// <summary>Other selected adapters keep the portable path without borrowing Doka's marker.</summary>
     [Fact]
-    public void NonDokaAdapterKeepsPortableSourceBeforeQueryExecution()
+    public void TryBindSource_NonDokaAdapter_KeepsPortableSourceBeforeQueryExecution()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();

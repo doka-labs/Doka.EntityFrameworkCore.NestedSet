@@ -3,18 +3,26 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 /// <summary>Measures request snapshots separately from parallel functional validation tests.</summary>
-/// <param name="output">Records the complete fixed-profile allocation result.</param>
 
 // WHY: Only the allocation probe needs the existing nonparallel measurement collection; ordinary
 // validation tests keep their previous scheduling. Work, warmup and allocation budget are unchanged.
 [Collection("Allocation measurements")]
-public sealed class SignalReportSnapshotAllocationTests(
-    ITestOutputHelper output
-)
+public sealed class SignalReportSnapshotAllocationTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Records the complete fixed-profile allocation result.</param>
+    public SignalReportSnapshotAllocationTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Owner groups avoid reconstructing independent grouping sets for each scalar field.</summary>
     [Fact]
-    public void SnapshotRetainsABoundedPerCriterionAllocation()
+    public void Measure_Snapshot_RetainsABoundedPerCriterionAllocation()
     {
         // Arrange
         var criteria = Enumerable
@@ -52,7 +60,7 @@ public sealed class SignalReportSnapshotAllocationTests(
         var allocated = QueryConstructionAllocation.Measure(() => SignalReportValidation.Snapshot(request));
 
         // Assert
-        output.WriteLine($"Snapshot: types=20; unique criteria=80; requested criteria=160; bytes/report={allocated}.");
+        _output.WriteLine($"Snapshot: types=20; unique criteria=80; requested criteria=160; bytes/report={allocated}.");
         Assert.InRange(allocated, 0, 24 * 1024);
     }
 }

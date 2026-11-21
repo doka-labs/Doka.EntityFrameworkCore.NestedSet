@@ -9,7 +9,7 @@ public sealed class TestModelServiceReuseTests
     /// Verifies different test families reuse EF services while their actual models stay independent.
     /// </summary>
     [Fact]
-    public async Task VariantTestFamiliesShareServicesWithoutSharingTheirModels()
+    public async Task GetService_VariantTestFamilies_ShareServicesWithoutSharingTheirModels()
     {
         // Arrange
         var scopeOptions = new DbContextOptionsBuilder<ScopeMappingContext>()

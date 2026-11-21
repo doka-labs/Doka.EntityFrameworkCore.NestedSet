@@ -11,11 +11,12 @@ public abstract partial class GroupSupervisorTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(100)]
-    public Task UniqueSelectionReducesCandidateFanInOnServer(
+    public Task AssertFanInAsync_UniqueSelection_ReducesCandidateFanInOnServer(
         int candidates
     ) => AssertFanInAsync(
         candidates,
-        cancellationToken: TestContext.Current.CancellationToken);
+        cancellationToken: TestContext.Current.CancellationToken,
+        all: false);
 
     /// <summary>
     /// All deliberately reads the requested candidates instead of pretending that broad output is constant memory
@@ -26,19 +27,20 @@ public abstract partial class GroupSupervisorTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(100)]
-    public Task AllSelectionReadsTheRequestedCandidateOutput(
+    public Task AssertFanInAsync_AllSelection_ReadsTheRequestedCandidateOutput(
         int candidates
     ) => AssertFanInAsync(
         candidates,
         cancellationToken: TestContext.Current.CancellationToken,
-        true);
+        all: true);
 
     /// <summary>The deliberately large fan-in case remains an explicit capacity profile (U63,U72).</summary>
     [Fact]
     [Trait("Category", "Capacity")]
-    public Task TenThousandCandidatesStillReadOnlyAmbiguousStatus() => AssertFanInAsync(
+    public Task ResolveAsync_TenThousandCandidates_ReadOnlyAmbiguousStatus() => AssertFanInAsync(
         10_000,
-        cancellationToken: TestContext.Current.CancellationToken);
+        cancellationToken: TestContext.Current.CancellationToken,
+        all: false);
 
     /// <summary>Measures the same actual one-reader unique selection at each candidate cardinality.</summary>
     /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
@@ -46,13 +48,13 @@ public abstract partial class GroupSupervisorTests
     /// <param name="all">Whether the consumer requests all candidate evidence instead of unique selection.</param>
     private async Task AssertFanInAsync(
         int candidates,
-        CancellationToken cancellationToken,
-        bool all = false
+        bool all,
+        CancellationToken cancellationToken
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: cancellationToken);
+        await using var context = await CreateAsync(probe, cancellationToken: cancellationToken, planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), cancellationToken);
         var candidateGroup = data.Groups[5];
         await SeedFanInAsync(context, data, candidates, cancellationToken: cancellationToken);
@@ -262,11 +264,14 @@ public abstract partial class GroupSupervisorTests
     /// The deferred four-match build allocates within its explicit consumer budget and never executes I/O (U63).
     /// </summary>
     [Fact]
-    public async Task WarmFourMatchQueryBuildHasNoIoOrEntityMaterialization()
+    public async Task ResolutionRows_FourMatchQueryConstruction_HasNoIoOrEntityMaterialization()
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var match = new App.MetadataMatch(
             App.MetadataOwner.SourceUser,

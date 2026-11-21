@@ -18,7 +18,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     [InlineData(nameof(TreeNode.Depth))]
     [InlineData(nameof(TreeNode.Tree))]
     [InlineData(nameof(TreeNode.Parent))]
-    public async Task CallbackCannotChangeSingleInsertionStructure(
+    public async Task InsertRootAsync_Callback_CannotChangeSingleInsertionStructure(
         string property
     )
     {
@@ -92,7 +92,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CallbackCannotAddUnplannedSingleInsertionNode(
+    public async Task InsertRootAsync_Callback_CannotAddUnplannedSingleInsertionNode(
         bool afterSave
     )
     {
@@ -170,7 +170,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LateInterceptorCanAddUnrelatedManagedInsertWrite(
+    public async Task InsertForestAsync_LateInterceptor_CanAddUnrelatedManagedInsertWrite(
         bool bulk
     )
     {
@@ -225,7 +225,7 @@ public abstract partial class SingleInsertGuardTests : ProviderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedCallbackAuditWriteRollsBackManagedInsert(
+    public async Task InsertForestAsync_FailedCallbackAuditWrite_RollsBackManagedInsert(
         bool bulk
     )
     {

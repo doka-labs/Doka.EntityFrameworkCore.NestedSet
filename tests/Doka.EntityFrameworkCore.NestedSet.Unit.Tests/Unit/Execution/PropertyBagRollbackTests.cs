@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Preserves mapped dictionary membership independently of EF's default-valued indexer getters.</summary>
-public sealed class PropertyBagRollbackTests
+public sealed partial class PropertyBagRollbackTests
 {
     private const string Mapping = "RollbackBag";
     private const string BulkMapping = "RollbackHierarchyBag";
@@ -17,7 +17,7 @@ public sealed class PropertyBagRollbackTests
     [InlineData("null")]
     [InlineData("false")]
     [InlineData("true")]
-    public async Task InsertionValuesRestoreExactGeneratedIndexerMembership(
+    public async Task Restore_InsertionValues_RestoreExactGeneratedIndexerMembership(
         string shape
     )
     {
@@ -45,7 +45,7 @@ public sealed class PropertyBagRollbackTests
     [InlineData("null")]
     [InlineData("false")]
     [InlineData("true")]
-    public async Task TrackerSnapshotRestoresExactGeneratedIndexerMembership(
+    public async Task Restore_TrackerSnapshot_RestoresExactGeneratedIndexerMembership(
         string shape
     )
     {
@@ -90,7 +90,7 @@ public sealed class PropertyBagRollbackTests
     /// Restoring generated keys leaves ordinary and unmapped application payload under caller ownership.
     /// </summary>
     [Fact]
-    public async Task InsertionValuesDoNotCopyOrRestoreApplicationPayload()
+    public async Task Restore_InsertionValues_DoNotCopyOrRestoreApplicationPayload()
     {
         // Arrange
         await using var context = new BagContext();
@@ -118,7 +118,7 @@ public sealed class PropertyBagRollbackTests
     [InlineData("missing")]
     [InlineData("null")]
     [InlineData("sentinel")]
-    public async Task BulkStructuralSnapshotDistinguishesMissingNullAndSentinel(
+    public async Task Capture_BulkStructuralSnapshot_DistinguishesMissingNullAndSentinel(
         string shape
     )
     {
@@ -191,7 +191,7 @@ public sealed class PropertyBagRollbackTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NonDictionaryIndexerUsesItsMappedSetter(
+    public async Task Restore_NonDictionaryIndexer_UsesItsMappedSetter(
         bool original
     )
     {
@@ -227,7 +227,7 @@ public sealed class PropertyBagRollbackTests
     [InlineData("null", false)]
     [InlineData("zero", true)]
     [InlineData("assigned", true)]
-    public async Task GeneratedKeyAssignmentUsesRawIndexerSentinel(
+    public async Task HasAssignedKey_GeneratedKeyAssignment_UsesRawIndexerSentinel(
         string shape,
         bool expected
     )
@@ -283,120 +283,5 @@ public sealed class PropertyBagRollbackTests
         }
 
         return entity;
-    }
-
-    /// <summary>Uses a relational property-bag model without opening a database connection.</summary>
-    private sealed class BagContext : DbContext
-    {
-        /// <inheritdoc />
-        protected override void OnConfiguring(
-            DbContextOptionsBuilder optionsBuilder
-        )
-            => optionsBuilder.UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets());
-
-        /// <inheritdoc />
-        protected override void OnModelCreating(
-            ModelBuilder modelBuilder
-        )
-        {
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
-                Mapping,
-                entity =>
-                {
-                    entity
-                        .IndexerProperty<int>("Id")
-                        .ValueGeneratedNever();
-
-                    entity.HasKey("Id");
-                    entity.IndexerProperty<string>("Payload");
-                    entity
-                        .IndexerProperty<bool>(Flag)
-                        .ValueGeneratedOnAddOrUpdate();
-                });
-
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
-                BulkMapping,
-                entity =>
-                {
-                    entity
-                        .IndexerProperty<int>("Id")
-                        .HasSentinel(0)
-                        .ValueGeneratedNever();
-
-                    entity.IndexerProperty<string>("Payload");
-                    entity
-                        .IndexerProperty<Guid>(NestedSetPropertyRoles.TreeId)
-                        .HasSentinel(Guid.Empty);
-
-                    entity.IndexerProperty<int?>(NestedSetPropertyRoles.Parent);
-                    entity
-                        .IndexerProperty<long>(NestedSetPropertyRoles.Left)
-                        .HasSentinel(0L);
-
-                    entity
-                        .IndexerProperty<long>(NestedSetPropertyRoles.Right)
-                        .HasSentinel(0L);
-
-                    entity
-                        .IndexerProperty<int>(NestedSetPropertyRoles.Depth)
-                        .HasSentinel(0);
-
-                    entity
-                        .IndexerProperty<long>(NestedSetPropertyRoles.Position)
-                        .HasSentinel(0L);
-
-                    entity.HasKey("Id");
-                    entity.HasNestedSet(mapping => mapping
-                        .HasNodeKey("Id")
-                        .HasTreeId(NestedSetPropertyRoles.TreeId)
-                        .HasParent(NestedSetPropertyRoles.Parent)
-                        .HasBounds(NestedSetPropertyRoles.Left, NestedSetPropertyRoles.Right)
-                        .HasDepth(NestedSetPropertyRoles.Depth)
-                        .HasPosition(NestedSetPropertyRoles.Position));
-                });
-
-            modelBuilder
-                .Entity<CustomIndexerEntity>()
-                .Property(entity => entity.Id)
-                .ValueGeneratedNever();
-
-            modelBuilder
-                .Entity<CustomIndexerEntity>()
-                .IndexerProperty<bool>(Flag)
-                .ValueGeneratedOnAddOrUpdate();
-
-            modelBuilder.SharedTypeEntity<Dictionary<string, object?>>(
-                GeneratedMapping,
-                entity =>
-                {
-                    entity
-                        .IndexerProperty<int>("Id")
-                        .ValueGeneratedOnAdd();
-
-                    entity.HasKey("Id");
-                });
-        }
-    }
-
-    /// <summary>Exposes a mapped indexer without promising dictionary membership operations.</summary>
-    private sealed class CustomIndexerEntity
-    {
-        private object? _value;
-
-        /// <summary>Gets or sets the assigned identity.</summary>
-        public int Id { get; set; }
-
-        /// <summary>Gets or sets the sole custom generated value through its configured indexer.</summary>
-        public object? this[
-            string name
-        ]
-        {
-            get => name == Flag
-                ? _value
-                : throw new ArgumentOutOfRangeException(nameof(name));
-            set => _value = name == Flag
-                ? value
-                : throw new ArgumentOutOfRangeException(nameof(name));
-        }
     }
 }

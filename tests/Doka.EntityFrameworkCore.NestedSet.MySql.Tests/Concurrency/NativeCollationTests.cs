@@ -1,6 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
-/// <summary>Runs the Doka family's native Scope identity regressions on MySQL, including its NO PAD table collation.</summary>
+/// <summary>
+/// Runs the Doka family's native Scope identity regressions on MySQL, including its NO PAD table collation.
+/// </summary>
 [Collection("Model compatibility")]
 public sealed class NativeCollationTests : NativeCollationTestBase
 {
@@ -16,7 +18,7 @@ public sealed class NativeCollationTests : NativeCollationTestBase
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InheritedNoPadScopeCollationKeepsUnaffectedTrailingSpaceKey(
+    public async Task ExecuteAsync_InheritedNoPadScopeCollation_KeepsUnaffectedTrailingSpaceKey(
         bool convertedKeys
     )
     {

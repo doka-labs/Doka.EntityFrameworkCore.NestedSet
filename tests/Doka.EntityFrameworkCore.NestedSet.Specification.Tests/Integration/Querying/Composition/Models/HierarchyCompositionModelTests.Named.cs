@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task NamedIndexerMappingsPreserveExactHierarchyIdentity(
+    public async Task QueryDepths_NamedIndexerMappings_PreserveExactHierarchyIdentity(
         HierarchyCompositionOperation operation
     )
     {
@@ -47,7 +47,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.AllowedPath)]
     [InlineData(HierarchyCompositionOperation.AnyAncestor)]
     [InlineData(HierarchyCompositionOperation.NearestAncestor)]
-    public async Task NamedMappingEndpointMismatchIsRejectedBeforeSql(
+    public async Task WherePathEdges_NamedMappingEndpointMismatch_IsRejectedBeforeSql(
         HierarchyCompositionOperation operation
     )
     {

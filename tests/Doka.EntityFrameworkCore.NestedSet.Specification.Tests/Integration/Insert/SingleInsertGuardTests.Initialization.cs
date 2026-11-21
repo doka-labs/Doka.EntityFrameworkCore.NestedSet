@@ -9,7 +9,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public async Task RejectedSingleInitializationReleasesInputAndPreservesMarker(
+    public async Task FailSingleInitializationAsync_RejectedSingleInitialization_ReleasesInputAndPreservesMarker(
         int fault
     )
     {

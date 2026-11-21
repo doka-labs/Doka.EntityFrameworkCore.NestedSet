@@ -4,7 +4,7 @@ public abstract partial class OrderingTests
 {
     /// <summary>Pre-cancellation rejects before either provider selection or the owned preparation callback.</summary>
     [Fact]
-    public async Task CanceledSaveFixturePreparationDoesNotInvokeCallback()
+    public async Task PrepareAsync_CanceledSaveFixturePreparation_DoesNotInvokeCallback()
     {
         // Arrange
         await using var fixture = new SaveSemanticsFixture();
@@ -29,9 +29,11 @@ public abstract partial class OrderingTests
         Assert.False(invoked);
     }
 
-    /// <summary>Canceled preparation releases its database, preserves token identity and permits a fresh retry.</summary>
+    /// <summary>
+    /// Canceled preparation releases its database, preserves token identity and permits a fresh retry.
+    /// </summary>
     [Fact]
-    public async Task SaveFixturePreparationForwardsCancellationAndRecovers()
+    public async Task PrepareAsync_SaveFixturePreparation_ForwardsCancellationAndRecovers()
     {
         // Arrange
         await using var fixture = new SaveSemanticsFixture();
@@ -73,7 +75,7 @@ public abstract partial class OrderingTests
 
     /// <summary>A canceled options clone rejects before reading fixture state and retains the original token.</summary>
     [Fact]
-    public async Task CanceledOrderingContextCreationDoesNotReadFixtureState()
+    public async Task CreateContextAsync_CanceledOrderingContextCreation_DoesNotReadFixtureState()
     {
         // Arrange
         await using var fixture = new OrderingFixture();
@@ -81,7 +83,10 @@ public abstract partial class OrderingTests
         await cancellation.CancelAsync();
 
         // Act
-        var failure = await Record.ExceptionAsync(() => fixture.CreateContextAsync(Engine, cancellation.Token));
+        var failure = await Record.ExceptionAsync(() => fixture.CreateContextAsync(
+            Engine,
+            cancellationToken: cancellation.Token,
+            mode: "Strict"));
 
         // Assert
         var canceled = Assert.IsAssignableFrom<OperationCanceledException>(failure);

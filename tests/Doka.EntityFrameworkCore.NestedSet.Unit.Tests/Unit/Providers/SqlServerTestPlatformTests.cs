@@ -9,7 +9,7 @@ public sealed class SqlServerTestPlatformTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NativeX64ExecutesSqlServer(
+    public void BeforeDatabaseTest_NativeX64_ExecutesSqlServer(
         bool continuousIntegration
     )
     {
@@ -29,7 +29,7 @@ public sealed class SqlServerTestPlatformTests
     [InlineData(Architecture.Arm64)]
     [InlineData(Architecture.Arm)]
     [InlineData(Architecture.X86)]
-    public void UnsupportedLocalHostSkipsSqlServer(
+    public void BeforeDatabaseTest_UnsupportedLocalHost_SkipsSqlServer(
         Architecture architecture
     )
     {
@@ -59,7 +59,7 @@ public sealed class SqlServerTestPlatformTests
     [InlineData(Architecture.Arm64)]
     [InlineData(Architecture.Arm)]
     [InlineData(Architecture.X86)]
-    public void UnsupportedCiHostFailsSqlServer(
+    public void BeforeDatabaseTest_UnsupportedCiHost_FailsSqlServer(
         Architecture architecture
     )
     {
@@ -87,7 +87,7 @@ public sealed class SqlServerTestPlatformTests
     [InlineData("PostgreSql", true)]
     [InlineData("Sqlite", true)]
     [InlineData(null, true)]
-    public void OtherEnginesAndMetadataRemainRunnable(
+    public void BeforeDatabaseTest_OtherEnginesAndMetadata_RemainRunnable(
         string? engine,
         bool continuousIntegration
     )

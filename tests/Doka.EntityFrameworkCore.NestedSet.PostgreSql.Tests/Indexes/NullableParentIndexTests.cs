@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -7,7 +5,7 @@ using Npgsql;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 
-/// <summary>Verifies PostgreSQL partial parent indexes with fresh-table plans and real foreign-key checks.</summary>
+/// <summary>Verifies native partial-index eligibility, ordinary plans, and real foreign-key checks.</summary>
 public sealed partial class NullableParentIndexTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, PostgreSqlEngine>>
 {
@@ -22,12 +20,14 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
         _fixture = fixture.Value;
     }
 
-    /// <summary>Fresh statistics cannot make either partial index eligible for a principal-only lookup.</summary>
+    /// <summary>
+    /// Partial indexes retain exact definitions and eligible access without requiring one cost choice.
+    /// </summary>
     /// <param name="scoped">Whether the parent FK includes a scope column.</param>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NullableParentIndexesPreserveSelectiveAccessPaths(
+    public async Task ExplainAsync_NullableParentIndexes_PreserveSelectiveAccessPaths(
         bool scoped
     )
     {
@@ -53,6 +53,15 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
         var dependentQuery = $"SELECT 1 FROM ONLY {columns.Table} x WHERE {scope}x.{columns.Parent} = @key";
         var rootQuery = $"SELECT x.{columns.Key} FROM {columns.Table} x WHERE {scope}x.{columns.Parent} IS NULL";
 
+        var nativeRoot = await ReadNativeIndexAsync(
+            context,
+            entity,
+            roots.GetDatabaseName()!,
+            TestContext.Current.CancellationToken);
+
+        var store = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
+        var expectedColumns = roots.Properties.Select(property => property.GetColumnName(store)!).ToArray();
+
         // Act
         var principalPlan = await ExplainAsync(
             context,
@@ -72,48 +81,89 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
             scoped,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        var rootKeys = scoped
-            ? await context
-                .Set<TreeNode>()
-                .Where(node => node.Tree == 1 && node.Parent == null)
-                .Select(node => node.NodeId)
-                .ToArrayAsync(CancellationToken.None)
-            : await context
-                .Set<UnscopedQueryNode>()
-                .IgnoreQueryFilters()
-                .Where(node => node.ParentId == null)
-                .Select(node => node.Id)
-                .ToArrayAsync(CancellationToken.None);
+        var rootKeys = await ReadRootKeysAsync(context, scoped, TestContext.Current.CancellationToken);
+
+        await using var eligibility = await context.Database.BeginTransactionAsync(
+            TestContext.Current.CancellationToken);
+
+        // WHY: Reused-table statistics and heap visibility can legitimately select a sequential scan. This
+        // transaction-local control tests eligibility only; the ordinary plans above remain separate evidence.
+        await context.Database.ExecuteSqlRawAsync(
+            "SET LOCAL enable_seqscan = off",
+            TestContext.Current.CancellationToken);
+        var principalEligibility = await ExplainAsync(
+            context,
+            principalQuery,
+            scoped,
+            TestContext.Current.CancellationToken);
+        var dependentEligibility = await ExplainAsync(
+            context,
+            dependentQuery,
+            scoped,
+            TestContext.Current.CancellationToken);
+        var rootEligibility = await ExplainAsync(
+            context,
+            rootQuery,
+            scoped,
+            TestContext.Current.CancellationToken);
+
+        var eligibleRootKeys = await ReadRootKeysAsync(
+            context,
+            scoped,
+            TestContext.Current.CancellationToken);
 
         await QueryPlanTestSupport.WriteEvidenceAsync(
             "PostgreSql-nullable-parent-"
             + (scoped
                 ? "scoped"
                 : "unscoped"),
-            ["principal\n" + principalPlan, "dependent\n" + dependentPlan, "roots\n" + rootPlan],
+            [
+                "ordinary principal\n" + principalPlan,
+                "ordinary dependent\n" + dependentPlan,
+                "ordinary roots\n" + rootPlan,
+                "eligibility-only principal\n" + principalEligibility,
+                "eligibility-only dependent\n" + dependentEligibility,
+                "eligibility-only roots\n" + rootEligibility,
+            ],
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        var principalIndexes = IndexNames(principalPlan);
+        Assert.NotNull(nativeRoot);
+        Assert.Equal(expectedColumns, nativeRoot.Columns);
+        Assert.Equal(roots.GetFilter()!.Trim('(', ')', ' '), nativeRoot.Predicate?.Trim('(', ')', ' '));
+        Assert.True(nativeRoot.Valid);
+        Assert.True(nativeRoot.Ready);
+        Assert.False(nativeRoot.Unique);
+        var principalIndexes = IndexNames(principalEligibility);
+        var ordinaryPrincipalIndexes = IndexNames(principalPlan);
         Assert.NotEmpty(principalIndexes);
         Assert.All(
             indexes.Where(index => index.GetFilter() is not null),
-            index => Assert.DoesNotContain(index.GetDatabaseName(), principalIndexes));
+            index =>
+            {
+                Assert.DoesNotContain(index.GetDatabaseName(), principalIndexes);
+                Assert.DoesNotContain(index.GetDatabaseName(), ordinaryPrincipalIndexes);
+            });
 
-        Assert.Contains(dependent.GetDatabaseName(), IndexNames(dependentPlan));
-        Assert.Contains(roots.GetDatabaseName(), IndexNames(rootPlan));
+        Assert.Contains(dependent.GetDatabaseName(), IndexNames(dependentEligibility));
+        Assert.Contains(roots.GetDatabaseName(), IndexNames(rootEligibility));
         Assert.Equal(
             scoped
                 ? ["Tree", "NodeId", "Parent"]
                 : ["Id", "ParentId"],
             roots.Properties.Select(property => property.Name));
 
+        Assert.Equal(rootKeys.Order(), eligibleRootKeys.Order());
+        Assert.Equal(Enumerable.Range(0, 1000).Select(index => (index * 20) + 1), rootKeys.Order());
         Assert.Equal(1000, rootKeys.Length);
         Assert.Contains(1, rootKeys);
         Assert.Contains(19981, rootKeys);
         Assert.Equal(1, ActualRows(principalPlan));
         Assert.Equal(19, ActualRows(dependentPlan));
         Assert.Equal(1000, ActualRows(rootPlan));
+        Assert.Equal(1, ActualRows(principalEligibility));
+        Assert.Equal(19, ActualRows(dependentEligibility));
+        Assert.Equal(1000, ActualRows(rootEligibility));
     }
 
     /// <summary>Partial dependent indexes retain restrictive FK enforcement for roots with children.</summary>
@@ -121,7 +171,7 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NullableParentIndexesRetainRestrictiveForeignKey(
+    public async Task ExecuteDeleteAsync_NullableParentIndexes_RetainRestrictiveForeignKey(
         bool scoped
     )
     {
@@ -136,21 +186,21 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
             ? context
                 .Set<TreeNode>()
                 .Where(node => node.Tree == 1 && node.NodeId == 1)
-                .ExecuteDeleteAsync(CancellationToken.None)
+                .ExecuteDeleteAsync(TestContext.Current.CancellationToken)
             : context
                 .Set<UnscopedQueryNode>()
                 .IgnoreQueryFilters()
                 .Where(node => node.Id == 1)
-                .ExecuteDeleteAsync(CancellationToken.None));
+                .ExecuteDeleteAsync(TestContext.Current.CancellationToken));
 
         var count = scoped
             ? await context
                 .Set<TreeNode>()
-                .CountAsync(CancellationToken.None)
+                .CountAsync(TestContext.Current.CancellationToken)
             : await context
                 .Set<UnscopedQueryNode>()
                 .IgnoreQueryFilters()
-                .CountAsync(CancellationToken.None);
+                .CountAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -241,90 +291,6 @@ public sealed partial class NullableParentIndexTests : ProviderTest,
                                """;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    /// <summary>Explains parameterized principal, dependent, or root reads with actual row counts.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    /// <param name="query">The composed provider query to execute.</param>
-    /// <param name="scoped">Whether the hierarchy uses a scope.</param>
-    private static async Task<string> ExplainAsync(
-        DbContext context,
-        string query,
-        bool scoped,
-        CancellationToken cancellationToken
-    )
-    {
-        await using var command = context
-            .Database
-            .GetDbConnection()
-            .CreateCommand();
-
-        command.CommandText = "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + query;
-        var key = command.CreateParameter();
-        key.ParameterName = "key";
-        key.Value = 1;
-        command.Parameters.Add(key);
-
-        if (scoped)
-        {
-            var scope = command.CreateParameter();
-            scope.ParameterName = "scope";
-            scope.Value = 1;
-            command.Parameters.Add(scope);
-        }
-
-        return (string)(await command.ExecuteScalarAsync(cancellationToken))!;
-    }
-
-    /// <summary>Returns every index referenced by the actual plan, including nested lock wrappers.</summary>
-    private static List<string> IndexNames(
-        string plan
-    )
-    {
-        using var document = JsonDocument.Parse(plan);
-        var names = new List<string>();
-        Collect(
-            document
-                .RootElement[0]
-                .GetProperty("Plan"),
-            names);
-
-        return names;
-    }
-
-    /// <summary>Walks child plans while retaining only their physical index names.</summary>
-    private static void Collect(
-        JsonElement plan,
-        List<string> names
-    )
-    {
-        if (plan.TryGetProperty("Index Name", out var index))
-        {
-            names.Add(index.GetString()!);
-        }
-
-        if (plan.TryGetProperty("Plans", out var children))
-        {
-            foreach (var child in children.EnumerateArray())
-            {
-                Collect(child, names);
-            }
-        }
-    }
-
-    /// <summary>Returns the top-level actual cardinality of one explain query.</summary>
-    private static int ActualRows(
-        string plan
-    )
-    {
-        using var document = JsonDocument.Parse(plan);
-
-        return document
-            .RootElement[0]
-            .GetProperty("Plan")
-            .GetProperty("Actual Rows")
-            .GetInt32();
     }
 
     /// <summary>Retains the fixture's delimited table and structural columns in insert order.</summary>

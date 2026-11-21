@@ -31,6 +31,7 @@ internal static class NestedSetParentExpressions<TEntity, TResult>
         .Match(principal, dependent, key, parent, collation);
 
     /// <summary>Keeps nullable, converted and operator-free parent equality in its exact mapped type.</summary>
+    [UsedImplicitly]
     private static Expression MatchesTyped<TParent>(
         Expression principal,
         Expression dependent,
@@ -58,6 +59,7 @@ internal static class NestedSetParentExpressions<TEntity, TResult>
     }
 
     /// <summary>Closes the ordinary LINQ join over the actual nullable parent storage type.</summary>
+    [UsedImplicitly]
     private static IQueryable<TResult> JoinTyped<TParent>(
         IQueryable<TEntity> nodes,
         IProperty key,

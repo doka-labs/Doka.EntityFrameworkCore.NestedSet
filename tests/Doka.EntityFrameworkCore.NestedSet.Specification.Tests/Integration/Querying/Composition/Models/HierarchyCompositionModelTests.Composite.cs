@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task CompositePrimaryKeysKeepEqualNodeKeysAndBoundsIsolatedByScope(
+    public async Task QueryDepths_CompositePrimaryKeys_KeepEqualNodeKeysAndBoundsIsolatedByScope(
         HierarchyCompositionOperation operation
     )
     {
@@ -80,7 +80,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.AllowedPath)]
     [InlineData(HierarchyCompositionOperation.AnyAncestor)]
     [InlineData(HierarchyCompositionOperation.NearestAncestor)]
-    public async Task ForeignScopeEndpointCannotAdoptLocalEqualNodeKeys(
+    public async Task WherePathEdges_ForeignScopeEndpoint_CannotAdoptLocalEqualNodeKeys(
         HierarchyCompositionOperation operation
     )
     {

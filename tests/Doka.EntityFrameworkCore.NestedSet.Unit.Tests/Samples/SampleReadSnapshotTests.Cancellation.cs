@@ -10,7 +10,7 @@ public sealed partial class SampleReadSnapshotTests
     /// <summary>Cancellation after opening closes the owned connection before a native transaction begins.</summary>
     /// <returns>A task completing after the synchronous-begin boundary has been checked.</returns>
     [Fact]
-    public async Task CancellationAfterOpenIsObservedBeforeNativeBegin()
+    public async Task RunAsync_CancellationAfter_OpenIsObservedBeforeNativeBegin()
     {
         // Arrange
         using var stop = new CancellationTokenSource();
@@ -54,7 +54,7 @@ public sealed partial class SampleReadSnapshotTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CancellationAfterNativeBeginRestoresConnectionOwnership(
+    public async Task RunAsync_CancellationAfterNativeBegin_RestoresConnectionOwnership(
         bool alreadyOpen
     )
     {
@@ -112,11 +112,19 @@ public sealed partial class SampleReadSnapshotTests
     }
 
     /// <summary>Injects cancellation immediately after the real synchronous driver begin has completed.</summary>
-    private sealed class CancelingSnapshotConnection(
-        CancellationTokenSource stop
-    )
-        : SqliteConnection("Data Source=:memory:")
+    private sealed class CancelingSnapshotConnection
+        : SqliteConnection
     {
+        private readonly CancellationTokenSource _stop;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public CancelingSnapshotConnection(
+            CancellationTokenSource stop
+        ) : base("Data Source=:memory:")
+        {
+            _stop = stop;
+        }
+
         /// <summary>Gets the native transaction whose disposal must precede returning the cancellation.</summary>
         internal SqliteTransaction? Begun { get; private set; }
 
@@ -131,17 +139,25 @@ public sealed partial class SampleReadSnapshotTests
             // WHY: This driver hook is synchronous. Cancel before returning so the post-begin guard is
             // tested deterministically, rather than racing a timer or dispatching unobserved cancellation work.
             // ReSharper disable once MethodHasAsyncOverload
-            stop.Cancel();
+            _stop.Cancel();
 
             return Begun;
         }
     }
 
     /// <summary>Cancels after the physical open, before control returns to the snapshot helper.</summary>
-    private sealed class CancelAfterSnapshotOpen(
-        CancellationTokenSource stop
-    ) : DbConnectionInterceptor
+    private sealed class CancelAfterSnapshotOpen : DbConnectionInterceptor
     {
+        private readonly CancellationTokenSource _stop;
+
+        /// <summary>Initializes the test probe with its explicit dependencies.</summary>
+        public CancelAfterSnapshotOpen(
+            CancellationTokenSource stop
+        )
+        {
+            _stop = stop;
+        }
+
         /// <summary>Gets the number of completed physical opens observed by the test.</summary>
         internal int Opened { get; private set; }
 
@@ -153,7 +169,7 @@ public sealed partial class SampleReadSnapshotTests
         )
         {
             Opened++;
-            await stop.CancelAsync();
+            await _stop.CancelAsync();
         }
     }
 }

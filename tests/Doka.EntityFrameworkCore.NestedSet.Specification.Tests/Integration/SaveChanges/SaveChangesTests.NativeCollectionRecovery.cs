@@ -10,7 +10,7 @@ public abstract partial class SaveChangesTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task NativeCollectionRoundTripRestoresPresenceWithoutConsumingRawOrder(
+    public async Task SaveChangesAsync_NativeCollectionRoundTrip_RestoresPresenceWithoutConsumingRawOrder(
         bool marked,
         bool hierarchyFailure
     )

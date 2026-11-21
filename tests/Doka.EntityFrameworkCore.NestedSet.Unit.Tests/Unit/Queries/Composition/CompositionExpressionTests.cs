@@ -4,14 +4,22 @@ using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks parameter-identity substitution independently of SQL translation.</summary>
-/// <param name="output">Records the paired construction allocation observation.</param>
-public sealed class CompositionExpressionTests(
-    ITestOutputHelper output
-)
+public sealed class CompositionExpressionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Uses the test runner's output sink.</summary>
+    /// <param name="output">Records the paired construction allocation observation.</param>
+    public CompositionExpressionTests(
+        ITestOutputHelper output
+    )
+    {
+        _output = output;
+    }
+
     /// <summary>Direct substitution reduces an anonymous projection to its selected existing argument.</summary>
     [Fact]
-    public void SingleReplacementReducesAnonymousProjectionMembers()
+    public void Replace_SingleReplacement_ReducesAnonymousProjectionMembers()
     {
         // Arrange
         var (projection, selector) = Projectors(value => new { Value = value }, row => row.Value);
@@ -25,7 +33,7 @@ public sealed class CompositionExpressionTests(
 
     /// <summary>Direct substitution retains the existing member-initializer projection reduction.</summary>
     [Fact]
-    public void SingleReplacementReducesMemberInitializerProjectionMembers()
+    public void Replace_SingleReplacement_ReducesMemberInitializerProjectionMembers()
     {
         // Arrange
         Expression<Func<int, ProjectionRow>> projection = value => new ProjectionRow { Value = value };
@@ -44,7 +52,7 @@ public sealed class CompositionExpressionTests(
     [Theory]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public void SingleReplacementUsesParameterIdentityInsideNestedLambdas(
+    public void Replace_SingleReplacement_UsesParameterIdentityInsideNestedLambdas(
         int input,
         bool expected
     )
@@ -70,7 +78,7 @@ public sealed class CompositionExpressionTests(
     /// <summary>Replacing a projection binding avoids the former synthetic-lambda allocation overhead.</summary>
     [Trait("Category", "Allocation")]
     [Fact]
-    public void SingleReplacementAllocatesLessThanSyntheticLambdaSubstitution()
+    public void MeasurePaired_SingleReplacement_AllocatesLessThanSyntheticLambdaSubstitution()
     {
         // Arrange
         Expression<Func<int, ProjectionRow>> projection = value => new ProjectionRow { Value = value };
@@ -97,7 +105,7 @@ public sealed class CompositionExpressionTests(
         var allocated = QueryConstructionAllocation.MeasurePaired(legacy, replacement);
 
         // Assert
-        output.WriteLine(
+        _output.WriteLine(
             $"Single replacement: legacy={allocated.Baseline} B/op; "
             + $"replacement={allocated.Expanded} B/op.");
 
@@ -110,7 +118,7 @@ public sealed class CompositionExpressionTests(
     [Theory]
     [InlineData(1, true)]
     [InlineData(2, false)]
-    public void NestedLambdasAreSubstitutedByIdentityRatherThanName(
+    public void Compiled_NestedLambdas_AreSubstitutedByIdentityRatherThanName(
         int input,
         bool expected
     )

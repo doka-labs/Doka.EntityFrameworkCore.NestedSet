@@ -6,7 +6,7 @@ public sealed partial class DokaSourceBindingTests
     /// Static typed source metadata does not retain an invocation's query, provider or captured values.
     /// </summary>
     [Fact]
-    public void TypedSourceDoesNotRetainInvocationInputs()
+    public void CollectReleasedInputs_TypedSource_DoesNotRetainInvocationInputs()
     {
         // Arrange
         var released = ProviderQueryLifetime.ReleaseInputs(orderedJoin: false);
@@ -23,7 +23,7 @@ public sealed partial class DokaSourceBindingTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void TypedSourceReleasesCollectibleRowArguments(
+    public void CollectReleasedInputs_TypedSource_ReleasesCollectibleRowArguments(
         int position
     )
     {

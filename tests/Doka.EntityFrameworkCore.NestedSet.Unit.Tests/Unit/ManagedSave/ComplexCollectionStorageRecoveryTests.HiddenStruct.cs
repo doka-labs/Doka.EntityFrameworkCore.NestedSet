@@ -13,7 +13,7 @@ public sealed partial class ComplexCollectionStorageRecoveryTests
     [InlineData(true, false, false)]
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
-    public async Task HiddenOriginalStructRestoresPrimitiveValuesAndNativeIntent(
+    public async Task Restore_HiddenOriginalStruct_RestoresPrimitiveValuesAndNativeIntent(
         bool clear,
         bool detectCallback,
         bool acceptCallback

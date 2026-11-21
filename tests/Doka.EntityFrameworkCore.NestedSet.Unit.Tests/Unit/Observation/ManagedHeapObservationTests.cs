@@ -4,11 +4,11 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks heap observations against independently counted, strongly held managed allocations.</summary>
 [Collection("BulkPlanAllocation")]
-public sealed class ManagedHeapObservationTests
+public sealed partial class ManagedHeapObservationTests
 {
-    /// <summary>Expired calibration work rejects before launching a separate process and preserves token identity.</summary>
+    /// <summary>Expired calibration rejects before starting a separate process and preserves token identity.</summary>
     [Fact]
-    public async Task CanceledCalibrationDoesNotStartIndependentProcess()
+    public async Task RunIsolatedAsync_CanceledCalibration_DoesNotStartIndependentProcess()
     {
         // Arrange
         using var stop = new CancellationTokenSource();
@@ -32,7 +32,7 @@ public sealed class ManagedHeapObservationTests
     [InlineData(45, 45, 44)]
     [InlineData(48, 49, 44)]
     [InlineData(1, 1, 0)]
-    public void BackgroundSnapshotUsesTheLatestProvenEarlierAnchor(
+    public void BackgroundIntervalStart_BackgroundSnapshot_UsesTheLatestProvenEarlierAnchor(
         long snapshotIndex,
         int collections,
         int anchorCollections
@@ -72,7 +72,7 @@ public sealed class ManagedHeapObservationTests
     [InlineData(45, -1, 44, true)]
     [InlineData(0, 0, 0, true)]
     [InlineData(45, 45, 44, false)]
-    public void UncertainBackgroundIdentityKeepsTheEarlierAnchor(
+    public void BackgroundIntervalStart_UncertainBackgroundIdentity_KeepsTheEarlierAnchor(
         long snapshotIndex,
         int collections,
         int anchorCollections,
@@ -96,7 +96,7 @@ public sealed class ManagedHeapObservationTests
 
     /// <summary>Completion followed by another full start must not advance past the recorded heap.</summary>
     [Fact]
-    public void CompletionAndNextStartDoNotUnderstateOccupiedBytes()
+    public void BackgroundIntervalStart_CompletionAndNextStart_DoNotUnderstateOccupiedBytes()
     {
         // Arrange
         const long allocated = 8000;
@@ -116,7 +116,7 @@ public sealed class ManagedHeapObservationTests
 
     /// <summary>The captured MySQL tuple does not charge the preceding cycle's 208 MB allocation traffic.</summary>
     [Fact]
-    public void QualifiedBackgroundTupleExcludesPreviousCycleTraffic()
+    public void BackgroundIntervalStart_QualifiedBackgroundTuple_ExcludesPreviousCycleTraffic()
     {
         // Arrange
         // WHY: These are scalar values from the retained native million-node diagnostic, not an assumed
@@ -147,7 +147,7 @@ public sealed class ManagedHeapObservationTests
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void OccupiedObservationIncludesSurvivorsAndNewAllocations(
+    public void AllocateWave_OccupiedObservation_IncludesSurvivorsAndNewAllocations(
         bool collectBetween,
         bool releaseBaseline
     )
@@ -275,7 +275,7 @@ public sealed class ManagedHeapObservationTests
     [Theory]
     [InlineData("objects")]
     [InlineData("arrays")]
-    public async Task CollectedObservationMatchesIndependentlyHeldAllocations(
+    public async Task RunIsolatedAsync_CollectedObservation_MatchesIndependentlyHeldAllocations(
         string shape
     )
     {

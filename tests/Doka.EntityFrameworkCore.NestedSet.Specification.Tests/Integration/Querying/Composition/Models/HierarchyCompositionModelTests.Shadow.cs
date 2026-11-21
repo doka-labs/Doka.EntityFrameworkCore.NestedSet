@@ -14,7 +14,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task RenamedShadowRolesPreserveIdentityAndRejectMissingOwners(
+    public async Task QueryDepths_RenamedShadowRoles_PreserveIdentityAndRejectMissingOwners(
         HierarchyCompositionOperation operation
     )
     {

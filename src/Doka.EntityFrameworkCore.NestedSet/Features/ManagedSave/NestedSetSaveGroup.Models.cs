@@ -78,6 +78,7 @@ internal sealed partial class NestedSetSaveGroup<TEntity, TKey, TTreeId, TScope>
     );
 
     /// <summary>Identifies one strict sibling group after any Parent moves have completed.</summary>
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     private sealed record ReorderIdentity(
         TTreeId TreeId,
         NestedSetParent<TKey> Parent

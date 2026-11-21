@@ -7,7 +7,7 @@ public sealed class BulkPlanWidthTests
 
     /// <summary>One million direct children receive dense positions without recursive or per-child lists.</summary>
     [Fact]
-    public async Task MillionChildPlanIsStackSafe()
+    public async Task PrepareGeometry_MillionChildPlan_IsStackSafe()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<TreeContext>()

@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore.Diagnostics;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Migrations.Tests;
 
 public sealed partial class AncestorIndexLifecycleTests
@@ -12,7 +10,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task ParentSaveRefreshesFlagsAfterObservedStructuralWrite(
+    public async Task SaveChangesAsync_ParentSave_RefreshesFlagsAfterObservedStructuralWrite(
         string engine
     )
     {
@@ -22,7 +20,8 @@ public sealed partial class AncestorIndexLifecycleTests
             _fixture,
             engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            options => options.AddInterceptors(probe));
+            configureOptions: options => options.AddInterceptors(probe),
+            configureDesignServices: null);
 
         await using var context = await CreatePendingParentMoveAsync(
             database,
@@ -59,7 +58,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task LateStructuralFailureRestoresGeneratedFlagsAndPendingParentEdit(
+    public async Task SaveChangesAsync_LateStructuralFailure_RestoresGeneratedFlagsAndPendingParentEdit(
         string engine
     )
     {
@@ -69,7 +68,8 @@ public sealed partial class AncestorIndexLifecycleTests
             _fixture,
             engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            options => options.AddInterceptors(probe));
+            configureOptions: options => options.AddInterceptors(probe),
+            configureDesignServices: null);
 
         await using var context = await CreatePendingParentMoveAsync(
             database,
@@ -117,7 +117,7 @@ public sealed partial class AncestorIndexLifecycleTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task RestoredParentEditCanBeSavedAfterLateStructuralFailure(
+    public async Task SaveChangesAsync_RestoredParentEdit_CanBeSavedAfterLateStructuralFailure(
         string engine
     )
     {
@@ -127,7 +127,8 @@ public sealed partial class AncestorIndexLifecycleTests
             _fixture,
             engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            options => options.AddInterceptors(probe));
+            configureOptions: options => options.AddInterceptors(probe),
+            configureDesignServices: null);
 
         await using var context = await CreatePendingParentMoveAsync(
             database,
@@ -183,7 +184,14 @@ public sealed partial class AncestorIndexLifecycleTests
     )
     {
         var chain = database.Scaffold(true, "AncestorLateStructuralRollback");
-        await database.MigrateAsync(chain, cancellationToken: cancellationToken);
+        await database.MigrateAsync(
+            chain,
+            cancellationToken: cancellationToken,
+            enabled: true,
+            target: null,
+            adoptIndex: false,
+            enableIntegration: true,
+            splitStructure: false);
         var context = database.CreateContext();
 
         try
@@ -235,206 +243,5 @@ public sealed partial class AncestorIndexLifecycleTests
             12,
             Assert.Single(probe.DuringMove, row => row.Id == 2)
                 .Tree);
-    }
-
-    /// <summary>Reads the complete structural and generated state without tracker identity resolution.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static Task<LifecycleState[]> ReadLifecycleStatesAsync(
-        AncestorIndexContext context,
-        CancellationToken cancellationToken
-    ) => context
-        .Set<MigrationNode>()
-        .AsNoTracking()
-        .OrderBy(x => x.NodeId)
-        .Select(x => new LifecycleState(
-            x.NodeId,
-            x.Scope,
-            x.TreeId,
-            x.ParentId,
-            x.Left,
-            x.Right,
-            x.Depth,
-            x.Position,
-            EF.Property<bool>(x, AncestorIndexContext.FlagProperty)))
-        .ToArrayAsync(cancellationToken);
-
-    /// <summary>Captures CLR structure and the current generated shadow sidecar.</summary>
-    private static LifecycleState[] ReadTrackedLifecycleStates(
-        AncestorIndexContext context
-    ) => context
-        .ChangeTracker
-        .Entries<MigrationNode>()
-        .OrderBy(x => x.Entity.NodeId)
-        .Select(x => new LifecycleState(
-            x.Entity.NodeId,
-            x.Entity.Scope,
-            x.Entity.TreeId,
-            x.Entity.ParentId,
-            x.Entity.Left,
-            x.Entity.Right,
-            x.Entity.Depth,
-            x.Entity.Position,
-            x.Property<bool>(AncestorIndexContext.FlagProperty)
-                .CurrentValue))
-        .ToArray();
-
-    /// <summary>Captures original structure and generated sidecars independently of pending CLR edits.</summary>
-    private static LifecycleState[] ReadOriginalLifecycleStates(
-        AncestorIndexContext context
-    ) => context
-        .ChangeTracker
-        .Entries<MigrationNode>()
-        .OrderBy(x => x.Entity.NodeId)
-        .Select(x => new LifecycleState(
-            x.Property(row => row.NodeId)
-                .OriginalValue,
-            x.Property(row => row.Scope)
-                .OriginalValue,
-            x.Property(row => row.TreeId)
-                .OriginalValue,
-            x.Property(row => row.ParentId)
-                .OriginalValue,
-            x.Property(row => row.Left)
-                .OriginalValue,
-            x.Property(row => row.Right)
-                .OriginalValue,
-            x.Property(row => row.Depth)
-                .OriginalValue,
-            x.Property(row => row.Position)
-                .OriginalValue,
-            x.Property<bool>(AncestorIndexContext.FlagProperty)
-                .OriginalValue))
-        .ToArray();
-
-    /// <summary>A comparable snapshot of one complete structural row and its derived shadow marker.</summary>
-    /// <param name="Id">The node identity.</param>
-    /// <param name="Scope">The isolation scope.</param>
-    /// <param name="Tree">The stable tree identity.</param>
-    /// <param name="Parent">The direct parent identity.</param>
-    /// <param name="Left">The left boundary.</param>
-    /// <param name="Right">The right boundary.</param>
-    /// <param name="Depth">The structural depth.</param>
-    /// <param name="Position">The sibling position.</param>
-    /// <param name="Flag">The generated branch marker.</param>
-    private sealed record LifecycleState(
-        int Id,
-        int Scope,
-        int Tree,
-        int? Parent,
-        long Left,
-        long Right,
-        int Depth,
-        long Position,
-        bool Flag
-    );
-
-    /// <summary>Observes structural writes and fails only at their later generated-value refresh boundary.</summary>
-    private sealed class StructuralRefreshProbe(bool failRefresh) : DbCommandInterceptor
-    {
-        /// <summary>The unique failure text asserted after the transaction has been rolled back.</summary>
-        internal const string FailureMessage = "Deliberate failure after ancestor-index structural write.";
-
-        /// <summary>Gets or sets whether the operation under test is being observed.</summary>
-        internal bool Armed { get; set; }
-
-        /// <summary>Gets whether a real hierarchy-coordinate UPDATE completed.</summary>
-        internal bool StructuralWriteObserved { get; private set; }
-
-        /// <summary>Gets whether the subsequent generated-value refresh was reached.</summary>
-        internal bool GeneratedRefreshObserved { get; private set; }
-
-        /// <summary>Gets the database state read within the writer transaction before a possible failure.</summary>
-        internal LifecycleState[] DuringMove { get; private set; } = [];
-
-        /// <inheritdoc />
-        public override ValueTask<int> NonQueryExecutedAsync(
-            DbCommand command,
-            CommandExecutedEventData eventData,
-            int result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            if (Armed
-                && command.CommandText.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)
-                && command.CommandText.Contains(MigrationContext.TableName, StringComparison.Ordinal)
-                && command.CommandText.Contains("right_bound", StringComparison.Ordinal))
-            {
-                StructuralWriteObserved = true;
-            }
-
-            return ValueTask.FromResult(result);
-        }
-
-        /// <inheritdoc />
-        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-            DbCommand command,
-            CommandEventData eventData,
-            InterceptionResult<DbDataReader> result,
-            CancellationToken cancellationToken = default
-        )
-        {
-            if (!Armed
-                || !StructuralWriteObserved
-                || GeneratedRefreshObserved
-                || !command.CommandText.Contains(AncestorIndexContext.FlagColumn, StringComparison.Ordinal))
-            {
-                return result;
-            }
-
-            GeneratedRefreshObserved = true;
-            var context = (AncestorIndexContext)eventData.Context!;
-            var sql = context.GetService<ISqlGenerationHelper>();
-            string[] columns =
-            [
-                "entry_id",
-                "tree_scope",
-                "tree_id",
-                "parent_entry",
-                "left_bound",
-                "right_bound",
-                "entry_depth",
-                "sibling_position",
-                AncestorIndexContext.FlagColumn,
-            ];
-
-            // WHY: A raw command shares the exact writer connection/transaction but bypasses EF interception.
-            // It proves the generated values really changed before the deliberate failure is raised.
-            await using var snapshot = command.Connection!.CreateCommand();
-            snapshot.Transaction = command.Transaction;
-            snapshot.CommandText = "SELECT "
-                + string.Join(", ", columns.Select(sql.DelimitIdentifier))
-                + " FROM "
-                + sql.DelimitIdentifier(MigrationContext.TableName, context.Schema)
-                + " ORDER BY "
-                + sql.DelimitIdentifier("entry_id");
-
-            var rows = new List<LifecycleState>();
-            await using var reader = await snapshot.ExecuteReaderAsync(cancellationToken);
-
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                var parentIsNull = await reader.IsDBNullAsync(3, cancellationToken);
-                rows.Add(
-                    new LifecycleState(
-                        reader.GetInt32(0),
-                        reader.GetInt32(1),
-                        reader.GetInt32(2),
-                        parentIsNull
-                            ? null
-                            : reader.GetInt32(3),
-                        reader.GetInt64(4),
-                        reader.GetInt64(5),
-                        reader.GetInt32(6),
-                        reader.GetInt64(7),
-                        reader.GetBoolean(8)));
-            }
-
-            DuringMove = rows.ToArray();
-
-            return failRefresh
-                ? throw new InvalidOperationException(FailureMessage)
-                : result;
-        }
     }
 }

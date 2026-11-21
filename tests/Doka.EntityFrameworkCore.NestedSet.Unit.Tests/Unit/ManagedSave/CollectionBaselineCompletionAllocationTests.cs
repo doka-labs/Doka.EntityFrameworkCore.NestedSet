@@ -42,7 +42,7 @@ public sealed class CollectionBaselineCompletionAllocationTests
     [InlineData("flattened", 64)]
     [InlineData("flattened", 1_024)]
     [Trait("Category", "Allocation")]
-    public async Task NoRelationshipCompletionAvoidsBatchAllocation(
+    public async Task RecordSavedRelationships_NoRelationshipCompletion_AvoidsBatchAllocation(
         string shape,
         int rows
     )

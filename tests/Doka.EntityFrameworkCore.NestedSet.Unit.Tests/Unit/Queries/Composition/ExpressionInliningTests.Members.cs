@@ -10,7 +10,7 @@ public sealed partial class ExpressionInliningTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MemberInitializerSelectsAssignmentWithoutEvaluatingOtherMembers(
+    public void Inline_MemberInitializer_SelectsAssignmentWithoutEvaluatingOtherMembers(
         bool last
     )
     {
@@ -43,7 +43,7 @@ public sealed partial class ExpressionInliningTests
 
     /// <summary>A member absent from an initializer retains a member access rather than another assignment.</summary>
     [Fact]
-    public void MemberInitializerRetainsUnassignedMemberAccess()
+    public void Inline_MemberInitializer_RetainsUnassignedMemberAccess()
     {
         // Arrange
         var probe = new GetterProbe();

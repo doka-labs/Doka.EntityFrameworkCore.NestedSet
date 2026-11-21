@@ -12,7 +12,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongConvertedKeyPathsRetainNullableParentIdentity(
+    public async Task QueryLongDepths_LongConvertedKeyPaths_RetainNullableParentIdentity(
         string filter,
         bool missingParent
     )
@@ -86,7 +86,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData("correlated", true)]
     [InlineData("nearest", false)]
     [InlineData("nearest", true)]
-    public async Task LongEntitySplitPathsRetainStructuralFragmentIdentity(
+    public async Task QueryLongDepths_LongEntitySplitPaths_RetainStructuralFragmentIdentity(
         string filter,
         bool missingParent
     )
@@ -151,7 +151,9 @@ public abstract partial class HierarchyCompositionModelTests
     /// <typeparam name="TEntity">The actual mapped node type, including named or shadow-backed models.</typeparam>
     /// <param name="hierarchy">The exact selected tree and optional scope.</param>
     /// <param name="filter">The independent, endpoint-correlated, or nearest path contract.</param>
-    /// <param name="depthProperty">The configured depth role, independent of misleading conventional CLR members.</param>
+    /// <param name="depthProperty">
+    /// The configured depth role, independent of misleading conventional CLR members.
+    /// </param>
     private static IQueryable<int> QueryLongDepths<TEntity>(
         NestedSetTree<TEntity, Guid> hierarchy,
         string filter,

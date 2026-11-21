@@ -3,23 +3,28 @@ using Doka.EntityFrameworkCore.NestedSet.Sqlite;
 namespace Doka.EntityFrameworkCore.NestedSet;
 
 /// <summary>Registers nested-set services within the SQLite provider's native options callback.</summary>
+[PublicAPI]
 public static class SqliteNestedSetOptionsBuilderExtensions
 {
-    /// <summary>Registers the common hierarchy engine and its matching Sqlite adapter.</summary>
+    /// <summary>
+    /// Enables the hierarchy engine through the selected native provider builder.
+    /// </summary>
     /// <param name="optionsBuilder">The native provider options builder being configured.</param>
-    /// <returns>The same native provider builder for further configuration.</returns>
-    /// <exception cref="ArgumentNullException">The native options builder is null.</exception>
-    /// <exception cref="InvalidOperationException">
-    /// Another adapter is selected or the EF insertion contract is unavailable.
-    /// </exception>
-    public static SqliteDbContextOptionsBuilder UseNestedSets(
-        this SqliteDbContextOptionsBuilder optionsBuilder
-    )
+    extension(SqliteDbContextOptionsBuilder optionsBuilder)
     {
-        ArgumentNullException.ThrowIfNull(optionsBuilder);
-        var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
-        NestedSetProviderRegistration.Register(core, SqliteNestedSetProvider.Instance);
+        /// <summary>Registers the common hierarchy engine and its matching Sqlite adapter.</summary>
+        /// <returns>The same native provider builder for further configuration.</returns>
+        /// <exception cref="ArgumentNullException">The native options builder is null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Another adapter is selected or the EF insertion contract is unavailable.
+        /// </exception>
+        public SqliteDbContextOptionsBuilder UseNestedSets()
+        {
+            ArgumentNullException.ThrowIfNull(optionsBuilder);
+            var core = ((IRelationalDbContextOptionsBuilderInfrastructure)optionsBuilder).OptionsBuilder;
+            NestedSetProviderRegistration.Register(core, SqliteNestedSetProvider.Instance);
 
-        return optionsBuilder;
+            return optionsBuilder;
+        }
     }
 }

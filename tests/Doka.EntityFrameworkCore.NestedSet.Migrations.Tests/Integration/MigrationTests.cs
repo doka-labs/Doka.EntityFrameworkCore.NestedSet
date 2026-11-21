@@ -23,19 +23,22 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task FreshMigrationCreatesOrderedIndexesWithCustomRelationalNames(
+    public async Task MigrateAsync_FreshMigration_CreatesOrderedIndexesWithCustomRelationalNames(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var chain = database.Scaffold(MigrationStage.Current, "Initial");
 
         // Act
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         await using var context = database.CreateContext(MigrationStage.Current, chain.Assembly);
         var migration = chain.GetMigration(context, 0);
@@ -56,145 +59,6 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         Assert.Contains(indexes, x => x.Name == "application_payload_lookup");
     }
 
-    /// <summary>Upgrades tree identity and coordinate widths without changing persisted application values.</summary>
-    /// <param name="engine">The provider and real database engine to exercise.</param>
-    [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("MySql")]
-    [InlineData("MariaDb")]
-    [InlineData("PostgreSql")]
-    [InlineData("SqlServer")]
-    public async Task UpgradePreservesEveryPersistedValue(
-        string engine
-    )
-    {
-        // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
-        var before = await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
-
-        var upgrade = database.Scaffold(MigrationStage.Current, "TreeIdentityAndInt64", baseline);
-
-        // Act
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
-        var operations = upgrade.GetMigration(context, 1)
-            .UpOperations;
-
-        // Assert
-        Assert.Equal(before, after);
-        Assert.DoesNotContain(operations, operation => operation is AddColumnOperation { Name: "tree_id" });
-
-        if (engine != "Sqlite")
-        {
-            Assert.Contains(operations, operation => operation is AlterColumnOperation { Name: "left_bound" });
-            Assert.Contains(operations, operation => operation is AlterColumnOperation { Name: "right_bound" });
-            Assert.Contains(operations, operation => operation is AlterColumnOperation { Name: "sibling_position" });
-        }
-
-        Assert.Contains(
-            operations.OfType<CreateIndexOperation>(),
-            operation => operation.Columns.SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
-
-        Assert.DoesNotContain(
-            operations,
-            operation => operation is DropTableOperation { Name: MigrationContext.TableName });
-
-        AssertCurrentIndexes(engine, indexes);
-    }
-
-    /// <summary>Restores the complete historical schema and data when rolling back the upgrade.</summary>
-    /// <param name="engine">The provider and real database engine to exercise.</param>
-    [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("MySql")]
-    [InlineData("MariaDb")]
-    [InlineData("PostgreSql")]
-    [InlineData("SqlServer")]
-    public async Task DownPreservesTheOriginalIndexesAndData(
-        string engine
-    )
-    {
-        // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
-        var originalIndexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var before = await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
-
-        var upgrade = database.Scaffold(MigrationStage.Current, "TreeIdentityAndInt64", baseline);
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-
-        // Act
-        await database.MigrateAsync(
-            upgrade,
-            cancellationToken: TestContext.Current.CancellationToken,
-            baseline.MigrationIds[0]);
-
-        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var after = await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
-
-        // Assert
-        Assert.Equal(before, after);
-        Assert.Equal(IndexSignatures(originalIndexes), IndexSignatures(indexes));
-        Assert.Equal(5, indexes.Length);
-    }
-
-    /// <summary>Reapplies a previously rolled-back tree-contract upgrade without duplicating metadata.</summary>
-    /// <param name="engine">The provider and real database engine to exercise.</param>
-    [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("MySql")]
-    [InlineData("MariaDb")]
-    [InlineData("PostgreSql")]
-    [InlineData("SqlServer")]
-    public async Task ReapplyRestoresTheCurrentTreeContract(
-        string engine
-    )
-    {
-        // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
-        var upgrade = database.Scaffold(MigrationStage.Current, "TreeIdentityAndInt64", baseline);
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-        var before = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await database.MigrateAsync(
-            upgrade,
-            cancellationToken: TestContext.Current.CancellationToken,
-            baseline.MigrationIds[0]);
-
-        // Act
-        await database.MigrateAsync(upgrade, cancellationToken: TestContext.Current.CancellationToken);
-        var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
-        var after = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(before, after);
-        AssertCurrentIndexes(engine, indexes);
-    }
-
     /// <summary>Round-trips the generated snapshot without producing a phantom index migration.</summary>
     /// <param name="engine">The provider and real database engine to exercise.</param>
     [Theory]
@@ -203,17 +67,20 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task SubsequentScaffoldHasNoModelChanges(
+    public async Task Scaffold_SubsequentScaffold_HasNoModelChanges(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var initial = database.Scaffold(MigrationStage.Current, "Initial");
-        await database.MigrateAsync(initial, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(initial, cancellationToken: TestContext.Current.CancellationToken, target: null);
 
         // Act
         var next = database.Scaffold(MigrationStage.Current, "Unchanged", initial);
@@ -235,17 +102,20 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task SpecializedIndexAndFallbackSurviveSnapshotRoundTrip(
+    public async Task Scaffold_SpecializedIndexAndFallback_SurviveSnapshotRoundTrip(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var initial = database.Scaffold(MigrationStage.Specialized, "Specialized");
-        await database.MigrateAsync(initial, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(initial, cancellationToken: TestContext.Current.CancellationToken, target: null);
 
         // Act
         var next = database.Scaffold(MigrationStage.Specialized, "Unchanged", initial);
@@ -285,17 +155,20 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task MigratedSchemaSupportsNestedSetMutations(
+    public async Task InsertRootAsync_MigratedSchema_SupportsNestedSetMutations(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var chain = database.Scaffold(MigrationStage.Current, "Initial");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
         await using var context = database.CreateContext();
         var hierarchy = context
             .NestedSet<MigrationNode>()
@@ -324,7 +197,9 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
             .InTree(0)
             .ValidateAsync(NestedSetValidationLevel.Full, CancellationToken.None);
 
-        var nodes = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodes = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Assert
         Assert.True(report.IsValid);
@@ -356,66 +231,6 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
             nodes);
     }
 
-    /// <summary>Rejects a conflicting ordinary index definition instead of treating presence as correctness.</summary>
-    /// <param name="engine">The provider and real database engine to exercise.</param>
-    [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("MySql")]
-    [InlineData("MariaDb")]
-    [InlineData("PostgreSql")]
-    [InlineData("SqlServer")]
-    public async Task ConflictingIndexCausesOrdinaryUpgradeToFailWithoutDataLoss(
-        string engine
-    )
-    {
-        // Arrange
-        await using var database = await _fixture.CreateDatabaseAsync(
-            engine,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        var baseline = database.Scaffold(MigrationStage.Baseline, "Baseline");
-        await database.MigrateAsync(baseline, cancellationToken: TestContext.Current.CancellationToken);
-        await database.SeedAsync(cancellationToken: TestContext.Current.CancellationToken, MigrationStage.Baseline);
-        var before = await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
-
-        var upgrade = database.Scaffold(MigrationStage.Current, "TreeIdentityAndInt64", baseline);
-        await using var context = database.CreateContext(MigrationStage.Current, upgrade.Assembly);
-        var index = upgrade
-            .GetMigration(context, 1)
-            .UpOperations
-            .OfType<CreateIndexOperation>()
-            .Single(operation => operation.Columns.SequenceEqual(["tree_scope", "tree_id", "left_bound"]));
-
-        var sql = context.GetService<ISqlGenerationHelper>();
-        var conflicting = "CREATE INDEX "
-            + sql.DelimitIdentifier(index.Name)
-            + " ON "
-            + sql.DelimitIdentifier(index.Table, index.Schema)
-            + " ("
-            + sql.DelimitIdentifier("entry_depth")
-            + ")";
-
-        await context.Database.ExecuteSqlRawAsync(conflicting, CancellationToken.None);
-
-        // Act
-        var exception = await Record.ExceptionAsync(() => database.MigrateAsync(
-            upgrade,
-            cancellationToken: TestContext.Current.CancellationToken));
-
-        var after = await database.ReadNodesAsync(
-            cancellationToken: TestContext.Current.CancellationToken,
-            MigrationStage.Baseline);
-
-        var applied = await context.Database.GetAppliedMigrationsAsync(CancellationToken.None);
-
-        // Assert
-        Assert.IsType<DbException>(exception, exactMatch: false);
-        Assert.Equal(before, after);
-        Assert.Equal(baseline.MigrationIds, applied);
-    }
-
     /// <summary>Qualifies Int64 storage, checks, self-FK metadata, and mixed ordering on a migrated database.</summary>
     /// <param name="engine">The provider and real database engine to exercise.</param>
     [Theory]
@@ -424,17 +239,20 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task FreshMigrationCreatesTheCompletePhysicalTreeContract(
+    public async Task InsertNodeDirectlyAsync_FreshMigration_CreatesTheCompletePhysicalTreeContract(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var chain = database.Scaffold(MigrationStage.Current, "PhysicalContract");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
         var beyondInt32 = (long)int.MaxValue + 1;
         var node = new MigrationNode
         {
@@ -450,7 +268,9 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
 
         // Act
         await database.InsertNodeDirectlyAsync(node, cancellationToken: TestContext.Current.CancellationToken);
-        var nodes = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodes = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
         var indexes = await database.ReadIndexesAsync(cancellationToken: TestContext.Current.CancellationToken);
         var checks = await database.ReadChecksAsync(cancellationToken: TestContext.Current.CancellationToken);
         var foreignKeys = await database.ReadForeignKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -470,17 +290,20 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("SqlServer")]
-    public async Task GeneratedChecksRejectInvalidLeftBoundary(
+    public async Task InsertNodeDirectlyAsync_GeneratedChecks_RejectInvalidLeftBoundary(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var chain = database.Scaffold(MigrationStage.Current, "CheckEnforcement");
-        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken);
+        await database.MigrateAsync(chain, cancellationToken: TestContext.Current.CancellationToken, target: null);
         var invalid = new MigrationNode
         {
             NodeId = 61,
@@ -496,7 +319,9 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
             invalid,
             cancellationToken: TestContext.Current.CancellationToken));
 
-        var nodes = await database.ReadNodesAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var nodes = await database.ReadNodesAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            stage: MigrationStage.Current);
 
         // Assert
         Assert.IsType<DbException>(exception, exactMatch: false);
@@ -505,7 +330,7 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
 
     /// <summary>Checks that ordinary migration validation does not acquire optional integration dependencies.</summary>
     [Fact]
-    public void OrdinaryMigrationAssemblyDoesNotReferenceSafeMigrations()
+    public void GetReferencedAssemblies_OrdinaryMigrationAssembly_DoesNotReferenceSafeMigrations()
     {
         // Arrange
         var assemblies = new[] { typeof(MigrationTests).Assembly, typeof(NestedSet<>).Assembly };
@@ -519,141 +344,4 @@ public sealed partial class MigrationTests : IClassFixture<MigrationFixture>
         // Assert
         Assert.DoesNotContain(references, x => x?.Contains("SafeMigrations", StringComparison.Ordinal) == true);
     }
-
-    /// <summary>Checks application and structural indexes against their complete expected physical key order.</summary>
-    private static void AssertCurrentIndexes(
-        string engine,
-        MigrationIndex[] indexes
-    )
-    {
-        Assert.Equal(
-            engine == "PostgreSql"
-                ? 8
-                : 7,
-            indexes.Length);
-
-        Assert.Single(indexes, x => x.IsUnique && x.Columns.SequenceEqual(["tree_scope", "entry_id"]));
-        Assert.All(
-            indexes,
-            index => Assert.Equal(
-                engine != "PostgreSql" || index.IsUnique || index.Name == "application_payload_lookup",
-                index.IsOrdinary));
-
-        var columns = indexes
-            .Select(x => string.Join(",", x.Columns))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-
-        string[] expected =
-        [
-            "entry_payload",
-            "tree_scope,entry_id",
-            "tree_scope,parent_entry",
-            "tree_scope,tree_id,left_bound",
-            "tree_scope,tree_id,parent_entry,entry_payload,entry_category,entry_id",
-            "tree_scope,tree_id,parent_entry,sibling_position",
-            "tree_scope,tree_id,right_bound",
-        ];
-
-        Assert.Equal(
-            engine == "PostgreSql"
-                ? expected
-                    .Append("tree_scope,entry_id,parent_entry")
-                    .Order(StringComparer.Ordinal)
-                : expected,
-            columns);
-    }
-
-    /// <summary>Checks the real provider catalog against the complete physical hierarchy contract.</summary>
-    private static void AssertPhysicalContract(
-        string engine,
-        MigrationIndex[] indexes,
-        MigrationCheck[] checks,
-        MigrationForeignKey[] foreignKeys,
-        IReadOnlyDictionary<string, string> columnTypes
-    )
-    {
-        AssertCurrentIndexes(engine, indexes);
-        var order = Assert.Single(
-            indexes,
-            index => index.Columns.SequenceEqual(
-            [
-                "tree_scope",
-                "tree_id",
-                "parent_entry",
-                "entry_payload",
-                "entry_category",
-                "entry_id",
-            ]));
-
-        Assert.Equal<bool>(
-            [
-                false,
-                false,
-                false,
-                false,
-                true,
-                false,
-            ],
-            order.Descending);
-
-        Assert.Equal(4, checks.Length);
-        Assert.Contains(
-            checks,
-            check => check.Name.Contains("LeftMin", StringComparison.Ordinal)
-                && NormalizeSql(check.Expression)
-                    .Contains("left_bound>=1", StringComparison.Ordinal));
-
-        Assert.Contains(
-            checks,
-            check => check.Name.Contains("RightAfterLeft", StringComparison.Ordinal)
-                && NormalizeSql(check.Expression)
-                    .Contains("right_bound>left_bound", StringComparison.Ordinal));
-
-        Assert.Contains(
-            checks,
-            check => check.Name.Contains("DepthMin", StringComparison.Ordinal)
-                && NormalizeSql(check.Expression)
-                    .Contains("entry_depth>=0", StringComparison.Ordinal));
-
-        Assert.Contains(
-            checks,
-            check => check.Name.Contains("PositionMin", StringComparison.Ordinal)
-                && NormalizeSql(check.Expression)
-                    .Contains("sibling_position>=0", StringComparison.Ordinal));
-
-        var parent = Assert.Single(foreignKeys);
-        Assert.Equal(["tree_scope", "parent_entry"], parent.DependentColumns);
-        Assert.Equal(["tree_scope", "entry_id"], parent.PrincipalColumns);
-        Assert.True(
-            parent
-                .DeleteAction
-                .Replace('_', ' ')
-                .ToUpperInvariant() is "NO ACTION" or "RESTRICT");
-
-        var expectedInteger = engine == "Sqlite"
-            ? "integer"
-            : "bigint";
-
-        Assert.Equal(expectedInteger, columnTypes["left_bound"], ignoreCase: true);
-        Assert.Equal(expectedInteger, columnTypes["right_bound"], ignoreCase: true);
-        Assert.Equal(expectedInteger, columnTypes["sibling_position"], ignoreCase: true);
-    }
-
-    /// <summary>Normalizes provider quoting and whitespace for semantic check-expression assertions.</summary>
-    private static string NormalizeSql(
-        string expression
-    ) => NormalizeSqlRegex()
-        .Replace(expression.ToLowerInvariant(), "");
-
-    /// <summary>Compares catalog definitions by value, including physical names and provider index facets.</summary>
-    private static string[] IndexSignatures(
-        IEnumerable<MigrationIndex> indexes
-    ) => indexes
-        .Select(x => $"{x.Name}:{string.Join(",", x.Columns)}:{string.Join(",", x.Descending)}:"
-            + $"{x.IsUnique}:{x.IsOrdinary}")
-        .ToArray();
-
-    [GeneratedRegex("[\\s\\\"`\\[\\]()]", RegexOptions.CultureInvariant)]
-    private static partial Regex NormalizeSqlRegex();
 }

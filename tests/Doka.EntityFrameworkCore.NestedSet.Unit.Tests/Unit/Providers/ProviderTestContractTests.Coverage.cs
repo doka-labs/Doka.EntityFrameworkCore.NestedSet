@@ -6,7 +6,7 @@ public sealed partial class ProviderTestContractTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SharedSingleExecutableFactsAreRejected(
+    public void FindSharedAnnotationErrors_SharedSingleExecutableFacts_AreRejected(
         bool family
     )
     {
@@ -31,7 +31,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Shared applicability spanning two executables remains valid with explicit prerequisites.</summary>
     [Fact]
-    public void SharedCrossExecutableFactRemainsAccepted()
+    public void FindSharedAnnotationErrors_SharedCrossExecutableFact_RemainsAccepted()
     {
         // Arrange
         var method = CreateProbe([NeutralFact(["SqlServer", "Sqlite"])])
@@ -48,7 +48,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Even explained exclusions may not erase every engine from a shared fact.</summary>
     [Fact]
-    public void SharedEmptyFactCoverageIsRejected()
+    public void FindSharedAnnotationErrors_SharedEmptyFactCoverage_IsRejected()
     {
         // Arrange
         var method = CreateProbe(
@@ -77,7 +77,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Individually broad method and inline exclusions may jointly leave only one executable.</summary>
     [Fact]
-    public void SharedMethodAndInlineExclusionsAreComposed()
+    public void FindSharedAnnotationErrors_SharedMethodAndInlineExclusions_AreComposed()
     {
         // Arrange
         var method = CreateProbe([NeutralTheory(["MySql", "MariaDb"]), NeutralInline([17], ["SqlServer", "Sqlite"])])
@@ -96,7 +96,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Single-project rows cannot disguise ownership by collectively spanning several projects.</summary>
     [Fact]
-    public void EverySharedInlineVariantRequiresCrossExecutableCoverage()
+    public void FindSharedAnnotationErrors_EverySharedInlineVariant_RequiresCrossExecutableCoverage()
     {
         // Arrange
         var method = CreateProbe(
@@ -121,7 +121,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Method, member, and row exclusions compose before deciding which executable owns a variant.</summary>
     [Fact]
-    public async Task SharedMethodMemberAndRowExclusionsAreComposed()
+    public async Task FindSharedDataErrorsAsync_SharedMethodMemberAndRowExclusions_AreComposed()
     {
         // Arrange
         var method = CreateProbe(
@@ -144,7 +144,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Member data confined to the Doka family belongs in its provider executable.</summary>
     [Fact]
-    public async Task SharedMemberFamilyOnlyCoverageIsRejected()
+    public async Task FindSharedDataErrorsAsync_SharedMemberFamilyOnlyCoverage_IsRejected()
     {
         // Arrange
         var method = CreateProbe([NeutralTheory(), SharedMember(nameof(RawSources.FamilyConditionalRows))])
@@ -161,7 +161,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Combined member and row exclusions may not erase every engine from a shared variant.</summary>
     [Fact]
-    public async Task SharedMemberEmptyEffectiveCoverageIsRejected()
+    public async Task FindSharedDataErrorsAsync_SharedMemberEmptyEffectiveCoverage_IsRejected()
     {
         // Arrange
         var method = CreateProbe(
@@ -184,7 +184,7 @@ public sealed partial class ProviderTestContractTests
 
     /// <summary>Ordinary shared member data also retains the unfiltered empty-source guard.</summary>
     [Fact]
-    public async Task SharedOrdinaryEmptyMemberSourceIsRejected()
+    public async Task FindSharedDataErrorsAsync_SharedOrdinaryEmptyMemberSource_IsRejected()
     {
         // Arrange
         var method = CreateProbe([NeutralTheory(), NeutralMember(nameof(RawSources.EmptyRows))])

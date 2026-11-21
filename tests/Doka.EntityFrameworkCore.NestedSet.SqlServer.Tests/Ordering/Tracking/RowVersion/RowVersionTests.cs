@@ -18,14 +18,14 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SortedInsertionReturnsATokenThatCanBeAttachedAndSaved(
+    public async Task SaveChangesAsync_SortedInsertion_ReturnsATokenThatCanBeAttachedAndSaved(
         bool readCommittedSnapshot
     )
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             cancellationToken: TestContext.Current.CancellationToken,
-            readCommittedSnapshot);
+            readCommittedSnapshot: readCommittedSnapshot);
 
         var tree = context
             .NestedSet<SqlServerVersionNode>()
@@ -64,12 +64,14 @@ public sealed class RowVersionTests : ProviderTest, IClassFixture<ProviderFixtur
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CoordinatedSaveRefreshesGeneratedTokensWithoutChangingAcceptanceSemantics(
+    public async Task SaveChangesAsync_CoordinatedSave_RefreshesGeneratedTokensWithoutChangingAcceptanceSemantics(
         bool acceptAllChanges
     )
     {
         // Arrange
-        await using var context = await _fixture.ResetAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await _fixture.ResetAsync(
+            cancellationToken: TestContext.Current.CancellationToken,
+            readCommittedSnapshot: false);
         var tree = context
             .NestedSet<SqlServerVersionNode>()
             .ForScope(1);

@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>
@@ -7,11 +9,12 @@ public sealed class CapacityFixtureTranslationTests
 {
     /// <summary>The actual batched topology update translates before reaching the intentional I/O boundary.</summary>
     [Fact]
-    public async Task BalancedTopologyTranslatesAtDefaultSqlServerCompatibility()
+    public async Task BalanceAsync_BalancedTopology_TranslatesAtDefaultSqlServerCompatibility()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        await using var context = new TreeContext(SqlServerOptions(boundary));
+        await using var services = CreateSqlServerServices(boundary);
+        await using var context = new TreeContext(services.Options);
 
         // Act
         var failure =
@@ -22,17 +25,23 @@ public sealed class CapacityFixtureTranslationTests
                     cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal("Query construction attempted asynchronous database I/O.", failure.Message);
         Assert.Equal(1, boundary.ConnectionStarts);
     }
 
     /// <summary>The former minimum setter is rejected before I/O instead of silently evaluating client-side.</summary>
     [Fact]
-    public async Task UnsupportedMinimumSetterFailsBeforeDatabaseIo()
+    public async Task ExecuteUpdateAsync_UnsupportedMinimumSetter_FailsBeforeDatabaseIo()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        await using var context = new TreeContext(SqlServerOptions(boundary));
+        await using var services = CreateSqlServerServices(boundary);
+        await using var context = new TreeContext(services.Options);
         const int nodes = 100_001;
 
         // Act
@@ -48,6 +57,11 @@ public sealed class CapacityFixtureTranslationTests
                 CancellationToken.None));
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Contains("could not be translated", failure.Message, StringComparison.Ordinal);
         Assert.Equal(0, boundary.ConnectionStarts);
     }
@@ -64,7 +78,7 @@ public sealed class CapacityFixtureTranslationTests
     [InlineData(1_002, 1_002, 2_003L)]
     [InlineData(1_003, 1_002, 2_005L)]
     [InlineData(2_001, 1_002, 4_001L)]
-    public async Task BalancedBranchPreservesExactEndpoint(
+    public async Task BalanceAsync_BalancedBranch_PreservesExactEndpoint(
         int nodes,
         int branch,
         long expectedRight
@@ -76,7 +90,8 @@ public sealed class CapacityFixtureTranslationTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await using var context = database.CreateContext();
-        await CapacitySeed.SeedAsync(context, nodes, cancellationToken: TestContext.Current.CancellationToken);
+        await CapacitySeed.SeedAsync(context, nodes, deep: false, corrupt: false,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Act
         var changed = await CompositionCapacityProfiles.BalanceAsync(
@@ -118,14 +133,16 @@ public sealed class CapacityFixtureTranslationTests
     }
 
     /// <summary>Uses the actual provider default without retaining a process-global provider graph.</summary>
-    private static DbContextOptions<TreeContext> SqlServerOptions(
+    private static OwnedModelTestServices<TreeContext> CreateSqlServerServices(
         CompositionIoBoundary boundary
     )
-        => new DbContextOptionsBuilder<TreeContext>()
+    {
+        // WHY: An owned provider avoids EF's global count heuristic even after many other test models.
+        return OwnedModelTestServices<TreeContext>.Create(new DbContextOptionsBuilder<TreeContext>()
             .UseSqlServer(
                 "Server=localhost;Database=capacity_translation;Integrated Security=true",
                 provider => provider.UseNestedSets())
-            .EnableServiceProviderCaching(false)
             .AddInterceptors(boundary)
-            .Options;
+            .Options);
+    }
 }

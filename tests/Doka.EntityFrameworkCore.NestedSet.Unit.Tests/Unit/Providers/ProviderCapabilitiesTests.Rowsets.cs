@@ -13,7 +13,7 @@ public sealed partial class ProviderCapabilitiesTests
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
-    public void ScalarAndCollectionParameterCountsPreserveScopeAndBoundary(
+    public void TreeRowsetParameterCount_ScalarAndCollectionParameterCounts_PreserveScopeAndBoundary(
         string engine
     )
     {
@@ -49,7 +49,7 @@ public sealed partial class ProviderCapabilitiesTests
     [InlineData(256, true)]
     [InlineData(257, false)]
     [InlineData(257, true)]
-    public void SqlServerParameterCountPreservesItsJsonOnlyTransport(
+    public void TreeRowsetParameterCount_SqlServerParameterCount_PreservesItsJsonOnlyTransport(
         int requestCount,
         bool scoped
     )
@@ -69,7 +69,7 @@ public sealed partial class ProviderCapabilitiesTests
     [Theory]
     [InlineData("PostgreSql")]
     [InlineData("Sqlite")]
-    public void UnscopedScalarRowsPreserveMappedValuesAndLifecycleWithoutScope(
+    public void BuildTreeRowsetSource_UnscopedScalarRows_PreserveMappedValuesAndLifecycleWithoutScope(
         string engine
     )
     {
@@ -114,7 +114,7 @@ public sealed partial class ProviderCapabilitiesTests
             .GetDbConnection()
             .CreateCommand();
 
-        var parameters = new List<object>();
+        List<object> parameters = [];
         var adapter = NestedSetTestAdapters.ForEngine(engine);
 
         // Act

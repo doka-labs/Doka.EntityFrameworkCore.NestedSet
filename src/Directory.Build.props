@@ -3,7 +3,7 @@
 
   <PropertyGroup Label="Package metadata and release baseline">
     <!-- WHY: Local builds use the reviewed stable version; qualified candidates must retain this exact identity. -->
-    <VersionPrefix>10.3.0</VersionPrefix>
+    <VersionPrefix>10.4.0</VersionPrefix>
     <Authors>Dominic Kalkbrenner</Authors>
     <Company>Doka Labs</Company>
     <Copyright>Copyright (c) 2026 Dominic Kalkbrenner</Copyright>
@@ -31,16 +31,14 @@
     <PackageValidationBaselineVersion>10.0.0</PackageValidationBaselineVersion>
   </PropertyGroup>
 
-  <PropertyGroup Label="Package dependency locks">
-    <!-- WHY: Only shipping packages commit dependency locks; test, sample, and tooling graphs are restored independently. -->
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(RuntimeIdentifier)' == ''">true</RestoreLockedMode>
-    <!-- WHY: Qualified candidates use owned lock copies so restore cannot rewrite the reviewed source locks. -->
-    <NuGetLockFilePath Condition="'$(NestedSetReleaseLockRoot)' != ''">$(NestedSetReleaseLockRoot)/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath>
-  </PropertyGroup>
-
-  <ItemGroup>
+  <ItemGroup Label="Production analyzers and IDE annotations">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <!-- WHY: IDE annotations describe the actual public/reflection contract without becoming package dependencies.
+         JETBRAINS_ANNOTATIONS stays undefined, so conditional attributes are omitted from emitted assemblies. -->
+    <PackageReference Include="JetBrains.Annotations" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Label="Package documentation">
     <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/" />
     <!-- WHY: The common EF package shares the central usage guide; other packages provide their own README. -->
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/"

@@ -35,9 +35,13 @@ internal static partial class SupervisorQueries
         var frontier = new List<ChainPath>();
         var completed = new List<SupervisorChainBranch>();
 
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
-        foreach (var origin in initial.Origins)
+        for (var originIndex = 0; originIndex < initial.Origins.Count; originIndex++)
         {
+            var origin = initial.Origins[originIndex];
+
             if (!AdvanceBranch(
                 origin,
                 null,
@@ -127,8 +131,13 @@ internal static partial class SupervisorQueries
                     continue;
                 }
 
-                foreach (var origin in batch.Origins)
+                // WHY: The completed input list is stable; preserve its order while updating separate result state.
+                // ReSharper disable once ForCanBeConvertedToForeach
+                // ReSharper disable once LoopCanBeConvertedToQuery
+                for (var originIndex = 0; originIndex < batch.Origins.Count; originIndex++)
                 {
+                    var origin = batch.Origins[originIndex];
+
                     if (!AdvanceBranch(
                         origin,
                         path,
@@ -150,9 +159,13 @@ internal static partial class SupervisorQueries
             frontier = next;
         }
 
-        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach (var path in frontier)
+        // WHY: The completed input list is stable; preserve its order while updating separate result state.
+        // ReSharper disable once ForCanBeConvertedToForeach
+        // ReSharper disable once LoopCanBeConvertedToQuery
+        for (var pathIndex = 0; pathIndex < frontier.Count; pathIndex++)
         {
+            var path = frontier[pathIndex];
+
             if (!Complete(path, SupervisorChainStatus.ReachedRequestedHop, state, completed))
             {
                 return LimitResult(completed, path);

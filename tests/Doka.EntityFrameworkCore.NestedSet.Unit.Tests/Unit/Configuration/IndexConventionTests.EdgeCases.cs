@@ -7,7 +7,7 @@ public sealed partial class IndexConventionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UniqueMaintenanceIndexIsReusedAndAcceptedByService(
+    public void ForScope_UniqueMaintenanceIndex_IsReusedAndAcceptedByService(
         bool afterMapping
     )
     {
@@ -83,7 +83,7 @@ public sealed partial class IndexConventionTests
     [InlineData(nameof(IndexNode.Depth))]
     [InlineData(nameof(IndexNode.TreeId))]
     [InlineData(nameof(IndexNode.Key))]
-    public void IgnoredStructuralPropertyIsRejectedAtFinalization(
+    public void FinalizeModel_IgnoredStructuralProperty_IsRejectedAtFinalization(
         string property
     )
     {
@@ -127,7 +127,7 @@ public sealed partial class IndexConventionTests
     [InlineData("concurrent", true)]
     [InlineData("fillfactor", true)]
     [InlineData("unfiltered", true)]
-    public void EquivalentPostgreSqlIndexIsReused(
+    public void FinalizeModel_EquivalentPostgreSqlIndex_IsReused(
         string facet,
         bool afterMapping
     )
@@ -185,7 +185,7 @@ public sealed partial class IndexConventionTests
 
     /// <summary>Convention-generated names do not make a replaceable ordinary index application-owned.</summary>
     [Fact]
-    public void ConventionDatabaseNameDoesNotPreventDeduplication()
+    public void FinalizeModel_ConventionDatabaseName_DoesNotPreventDeduplication()
     {
         // Arrange
         using var context = new ConventionContext(
@@ -236,7 +236,7 @@ public sealed partial class IndexConventionTests
     [Theory]
     [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
-    public void FallbackDatabaseNameUsesFinalPhysicalTable(
+    public void FallbackName_FallbackDatabaseName_UsesFinalPhysicalTable(
         string engine
     )
     {
@@ -257,7 +257,7 @@ public sealed partial class IndexConventionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FallbackDatabaseNameUsesFinalPhysicalColumns(
+    public void FallbackName_FallbackDatabaseName_UsesFinalPhysicalColumns(
         bool beforeMapping
     )
     {

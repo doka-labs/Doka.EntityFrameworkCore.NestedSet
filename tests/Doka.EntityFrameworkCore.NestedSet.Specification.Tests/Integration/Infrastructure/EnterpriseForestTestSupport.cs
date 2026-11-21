@@ -45,8 +45,8 @@ internal static class EnterpriseForestTestSupport
     internal static async Task SeedForestAsync(
         TreeContext context,
         TreeNode[] nodes,
-        CancellationToken cancellationToken,
-        bool corrupt = false
+        bool corrupt,
+        CancellationToken cancellationToken
     )
     {
         await context.AddRangeAsync(nodes, cancellationToken);

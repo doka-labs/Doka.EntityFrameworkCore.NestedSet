@@ -131,7 +131,7 @@ internal static partial class SignalReportBuilder
 
         return SampleReadSnapshot.RunAsync(
             context,
-            async token =>
+            async operationCancellationToken =>
             {
                 // WHY: Each reader feeds compact scalar state and reaches EOF/disposal before validation.
                 // Keeping DTO histories would add two intermediate buffers without changing the final array contract.
@@ -139,17 +139,17 @@ internal static partial class SignalReportBuilder
                     validated,
                     Catalog(context, validated)
                         .AsAsyncEnumerable(),
-                    token);
+                    operationCancellationToken);
 
                 // WHY: A buffered provider can finish the catalog after cancellation. Reject the next
                 // stage before building or submitting an aggregate that the caller no longer needs.
-                token.ThrowIfCancellationRequested();
+                operationCancellationToken.ThrowIfCancellationRequested();
 
                 return await SignalReportValidation.CreateGridAsync(
                     validated,
                     Build(context, validated)
                         .AsAsyncEnumerable(),
-                    token);
+                    operationCancellationToken);
             },
             cancellationToken);
     }

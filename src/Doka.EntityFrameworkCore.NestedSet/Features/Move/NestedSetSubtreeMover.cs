@@ -25,13 +25,15 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
     /// <summary>Applies a validated destination using current, locked source coordinates.</summary>
     /// <param name="source">The source snapshot read after acquiring the write lock.</param>
     /// <param name="destination">The destination coordinates before removing the source interval.</param>
-    /// <param name="token">The cancellation token for structural reads and writes.</param>
+    /// <param name="cancellationToken">
+    /// The cancellation token for structural reads and writes.
+    /// </param>
     /// <returns>Whether the move performed structural writes.</returns>
     /// <remarks>The caller validates ancestry and supplies the atomic transaction and lock boundary.</remarks>
     internal async Task<bool> MoveAsync(
         NestedSetNode<TKey> source,
         NestedSetPlacementResolver<TEntity, TKey, TTreeId, TScope>.Destination destination,
-        CancellationToken token
+        CancellationToken cancellationToken
     )
     {
         // WHY: Removing the source first shifts destinations to its right and later positions in the same group.
@@ -43,7 +45,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
         // WHY: Parent identity must use database key equality, including collation, rather than CLR equality.
         var sameParent = await _store
             .Siblings(destination.Parent)
-            .AnyAsync(_store.Equal(_store.Map.Key, source.Key), token)
+            .AnyAsync(_store.Equal(_store.Map.Key, source.Key), cancellationToken)
             .ConfigureAwait(false);
 
         var position = sameParent && source.Position < destination.Position
@@ -67,7 +69,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                 .Nodes
                 .Where(node => EF.Property<long>(node, _store.Map.Left) >= source.Left
                     && EF.Property<long>(node, _store.Map.Right) <= source.Right)
-                .MaxAsync(node => EF.Property<int>(node, _store.Map.Depth), token)
+                .MaxAsync(node => EF.Property<int>(node, _store.Map.Depth), cancellationToken)
                 .ConfigureAwait(false);
 
             _ = checked(maximumDepth + depthDelta);
@@ -90,7 +92,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                     position < source.Position
                         ? 1
                         : -1,
-                    token)
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
         else
@@ -103,7 +105,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                     _store.Map.Position,
                     1,
                     -1,
-                    token)
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             if (!destination.Append)
@@ -116,7 +118,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                         _store.Map.Position,
                         1,
                         1,
-                        token)
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
         }
@@ -154,7 +156,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
                             .SetProperty(
                                 _store.Property<long>(_store.Map.Right),
                                 RelocateBoundary(_store.Map.Right, source, destinationBoundary, offset)),
-                        token))
+                        cancellationToken))
             .ConfigureAwait(false);
 
         // WHY: Descendant parent links and positions remain valid; only the relocated root changes sibling group.
@@ -162,7 +164,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
         if (!sameParent)
         {
             await _store
-                .SetParentAsync(moved, destination.Parent, token)
+                .SetParentAsync(moved, destination.Parent, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -170,7 +172,7 @@ internal sealed class NestedSetSubtreeMover<TEntity, TKey, TTreeId, TScope>
         {
             // WHY: Cross-parent moves can retain the same ordinal; avoid firing another update for that known no-op.
             await _store
-                .SetLongAsync(moved, _store.Map.Position, position, token)
+                .SetLongAsync(moved, _store.Map.Position, position, cancellationToken)
                 .ConfigureAwait(false);
         }
 

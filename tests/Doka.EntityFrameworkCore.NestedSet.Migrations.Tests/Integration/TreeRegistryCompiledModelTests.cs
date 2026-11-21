@@ -23,7 +23,7 @@ public sealed class TreeRegistryCompiledModelTests
     [InlineData("MySql")]
     [InlineData("MariaDb")]
     [InlineData("PostgreSql")]
-    public async Task GeneratedModelUsesTheConfiguredRegistryTable(
+    public async Task InsertRootAsync_GeneratedModel_UsesTheConfiguredRegistryTable(
         string engine
     )
     {
@@ -31,7 +31,9 @@ public sealed class TreeRegistryCompiledModelTests
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
             qualifySchema: false,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null);
 
         await using var design = CreateContext(database, engine);
         var designName = Registry(
@@ -81,7 +83,9 @@ public sealed class TreeRegistryCompiledModelTests
 
         if (engine == "PostgreSql")
         {
-            options.UseNpgsql(connection, provider => provider.UseNestedSets());
+            options.UseNpgsql(connection, provider => provider
+                .CommandTimeout(0)
+                .UseNestedSets());
         }
         else
         {
@@ -90,7 +94,8 @@ public sealed class TreeRegistryCompiledModelTests
                 engine == "MariaDb"
                     ? DatabaseTestTargets.MariaDb
                     : DatabaseTestTargets.MySql,
-                provider => provider.UseNestedSets());
+                provider => provider
+                    .UseNestedSets());
         }
 
         if (model is not null)

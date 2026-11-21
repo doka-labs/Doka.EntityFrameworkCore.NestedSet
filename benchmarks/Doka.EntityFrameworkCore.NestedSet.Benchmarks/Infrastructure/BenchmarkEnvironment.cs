@@ -4,7 +4,7 @@ using EfNullLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger;
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Owns database resources in the launcher, outside generated benchmark processes and measurement.</summary>
-public sealed class BenchmarkEnvironment : IAsyncDisposable
+public sealed partial class BenchmarkEnvironment : IAsyncDisposable
 {
     private const string ConnectionVariable = "NESTEDSET_BENCHMARK_CONNECTION_STRING";
     private const string DatabaseName = "nestedset_benchmarks";
@@ -97,10 +97,14 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
 
         await BenchmarkLifecycle.InitializeAsync(
             environment,
-            async token =>
+            async operationCancellationToken =>
             {
-                var connection = await environment.StartAsync(options.ArtifactsPath, token);
-                environment.ServerVersion = await ReadServerVersionAsync(options.Engine, connection, token);
+                var connection = ConfigureConnectionTimeoutDefaults(options.Engine,
+                    await environment.StartAsync(options.ArtifactsPath, operationCancellationToken)).ConnectionString;
+                environment.ServerVersion = await ReadServerVersionAsync(
+                    options.Engine,
+                    connection,
+                    operationCancellationToken);
                 Environment.SetEnvironmentVariable(ConnectionVariable, connection);
             },
             cancellationToken: cancellationToken);
@@ -109,6 +113,8 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
     }
 
     /// <summary>Configures the same real provider in the launcher and generated benchmark process.</summary>
+    /// <remarks>Missing command and native undo timeouts are unlimited. Explicit native or EF values remain
+    /// intentional overrides; the benchmark runner owns terminal stopping instead of an implicit speed gate.</remarks>
     /// <param name="builder">The context options receiving the provider.</param>
     /// <param name="engine">The selected engine.</param>
     /// <param name="connectionString">The inherited connection to the owned database.</param>
@@ -120,6 +126,8 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        var native = ConfigureConnectionTimeoutDefaults(engine, connectionString);
+        connectionString = native.ConnectionString;
 
         switch (engine)
         {
@@ -142,6 +150,8 @@ public sealed class BenchmarkEnvironment : IAsyncDisposable
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
+
+        ConfigureCommandTimeoutDefault(builder, native);
     }
 
     /// <summary>Starts the selected owned server or SQLite file with fixed resources and disabled pooling.</summary>

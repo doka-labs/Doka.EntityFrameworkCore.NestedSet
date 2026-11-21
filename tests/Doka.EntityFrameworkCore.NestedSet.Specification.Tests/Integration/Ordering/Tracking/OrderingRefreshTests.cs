@@ -16,12 +16,13 @@ public abstract partial class OrderingRefreshTests : ProviderTest
 
     /// <summary>Refreshes native tracked keys once and preserves an unaffected scope's pending snapshot.</summary>
     [Fact]
-    public async Task ManyScopesRefreshTrackedBatchesOnceAndPreserveUnrelatedState()
+    public async Task SaveChangesAsync_ManyScopesRefreshTrackedBatchesOnceAnd_PreserveUnrelatedState()
     {
         // Arrange
         await using var setup = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         for (var scope = 1; scope <= 17; scope++)
         {
@@ -102,8 +103,8 @@ public abstract partial class OrderingRefreshTests : ProviderTest
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Strict",
-            probe);
+            mode: "Strict",
+            interceptors: [probe]);
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -117,7 +118,8 @@ public abstract partial class OrderingRefreshTests : ProviderTest
         // affected scopes, rather than silently replacing unrelated tracked coordinates or accepting payload originals.
         await using (var external = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken))
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict"))
         {
             var moved = await external
                 .Set<OrderingNode>()
@@ -144,7 +146,8 @@ public abstract partial class OrderingRefreshTests : ProviderTest
         var saved = await context.SaveChangesAsync(false, CancellationToken.None);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var persistedUnrelated = await verification
             .Set<OrderingNode>()

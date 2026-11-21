@@ -1,10 +1,9 @@
 using System.Runtime.ExceptionServices;
-using MySqlConnector;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Owns an isolated relational test database or temporary SQLite file.</summary>
-public sealed class TestDatabase : IAsyncDisposable
+public sealed partial class TestDatabase : IAsyncDisposable
 {
     private readonly string? _file;
     private readonly DbContextOptions<TreeContext> _options;
@@ -16,7 +15,11 @@ public sealed class TestDatabase : IAsyncDisposable
         bool ownsServerDatabase = false
     )
     {
-        _options = options;
+        var configured = new DbContextOptionsBuilder<TreeContext>(options)
+            .AddInterceptors(new OwnedPoolObserver(this));
+
+        FunctionalTestContextPolicy.ConfigureOptions(configured);
+        _options = configured.Options;
         _file = file;
         _ownsServerDatabase = ownsServerDatabase;
     }
@@ -36,7 +39,6 @@ public sealed class TestDatabase : IAsyncDisposable
         {
             // WHY: The assembly owns the engine, but completed classes must release their schemas and data.
             var context = CreateContext();
-            var connection = context.Database.GetDbConnection() as MySqlConnection;
             var deletionFailure = (Exception?)null;
 
             try
@@ -60,12 +62,7 @@ public sealed class TestDatabase : IAsyncDisposable
 
             try
             {
-                if (connection is not null)
-                {
-                    // WHY: Each isolated database has its own pool. Return the context's session before clearing
-                    // that exact pool, including failed deletion, without disturbing another live fixture's pool.
-                    await MySqlConnection.ClearPoolAsync(connection, CancellationToken.None);
-                }
+                await ClearOwnedMySqlPoolsAsync();
             }
             catch (Exception poolFailure) when (deletionFailure is not null)
             {
@@ -85,26 +82,34 @@ public sealed class TestDatabase : IAsyncDisposable
 
         if (_file is not null)
         {
-            File.Delete(_file);
-            File.Delete(_file + "-wal");
-            File.Delete(_file + "-shm");
+            DeleteSqliteFiles(_file);
         }
+    }
+
+    /// <summary>Removes case-owned SQLite files without requiring a successfully configured provider.</summary>
+    private static void DeleteSqliteFiles(
+        string file
+    )
+    {
+        File.Delete(file);
+        File.Delete(file + "-wal");
+        File.Delete(file + "-shm");
     }
 
     /// <summary>Creates an independent context against this database.</summary>
     /// <returns>A context owned by the caller.</returns>
-    public TreeContext CreateContext() => new(_options);
+    public TreeContext CreateContext() => ConfigureContext(new TreeContext(_options));
 
     /// <summary>Creates a context whose commands can be observed or fault-injected by a test.</summary>
     /// <param name="interceptor">The command interceptor used by this context only.</param>
     /// <returns>A context owned by the caller.</returns>
     public TreeContext CreateContext(
         DbCommandInterceptor interceptor
-    ) => new(
+    ) => ConfigureContext(new TreeContext(
         new DbContextOptionsBuilder<TreeContext>(_options)
             .ConfigureTestWarnings()
             .AddInterceptors(interceptor)
-            .Options);
+            .Options));
 
     /// <summary>Creates a context with command and materialization observers owned by one test.</summary>
     /// <param name="interceptors">The observers registered only for the returned context.</param>
@@ -133,6 +138,17 @@ public sealed class TestDatabase : IAsyncDisposable
         {
             TestMaterializationObserver.Instance.Register(context, observer.RecordMaterialization);
         }
+
+        return ConfigureContext(context);
+    }
+
+    /// <summary>Applies the functional fixture policy before any database work or pool acquisition.</summary>
+    private TreeContext ConfigureContext(
+        TreeContext context
+    )
+    {
+        FunctionalTestContextPolicy.Configure(context);
+        ObserveMySqlPool(context.Database.GetDbConnection());
 
         return context;
     }
@@ -254,8 +270,10 @@ public sealed class TestDatabase : IAsyncDisposable
             {
                 file = Path.Combine(Path.GetTempPath(), $"nestedset-{Guid.NewGuid():N}.db");
                 options.UseSqlite(
-                    $"Data Source={file};Pooling=False;Default Timeout=60",
-                    provider => provider.UseNestedSets());
+                    $"Data Source={file};Pooling=False;Default Timeout=0",
+                    provider => provider
+                        .CommandTimeout(0)
+                        .UseNestedSets());
             }
             else if (engine == "PostgreSql")
             {
@@ -264,7 +282,9 @@ public sealed class TestDatabase : IAsyncDisposable
                     engine,
                     cancellationToken: cancellationToken);
 
-                options.UseNpgsql(connection, provider => provider.UseNestedSets());
+                options.UseNpgsql(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
             }
             else if (engine == "SqlServer")
             {
@@ -273,7 +293,9 @@ public sealed class TestDatabase : IAsyncDisposable
                     engine,
                     cancellationToken: cancellationToken);
 
-                options.UseSqlServer(connection, provider => provider.UseNestedSets());
+                options.UseSqlServer(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
             }
             else if (engine == "MySql")
             {
@@ -282,7 +304,8 @@ public sealed class TestDatabase : IAsyncDisposable
                     engine,
                     cancellationToken: cancellationToken);
 
-                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
+                options.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider
+                    .UseNestedSets());
             }
             else if (engine == "MariaDb")
             {
@@ -291,7 +314,8 @@ public sealed class TestDatabase : IAsyncDisposable
                     engine,
                     cancellationToken: cancellationToken);
 
-                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
+                options.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider
+                    .UseNestedSets());
             }
             else
             {
@@ -313,12 +337,19 @@ public sealed class TestDatabase : IAsyncDisposable
         }
         catch (Exception initializationFailure)
         {
-            // WHY: Initialization can fail before the caller receives ownership; a failed server start has no database.
-            var failed = database ?? new TestDatabase(options.Options, file);
-
             try
             {
-                await failed.DisposeAsync();
+                // WHY: Failed server startup or an invalid engine owns no database. Constructing a cleanup
+                // fixture there would require a provider and replace the actual failure before cleanup begins.
+                if (database is not null)
+                {
+                    await database.DisposeAsync();
+                }
+                else if (file is not null)
+                {
+                    DeleteSqliteFiles(file);
+                }
+
             }
             catch (Exception cleanupFailure)
             {
@@ -331,281 +362,4 @@ public sealed class TestDatabase : IAsyncDisposable
             throw;
         }
     }
-}
-
-/// <summary>Maps the custom-property and optional-interface entities used by relational scenarios.</summary>
-public sealed class TreeContext : DbContext
-{
-    /// <summary>Creates an integration-test context using the configured relational provider.</summary>
-    /// <param name="options">The provider and interceptor configuration.</param>
-    public TreeContext(
-        DbContextOptions<TreeContext> options
-    ) : base(options) { }
-
-    /// <inheritdoc />
-    protected override void OnModelCreating(
-        ModelBuilder modelBuilder
-    )
-    {
-        if (Database.IsNpgsql())
-        {
-            // WHY: A nondefault schema verifies that internal lock SQL honors relational table mapping.
-            modelBuilder.HasDefaultSchema("hierarchies");
-        }
-
-        var node = modelBuilder.Entity<TreeNode>();
-        node.HasKey(x => x.NodeId);
-        node
-            .Property(x => x.NodeId)
-            .ValueGeneratedNever();
-
-        node.HasNestedSet(x => x
-            .HasNodeKey(n => n.NodeId)
-            .HasBounds(n => n.Start, n => n.End)
-            .HasDepth(n => n.Depth)
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.Parent)
-            .HasPosition(n => n.Position));
-
-        var concurrent = modelBuilder.Entity<ConcurrentNode>();
-        concurrent
-            .Property(x => x.Id)
-            .ValueGeneratedNever();
-
-        concurrent.HasNestedSet(x => x
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.ParentId));
-
-        var unscoped = modelBuilder.Entity<UnscopedQueryNode>();
-        unscoped
-            .Property(x => x.Id)
-            .ValueGeneratedNever();
-
-        unscoped.HasQueryFilter(node => node.Visible);
-        unscoped.HasNestedSet(nestedSet => nestedSet
-            .HasNodeKey(node => node.Id)
-            .HasTreeId(node => node.TreeId)
-            .HasParent(node => node.ParentId)
-            .HasBounds(node => node.Left, node => node.Right)
-            .HasDepth(node => node.Depth)
-            .HasPosition(node => node.Position));
-
-        modelBuilder
-            .Entity<UnrelatedRow>()
-            .Property(x => x.Id)
-            .ValueGeneratedNever();
-
-        modelBuilder.Entity<GeneratedAuditRow>();
-        var binary = modelBuilder.Entity<BinaryNode>();
-        binary
-            .Property(x => x.Id)
-            .HasMaxLength(64)
-            .ValueGeneratedNever();
-
-        binary
-            .Property(x => x.ParentId)
-            .HasMaxLength(64);
-
-        binary.HasNestedSet(x => x
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.ParentId));
-
-        var constrained = modelBuilder.Entity<ConstrainedNode>();
-        constrained
-            .Property(x => x.Id)
-            .ValueGeneratedNever();
-
-        constrained
-            .HasOne<ConstrainedNode>()
-            .WithMany()
-            .HasForeignKey(x => new
-            {
-                x.Tree,
-                x.ParentId,
-            })
-            .HasPrincipalKey(x => new
-            {
-                x.Tree,
-                x.Id,
-            })
-            .OnDelete(DeleteBehavior.Restrict);
-
-        constrained.HasNestedSet(x => x
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.ParentId));
-
-        var guid = modelBuilder.Entity<GuidNode>();
-        guid
-            .Property(x => x.Id)
-            .ValueGeneratedNever();
-
-        guid.HasNestedSet(x => x
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.ParentId));
-
-        var text = modelBuilder.Entity<TextNode>();
-        text
-            .Property(x => x.Id)
-            .HasMaxLength(64)
-            .ValueGeneratedNever();
-
-        text
-            .Property(x => x.ParentId)
-            .HasMaxLength(64);
-
-        text
-            .Property(x => x.Tree)
-            .HasMaxLength(64);
-
-        if (Database.IsSqlite())
-        {
-            // WHY: Deliberately leave ParentId binary: lookups must use the principal key collation.
-            text
-                .Property(x => x.Id)
-                .UseCollation("NOCASE");
-        }
-
-        text.HasNestedSet(x => x
-            .HasTreeId(n => n.TreeId)
-            .HasScope(n => n.Tree)
-            .HasParent(n => n.ParentId));
-
-        if (Database.IsNpgsql())
-        {
-            // WHY: Lowercase lock columns exercise mapped names instead of relying on CLR-name SQL.
-            foreach (var entity in modelBuilder.Model.GetEntityTypes())
-            {
-                foreach (var property in entity.GetProperties())
-                {
-                    property.SetColumnName(property.Name.ToLowerInvariant());
-                }
-            }
-        }
-    }
-}
-
-/// <summary>An entity with custom names for keys, scope, parent and nested-set boundaries.</summary>
-public class TreeNode
-{
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    /// <summary>Gets or sets application data that structural operations must not select or materialize.</summary>
-    public string? Payload { get; set; }
-
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public int NodeId { get; set; }
-
-    /// <summary>Gets or sets the left interval boundary.</summary>
-    public long Start { get; set; }
-
-    /// <summary>Gets or sets the right interval boundary.</summary>
-    public long End { get; set; }
-
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Tree { get; set; }
-
-    /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
-    public int? Parent { get; set; }
-
-    /// <summary>Gets or sets the zero-based depth from the forest root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the zero-based position among siblings.</summary>
-    public long Position { get; set; }
-}
-
-/// <summary>An optional-interface entity with a Guid key and nullable Guid parent.</summary>
-public sealed class GuidNode : IScopedNestedSetNode<Guid, Guid, int>
-{
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Tree { get; set; }
-
-    /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
-    public Guid? ParentId { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    int IScopedNestedSetNode<Guid, Guid, int>.Scope => Tree;
-
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public Guid Id { get; set; }
-
-    /// <summary>Gets or sets the left interval boundary.</summary>
-    public long Left { get; set; }
-
-    /// <summary>Gets or sets the right interval boundary.</summary>
-    public long Right { get; set; }
-
-    /// <summary>Gets or sets the zero-based depth from the forest root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the zero-based position among siblings.</summary>
-    public long Position { get; set; }
-}
-
-/// <summary>An optional-interface entity used to exercise string-key collation.</summary>
-public sealed class TextNode : IScopedNestedSetNode<string, Guid, string>
-{
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public string Tree { get; set; } = "";
-
-    /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
-    public string? ParentId { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    string IScopedNestedSetNode<string, Guid, string>.Scope => Tree;
-
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public string Id { get; set; } = "";
-
-    /// <summary>Gets or sets the left interval boundary.</summary>
-    public long Left { get; set; }
-
-    /// <summary>Gets or sets the right interval boundary.</summary>
-    public long Right { get; set; }
-
-    /// <summary>Gets or sets the zero-based depth from the forest root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the zero-based position among siblings.</summary>
-    public long Position { get; set; }
-}
-
-/// <summary>An optional-interface entity with a restrictive self-referencing foreign key.</summary>
-public sealed class ConstrainedNode : IScopedNestedSetNode<int, Guid, int>
-{
-    /// <summary>Gets or sets the isolated forest scope.</summary>
-    public int Tree { get; set; }
-
-    /// <summary>Gets or sets the direct parent key, or null for a root.</summary>
-    public int? ParentId { get; set; }
-
-    /// <summary>Gets or sets the stable tree identity.</summary>
-    public Guid TreeId { get; set; }
-
-    int IScopedNestedSetNode<int, Guid, int>.Scope => Tree;
-
-    /// <summary>Gets or sets the application-assigned primary key.</summary>
-    public int Id { get; set; }
-
-    /// <summary>Gets or sets the left interval boundary.</summary>
-    public long Left { get; set; }
-
-    /// <summary>Gets or sets the right interval boundary.</summary>
-    public long Right { get; set; }
-
-    /// <summary>Gets or sets the zero-based depth from the forest root.</summary>
-    public int Depth { get; set; }
-
-    /// <summary>Gets or sets the zero-based position among siblings.</summary>
-    public long Position { get; set; }
 }

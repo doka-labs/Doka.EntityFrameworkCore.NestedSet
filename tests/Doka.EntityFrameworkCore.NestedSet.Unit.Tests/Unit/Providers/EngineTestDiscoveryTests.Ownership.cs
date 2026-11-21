@@ -6,7 +6,7 @@ public sealed partial class EngineTestDiscoveryTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public void ConstructorSelectsEngineFromAMultiEngineCollection(
+    public void ResolveEngine_Constructor_SelectsEngineFromAMultiEngineCollection(
         string engine
     )
     {
@@ -33,7 +33,7 @@ public sealed partial class EngineTestDiscoveryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MissingConcreteFixtureIsRejected(
+    public void ResolveEngine_MissingConcreteFixture_IsRejected(
         bool interfaceView
     )
     {
@@ -54,14 +54,14 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Two different constructor-selected engines cannot silently choose one fixture.</summary>
     [Fact]
-    public void ContradictoryConstructorFixturesAreRejected()
+    public void ResolveEngine_ContradictoryConstructorFixtures_AreRejected()
     {
         // Arrange
-        var types = new[]
-        {
+        Type[] types =
+        [
             typeof(ProviderFixture<HarmlessResource, MySqlEngine>),
             typeof(ProviderFixture<HarmlessResource, MariaDbEngine>),
-        };
+        ];
 
         var method = CreateTestMethod("MySql", nameof(DiscoveryProbe.Ordinary), types);
 
@@ -75,10 +75,10 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>An engine fixture from another provider executable is a visible configuration failure.</summary>
     [Fact]
-    public void ForeignConstructorFixtureIsRejected()
+    public void ResolveEngine_ForeignConstructorFixture_IsRejected()
     {
         // Arrange
-        var types = new[] { typeof(ProviderFixture<HarmlessResource, MySqlEngine>) };
+        Type[] types = [ typeof(ProviderFixture<HarmlessResource, MySqlEngine>) ];
         var method = CreateTestMethod("Sqlite", nameof(DiscoveryProbe.Ordinary), types);
 
         // Act
@@ -91,10 +91,10 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>A marker typo cannot disappear through ownership filtering.</summary>
     [Fact]
-    public void UnknownFixtureMarkerIsRejected()
+    public void ResolveEngine_UnknownFixtureMarker_IsRejected()
     {
         // Arrange
-        var types = new[] { typeof(ProviderFixture<HarmlessResource, UnknownEngine>) };
+        Type[] types = [ typeof(ProviderFixture<HarmlessResource, UnknownEngine>) ];
         var method = CreateTestMethod("MySql", nameof(DiscoveryProbe.Ordinary), types);
 
         // Act
@@ -107,7 +107,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Concurrent initialization preserves separate resources and immutable engine identities.</summary>
     [Fact]
-    public async Task ProviderFixtureInitializationKeepsEnginesAndResourcesIsolated()
+    public async Task InitializeAsync_ProviderFixtureInitialization_KeepsEnginesAndResourcesIsolated()
     {
         // Arrange
         await using var first = new ProviderFixture<HarmlessResource, MySqlEngine>();
@@ -132,7 +132,7 @@ public sealed partial class EngineTestDiscoveryTests
 
     /// <summary>Disposing one fixture preserves its engine identity and leaves the peer resource alive.</summary>
     [Fact]
-    public async Task ProviderFixtureDisposalKeepsOwnershipAndEngineIdentity()
+    public async Task DisposeAsync_ProviderFixtureDisposal_KeepsOwnershipAndEngineIdentity()
     {
         // Arrange
         var first = new ProviderFixture<HarmlessResource, MySqlEngine>();

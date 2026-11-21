@@ -7,7 +7,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AssignedCustomKeyMutationRollsBackSingleInsert(
+    public async Task InsertRootAsync_AssignedCustomKeyMutation_RollsBackSingleInsert(
         bool afterSave
     )
     {
@@ -80,7 +80,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RejectedSingleGraphTrackingRestoresInput(
+    public async Task InsertRootAsync_RejectedSingleGraphTracking_RestoresInput(
         bool owned
     )
     {
@@ -138,7 +138,7 @@ public abstract partial class SingleInsertGuardTests
 
     /// <summary>Successful generated single insertions detach the installed database identities.</summary>
     [Fact]
-    public async Task GeneratedSingleIdentitiesPersistAndCanBeFoundAfterDetach()
+    public async Task InsertChildAsync_GeneratedSingleIdentities_PersistAndCanBeFoundAfterDetach()
     {
         // Arrange
         await using var database = new ModelCompatibilityDatabase();
@@ -198,7 +198,7 @@ public abstract partial class SingleInsertGuardTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GeneratedSingleKeyMutationRollsBackInput(
+    public async Task InsertRootAsync_GeneratedSingleKeyMutation_RollsBackInput(
         bool afterSave
     )
     {

@@ -18,7 +18,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>Creates one exact tree and derives child Scope and TreeId from its parent.</summary>
     [Fact]
-    public async Task RootAndChildUseExactTreeIdentity()
+    public async Task InsertRootAsync_RootAndChild_UseExactTreeIdentity()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -50,7 +50,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>Independent trees keep identical local coordinates in the same Scope.</summary>
     [Fact]
-    public async Task IndependentTreesKeepLocalBounds()
+    public async Task InsertRootAsync_IndependentTrees_KeepLocalBounds()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -74,7 +74,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>Internal structure resolution sees filtered anchors but public queries retain the filter.</summary>
     [Fact]
-    public async Task MutationIgnoresFilterAndPublicQueryPreservesIt()
+    public async Task InsertRootAsync_Mutation_IgnoresFilterAndPublicQueryPreservesIt()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -109,7 +109,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>An active TreeId cannot receive a second root.</summary>
     [Fact]
-    public async Task DuplicateRootIsRejectedBeforeNodeWrite()
+    public async Task InsertRootAsync_DuplicateRoot_IsRejectedBeforeNodeWrite()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -135,7 +135,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>A subtree can move between active trees without changing unrelated local coordinates.</summary>
     [Fact]
-    public async Task MoveToTransfersSubtreeAcrossTrees()
+    public async Task MoveToAsync_MoveTo_TransfersSubtreeAcrossTrees()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -177,7 +177,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>Detaching a subtree creates a root and reserves its new TreeId.</summary>
     [Fact]
-    public async Task DetachCreatesIndependentTree()
+    public async Task DetachAsTreeAsync_Detach_CreatesIndependentTree()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -210,7 +210,7 @@ public abstract partial class NestedSetMutationFacadeTests : ProviderTest
 
     /// <summary>Deleting a root subtree tombstones the TreeId against future reuse.</summary>
     [Fact]
-    public async Task DeletedTreeIdCannotBeReused()
+    public async Task InsertRootAsync_DeletedTreeId_CannotBeReused()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);

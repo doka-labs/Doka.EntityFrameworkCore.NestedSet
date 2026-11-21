@@ -8,7 +8,7 @@ public sealed partial class SignalReportValidationTests
     /// Selections, owner groups and scalar fields keep their first-requested order after deduplication.
     /// </summary>
     [Fact]
-    public void SnapshotPreservesFirstSelectionAndCriterionOrder()
+    public void Snapshot_DuplicateSelections_PreservesFirstSelectionAndCriterionOrder()
     {
         // Arrange
         var first = SignalReportDataset.Id(2);
@@ -62,7 +62,7 @@ public sealed partial class SignalReportValidationTests
     /// Deferred report selections own their arrays even when a caller reuses and mutates every input buffer.
     /// </summary>
     [Fact]
-    public void SnapshotOwnsAllCallerSelectionBuffers()
+    public void Id_Snapshot_OwnsAllCallerSelectionBuffers()
     {
         // Arrange
         Guid[] anchors = [SignalReportDataset.Id(1)];
@@ -106,7 +106,7 @@ public sealed partial class SignalReportValidationTests
     /// Exact field-code identity neither trims padding nor folds case while grouping scalar criteria.
     /// </summary>
     [Fact]
-    public void SnapshotKeepsOrdinalFieldCodesDistinct()
+    public void Snapshot_OrdinallyDifferentFieldCodes_RemainDistinct()
     {
         // Arrange
         var criterion = Request()
@@ -143,7 +143,7 @@ public sealed partial class SignalReportValidationTests
     /// Equal text from separate criterion instances deduplicates without replacing the first selection.
     /// </summary>
     [Fact]
-    public void SnapshotDeduplicatesSeparateOrdinallyEqualCriteria()
+    public void Snapshot_SeparateOrdinallyEqualCriteria_AreDeduplicated()
     {
         // Arrange
         var first = Request()
@@ -170,7 +170,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("mode")]
     [InlineData("field")]
     [InlineData("value")]
-    public void SnapshotRejectsMalformedCriteria(
+    public void Snapshot_MalformedCriteria_AreRejected(
         string shape
     )
     {

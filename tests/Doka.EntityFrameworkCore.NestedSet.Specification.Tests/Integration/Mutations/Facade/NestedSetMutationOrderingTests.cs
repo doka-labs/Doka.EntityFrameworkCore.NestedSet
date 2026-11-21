@@ -15,12 +15,13 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
 
     /// <summary>Configured ordering determines sibling positions and complete-tree preorder.</summary>
     [Fact]
-    public async Task AutomaticInsertUsesConfiguredOrder()
+    public async Task InsertChildAsync_AutomaticInsert_UsesConfiguredOrder()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var hierarchy = context
             .NestedSet<OrderingNode>()
@@ -49,12 +50,13 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
 
     /// <summary>Configured-only ordering rejects manual placement without changing persisted structure.</summary>
     [Fact]
-    public async Task StrictOrderRejectsManualPlacement()
+    public async Task InsertBeforeAsync_StrictOrder_RejectsManualPlacement()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var hierarchy = context
             .NestedSet<OrderingNode>()
@@ -83,13 +85,13 @@ public abstract class NestedSetMutationOrderingTests : ProviderTest
 
     /// <summary>Flexible ordering honors a caller-selected position for one explicit insertion.</summary>
     [Fact]
-    public async Task FlexibleOrderAllowsManualPlacement()
+    public async Task InsertBeforeAsync_FlexibleOrder_AllowsManualPlacement()
     {
         // Arrange
         await using var context = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            "Flexible");
+            mode: "Flexible");
 
         var hierarchy = context
             .NestedSet<OrderingNode>()

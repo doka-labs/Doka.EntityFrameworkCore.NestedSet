@@ -8,6 +8,7 @@ namespace Doka.NestedSet;
 /// <see cref="IScopedNestedSetNode{TNodeKey,TTreeId,TScope}" /> so in-memory ancestry predicates compare the complete
 /// tree identity. EF Core mappings can use arbitrary entity types without implementing either interface.
 /// </remarks>
+[PublicAPI]
 public interface INestedSetNode<out TNodeKey, out TTreeId>
     where TNodeKey : notnull
     where TTreeId : notnull
@@ -36,23 +37,4 @@ public interface INestedSetNode<out TNodeKey, out TTreeId>
     /// <value>The non-negative index within this node's sibling group.</value>
     /// <remarks>The tree's single root has position zero. Non-root positions are dense for each parent.</remarks>
     long Position { get; }
-}
-
-/// <summary>Provides the complete tree identity and coordinates of a node in a scoped hierarchy.</summary>
-/// <typeparam name="TNodeKey">The configured scalar node-key type.</typeparam>
-/// <typeparam name="TTreeId">The stable tree-identity type.</typeparam>
-/// <typeparam name="TScope">The configured scope type.</typeparam>
-/// <remarks>
-/// A scoped tree is identified by the pair of <see cref="Scope" /> and
-/// <see cref="INestedSetNode{TNodeKey,TTreeId}.TreeId" />. Use this contract when the EF mapping calls
-/// <c>HasScope</c>.
-/// </remarks>
-public interface IScopedNestedSetNode<out TNodeKey, out TTreeId, out TScope> : INestedSetNode<TNodeKey, TTreeId>
-    where TNodeKey : notnull
-    where TTreeId : notnull
-    where TScope : notnull
-{
-    /// <summary>Gets the partition that contains the tree.</summary>
-    /// <value>The scope compared together with the tree identity before bounds are evaluated.</value>
-    TScope Scope { get; }
 }

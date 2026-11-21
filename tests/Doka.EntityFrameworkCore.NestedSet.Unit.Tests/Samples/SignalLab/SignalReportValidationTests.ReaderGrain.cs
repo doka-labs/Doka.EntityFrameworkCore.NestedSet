@@ -8,7 +8,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GridReaderPreservesLargeIndependentGrain(
+    public async Task CreateGridAsync_GridReader_PreservesLargeIndependentGrain(
         bool sparse
     )
     {
@@ -75,7 +75,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(2)]
     [InlineData(9)]
-    public async Task GridAdaptersPreserveRepeatedSelectionsAndSourceIdentity(
+    public async Task CreateGrid_GridAdapters_PreserveRepeatedSelectionsAndSourceIdentity(
         int repetitions
     )
     {
@@ -124,7 +124,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GridReaderRejectsUnselectedMetricOrSourceDuplicates(
+    public async Task CreateGridAsync_GridReader_RejectsUnselectedMetricOrSourceDuplicates(
         bool foreignSource
     )
     {
@@ -159,7 +159,7 @@ public sealed partial class SignalReportValidationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GridReaderRetainsFirstDuplicateAcrossIdentityIndexes(
+    public async Task CreateGridAsync_GridReader_RetainsFirstDuplicateAcrossIdentityIndexes(
         bool firstForeign
     )
     {
@@ -197,7 +197,7 @@ public sealed partial class SignalReportValidationTests
     [InlineData("none")]
     [InlineData("read")]
     [InlineData("dispose")]
-    public async Task GridReaderChecksOverflowAfterSuccessfulDisposal(
+    public async Task CreateGridAsync_GridReader_ChecksOverflowAfterSuccessfulDisposal(
         string boundary
     )
     {

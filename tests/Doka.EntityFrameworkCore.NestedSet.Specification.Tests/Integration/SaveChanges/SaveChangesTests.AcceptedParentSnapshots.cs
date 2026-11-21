@@ -8,7 +8,7 @@ public abstract partial class SaveChangesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FailedParentMovePreservesAcceptedStalePrincipalMembership(
+    public async Task SaveChangesAsync_FailedParentMove_PreservesAcceptedStalePrincipalMembership(
         bool automaticDetection
     )
     {

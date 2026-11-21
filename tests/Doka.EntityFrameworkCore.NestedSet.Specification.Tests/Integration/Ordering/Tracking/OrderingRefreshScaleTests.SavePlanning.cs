@@ -4,7 +4,7 @@ public abstract partial class OrderingRefreshScaleTests
 {
     /// <summary>Many changes in one tree contribute one lock and refresh identity during a Parent move.</summary>
     [Fact]
-    public async Task ParentSaveDeduplicatesTreeRequests()
+    public async Task SaveChangesAsync_ParentSave_DeduplicatesTreeRequests()
     {
         // Arrange
         // WHY: SQL Server needs more than 1,050 candidates to cross its 2,100 scalar-parameter limit.
@@ -14,7 +14,8 @@ public abstract partial class OrderingRefreshScaleTests
 
         await using var seed = await _fixture.ResetAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var treeId = Guid.NewGuid();
         var nodes = new List<OrderingNode>(children + 1)
@@ -51,7 +52,8 @@ public abstract partial class OrderingRefreshScaleTests
         await seed.SavePrecomputedHierarchyAsync(CancellationToken.None);
         await using var context = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var tracked = await context
             .Set<OrderingNode>()
@@ -73,7 +75,8 @@ public abstract partial class OrderingRefreshScaleTests
         Assert.Equal(children, saved);
         await using var verification = await _fixture.CreateContextAsync(
             Engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            mode: "Strict");
 
         var moved = await verification
             .Set<OrderingNode>()

@@ -10,7 +10,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task AssignedScalarKeyMutationRollsBackSingleInsert(
+    public async Task InsertRootAsync_AssignedScalarKeyMutation_RollsBackSingleInsert(
         bool afterSave,
         bool callerTransaction
     )
@@ -89,7 +89,7 @@ public abstract partial class SingleInsertGuardTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task AssignedBinaryKeyMutationRollsBackSingleInsert(
+    public async Task InsertRootAsync_AssignedBinaryKeyMutation_RollsBackSingleInsert(
         bool afterSave,
         bool callerTransaction
     )

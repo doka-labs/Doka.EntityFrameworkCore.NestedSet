@@ -18,7 +18,7 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task StructuralSourceBoundsTranslateWithoutAnAncestorIndexOrIo(
+    public async Task ToQueryString_StructuralSourceBounds_TranslateWithoutAnAncestorIndexOrIo(
         string engine,
         bool treeBound
     )
@@ -116,7 +116,7 @@ public sealed class IndependentAncestorEnvelopeTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task MatchedOwnerHydrationHasItsOwnDirectedSqlEdge(
+    public async Task ToQueryString_MatchedOwnerHydration_HasItsOwnDirectedSqlEdge(
         string engine
     )
     {
@@ -177,7 +177,7 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task ApplicationSelectionIsRetainedOnceWithoutEvaluation(
+    public async Task SelectAncestors_ApplicationSelection_IsRetainedOnceWithoutEvaluation(
         string engine,
         bool queryBearing
     )
@@ -220,7 +220,7 @@ public sealed class IndependentAncestorEnvelopeTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task VolatileServerSelectionOccursOnceInTheStatement(
+    public async Task ToQueryString_VolatileServerSelection_OccursOnceInTheStatement(
         string engine
     )
     {
@@ -265,7 +265,7 @@ public sealed class IndependentAncestorEnvelopeTests
     [InlineData("MariaDb", "embedded")]
     [InlineData("MariaDb", "captured")]
     [InlineData("MariaDb", "hierarchy")]
-    public async Task IndependentFactsRetainTheirCompletedSourceBoundary(
+    public async Task ToQueryString_IndependentFacts_RetainTheirCompletedSourceBoundary(
         string engine,
         string shape
     )

@@ -10,12 +10,12 @@ public sealed partial class CompositionAncestorIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TypedAdapterDoesNotReportMissingFeaturesOnAnotherContextCacheHit(
+    public async Task ToQueryString_TypedAdapter_DoesNotReportMissingFeaturesOnAnotherContextCacheHit(
         bool includeSelf
     )
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var boundary = new CompositionIoBoundary();
         var probe = new DeferredCompilationProbe();
         var options = DeferredDiagnosticOptions(events, boundary);
@@ -56,12 +56,12 @@ public sealed partial class CompositionAncestorIndexTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TypedAdapterDoesNotReportMissingFeaturesOnAnotherContextCacheMiss(
+    public async Task ToQueryString_TypedAdapter_DoesNotReportMissingFeaturesOnAnotherContextCacheMiss(
         bool includeSelf
     )
     {
         // Arrange
-        var events = new List<EventData>();
+        List<EventData> events = [];
         var boundary = new CompositionIoBoundary();
         var probe = new DeferredCompilationProbe();
         var options = DeferredDiagnosticOptions(events, boundary);

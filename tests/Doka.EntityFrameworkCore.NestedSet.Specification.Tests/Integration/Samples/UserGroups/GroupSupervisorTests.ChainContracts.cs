@@ -12,13 +12,16 @@ public abstract partial class GroupSupervisorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ChainStepsApplyDifferentRolesAndGroupTypes(
+    public async Task FollowAllMembershipsAsync_ChainSteps_ApplyDifferentRolesAndGroupTypes(
         bool expanded
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         var departmentRole = Guid.NewGuid();
         var executiveRole = Guid.NewGuid();
@@ -129,14 +132,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task FailedLaterHopPreservesPrefixAndStopsItsBranch(
+    public async Task FollowAllMembershipsAsync_FailedLaterHop_PreservesPrefixAndStopsItsBranch(
         bool ambiguous,
         bool expanded
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         if (ambiguous)
         {
@@ -219,14 +225,17 @@ public abstract partial class GroupSupervisorTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ChainCancellationIsNeverReportedAsMissingOrComplete(
+    public async Task FollowAllMembershipsAsync_ChainCancellation_IsNeverReportedAsMissingOrComplete(
         bool expanded,
         bool laterHop
     )
     {
         // Arrange
         var probe = new SupervisorCommandProbe();
-        await using var context = await CreateAsync(probe, cancellationToken: TestContext.Current.CancellationToken);
+        await using var context = await CreateAsync(
+            probe,
+            cancellationToken: TestContext.Current.CancellationToken,
+            planProbe: null);
         var data = await App.SupervisorScenarioData.CreateAsync(context, Guid.NewGuid(), CancellationToken.None);
         await EnableSnapshotAsync(context, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();

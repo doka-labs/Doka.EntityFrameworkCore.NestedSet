@@ -5,12 +5,14 @@
 NestedSet uses the full MADR 4.0.0 structure and the Doka profile's explicit
 metadata, trade-offs, confirmation, history, provenance, and reciprocal decision
 relationships. The profile makes optional upstream sections mandatory. Its
-identifiers, additional metadata, status rules, and generated indexes are Doka
+identifiers, additional metadata, and status rules are Doka
 extensions, not requirements attributed to MADR itself.
 
 MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY express normative requirements here.
 The [template](adr-template.md) provides the complete starting structure. The
-[decision index](README.md) is generated from the records.
+[decision index](README.md) is maintained by hand with a record link and one
+decision sentence. Status, dates, and relationships remain in each record's
+front matter rather than a second metadata inventory.
 
 Records preserve their actual recording dates and initial proposal history.
 The maintainer accepted the decisions then present on 2026-09-28; later records
@@ -26,10 +28,10 @@ approval. Acceptance requires a recorded owner decision under
 `decision-makers` identifies the accountable decision authority; its presence
 does not establish approval. `consulted` names actual consultation participants.
 `informed` names the maintainer-designated audience kept up to date through
-one-way communication. NestedSet uses `@doka-labs/core-maintainers`, following
-the organization's SafeMigrations audience. An entry does not prove notification
-delivery, consultation, or approval. Empty lists are valid when no consultation
-participants or informed audience have been designated.
+one-way communication. NestedSet requires exactly
+`informed: ["@doka-labs/core-maintainers"]`. An entry does not prove notification
+delivery, consultation, or approval. `consulted` remains empty when no actual
+consultation participant has been designated.
 
 ## Identity and source bytes
 
@@ -40,7 +42,7 @@ participants or informed audience have been designated.
 - Source MUST use ASCII, LF, and a final newline. Control characters other than
   tabs and line breaks are forbidden.
 - The H1 MUST be `# D-NNN -- Short decision title`. Titles MUST NOT contain
-  inline Markdown markup that would break the generated navigation table.
+  inline Markdown markup that would make the navigation table ambiguous.
 - Fixed headings MUST occur exactly once, at the levels below, in order, with
   a blank line before each heading. Fenced examples are not section headings.
 
@@ -73,6 +75,8 @@ letters, digits, spaces, periods, underscores, and dashes. Lists contain unique
 scalar elements separated by commas. Quoted strings may contain punctuation.
 `scope` and `decision-makers` MUST be nonempty. Relationship lists contain only
 D-NNN IDs. Dates MUST be real calendar dates in the exact displayed format.
+`date` is the last update date and MUST equal the final dated Decision History
+entry. The first history entry retains the original recording date.
 
 Front matter is the only current metadata store. The body MUST NOT repeat
 labeled status, date, or scope, or preserve an original-record-metadata block.
@@ -93,12 +97,13 @@ Legal transitions are `proposed -> accepted`, `proposed -> rejected`,
 `accepted -> implemented`, and `accepted` or `implemented` to `deprecated` or
 `superseded`. Metadata contains the final state of the recorded history.
 
-Every history entry MUST be a dated bullet. The first MUST match the recording
-date and use `Decision recorded with status proposed.`. Later status changes
+Every history entry MUST be a dated bullet. The first MUST use the original
+recording date and `Decision recorded with status proposed.`. Later status changes
 MUST use exactly `Status changed from <old> to <new>.`; explanations belong in
 separate dated entries. Dates MUST be nondecreasing. Ordinary dated entries may
 record implementation, confirmation evidence, amendments, or reasons without
-inventing a state transition. Later edits do not replace the recording date.
+inventing a state transition. Later edits add a dated event and update metadata
+`date`; they do not replace the original recording or acceptance events.
 
 ## Full section contract
 
@@ -170,12 +175,11 @@ and whether consultation or acceptance actually happened.
 
 ## Tooling and document validation
 
-Run `eng/validate-adrs.sh` for read-only validation. Run
-`eng/validate-adrs.sh --write-index` to update README.md and decision-index.json
-only after the corpus validates. Both indexes MUST match deterministic metadata
-rendering. The relationship graph is generated only when real amendment or
-supersession edges exist. An empty corpus, missing index, stale index, malformed
-record, or unresolved local link fails validation.
+Run `eng/validate-adrs.sh` for read-only validation. The manually maintained
+README links every admitted record once and states its decision in one sentence.
+It MUST NOT duplicate mutable status, date, or relationship metadata. There is
+no generated JSON index or document-writing mode. An empty corpus, a missing or
+duplicate record link, malformed record, or unresolved local link fails validation.
 
 The implementation is [one standard-library Python module](../../eng/quality/adr.py)
 behind a [stable shell entry point](../../eng/validate-adrs.sh). Maintainers run
@@ -191,7 +195,8 @@ fetch external links, or establish semantic approval.
 The template structure is adapted from MADR 4.0.0 using its CC0-1.0 alternative;
 project-specific prose follows the [repository license](../../LICENSE).
 This attribution does not imply upstream endorsement. Doka's stricter profile
-is adapted for NestedSet's existing Python engineering tools.
+does not require a validator or an additional CI gate. The existing optional
+checker is documented independently of the decision format.
 
 Primary upstream sources, retrieved 2026-09-19:
 

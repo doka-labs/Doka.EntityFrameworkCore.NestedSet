@@ -99,6 +99,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             .Options;
 
         await using var context = new CompositionCapacityGroupContext(options);
+        FunctionalTestContextPolicy.Configure(context);
         var materialized = 0;
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var request = CompositionConsumerDataset.Supervisors(1, 1) with { Groups = rule };
@@ -137,8 +138,7 @@ internal static partial class CompositionConsumerCapacityProfiles
                 engine,
                 profile,
                 planProbe,
-                error,
-                cancellationToken: CancellationToken.None);
+                error);
 
             throw;
         }

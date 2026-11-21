@@ -3,7 +3,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 /// <summary>Demonstrates explicit sibling ordering without changing aggregate membership or measurements.</summary>
 internal static class OrderScenario
 {
-    /// <summary>Moves Calibration array before receiver array and checks both positions and the unchanged leaf aggregate.</summary>
+    /// <summary>
+    /// Moves Calibration array before receiver array and checks both positions and the unchanged leaf aggregate.
+    /// </summary>
     /// <param name="context">The fresh context owned by this scenario.</param>
     /// <param name="details">Whether the tree includes structural details.</param>
     /// <param name="cancellationToken">The token for every operation and output step.</param>

@@ -31,11 +31,21 @@ internal sealed partial class NestedSetQuerySelection
     }
 
     /// <summary>Inspects an owned fact expression without retaining its model or evaluating application code.</summary>
-    private sealed class FactSelection(
-        IModel model,
-        ParameterExpression selected
-    ) : ExpressionVisitor
+    private sealed class FactSelection : ExpressionVisitor
     {
+        private readonly IModel _model;
+        private readonly ParameterExpression _selected;
+
+        /// <summary>Binds fact-root inspection to the current EF model and selected-node parameter.</summary>
+        internal FactSelection(
+            IModel model,
+            ParameterExpression selected
+        )
+        {
+            _model = model;
+            _selected = selected;
+        }
+
         private HashSet<IEntityType>? _filteredTypes;
 
         /// <summary>Gets whether an unknown or hierarchy-dependent source prevents independent completion.</summary>
@@ -127,7 +137,7 @@ internal sealed partial class NestedSetQuerySelection
 
             if (node.Method.DeclaringType == typeof(Enumerable)
                 && node.Method.Name != nameof(Enumerable.Contains)
-                && ReferencesOrIsOpaque(node, selected))
+                && ReferencesOrIsOpaque(node, _selected))
             {
                 RequiresCorrelation = true;
 
@@ -137,7 +147,7 @@ internal sealed partial class NestedSetQuerySelection
             if (node.Method.DeclaringType == typeof(EF)
                 && node.Method.Name == nameof(EF.Property)
                 && (node.Arguments[1] is not ConstantExpression { Value: string property }
-                    || model
+                    || _model
                         .FindEntityType(node.Arguments[0].Type)
                         ?.FindProperty(property) is null))
             {
@@ -162,7 +172,7 @@ internal sealed partial class NestedSetQuerySelection
             if (node.Member.Name == nameof(ICollection.Count)
                 && node.Expression is { } collection
                 && typeof(IEnumerable).IsAssignableFrom(collection.Type)
-                && ReferencesOrIsOpaque(collection, selected))
+                && ReferencesOrIsOpaque(collection, _selected))
             {
                 RequiresCorrelation = true;
 
@@ -172,7 +182,7 @@ internal sealed partial class NestedSetQuerySelection
             // WHY: A navigation can hide a hierarchy behind the target's filters or another navigation.
             // Keep those sources decorrelatable instead of expanding their model-dependent implicit roots.
             if (node.Expression is { } owner
-                && model.FindEntityType(owner.Type) is { } declaring
+                && _model.FindEntityType(owner.Type) is { } declaring
                 && (declaring.FindNavigation(node.Member.Name) is not null
                     || declaring.FindSkipNavigation(node.Member.Name) is not null))
             {
@@ -197,7 +207,7 @@ internal sealed partial class NestedSetQuerySelection
         )
         {
             if (node.NodeType == ExpressionType.ArrayLength
-                && ReferencesOrIsOpaque(node.Operand, selected))
+                && ReferencesOrIsOpaque(node.Operand, _selected))
             {
                 RequiresCorrelation = true;
 
@@ -212,7 +222,7 @@ internal sealed partial class NestedSetQuerySelection
             IEntityType entity
         )
         {
-            if (!ReferenceEquals(entity.Model, model)
+            if (!ReferenceEquals(entity.Model, _model)
                 || IsHierarchy(entity))
             {
                 RequiresCorrelation = true;

@@ -119,23 +119,33 @@ public sealed class ContractFixture : IAsyncLifetime
         switch (engine)
         {
             case "Sqlite":
-                builder.UseSqlite(connection, provider => provider.UseNestedSets());
+                builder.UseSqlite(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "PostgreSql":
-                builder.UseNpgsql(connection, provider => provider.UseNestedSets());
+                builder.UseNpgsql(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "SqlServer":
-                builder.UseSqlServer(connection, provider => provider.UseNestedSets());
+                builder.UseSqlServer(connection, provider => provider
+                    .CommandTimeout(0)
+                    .UseNestedSets());
                 break;
             case "MySql":
-                builder.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider.UseNestedSets());
+                builder.UseMySql(connection, DatabaseTestTargets.MySql, provider => provider
+                    .UseNestedSets());
                 break;
             case "MariaDb":
-                builder.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider.UseNestedSets());
+                builder.UseMySql(connection, DatabaseTestTargets.MariaDb, provider => provider
+                    .UseNestedSets());
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
+
+        FunctionalTestContextPolicy.ConfigureOptions(builder);
 
         return builder;
     }

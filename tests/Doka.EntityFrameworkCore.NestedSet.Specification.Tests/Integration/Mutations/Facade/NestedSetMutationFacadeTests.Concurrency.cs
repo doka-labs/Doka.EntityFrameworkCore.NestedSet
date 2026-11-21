@@ -7,7 +7,7 @@ public abstract partial class NestedSetMutationFacadeTests
         ExcludedEngines = ["Sqlite"],
         Reason = "This staged contender requires independent server row locks; SQLite serializes all database writers."
     )]
-    public async Task ConcurrentTreeChangeHasDistinctErrorCode()
+    public async Task DeleteAsync_ConcurrentTreeChange_HasDistinctErrorCode()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -17,30 +17,36 @@ public abstract partial class NestedSetMutationFacadeTests
                 .NestedSet<TreeNode>()
                 .ForScope(7);
 
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
-            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 1 },
+                s_firstTree,
+                TestContext.Current.CancellationToken);
+            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, TestContext.Current.CancellationToken);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 10 },
+                s_secondTree,
+                TestContext.Current.CancellationToken);
         }
 
         var barrier = new ExistingRegistryLockBarrier();
         await using var first = database.CreateContext(barrier);
         await using var second = database.CreateContext();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         var pendingDelete = first
             .NestedSet<TreeNode>()
             .ForScope(7)
-            .DeleteAsync(2, timeout.Token);
+            .DeleteAsync(2, operationCancellationToken);
 
-        await barrier.Attempted.Task.WaitAsync(timeout.Token);
+        await barrier.Attempted.Task.WaitAsync(operationCancellationToken);
 
         try
         {
             await second
                 .NestedSet<TreeNode>()
                 .ForScope(7)
-                .MoveToAsync(2, 10, timeout.Token);
+                .MoveToAsync(2, 10, operationCancellationToken);
         }
         finally
         {
@@ -59,7 +65,7 @@ public abstract partial class NestedSetMutationFacadeTests
                 .Set<TreeNode>()
                 .Where(node => node.NodeId == 2)
                 .Select(node => node.TreeId)
-                .SingleAsync(CancellationToken.None));
+                .SingleAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>A tombstoned former root also reports the intervening tree move.</summary>
@@ -67,7 +73,7 @@ public abstract partial class NestedSetMutationFacadeTests
         ExcludedEngines = ["Sqlite"],
         Reason = "This staged contender requires independent server row locks; SQLite serializes all database writers."
     )]
-    public async Task ConcurrentRootMoveDoesNotReportTreeIdUnavailable()
+    public async Task DeleteSubtreeAsync_ConcurrentRootMove_DoesNotReportTreeIdUnavailable()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -77,29 +83,35 @@ public abstract partial class NestedSetMutationFacadeTests
                 .NestedSet<TreeNode>()
                 .ForScope(7);
 
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 1 },
+                s_firstTree,
+                TestContext.Current.CancellationToken);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 10 },
+                s_secondTree,
+                TestContext.Current.CancellationToken);
         }
 
         var barrier = new ExistingRegistryLockBarrier();
         await using var first = database.CreateContext(barrier);
         await using var second = database.CreateContext();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         var pendingDelete = first
             .NestedSet<TreeNode>()
             .ForScope(7)
-            .DeleteSubtreeAsync(1, timeout.Token);
+            .DeleteSubtreeAsync(1, operationCancellationToken);
 
-        await barrier.Attempted.Task.WaitAsync(timeout.Token);
+        await barrier.Attempted.Task.WaitAsync(operationCancellationToken);
 
         try
         {
             await second
                 .NestedSet<TreeNode>()
                 .ForScope(7)
-                .MoveToAsync(1, 10, timeout.Token);
+                .MoveToAsync(1, 10, operationCancellationToken);
         }
         finally
         {
@@ -118,12 +130,12 @@ public abstract partial class NestedSetMutationFacadeTests
                 .Set<TreeNode>()
                 .Where(node => node.NodeId == 1)
                 .Select(node => node.TreeId)
-                .SingleAsync(CancellationToken.None));
+                .SingleAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>Opposing cross-tree writers complete under the same deterministic registry-lock order.</summary>
     [Fact]
-    public async Task OpposingCrossTreeMovesDoNotDeadlock()
+    public async Task MoveToAsync_OpposingCrossTree_MovesDoNotDeadlock()
     {
         // Arrange
         var database = await _fixture.ResetAsync(Engine, cancellationToken: TestContext.Current.CancellationToken);
@@ -133,26 +145,32 @@ public abstract partial class NestedSetMutationFacadeTests
                 .NestedSet<TreeNode>()
                 .ForScope(7);
 
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 1 }, s_firstTree, CancellationToken.None);
-            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, CancellationToken.None);
-            await hierarchy.InsertRootAsync(new TreeNode { NodeId = 10 }, s_secondTree, CancellationToken.None);
-            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 20 }, 10, CancellationToken.None);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 1 },
+                s_firstTree,
+                TestContext.Current.CancellationToken);
+            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 2 }, 1, TestContext.Current.CancellationToken);
+            await hierarchy.InsertRootAsync(
+                new TreeNode { NodeId = 10 },
+                s_secondTree,
+                TestContext.Current.CancellationToken);
+            await hierarchy.InsertChildAsync(new TreeNode { NodeId = 20 }, 10, TestContext.Current.CancellationToken);
         }
 
         await using var first = database.CreateContext();
         await using var second = database.CreateContext();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var operationCancellationToken = TestContext.Current.CancellationToken;
 
         // Act
         await Task.WhenAll(
             first
                 .NestedSet<TreeNode>()
                 .ForScope(7)
-                .MoveToAsync(2, 10, timeout.Token),
+                .MoveToAsync(2, 10, operationCancellationToken),
             second
                 .NestedSet<TreeNode>()
                 .ForScope(7)
-                .MoveToAsync(20, 1, timeout.Token));
+                .MoveToAsync(20, 1, operationCancellationToken));
 
         await using var verification = database.CreateContext();
         var hierarchyAfter = verification
@@ -163,13 +181,13 @@ public abstract partial class NestedSetMutationFacadeTests
             .InTree(s_firstTree)
             .Nodes
             .Select(node => node.NodeId)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         var secondTree = await hierarchyAfter
             .InTree(s_secondTree)
             .Nodes
             .Select(node => node.NodeId)
-            .ToArrayAsync(CancellationToken.None);
+            .ToArrayAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([1, 20], firstTree);

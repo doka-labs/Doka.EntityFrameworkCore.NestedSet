@@ -7,7 +7,7 @@ public sealed class UserSupervisorSampleTests
     /// Distinguishes the public business Position from the tree identity and coordinates in shadow state.
     /// </summary>
     [Fact]
-    public void StructuralCoordinatesRemainShadowProperties()
+    public void FindProperty_Structural_CoordinatesRemainShadowProperties()
     {
         // Arrange
         using var context = CreateContext();
@@ -82,7 +82,7 @@ public sealed class UserSupervisorSampleTests
 
     /// <summary>A moved employee is found through scoped ancestors and retains its group membership.</summary>
     [Fact]
-    public async Task SupervisorMoveChangesShadowBoundsWithoutChangingBusinessPositionAsync()
+    public async Task MoveToAsync_SupervisorMove_ChangesShadowBoundsWithoutChangingBusinessPosition()
     {
         // Arrange
         await using var context = CreateContext();
@@ -182,7 +182,7 @@ public sealed class UserSupervisorSampleTests
 
     /// <summary>A supervisor in another tenant cannot become the anchor of a scoped move.</summary>
     [Fact]
-    public async Task ForeignTenantSupervisorIsRejectedWithoutChangingStructureAsync()
+    public async Task MoveToAsync_ForeignTenantSupervisor_IsRejectedWithoutChangingStructure()
     {
         // Arrange
         await using var context = CreateContext();
@@ -258,7 +258,7 @@ public sealed class UserSupervisorSampleTests
 
     /// <summary>The relational membership key rejects a group from a different tenant.</summary>
     [Fact]
-    public async Task ForeignTenantGroupMembershipIsRejectedAsync()
+    public async Task SaveChangesAsync_ForeignTenantGroupMembership_IsRejected()
     {
         // Arrange
         await using var context = CreateContext();
@@ -313,7 +313,7 @@ public sealed class UserSupervisorSampleTests
     /// The database FK rejects an out-of-tenant supervisor even when the hierarchy facade is bypassed.
     /// </summary>
     [Fact]
-    public async Task ForeignTenantSupervisorFailsAtDatabaseBoundaryAsync()
+    public async Task ExecuteSqlInterpolatedAsync_ForeignTenantSupervisor_FailsAtDatabaseBoundary()
     {
         // Arrange
         await using var context = CreateContext();

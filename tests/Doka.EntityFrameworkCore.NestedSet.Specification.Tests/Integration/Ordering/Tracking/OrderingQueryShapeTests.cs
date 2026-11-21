@@ -45,7 +45,7 @@ public abstract partial class OrderingQueryShapeTests : ProviderTest
     /// <summary>Reuses warmed production shapes with different scope values and native database key aliases.</summary>
     [Theory]
     [MemberData(nameof(Cases))]
-    public async Task ProductionOrdinalRefreshReusesItsWarmedShapes(
+    public async Task SaveChangesAsync_ProductionOrdinalRefresh_ReusesItsWarmedShapes(
         int intervals,
         int tail
     )

@@ -19,7 +19,7 @@ public abstract partial class HierarchyCompositionSemanticTests
     [InlineData("hidden-intermediate", "independent", 4)]
     [InlineData("hidden-intermediate", "correlated", 2)]
     [InlineData("hidden-intermediate", "nearest", 4)]
-    public async Task DenseDisjointFailuresPreserveOnlyTheirOwnParentWalks(
+    public async Task WherePathEdges_DenseDisjointFailures_PreserveOnlyTheirOwnParentWalks(
         string topology,
         string filter,
         int expectedCount

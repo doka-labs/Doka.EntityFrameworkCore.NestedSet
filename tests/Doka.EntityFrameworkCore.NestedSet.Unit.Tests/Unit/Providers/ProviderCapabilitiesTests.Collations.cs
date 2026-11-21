@@ -21,7 +21,7 @@ public sealed partial class ProviderCapabilitiesTests
     [InlineData("Sqlite", "name\"); DROP TABLE trees; --", "\"name\"\"); DROP TABLE trees; --\"")]
     [InlineData("SqlServer", "Latin1_General_100_BIN2", "Latin1_General_100_BIN2")]
     [InlineData("SqlServer", "SQL_Latin1_General_CP1_CI_AS", "SQL_Latin1_General_CP1_CI_AS")]
-    public void CollationRenderingPreservesNativeGrammarWithoutIo(
+    public void CollationSql_CollationRendering_PreservesNativeGrammarWithoutIo(
         string engine,
         string collation,
         string expected
@@ -56,7 +56,7 @@ public sealed partial class ProviderCapabilitiesTests
     [InlineData("Latin1_General_100_BIN2\n")]
     [InlineData("Lat\u00edn1_General_100_BIN2")]
     [InlineData("Latin1_General_\uff11\uff10\uff10_BIN2")]
-    public void SqlServerRejectsInvalidCollationTokensWithoutIo(
+    public void CollationSql_SqlServer_RejectsInvalidCollationTokensWithoutIo(
         string collation
     )
     {

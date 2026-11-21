@@ -16,7 +16,7 @@ public abstract partial class HierarchyCompositionModelTests
     [InlineData(HierarchyCompositionOperation.MissingNearestOwner)]
     [InlineData(HierarchyCompositionOperation.NearestOwnerRejectsValue)]
     [InlineData(HierarchyCompositionOperation.BlockedPath)]
-    public async Task ConvertedOperatorFreeKeysPreserveNullableParentAndMissingOwnerSemantics(
+    public async Task QueryDepths_ConvertedOperatorFreeKeys_PreserveNullableParentAndMissingOwnerSemantics(
         HierarchyCompositionOperation operation
     )
     {

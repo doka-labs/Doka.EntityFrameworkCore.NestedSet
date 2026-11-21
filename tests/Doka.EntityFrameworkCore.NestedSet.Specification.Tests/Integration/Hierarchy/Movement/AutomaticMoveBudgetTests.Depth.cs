@@ -6,7 +6,7 @@ public abstract partial class AutomaticMoveBudgetTests
     [Theory]
     [InlineData("Strict")]
     [InlineData("Flexible")]
-    public async Task DeeperDestinationPreservesSubtreeDepthWithOneParentRead(
+    public async Task MoveToAsync_DeeperDestination_PreservesSubtreeDepthWithOneParentRead(
         string mode
     )
     {
@@ -14,15 +14,15 @@ public abstract partial class AutomaticMoveBudgetTests
         await using var setup = await _fixture.ResetAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            mode);
+            mode: mode);
 
         await SeedAsync(setup, cancellationToken: TestContext.Current.CancellationToken);
         var probe = new EnterpriseProbe();
         await using var context = await _fixture.CreateContextAsync(
             Engine,
             cancellationToken: TestContext.Current.CancellationToken,
-            mode,
-            probe);
+            mode: mode,
+            interceptors: [probe]);
 
         var tree = context
             .NestedSet<OrderingNode>()

@@ -22,7 +22,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, true, false, true)]
     [InlineData(true, true, true, false)]
     [InlineData(true, true, true, true)]
-    public async Task LateTrackedChildRemovalIsRejectedBeforeWrites(
+    public async Task SaveNavigationAsync_LateTrackedChildRemoval_IsRejectedBeforeWrites(
         bool wrapped,
         bool automaticDetection,
         bool synchronous,
@@ -127,7 +127,7 @@ public abstract partial class SaveChangesTests
     [InlineData(true, true, false, true)]
     [InlineData(true, true, true, false)]
     [InlineData(true, true, true, true)]
-    public async Task DirectHierarchyWritesIdentifyFacade(
+    public async Task SaveNavigationAsync_DirectHierarchy_WritesIdentifyFacade(
         bool wrapped,
         bool automaticDetection,
         bool synchronous,

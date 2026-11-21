@@ -22,7 +22,7 @@ public sealed class SignalReadBenchmarkTests
     [InlineData(false, true, true, 1000)]
     [InlineData(true, false, true, 1000)]
     [InlineData(true, true, true, 1000)]
-    public async Task RepeatedReportsKeepPreparedDataAndOperationOnlyObservations(
+    public async Task Reference_Repeated_ReportsKeepPreparedDataAndOperationOnlyObservations(
         bool reference,
         bool nearest,
         bool diagnostics,
@@ -57,6 +57,9 @@ public sealed class SignalReadBenchmarkTests
             var reports = new SignalReportCell[3][];
 
             // Act
+            // WHY: Capture each execution separately so an incorrectly reused report buffer remains observable.
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // ReSharper disable once LoopCanBeConvertedToQuery
             for (var index = 0; index < reports.Length; index++)
             {
                 if (reference)
@@ -107,7 +110,7 @@ public sealed class SignalReadBenchmarkTests
 
     /// <summary>Read-only signal jobs leave invocation calibration to BenchmarkDotNet.</summary>
     [Fact]
-    public void SignalLifecyclePermitsAdaptiveThroughput()
+    public void BenchmarksCases_SignalLifecycle_PermitsAdaptiveThroughput()
     {
         // Arrange
         var configuration = BenchmarkConfiguration.Create(new BenchmarkRunOptions());
@@ -139,7 +142,7 @@ public sealed class SignalReadBenchmarkTests
 
     /// <summary>Explicit multi-invocation read jobs do not inherit mutation-only validation failures.</summary>
     [Fact]
-    public void SignalLifecycleAcceptsMultipleInvocationsPerIteration()
+    public void StructuralErrors_SignalLifecycle_AcceptsMultipleInvocationsPerIteration()
     {
         // Arrange
         var configuration = ManualConfig
@@ -168,7 +171,7 @@ public sealed class SignalReadBenchmarkTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task GlobalCleanupVerifiesCompletedReadAndDisposesContext(
+    public async Task VerifyAndCleanupAsync_GlobalCleanup_VerifiesCompletedReadAndDisposesContext(
         bool reference,
         bool nearest
     )
@@ -205,7 +208,7 @@ public sealed class SignalReadBenchmarkTests
 
     /// <summary>Failed final verification still disposes the globally prepared context.</summary>
     [Fact]
-    public async Task GlobalCleanupRejectsUnexecutedReadAndDisposesContext()
+    public async Task VerifyAndCleanupAsync_GlobalCleanup_RejectsUnexecutedReadAndDisposesContext()
     {
         // Arrange
         await using var benchmark = new SignalReportingBenchmarks
@@ -228,7 +231,7 @@ public sealed class SignalReadBenchmarkTests
 
     /// <summary>Invalid catalog populations fail before a context or fixture is acquired.</summary>
     [Fact]
-    public void InitializationRejectsNegativeCatalogPopulation()
+    public void Initialize_Initialization_RejectsNegativeCatalogPopulation()
     {
         // Arrange
         var benchmark = new SignalReportingBenchmarks

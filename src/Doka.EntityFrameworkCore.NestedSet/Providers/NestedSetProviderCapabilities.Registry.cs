@@ -10,7 +10,9 @@ internal abstract partial class NestedSetProviderCapabilities
     /// <summary>Gets whether deleting every referencing row together satisfies restrictive self foreign keys.</summary>
     internal abstract bool SupportsStatementAtomicSelfReferentialDelete { get; }
 
-    /// <summary>Gets whether the registry statement, rather than transaction creation, contains the writer wait.</summary>
+    /// <summary>
+    /// Gets whether the registry statement, rather than transaction creation, contains the writer wait.
+    /// </summary>
     internal virtual bool MeasureTreeRowLockWait => true;
 
     /// <summary>Gets whether transaction creation acquires the hierarchy's database writer lock.</summary>

@@ -6,7 +6,7 @@ public sealed partial class HierarchyChangeDetectionTests
 {
     /// <summary>Rollback preserves notification graphs and pending payload after wrong-target fixup.</summary>
     [Fact]
-    public async Task NotificationRollbackRestoresAuthorizedMoveAndModifiedUnexpectedParent()
+    public async Task Restore_NotificationRollback_RestoresAuthorizedMoveAndModifiedUnexpectedParent()
     {
         // Arrange
         await using var context = new NotificationContext();

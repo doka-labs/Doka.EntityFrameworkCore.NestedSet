@@ -5,6 +5,43 @@ All notable changes to this project are documented here. The format follows
 including documented exceptions to Semantic Versioning, is defined in
 [Release governance](docs/release-governance.md#version-policy).
 
+## 10.4.0 (2026-11-21)
+
+Stable maintenance update for all six packages on .NET 10 and EF Core 10.
+See the [compatible upgrade](docs/upgrading-provider-packages.md#upgrade-from-1030-to-1040).
+
+### Changed
+
+- Refresh Doka to 10.7.0, SafeMigrations Core/all four adapters to 10.7.3,
+  and qualification to MySqlConnector 3.0.0, EF Core 10.0.15, SDK 10.0.404,
+  and current stable test tooling and database images. Keep .NET/EF Core 10
+  and the supported database LTS lines; the MySql adapter requires Doka
+  `[10.7.0,10.8.0)` without adding a direct shipping driver dependency.
+- Record C# 14 extension-block views in the stable API baselines while
+  retaining existing static-method contracts and operations.
+- Align code and test organization, explicit constructors, cancellation
+  contracts, and reproducible build/editor configuration with the repository's
+  documented engineering decisions. Review every solution project's lockfile.
+- Keep decision update dates in metadata and original approval events in
+  history; maintain decision navigation without generated metadata copies.
+- Consolidate public guides around feature contracts, XML documentation, and
+  reproducible qualification boundaries.
+
+### Fixed
+
+- Process complete Dependency Review comparisons without process argument-size
+  limits while retaining exact license-exception version checks.
+- Own independent observation-test provider variants so EF's global provider
+  count cannot make their checks or sample-factory checks depend on test order.
+- Preserve original query errors when diagnostic output fails, protect owned
+  cleanup from cancellation, and propagate runner cancellation through forward
+  capacity work.
+- Remove remaining private timing assumptions from functional concurrency,
+  capacity, plan-replay, pool-ownership checks, and benchmark observations while retaining correctness,
+  resource, cancellation, and intentional provider-timeout assertions.
+- Keep the chain benchmark's independent person reduction valid on MariaDB
+  without buffering candidate fan-in or changing ambiguity and result budgets.
+
 ## 10.3.0 (2026-11-06)
 
 Stable contract for all six packages on .NET 10 and EF Core 10. Update all
@@ -32,15 +69,6 @@ selected adapters and the common EF package together.
   identities and application payload across valid and rejected rollback paths.
   Restore the migration fixture's stable entity-name getter and cover the
   historical, current and specialized model identities without database I/O.
-- Align the portable signed build-provenance filename with Doka and
-  SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
-  discover it. Preserve signature verification and exact asset inventories;
-  published releases retain their original assets and tagged verification guide.
-
-## Unreleased
-
-### Fixed
-
 - Align the portable signed build-provenance filename with Doka and
   SafeMigrations (`release-provenance.intoto.jsonl`) so release consumers can
   discover it. Preserve signature verification and exact asset inventories;

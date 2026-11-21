@@ -32,7 +32,3 @@ internal sealed class UnicodeIdentityNode<TIdentity>
     /// <summary>Gets or sets an ordinary payload changed through the coordinated save boundary.</summary>
     internal string Name { get; set; } = "Initial";
 }
-
-/// <summary>Distinguishes model identities from their converted relational text representation.</summary>
-/// <param name="Value">The provider text retained without normalization.</param>
-internal readonly record struct UnicodeIdentityValue(string Value);

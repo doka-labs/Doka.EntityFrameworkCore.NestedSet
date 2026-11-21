@@ -26,14 +26,17 @@ public sealed partial class AncestorIndexReadbackTests
     [Theory]
     [InlineData("MySql")]
     [InlineData("MariaDb")]
-    public async Task AssignedSiblingImportPreservesNativeGeneratedAttribution(
+    public async Task InsertSubtreeAsync_AssignedSiblingImport_PreservesNativeGeneratedAttribution(
         string engine
     )
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var observation = new ReadbackObservation();
         await using var context = CreateContext(database, engine, observation);
@@ -68,12 +71,15 @@ public sealed partial class AncestorIndexReadbackTests
 
     /// <summary>Uses the declared-trigger fallback and reads the real trigger-modified generated outputs.</summary>
     [Fact]
-    public async Task DeclaredTriggerImportKeepsSafeReadbackFallback()
+    public async Task InsertSubtreeAsync_DeclaredTriggerImport_KeepsSafeReadbackFallback()
     {
         // Arrange
         await using var database = await _fixture.CreateDatabaseAsync(
             "MySql",
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var observation = new ReadbackObservation();
         await using var context = CreateContext(database, "MySql", observation, declaredTrigger: true);
@@ -122,7 +128,7 @@ public sealed partial class AncestorIndexReadbackTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task LaterReadbackFailureRestoresCallerTransactionAndInputs(
+    public async Task InsertSubtreeAsync_LaterReadbackFailure_RestoresCallerTransactionAndInputs(
         string engine,
         bool cancel
     )
@@ -131,7 +137,10 @@ public sealed partial class AncestorIndexReadbackTests
         using var cancellation = new CancellationTokenSource();
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var observation = new ReadbackObservation
         {
@@ -195,7 +204,7 @@ public sealed partial class AncestorIndexReadbackTests
     [InlineData("MySql", true)]
     [InlineData("MariaDb", false)]
     [InlineData("MariaDb", true)]
-    public async Task RestoredAssignedImportCanBeRetriedAfterLaterReadbackFailure(
+    public async Task InsertSubtreeAsync_RestoredAssignedImport_CanBeRetriedAfterLaterReadbackFailure(
         string engine,
         bool cancel
     )
@@ -204,7 +213,10 @@ public sealed partial class AncestorIndexReadbackTests
         using var cancellation = new CancellationTokenSource();
         await using var database = await _fixture.CreateDatabaseAsync(
             engine,
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken,
+            configureOptions: null,
+            configureDesignServices: null,
+            qualifySchema: true);
 
         var failed = new ReadbackObservation
         {
@@ -256,240 +268,5 @@ public sealed partial class AncestorIndexReadbackTests
         Assert.True(validation.IsValid);
         Assert.Empty(context.ChangeTracker.Entries());
         AssertNativeShape(engine, failed, declaredTrigger: false);
-    }
-
-    /// <summary>Uses the existing isolated database and its actual configured Doka engine.</summary>
-    private static AncestorIndexReadbackContext CreateContext(
-        MigrationDatabase database,
-        string engine,
-        ReadbackObservation observation,
-        bool declaredTrigger = false
-    )
-    {
-        using var connectionContext = database.CreateContext();
-        var connection = connectionContext.Database.GetConnectionString()
-            ?? throw new InvalidOperationException("The migration fixture did not configure a connection string.");
-
-        var version = engine == "MariaDb"
-            ? DatabaseTestTargets.MariaDb
-            : DatabaseTestTargets.MySql;
-
-        var options = new DbContextOptionsBuilder<AncestorIndexReadbackContext>()
-            .UseMySql(
-                connection,
-                version,
-                mysql => mysql
-                    .UseNestedSets()
-                    .MaxBatchSize(1000))
-            .ReplaceService<IModelCacheKeyFactory, AncestorIndexReadbackModelCacheKeyFactory>()
-            .AddInterceptors(new ReadbackCommandProbe(observation), new ReadbackSaveProbe(observation));
-
-        return new AncestorIndexReadbackContext(options.Options, declaredTrigger);
-    }
-
-    /// <summary>Creates the real optional schema and an existing parent through the public mutation facade.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static async Task InitializeAsync(
-        AncestorIndexReadbackContext context,
-        CancellationToken cancellationToken
-    )
-    {
-        await context.Database.EnsureCreatedAsync(cancellationToken);
-
-        if (context.DeclaredTrigger)
-        {
-            await context.Database.ExecuteSqlRawAsync(
-                $"CREATE TRIGGER `{AncestorIndexReadbackContext.TriggerName}` BEFORE INSERT "
-                + $"ON `{AncestorIndexReadbackContext.TableName}` FOR EACH ROW SET NEW.`Input` = NEW.`Input` + 100;",
-                cancellationToken);
-        }
-
-        await context
-            .NestedSet<AncestorIndexReadbackNode>()
-            .ForScope(7)
-            .InsertRootAsync(
-                new AncestorIndexReadbackNode
-                {
-                    Id = 1,
-                    Input = 1000,
-                },
-                11,
-                cancellationToken);
-    }
-
-    /// <summary>Reverses key and input ordering so incorrect generated-result correlation cannot pass.</summary>
-    private static AncestorIndexReadbackNode[] CreateInputs() => Enumerable
-        .Range(0, ImportCount)
-        .Select(index => new AncestorIndexReadbackNode
-        {
-            Id = 100 + ImportCount - index,
-            Scope = 88,
-            TreeId = 99,
-            Left = 71,
-            Right = 72,
-            Depth = 9,
-            Position = 4,
-            Input = index + 1,
-            Stamp = -9000 - index,
-        })
-        .ToArray();
-
-    /// <summary>Keeps enough same-shape siblings to exercise multiple bounded public insertion saves.</summary>
-    private static NestedSetBranch<AncestorIndexReadbackNode> CreateBranch(
-        AncestorIndexReadbackNode[] nodes
-    ) => new(
-        nodes[0],
-        nodes
-            .Skip(1)
-            .Select(node => new NestedSetBranch<AncestorIndexReadbackNode>(node))
-            .ToArray());
-
-    /// <summary>Reads generated shadow values independently of the detached input graph.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="context">The context used for provider operations.</param>
-    private static Task<ReadbackRow[]> ReadRowsAsync(
-        AncestorIndexReadbackContext context,
-        CancellationToken cancellationToken
-    ) => context
-        .Set<AncestorIndexReadbackNode>()
-        .AsNoTracking()
-        .OrderBy(node => node.Id)
-        .Select(node => new ReadbackRow(
-            node.Id,
-            node.Scope,
-            node.TreeId,
-            node.ParentId,
-            node.Left,
-            node.Right,
-            node.Depth,
-            node.Position,
-            node.Input,
-            node.Stamp,
-            EF.Property<bool>(node, AncestorIndexReadbackContext.FlagProperty)))
-        .ToArrayAsync(cancellationToken);
-
-    /// <summary>Captures caller-visible scalar values without attaching the input entity.</summary>
-    private static ReadbackRow Capture(
-        AncestorIndexReadbackNode node,
-        bool isBranch
-    ) => new(
-        node.Id,
-        node.Scope,
-        node.TreeId,
-        node.ParentId,
-        node.Left,
-        node.Right,
-        node.Depth,
-        node.Position,
-        node.Input,
-        node.Stamp,
-        isBranch);
-
-    /// <summary>Checks the actual generated sidecars before a later refresh could repair wrong attribution.</summary>
-    private static void AssertReadback(
-        ReadbackObservation observation,
-        AncestorIndexReadbackNode[] nodes,
-        int inputIncrement
-    )
-    {
-        Assert.True(observation.PayloadSaves >= 2);
-        Assert.Equal(nodes.Length, observation.SavedRows.Count);
-        Assert.Equal(
-            nodes.Length,
-            observation
-                .SavedRows
-                .Select(row => row.Id)
-                .Distinct()
-                .Count());
-
-        Assert.All(
-            observation.SavedRows,
-            row =>
-            {
-                Assert.Equal(row.Input * 17L + inputIncrement * 17L + 3L, row.Stamp);
-                Assert.Equal(row.Id == nodes[0].Id, row.IsBranch);
-            });
-    }
-
-    /// <summary>Checks the expected failure type without accepting an unrelated rollback error.</summary>
-    private void AssertFailure(
-        Exception? error,
-        bool cancel
-    )
-    {
-        _output.WriteLine("Observed import failure: " + error);
-
-        if (cancel)
-        {
-            Assert.IsType<OperationCanceledException>(error, exactMatch: false);
-
-            return;
-        }
-
-        var failure = Assert.IsType<InvalidOperationException>(error);
-        Assert.Equal(ReadbackObservation.FailureMessage, failure.Message);
-    }
-
-    /// <summary>Validates the observed native format without making an optional provider optimization mandatory.</summary>
-    private void AssertNativeShape(
-        string engine,
-        ReadbackObservation observation,
-        bool declaredTrigger
-    )
-    {
-        var inserts = observation.Commands.Sum(command => CountOccurrences(command, "INSERT INTO"));
-        var unions = observation.Commands.Sum(command => CountOccurrences(command, "UNION ALL"));
-        var returning = observation.Commands.Sum(command => CountOccurrences(command, "RETURNING"));
-        _output.WriteLine(
-            $"Engine={engine}; rows={observation.SavedRows.Count}; payloadSaves={observation.PayloadSaves}; "
-            + $"commands={observation.Commands.Count}; inserts={inserts}; unions={unions}; returning={returning}.");
-
-        Assert.NotEmpty(observation.Commands);
-        Assert.InRange(inserts, 1, ImportCount);
-
-        if (engine == "MariaDb")
-        {
-            Assert.Equal(inserts, returning);
-            Assert.Equal(0, unions);
-        }
-        else
-        {
-            Assert.Equal(0, returning);
-
-            // WHY: Published Doka retains a correct per-row fallback. The final qualification separately proves
-            // selection of its newer grouped path from these real counts, without coupling unrelated API markers.
-            Assert.Equal(
-                unions == 0
-                    ? ImportCount
-                    : ImportCount - unions,
-                inserts);
-        }
-
-        if (declaredTrigger)
-        {
-            Assert.Equal(ImportCount, inserts);
-            Assert.Equal(0, unions);
-        }
-
-        _output.WriteLine("First native readback command: " + observation.Commands[0]);
-    }
-
-    /// <summary>Counts actual statement markers without changing the command sent to the server.</summary>
-    private static int CountOccurrences(
-        string text,
-        string marker
-    )
-    {
-        var count = 0;
-        var offset = 0;
-
-        while ((offset = text.IndexOf(marker, offset, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            offset += marker.Length;
-        }
-
-        return count;
     }
 }

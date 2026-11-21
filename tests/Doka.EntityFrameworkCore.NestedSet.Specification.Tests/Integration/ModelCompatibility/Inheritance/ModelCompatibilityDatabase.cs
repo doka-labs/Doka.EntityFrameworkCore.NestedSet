@@ -54,6 +54,8 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
 
         try
         {
+            FunctionalTestContextPolicy.Configure(context);
+
             if (_createdTables.Add((engine, typeof(TContext))))
             {
                 // WHY: Each model has distinct tables, so a provider container can be reused without sharing rows.
@@ -74,7 +76,7 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
     }
 
     /// <summary>
-    /// Builds provider options while preserving defaults unless a collection mode is explicitly requested.
+    /// Builds functional-fixture options without an implicit SQL speed limit and with the requested collection mode.
     /// </summary>
     /// <typeparam name="TContext">The fixture's actual mapped context.</typeparam>
     /// <param name="engine">The established test provider.</param>
@@ -96,7 +98,9 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                     connection,
                     provider =>
                     {
-                        provider.UseNestedSets();
+                        provider
+                            .CommandTimeout(0)
+                            .UseNestedSets();
 
                         if (collectionMode is { } mode)
                         {
@@ -111,7 +115,8 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                     DatabaseTestTargets.MySql,
                     provider =>
                     {
-                        provider.UseNestedSets();
+                        provider
+                            .UseNestedSets();
 
                         if (collectionMode is { } mode)
                         {
@@ -126,7 +131,8 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                     DatabaseTestTargets.MariaDb,
                     provider =>
                     {
-                        provider.UseNestedSets();
+                        provider
+                            .UseNestedSets();
 
                         if (collectionMode is { } mode)
                         {
@@ -140,7 +146,9 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                     connection,
                     provider =>
                     {
-                        provider.UseNestedSets();
+                        provider
+                            .CommandTimeout(0)
+                            .UseNestedSets();
 
                         if (collectionMode is { } mode)
                         {
@@ -154,7 +162,9 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
                     connection,
                     provider =>
                     {
-                        provider.UseNestedSets();
+                        provider
+                            .CommandTimeout(0)
+                            .UseNestedSets();
 
                         if (collectionMode is { } mode)
                         {
@@ -166,6 +176,8 @@ public sealed class ModelCompatibilityDatabase : IAsyncDisposable
             default:
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
+
+        FunctionalTestContextPolicy.ConfigureOptions(options);
 
         return options.Options;
     }
