@@ -139,7 +139,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             output.WriteLine(
                 $"{observation.Profile}; commands={observation.Commands}; rows={observation.Actual.Length}; "
                 + $"parameters={observation.MaximumParameters}; "
-                + $"entities={observation.Materialized}; construction={observation.BuildBytes} B; "
+                + $"entities={observation.Materialized}; "
                 + FormattableString.Invariant($"elapsed={observation.Elapsed.TotalMilliseconds:F3} ms"));
 
             Assert.Equal(observation.Expected, observation.Actual);
@@ -148,29 +148,8 @@ internal static partial class CompositionConsumerCapacityProfiles
             Assert.Equal(0, observation.ConstructionCommands);
             Assert.Equal(0, observation.Materialized);
             Assert.Equal(0, observation.Tracked);
-            Assert.InRange(observation.BuildBytes, 1, observation.BuildBudget);
             Assert.False(string.IsNullOrWhiteSpace(observation.Plan));
         }
     }
 
-    /// <summary>Measures warmed construction separately from request arrays, compilation and execution.</summary>
-    private static long Construction(
-        Func<IQueryable> build
-    )
-    {
-        for (var iteration = 0; iteration < 8; iteration++)
-        {
-            GC.KeepAlive(build());
-        }
-
-        const int operations = 16;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (var iteration = 0; iteration < operations; iteration++)
-        {
-            GC.KeepAlive(build());
-        }
-
-        return (GC.GetAllocatedBytesForCurrentThread() - before) / operations;
-    }
 }

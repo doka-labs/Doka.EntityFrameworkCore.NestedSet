@@ -69,13 +69,9 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
 
         probe.Observe(context);
         probe.Reset();
-        var before = GC.GetTotalAllocatedBytes(precise: true);
-        var timer = Stopwatch.StartNew();
 
         // Act
         var saved = await context.SaveChangesAsync(false, CancellationToken.None);
-        var elapsed = timer.Elapsed;
-        var allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
 
         // Assert
         var lastWrite = probe.Commands.FindLastIndex(command => command
@@ -102,7 +98,6 @@ public abstract partial class OrderingRefreshScaleTests : ProviderTest
             $"Engine={Engine}; forest={nodes}; tracked={tracked.Length}; adjacent={adjacent}; "
             + $"refresh commands={refresh.Length}; "
             + $"read calls={refresh.Sum(command => command.ReadCalls)}; compilations={probe.Compilations}; "
-            + $"allocated process bytes={allocated}; elapsed ms={elapsed.TotalMilliseconds:F2}; "
             + $"maximum parameters={refresh.Max(command => command.Parameters)}");
 
         Assert.Equal(1, saved);

@@ -1,7 +1,7 @@
 ---
 id: D-019
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -443,7 +443,7 @@ informational diagnosis when that path is actually requested.
 - A shared syntax change admits application-owned expression/metadata callbacks, or a proof begins borrowing another analysis's mapping, filters or stability. Retain the adversarial wrappers and independent proof-state tests rather than weakening admission.
 - A Doka release changes either public capability signature, the completed-source mapping/filter/paging/statement-attempt guarantees, or its per-call directed-edge guarantee. Requalify exact API binding, provenance, compiled/quoted query paths, all semantic cases, and native comparisons before accepting that release.
 - A final mapped-owner alias is scheduled before its matched structural candidates, or source hydration becomes repeated per output pair. Inspect both directed edges and leave unrelated joins free; requalify exact bags, collection identifiers, native loops and unchanged work budgets rather than inferring performance from SQL shape.
-- Native plans for a supported workload exceed the established input/work or allocation budget, or a baseline control improves while the provider path regresses. Diagnose the emitted expression and physical plan before adding another provider API or index.
+- Native plans for a supported workload violate the established input/work contract, or diagnostic allocation comparisons show a regression relative to their baseline. Diagnose the emitted expression and physical plan before adding another provider API or index.
 - Sparse deep or wide inclusive MariaDB profiles regress to population-scale work or fail their native budget, including when application global filters fix Scope. Reopen qualification and remeasure the exact source before accepting a change. Preserve those application filters and retain temporary comparisons separately from physical base-table access while diagnosing the plan.
 - Coordinate-write maintenance or physical index growth exceeds an application's accepted budget. Compare the complete read/write workload before changing the default or index key order.
 - A provider changes generated-column indexing or migration support, or EF changes final physical mapping/runtime annotations. Requalify fresh/populated migrations, generated compiled models, ownership, and tracked refresh.
@@ -474,6 +474,8 @@ informational diagnosis when that path is actually requested.
 - 2026-11-03: Retrieved the four pinned EF/.NET source files again to record actual retrieval provenance. The earlier inspections remain historical: QueryCompiler on October 24, both options files on October 25, and RuntimeType.CoreCLR on October 26. The new retrieval dates do not replace those inspections or requalify runtime behavior.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-21: Updated current confirmation and observation guidance to the owner's explicit numerical-measurement separation under D-015. Functional, lifetime, and structural work contracts remain blocking; previous dated measurement and approval records are unchanged.
 
 ### Implementation References
 
@@ -506,10 +508,10 @@ informational diagnosis when that path is actually requested.
 - [Ordered-join endpoint provenance tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaStraightJoinTests.Endpoints.cs)
 - [Ordered-join collectible lifetime tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaStraightJoinTests.Lifetime.cs)
 - [Endpoint provenance tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.cs)
-- [Endpoint DAG allocation and adversarial capture tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.Scaling.cs)
+- [Endpoint DAG and adversarial capture tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.Scaling.cs)
 - [Operation-local endpoint resolver](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQueryEndpoint.Resolver.cs)
 - [Stable metadata eligibility](../../src/Doka.EntityFrameworkCore.NestedSet/Features/Queries/NestedSetQueryEndpoint.Stability.cs)
-- [Visibility allocation controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionVisibilityTraversalTests.cs)
+- [Visibility proof controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionVisibilityTraversalTests.cs)
 - [Existing isolated measurement collection](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Infrastructure/TestCollections.cs)
 - [Ordinary migration tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/AncestorIndexMigrationTests.cs)
 - [Compiled model tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Migrations.Tests/Integration/AncestorIndexCompiledModelTests.cs)

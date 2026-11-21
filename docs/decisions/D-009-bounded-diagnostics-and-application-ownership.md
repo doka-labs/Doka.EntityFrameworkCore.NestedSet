@@ -1,7 +1,7 @@
 ---
 id: D-009
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -59,7 +59,7 @@ Run live-provider cases on each provider project present in this revision; a
 filtered run does not establish coverage for a provider introduced later.
 
 - Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~DiagnosticsTests|FullyQualifiedName~ErrorContractTests|FullyQualifiedName~HistogramAdviceTests"` and expect exact bounded instrument names and tags, provider and row measurements, rebuild nodes and batches, and cancellation behavior to pass.
-- Run `dotnet test Doka.EntityFrameworkCore.NestedSet.slnx --filter "FullyQualifiedName~TrackerSnapshotAllocationTests"` and expect the disabled instrumentation path to stay within its allocation budget.
+- Run the tracker snapshot functional controls and preserve exact captured/recovered state. Investigate disabled-instrumentation allocation cost through the explicitly selected D-015 BenchmarkDotNet workloads; numerical byte observations do not decide test success.
 - Captured activities and measurements must reject NodeKey, Scope, TreeId, entity or table names, SQL, connection data, exception messages, and payload.
 
 ## Pros and Cons of the Options
@@ -111,13 +111,15 @@ issue and is documented as an explicit unbounded diagnostic operation.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
+- 2026-11-21: Updated current confirmation and observation guidance to the owner's explicit numerical-measurement separation under D-015. Functional, lifetime, and structural work contracts remain blocking; previous dated measurement and approval records are unchanged.
+
 ### Implementation References
 
 - [Diagnostic names](../../src/Doka.EntityFrameworkCore.NestedSet/Diagnostics/NestedSetDiagnostics.cs)
 - [Telemetry implementation](../../src/Doka.EntityFrameworkCore.NestedSet/Diagnostics/NestedSetTelemetry.cs)
 - [Context facade](../../src/Doka.EntityFrameworkCore.NestedSet/NestedSetDbContextExtensions.cs)
 - [Diagnostics tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Diagnostics)
-- [Allocation tests](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs)
+- [Tracker snapshot functional controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution)
 - [Diagnostics guide](../../docs/diagnostics.md)
 - [Security design](../security/security-design.md)
 

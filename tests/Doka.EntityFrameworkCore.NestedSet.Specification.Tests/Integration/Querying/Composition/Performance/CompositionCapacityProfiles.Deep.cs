@@ -232,9 +232,6 @@ internal static partial class CompositionCapacityProfiles
                     ((long)firstFact + lastFact) * facts / 2))
                 .ToArray();
 
-        // WHY: This profile's construction is the same bounded expression shape as the medium fixture;
-        // measure that common full filter shape independently instead of allocating the persisted chain.
-        var buildBytes = MeasureConstruction(context, int.MaxValue, firstFact);
         var observation = new CompositionCapacityObservation(
             profile,
             rows,
@@ -244,7 +241,6 @@ internal static partial class CompositionCapacityProfiles
             constructionCommands,
             materialized,
             tracked,
-            buildBytes,
             elapsed,
             plan);
 

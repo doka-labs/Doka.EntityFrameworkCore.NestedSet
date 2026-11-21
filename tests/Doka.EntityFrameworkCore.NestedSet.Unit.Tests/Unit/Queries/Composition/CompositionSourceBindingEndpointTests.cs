@@ -6,17 +6,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks lexical source-binding provenance independently of a provider's SQL lowering.</summary>
 public sealed partial class CompositionSourceBindingEndpointTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Records deterministic construction-allocation evidence.</param>
-    public CompositionSourceBindingEndpointTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     private static readonly MethodInfo s_binding = typeof(CompositionSourceBindingEndpointTests)
         .GetMethod(nameof(Bind), BindingFlags.NonPublic | BindingFlags.Static)!;
 

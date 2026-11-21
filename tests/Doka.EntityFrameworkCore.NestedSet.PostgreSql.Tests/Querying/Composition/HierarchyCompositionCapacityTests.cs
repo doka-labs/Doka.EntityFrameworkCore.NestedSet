@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 
 /// <summary>Runs persisted composition capacity contracts on PostgreSql.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class HierarchyCompositionCapacityTests : Specifications.HierarchyCompositionCapacityTests,
     IClassFixture<ProviderFixture<RelationalFixture, PostgreSqlEngine>>
 {

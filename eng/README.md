@@ -29,9 +29,9 @@ and release candidates run the same jobs. It runs independent jobs for C# style
 and unused imports, offline engineering regressions and shell syntax, the
 Release build with NuGet pack and archive inspection, package consumers, SBOMs,
 nine executable test projects, and the three SQLite samples. The shared
-MySQL/MariaDB project runs as five filtered cells: one non-allocation cell per
-engine, one capacity cell per engine and one cell for the remaining serial
-allocation measurements. Its filters must partition the project, so each test
+MySQL/MariaDB project uses complementary engine and functional scale/capacity
+cells. Numeric allocation measurements are not qualification cells. Its
+filters must partition the project, so each test
 still runs exactly once. Test and sample matrix cells run on separate runners
 without a repository-imposed parallelism cap. Each restores its own project
 graph using its reviewed dependency locks, so Docker
@@ -286,19 +286,19 @@ python3 eng/verify-coverage.py artifacts/test-results
 every report for packages and source-line entries. Across those reports, all six shipping libraries must have executed
 lines. An empty report fails even when another report contains valid coverage; no coverage-percentage threshold applies.
 
-Only the Unit assembly has two complementary runs. `Category=Allocation` runs
-first without a collector and writes `allocations.trx`; `Category!=Allocation`
-runs afterward with Code Coverage and writes `coverage.trx`. Existing isolated
-allocation collections and standalone budget controls supply that category.
-The registration's released-adapter and deliberately retained GC controls also
-belong to this partition, with unchanged assertions and xUnit metadata guards.
+Only the Unit assembly has two complementary runs.
+`Category=CollectorSensitive` runs first without a collector and writes
+`lifetime.trx`; `Category!=CollectorSensitive` runs afterward with Code Coverage
+and writes `coverage.trx`. The uninstrumented cases prove collectible lifetime
+and ownership contracts, including released and deliberately retained controls.
+They keep their assertions and actual xUnit metadata guards. Numerical byte or
+heap observations do not belong to either run's pass/fail criteria.
 Both partitions are required; their case identities must be disjoint and every
 selected case must pass without skipping. The result verifier retains the
 partition counts, paths, and hashes and combines the logical Unit total. It
 rejects a missing, unknown, or repeated partition and duplicate case identities.
-Other test projects keep one instrumented run. This keeps instrumentation
-allocations out of product budgets without running the full native suites twice.
-It also keeps collector-owned roots out of registration-lifetime observations.
+Other test projects keep one instrumented run. This keeps collector-owned roots
+out of lifetime observations without running the full native suites twice.
 [D-013](../docs/decisions/D-013-provider-owned-integration-test-projects.md)
 retains the mandatory split with the selected Code Coverage 18.12.0 servicing
 baseline. Fresh 2026-11-21 independent and current NestedSet lifetime controls
@@ -308,6 +308,13 @@ is preserved without claiming an identical mechanism in 18.12.0. The
 [collector boundary and re-evaluation criteria](../docs/performance.md#coverage-collector-18110-and-unloadability)
 do not authorize dropping either partition or claiming instrumented unloading
 support. No additional runner, gate or diagnostic cleanup is introduced.
+
+The existing BenchmarkDotNet executable owns numerical allocation, retained-heap,
+and timing investigations. It is explicitly selected, including `Dry`, and is
+not invoked by normal build, test, CI, or RC commands. Its `MemoryDiagnoser`
+values are informational. Workload correctness, complete execution/export, and
+resource cleanup remain testable functional contracts; numeric measurements
+do not decide release acceptance.
 
 Each CI test lane requires a Cobertura report before uploading its artifacts.
 The separate coverage job downloads the reports from every lane of the current

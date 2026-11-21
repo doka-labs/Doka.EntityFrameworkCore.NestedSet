@@ -3,10 +3,19 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public sealed partial class UnchangedForeignKeyRollbackTests
 {
     /// <summary>Uses actual hierarchy metadata and ordinary nullable FKs without opening SQLite.</summary>
-    private class RollbackContext : DbContext
+    internal class RollbackContext : DbContext
     {
         /// <summary>Keeps raw callback edits distinct from the native identities installed by public setters.</summary>
         internal RollbackContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
+
+        /// <summary>Uses the caller-owned provider graph for isolated functional and benchmark fixtures.</summary>
+        /// <param name="options">The completed SQLite options and explicitly owned provider services.</param>
+        internal RollbackContext(
+            DbContextOptions<RollbackContext> options
+        ) : base(options)
         {
             ChangeTracker.AutoDetectChangesEnabled = false;
         }
@@ -149,7 +158,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     }
 
     /// <summary>Separates ordinary principal identity, current collections and unique relationship storage.</summary>
-    private sealed class RollbackOwner
+    internal sealed class RollbackOwner
     {
         /// <summary>Gets or sets the ordinary principal scope used only by composite mappings.</summary>
         public int Scope { get; set; } = 7;
@@ -168,7 +177,7 @@ public sealed partial class UnchangedForeignKeyRollbackTests
     }
 
     /// <summary>Provides unchanged ordinary FK payload beside a marked hierarchy ordering candidate.</summary>
-    private sealed class RollbackNode : INestedSetNode<int, Guid>
+    internal sealed class RollbackNode : INestedSetNode<int, Guid>
     {
         /// <summary>Gets or sets the independent hierarchy parent key.</summary>
         public int? ParentId { get; set; }

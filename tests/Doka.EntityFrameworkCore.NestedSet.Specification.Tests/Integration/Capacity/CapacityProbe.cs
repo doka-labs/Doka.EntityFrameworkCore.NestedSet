@@ -1,16 +1,8 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Observes capacity operations with aggregate counters and sampled occupied heap.</summary>
-internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
+/// <summary>Observes capacity operations with bounded command counters and injected fault boundaries.</summary>
+internal sealed class CapacityProbe : DbCommandInterceptor
 {
-    private readonly ManagedHeapObservation _heap = new();
-    private long _allocatedBaseline;
-    private long _baseline;
-    private long _maximumOccupied;
-    private int _measuring;
-    private long _samples;
-    private Timer? _timer;
-
     /// <summary>Gets the number of attempted bounded repair commands.</summary>
     internal int RepairCommands { get; private set; }
 
@@ -44,46 +36,6 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     /// <summary>Gets or sets a source to cancel at the selected late failure boundary.</summary>
     internal CancellationTokenSource? Cancellation { get; set; }
 
-    /// <summary>Gets the maximum sampled occupied heap above the collected baseline.</summary>
-    internal long AdditionalOccupiedBytes => Math.Max(0, Interlocked.Read(ref _maximumOccupied) - _baseline);
-
-    /// <summary>Gets total allocation separately from the occupied-heap observation.</summary>
-    internal long TotalAllocatedBytes { get; private set; }
-
-    /// <summary>Gets the number of timer and command-boundary samples.</summary>
-    internal long Samples => Interlocked.Read(ref _samples);
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        Volatile.Write(ref _measuring, 0);
-        if (_timer is { } timer)
-        {
-            await timer.DisposeAsync();
-            _timer = null;
-        }
-    }
-
-    /// <summary>Starts measurement only after caller-owned input and provider warmup exist.</summary>
-    internal void Start()
-    {
-        _heap.Start();
-        _baseline = _heap.Baseline;
-        _maximumOccupied = _baseline;
-        _allocatedBaseline = GC.GetTotalAllocatedBytes(precise: true);
-        Volatile.Write(ref _measuring, 1);
-        _timer = new Timer(_ => Sample(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(5));
-    }
-
-    /// <summary>Freezes observations before verification queries allocate their own result state.</summary>
-    internal async Task StopAsync()
-    {
-        // WHY: Ending the measurement must stop its sampler even when the observed workload was canceled.
-        Sample();
-        await DisposeAsync();
-        TotalAllocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - _allocatedBaseline;
-    }
-
     /// <summary>Counts successful EF payload waves without retaining caller-owned entities.</summary>
     internal void Saved() => CompletedSaves++;
 
@@ -96,11 +48,13 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     )
     {
         Observe(command);
+
         if (IsRepair(command))
         {
             RepairCommands++;
             MaximumRepairParameters = Math.Max(MaximumRepairParameters, command.Parameters.Count);
             MaximumRepairSqlLength = Math.Max(MaximumRepairSqlLength, command.CommandText.Length);
+
             if (RepairCommands == FailRepairCommand)
             {
                 await FailAsync(cancellationToken: cancellationToken);
@@ -118,7 +72,6 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
         CancellationToken cancellationToken = default
     )
     {
-        Sample();
         if (IsRepair(command))
         {
             CompletedRepairs++;
@@ -137,6 +90,7 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
     )
     {
         Observe(command);
+
         if (FailBulkRefresh
             && command.CommandText.Contains(NestedSetDiagnostics.BulkRefreshTag, StringComparison.Ordinal))
         {
@@ -146,36 +100,12 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
         return result;
     }
 
-    /// <summary>Samples both the in-memory plan retained at first write and subsequent command boundaries.</summary>
+    /// <summary>Records command cardinality without retaining command or parameter objects.</summary>
     private void Observe(
         DbCommand command
     )
     {
-        Sample();
         MaximumCommandParameters = Math.Max(MaximumCommandParameters, command.Parameters.Count);
-    }
-
-    /// <summary>Records the observed maximum without forcing collections that change operation behavior.</summary>
-    private void Sample()
-    {
-        if (Volatile.Read(ref _measuring) == 0)
-        {
-            return;
-        }
-
-        var occupied = _heap.Sample();
-        Interlocked.Increment(ref _samples);
-        var previous = Interlocked.Read(ref _maximumOccupied);
-        while (occupied > previous)
-        {
-            var observed = Interlocked.CompareExchange(ref _maximumOccupied, occupied, previous);
-            if (observed == previous)
-            {
-                break;
-            }
-
-            previous = observed;
-        }
     }
 
     /// <summary>Injects a fault or fully completed cancellation at the same late command boundary.</summary>
@@ -187,6 +117,7 @@ internal sealed class CapacityProbe : DbCommandInterceptor, IAsyncDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         ReachedFailure = true;
+
         if (Cancellation is { } source)
         {
             await source.CancelAsync();

@@ -6,17 +6,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks fixed-arity substitutions against the retained general expression-inlining contract.</summary>
 public sealed partial class ExpressionInliningTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Records measured allocation observations from the companion tests.</param>
-    public ExpressionInliningTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>Fixed bindings retain independent nested parameters even when their names match.</summary>
     /// <param name="arity">The number of outer bindings replaced together.</param>
     [Theory]

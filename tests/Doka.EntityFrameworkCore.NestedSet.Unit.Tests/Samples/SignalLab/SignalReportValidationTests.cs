@@ -5,16 +5,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 /// <summary>Guards sample-owned request, calendar and result-grid rules once, independently of SQL providers.</summary>
 public sealed partial class SignalReportValidationTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    public SignalReportValidationTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>Inclusive boundaries, open ends and the maximum date require no AddDays conversion.</summary>
     [Theory]
     [InlineData(17, false)]

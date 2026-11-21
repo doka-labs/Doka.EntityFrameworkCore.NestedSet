@@ -5,22 +5,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks exact-bound reuse and conservative traversal of external query expressions.</summary>
 
-// WHY: Concurrent collections can perturb thread allocation counters. Use the existing isolated
-// measurement collection without relaxing the budget or serializing unrelated regression tests.
-[Collection("Allocation measurements")]
 public sealed partial class CompositionVisibilityTraversalTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Captures allocation evidence outside the measured operation.</param>
-    public CompositionVisibilityTraversalTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     private static readonly MethodInfo s_where = ((MethodCallExpression)
         ((Expression<Func<IQueryable<CompositionGuardNode>, IQueryable<CompositionGuardNode>>>)
             (query => query.Where(node => true))).Body).Method;
@@ -343,9 +329,9 @@ public sealed partial class CompositionVisibilityTraversalTests
         Assert.Equal(0, boundary.Commands.Created);
     }
 
-    /// <summary>Increasing references to existing query nodes does not allocate a cache entry per occurrence.</summary>
+    /// <summary>Repeated references retain the same mapping and visibility as one existing subtree.</summary>
     [Fact]
-    public void Allocated_SharedReferences_DoNotIncreaseProofAllocation()
+    public void Require_SharedReferences_RetainTheIndependentProofResult()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -358,22 +344,14 @@ public sealed partial class CompositionVisibilityTraversalTests
         var bound = ((MethodCallExpression)nodes.Expression).Arguments[0];
         Expression<Func<CompositionGuardNode, CompositionGuardNode>> selector = node => node;
 
-        // WHY: Warm both proof shapes before comparing their repeated allocation windows.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 64; index++)
-        {
-            NestedSetQueryEndpoint.Require(single, selector, entityType, bound, "node");
-            NestedSetQueryEndpoint.Require(repeated, selector, entityType, bound, "node");
-        }
-
         // Act
-        var singleBytes = Allocated(single, selector, entityType, bound);
-        var repeatedBytes = Allocated(repeated, selector, entityType, bound);
+        var one = NestedSetQueryEndpoint.Require(single, selector, entityType, bound, "node");
+        var many = NestedSetQueryEndpoint.Require(repeated, selector, entityType, bound, "node");
 
         // Assert
-        _output.WriteLine($"Operations=128; single={singleBytes} B; repeated={repeatedBytes} B.");
-        Assert.InRange(repeatedBytes - singleBytes, -256L * 128, 256L * 128);
+        Assert.Same(one.EntityType, many.EntityType);
+        Assert.True(one.IsVisible);
+        Assert.Equal(one.IsVisible, many.IsVisible);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

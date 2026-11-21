@@ -278,7 +278,7 @@ jobs:
           - id: ef-unit
             name: EF Core unit tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests.csproj
-            filter: Category!=Allocation
+            filter: Category!=CollectorSensitive
             docker: false
           - id: benchmark-contracts
             name: Benchmark contract tests
@@ -287,27 +287,27 @@ jobs:
           - id: mysql
             name: MySQL integration tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
-            filter: FullyQualifiedName!~.MariaDb.&Lane!=Allocation
+            filter: FullyQualifiedName!~.MariaDb.&Lane!=Scale
             docker: true
           - id: mariadb
             name: MariaDB integration tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
-            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation
+            filter: FullyQualifiedName~.MariaDb.&Lane!=Scale
             docker: true
           - id: mysql-capacity
             name: MySQL capacity tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
-            filter: FullyQualifiedName!~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            filter: FullyQualifiedName!~.MariaDb.&Lane=Scale&FullyQualifiedName~.CapacityTests.
             docker: true
           - id: mariadb-capacity
             name: MariaDB capacity tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
-            filter: FullyQualifiedName~.MariaDb.&Lane=Allocation&FullyQualifiedName~.CapacityTests.
+            filter: FullyQualifiedName~.MariaDb.&Lane=Scale&FullyQualifiedName~.CapacityTests.
             docker: true
-          - id: mysql-allocation
-            name: MySQL and MariaDB allocation measurements
+          - id: mysql-scale
+            name: MySQL and MariaDB functional scale tests
             project: tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests/Doka.EntityFrameworkCore.NestedSet.MySql.Tests.csproj
-            filter: Lane=Allocation&FullyQualifiedName!~.CapacityTests.
+            filter: Lane=Scale&FullyQualifiedName!~.CapacityTests.
             docker: true
           - id: postgresql
             name: PostgreSQL integration tests
@@ -353,11 +353,11 @@ jobs:
         if: matrix.docker
         run: docker info
 
-      - name: Measure Unit allocations without instrumentation
+      - name: Run collector-sensitive lifetime tests without instrumentation
         if: matrix.id == 'ef-unit'
         run: >-
           dotnet test "${{ matrix.project }}" --configuration Release --no-build --no-restore
-          --filter "Category=Allocation" --logger "trx;LogFileName=allocations.trx"
+          --filter "Category=CollectorSensitive" --logger "trx;LogFileName=lifetime.trx"
           --results-directory artifacts/tests/${{ matrix.id }}
 
       - name: Run tests with coverage
@@ -366,7 +366,7 @@ jobs:
           TEST_FILTER: ${{ matrix.filter }}
         shell: bash
         run: |
-          # WHY: Instrumentation changes allocation costs and collectible-module lifetimes; Unit measurement ran above.
+          # WHY: The collector can retain collectible modules; their real release/live controls ran above.
           # Cells sharing one project use complementary filters, so each of its tests still runs exactly once.
           filter=()
           if [[ -n "$TEST_FILTER" ]]; then

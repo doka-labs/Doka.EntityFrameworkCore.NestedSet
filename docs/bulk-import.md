@@ -246,10 +246,11 @@ sentinel-valued inputs allocate no per-node generated-value snapshot. An input
 with an explicit non-sentinel value for a store-generated property retains one
 compact snapshot array so a definite rollback can restore that exact value.
 
-The retained-plan allocation test budgets at most 320 MiB per million planned
-nodes. The remaining 192 MiB of the 512 MiB whole-operation target is reserved
-for native ordering ranks, query buffers, provider allocations, and the active
-EF batch. The [real relational capacity cases](performance.md#real-relational-capacity-cases)
+Plan construction and operation allocations are measured explicitly through
+BenchmarkDotNet; their numeric values are diagnostic, not CI or RC gates.
+The earlier 320 MiB retained-plan and 512 MiB whole-operation allowances remain
+design targets for their documented historical fixtures; they do not establish
+a universal application-memory limit or current numerical acceptance gate. The [real relational capacity cases](performance.md#real-relational-capacity-cases)
 exercise one million direct children and 100,000 levels through persisted public
 operations; a small retained-plan measurement alone does not qualify them.
 

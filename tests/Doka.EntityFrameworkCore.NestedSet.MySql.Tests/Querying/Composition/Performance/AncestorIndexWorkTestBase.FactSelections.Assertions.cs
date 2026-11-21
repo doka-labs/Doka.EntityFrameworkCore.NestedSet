@@ -5,7 +5,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 public abstract partial class AncestorIndexWorkTestBase
 {
 
-    /// <summary>Applies deterministic work and construction budgets without gating elapsed timings.</summary>
+    /// <summary>Applies deterministic native work and complete occurrence contracts.</summary>
     private void AssertConsumerFacts(
         ConsumerFactObservation observation,
         int sourceCount
@@ -27,14 +27,13 @@ public abstract partial class AncestorIndexWorkTestBase
                 $"{observation.Profile}; population={observation.Population}; "
                 + $"boundedPathRequired={observation.BoundedPathRequired}; "
                 + $"actualRows={observation.Actual.Length}; "
-                + $"nativeTuples={tuples}; budget={budget}; construction={observation.ConstructionBytes} B/op."));
+                + $"nativeTuples={tuples}; budget={budget}."));
 
         Assert.True(observation.BoundedPathRequired);
         Assert.Equal(observation.Expected, observation.Actual);
         Assert.Equal(0, observation.ConstructionCommands);
         Assert.Equal(observation.Reads, observation.Commands);
         Assert.Equal(0, observation.Tracked);
-        Assert.InRange(observation.ConstructionBytes, 1, 256 * 1_024);
         Assert.True(observation.Work.ExecutedOperators > 0);
         Assert.InRange(tuples, 0, budget);
     }

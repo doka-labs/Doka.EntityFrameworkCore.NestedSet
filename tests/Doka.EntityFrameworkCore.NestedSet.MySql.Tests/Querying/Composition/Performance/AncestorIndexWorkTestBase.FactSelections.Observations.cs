@@ -53,7 +53,7 @@ public abstract partial class AncestorIndexWorkTestBase
         .ThenBy(pair => pair.Distance)
         .ToArray();
 
-    /// <summary>Observes fixed warmup and complete reads; elapsed values are evidence, never gates.</summary>
+    /// <summary>Verifies one complete read and its native plan against the independent occurrence oracle.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
     /// <param name="context">The context used for provider operations.</param>
     /// <param name="commands">The command observation counters.</param>
@@ -62,8 +62,6 @@ public abstract partial class AncestorIndexWorkTestBase
     /// <param name="expected">The independently derived expected results.</param>
     /// <param name="profile">The selected synthetic workload profile.</param>
     /// <param name="population">The expected physical hierarchy population.</param>
-    /// <param name="readWarmups">The fixed number of unmeasured warmup reads.</param>
-    /// <param name="measuredReads">The fixed number of complete reads inside the observation window.</param>
     /// <param name="factRows">The expected number of synthetic consumer fact rows.</param>
     private async Task<ConsumerFactObservation> ObserveConsumerFactsAsync(
         AncestorIndexQueryContext context,
@@ -73,23 +71,10 @@ public abstract partial class AncestorIndexWorkTestBase
         ConsumerFactPair[] expected,
         string profile,
         int population,
-        int readWarmups,
-        int measuredReads,
         int factRows,
         CancellationToken cancellationToken
     )
     {
-        var profiling = ConsumerAllocationProfilingEnabled();
-
-        // WHY: Allocation-stack sampling needs more than five reads. Only the separate diagnostic
-        // runner enables this switch; ordinary CI/Rider windows and single-read large cases stay unchanged.
-        var profileReadWindow = profiling && readWarmups == 3 && measuredReads == 5;
-
-        if (profileReadWindow)
-        {
-            measuredReads = 512;
-        }
-
         await using var versionCommand = context
             .Database
             .GetDbConnection()
@@ -133,38 +118,10 @@ public abstract partial class AncestorIndexWorkTestBase
         Assert.Equal(physicalFacts, physicalTables[1].LogicalRowCount);
         var observedUtc = DateTimeOffset.UtcNow;
 
-        var profileEvents = NativeReadProfileEvents.Log;
-
-        for (var warmup = 0; warmup < 8; warmup++)
-        {
-            GC.KeepAlive(MeasuredBuild());
-        }
-
         commands.Reset();
-        var constructionStart = Stopwatch.GetTimestamp();
-        var constructionBytes = QueryConstructionAllocation.Measure((Func<IQueryable<ConsumerFactPair>>)MeasuredBuild);
-        var constructionNanoseconds = Stopwatch.GetElapsedTime(constructionStart)
-                .TotalNanoseconds
-            / 100;
-
+        var query = build(context);
         var constructionCommands = commands.CommandCount;
-        var query = MeasuredBuild();
-        ConsumerFactPair[] actual = [];
-
         ClearConsumerCapture(commands, capture);
-
-        for (var warmup = 0; warmup < readWarmups; warmup++)
-        {
-            actual = await ReadConsumerFactsAsync(
-                context,
-                capture,
-                query,
-                profile,
-                cancellationToken: cancellationToken);
-
-            RequireConsumerOracle(actual, expected);
-            ClearConsumerCapture(commands, capture);
-        }
 
         var hasBinding = NestedSetProviderCapabilities.Resolve(context)
             .CompletedSourceMethod is not null;
@@ -178,29 +135,14 @@ public abstract partial class AncestorIndexWorkTestBase
             "Handler_icp_attempts",
             cancellationToken: cancellationToken);
 
-        var reads = new ConsumerReadSample[measuredReads];
+        var actual = await ReadConsumerFactsAsync(
+            context,
+            capture,
+            query,
+            profile,
+            cancellationToken: cancellationToken);
 
-        // WHY: Process-wide allocation includes provider, reader, materialization and observers across async
-        // continuations. Isolated measurement runs make it comparable; it is not a pure NestedSet allocation metric.
-        for (var sample = 0; sample < reads.Length; sample++)
-        {
-            profileEvents.BeginRead(Engine, profile, "observed", sample);
-            var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
-            var started = Stopwatch.GetTimestamp();
-            actual = await ReadConsumerFactsAsync(
-                context,
-                capture,
-                query,
-                profile,
-                cancellationToken: cancellationToken);
-
-            var elapsed = Stopwatch.GetElapsedTime(started);
-            var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
-            profileEvents.EndRead(Engine, profile, "observed", sample);
-            RequireConsumerOracle(actual, expected);
-            reads[sample] = new ConsumerReadSample(elapsed.TotalMilliseconds, allocated);
-        }
-
+        RequireConsumerOracle(actual, expected);
         var commandCount = commands.CommandCount;
         var sql = capture.Commands[0];
         var traversals = await NativeTraversalCounterAsync(
@@ -232,17 +174,10 @@ public abstract partial class AncestorIndexWorkTestBase
             ObservedUtc = observedUtc,
             HasBinding = hasBinding,
             HasOrderedJoin = hasOrderedJoin,
-            ConstructionBytes = constructionBytes,
-            ConstructionNanoseconds = constructionNanoseconds,
             ConstructionCommands = constructionCommands,
-            ConstructionOperations = 100,
-            ReadWarmups = readWarmups,
-            MeasuredReads = measuredReads,
-            AllocationStackProfiling = profileReadWindow,
             ResultRows = actual.Length,
             ExpectedRows = expected.Length,
             CommandCount = commandCount,
-            Reads = reads,
             Traversals = traversals,
             IndexAttempts = indexAttempts,
         };
@@ -271,22 +206,11 @@ public abstract partial class AncestorIndexWorkTestBase
             ? DensePathNativeWork.MySql(plan)
             : DensePathNativeWork.MariaDb(plan);
 
-        await ObserveConsumerReadsWithoutCaptureAsync(
-            context,
-            capture,
-            build,
-            expected,
-            profile,
-            readWarmups,
-            measuredReads,
-            cancellationToken: cancellationToken);
-
         return new ConsumerFactObservation(
             profile,
             OrderConsumerPairs(actual),
             expected,
             hasBinding && hasOrderedJoin,
-            constructionBytes,
             constructionCommands,
             commandCount,
             traversals,
@@ -297,9 +221,7 @@ public abstract partial class AncestorIndexWorkTestBase
                 .Entries()
                 .Count(),
             population,
-            measuredReads);
-
-        IQueryable<ConsumerFactPair> MeasuredBuild() => build(context);
+            1);
     }
 
     /// <summary>Preserves the actual command and planning diagnostic if a complete native read fails.</summary>

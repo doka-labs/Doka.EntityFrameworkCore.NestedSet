@@ -411,5 +411,5 @@ translation, filters, tracking, and async execution:
   distinguishes expression-building operators from async terminal operations.
 
 These sources explain EF behavior. They do not certify NestedSet semantics,
-provider plans, allocation budgets, or an unexecuted CI run; those require the
+provider plans, diagnostic allocation measurements, or an unexecuted CI run; those require the
 repository's actual regression and qualification evidence.

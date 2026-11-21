@@ -1,5 +1,3 @@
-using Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Verifies executable fixture isolation and local collection registration.</summary>
@@ -122,7 +120,7 @@ public sealed class ProviderFixtureIsolationTests
         Assert.False(secondCleanup.IsDisposed);
     }
 
-    /// <summary>Unit cases resolve named collections locally and preserve allocation isolation.</summary>
+    /// <summary>Unit cases resolve named collections locally and preserve lifetime isolation.</summary>
     [Fact]
     public void GetCustomAttributes_UnitNamedCollections_ResolveToLocalDefinitions()
     {
@@ -149,93 +147,78 @@ public sealed class ProviderFixtureIsolationTests
             .ToArray();
 
         // Assert
-        Assert.Contains("Allocation measurements", referenced);
-        Assert.All(
-            new[]
-            {
-                typeof(TypedPropertyReadTests),
-                typeof(TypedProviderComparerTests),
-                typeof(KeyComparerTests),
-                typeof(InsertionRefreshAllocationTests),
-                typeof(TrackedIdentityIterationAllocationTests),
-                typeof(SignalReportSnapshotAllocationTests),
-                typeof(SignalPathConstructionAllocationTests),
-                typeof(MappedMemberConstructionTests),
-            },
-            type => Assert.Equal(
-                "Allocation measurements",
-                type.GetCustomAttribute<CollectionAttribute>()
-                    ?.Name));
+        Assert.Contains("Collector-sensitive lifetimes", referenced);
+        Assert.DoesNotContain("Allocation measurements", referenced);
 
         foreach (var name in referenced)
         {
             var local = Assert.Single(definitions, entry => entry.Definition!.Name == name);
             Assert.Same(assembly, local.Type.Assembly);
 
-            if (name == "Allocation measurements")
+            if (name == "Collector-sensitive lifetimes")
             {
                 Assert.True(local.Definition!.DisableParallelization);
             }
         }
     }
 
-    /// <summary>The actual xUnit metadata path propagates the measurement collection's filter trait.</summary>
+    /// <summary>The actual xUnit metadata path keeps lifetime controls in the uninstrumented partition.</summary>
     [Fact]
-    public void Construct_AllocationCollectionTraits_ReachConcreteTestMethods()
+    public void Construct_CollectorSensitiveCollectionTraits_ReachConcreteLifetimeMethods()
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
         var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
         var collection = new XunitTestCollection(
             testAssembly,
-            typeof(AllocationMeasurementIsolation),
+            typeof(CollectorSensitiveLifetimeIsolation),
             true,
-            "Allocation measurements");
+            "Collector-sensitive lifetimes");
 
-        var testClass = new XunitTestClass(typeof(TypedPropertyReadTests), collection);
-        var method = typeof(TypedPropertyReadTests)
-            .GetMethod(nameof(TypedPropertyReadTests.Read_IntegerParent_ReadsLiveNullablePresence))!;
+        var type = assembly.GetExportedTypes().First(candidate => candidate
+            .GetCustomAttribute<CollectionAttribute>()?.Name == "Collector-sensitive lifetimes");
+
+        var method = type.GetMethods().First(candidate => candidate.CustomAttributes.Any(attribute =>
+            typeof(IFactAttribute).IsAssignableFrom(attribute.AttributeType)));
+
+        var testClass = new XunitTestClass(type, collection);
 
         // Act
         var metadata = new XunitTestMethod(testClass, method, []);
 
         // Assert
-        Assert.Contains("Allocation", metadata.Traits["Category"]);
+        Assert.Contains("CollectorSensitive", metadata.Traits["Category"]);
+        Assert.DoesNotContain("Allocation", metadata.Traits["Category"]);
     }
 
-    /// <summary>Unicode validation remains instrumented while only its fixed allocation budget is separated.</summary>
+    /// <summary>Unicode correctness stays covered and cannot become an optional benchmark by category.</summary>
     [Fact]
-    public void Construct_UnicodeValidation_RemainsCoveredWhileBudgetRunsUninstrumented()
+    public void Construct_UnicodeValidation_RemainsCovered()
     {
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
         var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
         var collection = new XunitTestCollection(testAssembly, null, false, "Unicode semantics");
         var testClass = new XunitTestClass(typeof(UnicodeIdentityLengthTests), collection);
-        var allocation = typeof(UnicodeIdentityLengthTests)
-            .GetMethod(nameof(UnicodeIdentityLengthTests.CountUnicodeScalars_WarmCharacterCounting_DoesNotAllocate))!;
-
-        var validation = typeof(UnicodeIdentityLengthTests)
+        var method = typeof(UnicodeIdentityLengthTests)
             .GetMethod(nameof(UnicodeIdentityLengthTests.ConvertAll_EveryUnpairedSurrogateCodeUnit_IsRejected))!;
 
         // Act
-        var budgetMetadata = new XunitTestMethod(testClass, allocation, []);
-        var validationMetadata = new XunitTestMethod(testClass, validation, []);
+        var metadata = new XunitTestMethod(testClass, method, []);
 
         // Assert
-        Assert.Contains("Allocation", budgetMetadata.Traits["Category"]);
-        Assert.False(
-            validationMetadata.Traits.TryGetValue("Category", out var categories)
-            && categories.Contains("Allocation", StringComparer.Ordinal));
+        Assert.False(metadata.Traits.TryGetValue("Category", out var categories)
+            && (categories.Contains("CollectorSensitive", StringComparer.Ordinal)
+                || categories.Contains("Allocation", StringComparer.Ordinal)));
     }
 
     /// <summary>
-    /// GC lifetime controls retain their assertions in the required uninstrumented measurement partition.
+    /// GC lifetime controls retain their assertions in the required uninstrumented partition.
     /// </summary>
     /// <param name="methodName">The released-root or intentionally live-root registration control.</param>
     [Theory]
-    [InlineData(nameof(OptionsExtensionTests.UseNestedSets_CollectibleAdapterRegistration_DoesNotRetainAdapter))]
-    [InlineData(nameof(OptionsExtensionTests.UseNestedSets_LiveCollectibleAdapterRegistration_RetainsAdapter))]
+    [InlineData(nameof(AdapterRegistrationLifetimeTests.UseNestedSets_CollectibleAdapterRegistration_DoesNotRetainAdapter))]
+    [InlineData(nameof(AdapterRegistrationLifetimeTests.UseNestedSets_LiveCollectibleAdapterRegistration_RetainsAdapter))]
     public void Construct_RegistrationLifetime_ControlsRunWithoutCoverage(
         string methodName
     )
@@ -243,15 +226,19 @@ public sealed class ProviderFixtureIsolationTests
         // Arrange
         var assembly = typeof(ProviderFixtureIsolationTests).Assembly;
         var testAssembly = new XunitTestAssembly(assembly, null, assembly.Location);
-        var collection = new XunitTestCollection(testAssembly, null, false, "Registration lifetime");
-        var testClass = new XunitTestClass(typeof(OptionsExtensionTests), collection);
-        var method = typeof(OptionsExtensionTests).GetMethod(methodName)!;
+        var collection = new XunitTestCollection(
+            testAssembly,
+            typeof(CollectorSensitiveLifetimeIsolation),
+            true,
+            "Collector-sensitive lifetimes");
+        var testClass = new XunitTestClass(typeof(AdapterRegistrationLifetimeTests), collection);
+        var method = typeof(AdapterRegistrationLifetimeTests).GetMethod(methodName)!;
 
         // Act
         var metadata = new XunitTestMethod(testClass, method, []);
 
         // Assert
-        Assert.Contains("Allocation", metadata.Traits["Category"]);
+        Assert.Contains("CollectorSensitive", metadata.Traits["Category"]);
     }
 
     /// <summary>Creates a concrete subclass in an isolated assembly with a real provider assembly identity.</summary>

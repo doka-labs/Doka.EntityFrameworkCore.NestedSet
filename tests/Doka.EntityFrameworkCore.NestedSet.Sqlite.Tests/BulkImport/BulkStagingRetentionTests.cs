@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies throwing CLR accessors do not leave detached import inputs retained by the context.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed partial class BulkStagingRetentionTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>
 {

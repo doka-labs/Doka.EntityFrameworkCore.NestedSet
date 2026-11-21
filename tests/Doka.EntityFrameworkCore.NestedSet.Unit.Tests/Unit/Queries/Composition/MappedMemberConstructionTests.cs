@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks deferred member construction, metadata isolation and the lifetime of mapped query reads.</summary>
-[Collection("Allocation measurements")]
 public sealed partial class MappedMemberConstructionTests
 {
     /// <summary>Mapped reads bind each compatible alias and retain markers for unrelated aliases.</summary>
@@ -246,49 +245,7 @@ public sealed partial class MappedMemberConstructionTests
                         .Expression));
     }
 
-    /// <summary>
-    /// Construction does not extend model or alias lifetime; a retained model is the positive control.
-    /// </summary>
-    /// <param name="retainModel">Whether the caller deliberately keeps the model strongly reachable.</param>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CollectGarbage_Construction_DoesNotRootModelsOrQueryAliases(
-        bool retainModel
-    )
-    {
-        // Arrange
-        var witnesses = PopulateWeakMembers(retainModel, out var retained);
 
-        // Act
-        CollectGarbage();
-
-        // Assert
-        Assert.Equal(retainModel, witnesses[0].IsAlive);
-        Assert.Equal(retainModel, witnesses[1].IsAlive);
-        Assert.Equal(retainModel, witnesses[2].IsAlive);
-        Assert.False(witnesses[3].IsAlive);
-        GC.KeepAlive(retained);
-    }
-
-    /// <summary>Warm mapped reads add no per-call metadata allocation beyond the required member expression.</summary>
-    [Fact]
-    public void MeasureAllocations_MappedRead_DoesNotAllocatePerCallMetadataState()
-    {
-        // Arrange
-        var (_, _, property) = RuntimeProperty();
-        var alias = Expression.Parameter(typeof(MemberNode), "node");
-        _ = MeasureAllocations(alias, property, mapped: false);
-        _ = MeasureAllocations(alias, property, mapped: true);
-
-        // Act
-        var direct = MeasureAllocations(alias, property, mapped: false);
-        var mapped = MeasureAllocations(alias, property, mapped: true);
-
-        // Assert
-        Assert.True(direct > 0);
-        Assert.InRange(mapped, 0, direct + 256);
-    }
 
     /// <summary>Creates independent runtime metadata without an EF provider's global model cache.</summary>
     private static (RuntimeModel Model, RuntimeEntityType Entity, IProperty Property) RuntimeProperty()

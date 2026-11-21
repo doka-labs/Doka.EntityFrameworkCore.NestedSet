@@ -12,10 +12,28 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Doka.EntityFrameworkCore.MySql" />
+    <!-- WHY: The harness directly uses connector APIs. A direct edge also carries its central version into
+         BenchmarkDotNet's generated host, which does not inherit the benchmark transitive-pinning defaults. -->
+    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Testcontainers.MySql" />
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+  <ItemGroup Label="Shared managed-save workload models">
+    <!-- WHY: Tests and benchmarks execute the same EF mapping shapes without referencing a test assembly. -->
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.Model.cs"
+             Link="Measurements/ManagedSave/Models/HierarchyChangeDetectionTests.Model.cs" />
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.PlanAccess.cs"
+             Link="Measurements/ManagedSave/Models/HierarchyChangeDetectionTests.PlanAccess.cs" />
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexTopologyRollbackTests.Model.cs"
+             Link="Measurements/ManagedSave/Models/ComplexTopologyRollbackTests.Model.cs" />
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ComplexTopologyGraphRecoveryTests.Fixture.cs"
+             Link="Measurements/ManagedSave/Models/ComplexTopologyGraphRecoveryTests.Fixture.cs" />
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/ManagedSharingCaptureTests.Model.cs"
+             Link="Measurements/ManagedSave/Models/ManagedSharingCaptureTests.Model.cs" />
+    <Compile Include="../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/UnchangedForeignKeyRollbackTests.Model.cs"
+             Link="Measurements/ManagedSave/Models/UnchangedForeignKeyRollbackTests.Model.cs" />
   </ItemGroup>
   <ItemGroup Label="IDE file nesting">
     <Compile Update="Infrastructure/BenchmarkEnvironment.*.cs">

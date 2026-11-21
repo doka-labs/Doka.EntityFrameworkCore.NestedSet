@@ -6,6 +6,8 @@
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Sqlite.Tests")]
 [assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Specification.Tests")]
+// WHY: Optional benchmarks measure the real internal paths without widening the shipping public API.
+[assembly: InternalsVisibleTo("Doka.EntityFrameworkCore.NestedSet.Benchmarks")]
 
 // WHY: Native adapters implement the common kernel's internal translation and registry capability contracts.
 // Their shipping dependencies are pinned to the matching kernel version because these roles share a private ABI.

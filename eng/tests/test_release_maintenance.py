@@ -220,8 +220,9 @@ class MaintenanceTests(unittest.TestCase):
                      source.replace("            docker: false", "            docker: false\n            docker: true", 1),
                      source.replace("          - id: core", "          - strange: core", 1),
                      source.replace("sample: [FileSystem, SignalLab, UserGroups]", "sample: ${{ inputs.samples }}"),
-                     source.replace("\n            filter: FullyQualifiedName~.MariaDb.&Lane!=Allocation", "", 1),
-                     source.replace("filter: Category!=Allocation", "filter: &unit Category!=Allocation", 1))
+                     source.replace("\n            filter: FullyQualifiedName~.MariaDb.&Lane!=Scale", "", 1),
+                     source.replace("filter: Category!=CollectorSensitive",
+                                    "filter: &unit Category!=CollectorSensitive", 1))
 
         # Act
         errors = []

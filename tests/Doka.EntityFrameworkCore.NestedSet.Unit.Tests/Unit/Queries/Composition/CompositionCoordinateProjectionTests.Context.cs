@@ -73,7 +73,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>Returns weak witnesses after owning roots, contexts, and provider services have left scope.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] BuildCollectibleCoordinates()
+    internal static WeakReference[] BuildCollectibleCoordinates()
     {
         var options = CoordinateOptions();
         using var provider = CoordinateServices(options);
@@ -93,7 +93,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>Optionally exposes the actual model as a deliberate strong-root control.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] BuildCollectibleCoordinates(
+    internal static WeakReference[] BuildCollectibleCoordinates(
         out IModel model
     )
     {
@@ -118,7 +118,7 @@ public sealed partial class CompositionCoordinateProjectionTests
 
     /// <summary>Applies the unchanged collection budget without observing a witness target in the GC frame.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void CollectCoordinateGarbage()
+    internal static void CollectCoordinateGarbage()
     {
         // WHY: Reading weak targets can introduce strong JIT temporaries. Keep every witness observation
         // outside this noninlined collection frame so the probe cannot extend the lifetime it measures.

@@ -26,6 +26,11 @@ See the [compatible upgrade](docs/upgrading-provider-packages.md#upgrade-from-10
   history; maintain decision navigation without generated metadata copies.
 - Consolidate public guides around feature contracts, XML documentation, and
   reproducible qualification boundaries.
+- Move numeric allocation and retained-heap observations to explicitly selected
+  BenchmarkDotNet workloads. CI and RC retain functional, structural, resource
+  ownership, and lifetime checks; no numeric measurement decides acceptance.
+  Collector-sensitive Unit controls remain required without instrumentation,
+  separately from their covered complement.
 
 ### Fixed
 

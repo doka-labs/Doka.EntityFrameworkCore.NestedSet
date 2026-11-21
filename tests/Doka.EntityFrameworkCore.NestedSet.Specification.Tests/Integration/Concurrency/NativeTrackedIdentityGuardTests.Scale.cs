@@ -3,26 +3,20 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Bounds native guard work independently of a large unchanged hierarchy tracker.</summary>
 public abstract partial class NativeTrackedIdentityGuardTests
 {
-    /// <summary>Isolates allocation measurements while reusing the complete native identity test models.</summary>
-    [Collection("Allocation measurements")]
+    /// <summary>Exercises large tracker populations while reusing the complete native identity test models.</summary>
+    [Collection("Scale scenarios")]
     public abstract partial class Scale : ProviderTest
     {
         private const int NativeCandidateCount = 20000;
 
-        /// <summary>Bounds tracker protection and native transport allocations beyond the warm baseline.</summary>
-        private const long MaximumAdditionalBytesPerCandidate = 2600;
-
         private readonly ModelCompatibilityDatabase _fixture;
-        private readonly ITestOutputHelper _output;
 
-        /// <summary>Uses isolated provider databases and retains measured allocation evidence.</summary>
+        /// <summary>Uses isolated provider databases for actual guard and state checks.</summary>
         protected Scale(
-            IProviderFixture<ModelCompatibilityDatabase> fixture,
-            ITestOutputHelper output
+            IProviderFixture<ModelCompatibilityDatabase> fixture
         ) : base(fixture)
         {
             _fixture = fixture.Value;
-            _output = output;
         }
 
         /// <summary>Uses one native key collection for 20,000 unrelated integer or Guid candidates.</summary>
@@ -66,78 +60,19 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 otherTree,
                 cancellationToken: TestContext.Current.CancellationToken);
 
-            await using var baseline = await CreateNativeScaleContextAsync(
-                Engine,
-                guidKeys,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            var warmTree = Guid.NewGuid();
-            var baselineTree = Guid.NewGuid();
-            var baselineOtherTree = Guid.NewGuid();
-            await SeedNativeScaleAsync(
-                baseline,
-                guidKeys,
-                warmTree,
-                root - 10,
-                0,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            await SeedNativeScaleAsync(
-                baseline,
-                guidKeys,
-                baselineTree,
-                root - 20,
-                0,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            await SeedNativeScaleAsync(
-                baseline,
-                guidKeys,
-                baselineOtherTree,
-                root - 30,
-                0,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            await TrackNativeScaleAsync(
-                baseline,
-                guidKeys,
-                baselineOtherTree,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            await DeleteNativeScaleAsync(baseline, guidKeys, warmTree, CancellationToken.None);
-            var baselineBefore = GC.GetTotalAllocatedBytes(precise: true);
-            await DeleteNativeScaleAsync(baseline, guidKeys, baselineTree, CancellationToken.None);
-            var baselineAllocated = GC.GetTotalAllocatedBytes(precise: true) - baselineBefore;
             probe.Armed = true;
 
             // Act
-            var crowdedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var failure = await Record.ExceptionAsync(() => DeleteNativeScaleAsync(
                 context,
                 guidKeys,
                 affectedTree,
                 CancellationToken.None));
 
-            var crowdedAllocated = GC.GetTotalAllocatedBytes(precise: true) - crowdedBefore;
-
             // Assert
-            _output.WriteLine(
-                $"Native candidates={NativeCandidateCount}; Guid keys={guidKeys}; "
-                + $"baseline bytes={baselineAllocated}; crowded bytes={crowdedAllocated}; "
-                + $"additional bytes per entry={(crowdedAllocated - baselineAllocated) / NativeCandidateCount}; "
-                + $"native reads={probe.NativeReads}");
-
             Assert.Null(failure);
             Assert.Equal(1, probe.NativeReads);
             Assert.InRange(probe.MaximumNativeParameters, 1, 2);
-
-            // WHY: Fresh five-provider int/Guid runs with fixed 64-candidate blocks measured at most
-            // 2,214 additional bytes per entry. A 2,600-byte ceiling retains about 17% allocation headroom;
-            // this budget checks memory growth and does not claim a CPU improvement.
-            Assert.InRange(
-                crowdedAllocated - baselineAllocated,
-                0,
-                NativeCandidateCount * MaximumAdditionalBytesPerCandidate);
 
             Assert.Equal(
                 NativeCandidateCount,

@@ -12,7 +12,6 @@ public sealed partial class ExpressionInliningTests
     /// <summary>Static and directly captured members retain their exact expression without visiting getters.</summary>
     /// <param name="arity">The fixed overload's binding count.</param>
     /// <param name="staticMember">Whether the selected getter is static instead of directly captured.</param>
-    [Trait("Category", "Allocation")]
     [Theory]
     [InlineData(1, false)]
     [InlineData(2, false)]
@@ -20,7 +19,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1, true)]
     [InlineData(2, true)]
     [InlineData(3, true)]
-    public void Inline_UnboundMembers_AvoidVisitorAllocationAndGetterEvaluation(
+    public void Inline_UnboundMembers_RetainExpressionWithoutGetterEvaluation(
         int arity,
         bool staticMember
     )
@@ -40,35 +39,12 @@ public sealed partial class ExpressionInliningTests
             .Repeat<Expression>(Expression.Constant(7), arity)
             .ToArray();
 
-        const int repetitions = 1000;
-
-        // WHY: Warm the selected overload before counting allocations over the unchanged expression and arguments.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            GC.KeepAlive(Inline(expression, arguments));
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
         // Act
         var actual = Inline(expression, arguments);
-
-        // WHY: Repeat the same binding within this allocation window to expose a per-call regression.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            GC.KeepAlive(Inline(expression, arguments));
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
         Assert.Same(member, actual);
         Assert.Equal(0, probe.Reads);
-        Assert.InRange(allocated, 0, 4096);
     }
 
     /// <summary>
@@ -258,10 +234,9 @@ public sealed partial class ExpressionInliningTests
         Assert.Equal(expectedArgument.ParamName, actualArgument.ParamName);
     }
 
-    /// <summary>Direct identity and existing-assignment selection require no visitor allocation after warmup.</summary>
+    /// <summary>Direct identity and existing-assignment selection retain the exact selected expression.</summary>
     /// <param name="arity">The fixed overload's binding count.</param>
     /// <param name="member">Whether to select a projection member rather than the complete supplied value.</param>
-    [Trait("Category", "Allocation")]
     [Theory]
     [InlineData(1, false)]
     [InlineData(2, false)]
@@ -269,7 +244,7 @@ public sealed partial class ExpressionInliningTests
     [InlineData(1, true)]
     [InlineData(2, true)]
     [InlineData(3, true)]
-    public void Inline_DirectBinding_AvoidsVisitorAllocation(
+    public void Inline_DirectBinding_ReusesSelectedExpression(
         int arity,
         bool member
     )
@@ -300,33 +275,11 @@ public sealed partial class ExpressionInliningTests
             .Repeat(argument, arity)
             .ToArray();
 
-        const int repetitions = 1000;
-
-        // WHY: Warm the selected direct-binding path before opening its allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            GC.KeepAlive(Inline(expression, arguments));
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
         // Act
-        // WHY: Keep the fixed call count in one allocation window over the same prepared binding.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            GC.KeepAlive(Inline(expression, arguments));
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var actual = Inline(expression, arguments);
 
         // Assert
-        _output.WriteLine($"Arity={arity}; member={member}; operations={repetitions}; allocated={allocated} B.");
-
-        // WHY: Fixed noise headroom rejects the former per-call visitor without imposing a timing gate.
-        Assert.InRange(allocated, 0, 4096);
+        Assert.Same(value, actual);
     }
+
 }

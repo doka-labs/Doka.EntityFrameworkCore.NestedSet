@@ -6,6 +6,11 @@ APIs directly under [D-020](../decisions/D-020-provider-owned-runtime-packages.m
 That ownership change does not replace the recorded native evidence or establish
 new timing, allocation, or optimizer results by itself.
 
+Numeric allocation limits mentioned in these dated records describe the checks
+used for those sources. Current numerical observations follow the optional
+[BenchmarkDotNet boundary](../performance.md#allocation-measurement-and-unicode-counting);
+functional, structural, and lifetime contracts remain required.
+
 This page summarizes the structural and native-work evidence for generic
 query composition and the optional ancestor access path. It records dated
 local observations, not a release qualification or a universal latency claim.
@@ -406,7 +411,7 @@ were unknown and were not counted as zero.
 These are executed-plan observations for their fixture, not physical I/O or
 a proof that every application plan is linear. Current deterministic budgets,
 parameters, populations and test owners are in the
-[performance guide](../performance.md#deterministic-construction-and-transport-budgets)
+[performance guide](../performance.md#construction-observations-and-transport-contracts)
 and the [test-selection and evidence guide](../testing.md).
 
 ## Optional ancestor access

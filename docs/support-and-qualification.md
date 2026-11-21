@@ -27,7 +27,7 @@ The SDK pin includes Microsoft's
 Current declarations and dated execution evidence remain separate below.
 
 Code Coverage 18.12.0 is the selected servicing baseline with the mandatory
-uninstrumented Unit allocation/GC-lifetime partition recorded in
+uninstrumented Unit collector-sensitive lifetime partition recorded in
 [D-013](decisions/D-013-provider-owned-integration-test-projects.md). The earlier
 18.11.0 diagnosis identified injected event registrations and an active flush
 worker that prevented collectible-module unloading under macOS ARM64 static
@@ -406,7 +406,7 @@ release candidate call the same
 source-quality, engineering, build/package, package-consumer, SBOM,
 test-project, and SQLite-sample jobs. Every executable test project has its own
 named matrix cell; the shared MySQL/MariaDB provider project is split into
-complementary filtered cells by engine and by its serial allocation collection.
+complementary filtered cells by engine and functional scale scenarios.
 Cells can run concurrently on isolated runners. Results, provider plans, and
 coverage are verified across the complete test reports, and
 `Repository qualification` requires the shared jobs to succeed.

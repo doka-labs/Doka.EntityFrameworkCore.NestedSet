@@ -30,7 +30,7 @@ internal static partial class CompositionConsumerCapacityProfiles
         var materialized = 0;
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var validated = SignalApp.SignalReportValidation.Snapshot(request);
-        var buildBytes = Construction(() => SignalApp.SignalReportBuilder.Build(context, validated));
+        _ = SignalApp.SignalReportBuilder.Build(context, validated);
         var constructionCommands = commands.CommandCount;
         var topology = deep
             ? "chain"
@@ -93,8 +93,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             constructionCommands,
             materialized,
             tracked,
-            buildBytes,
-            256 * 1_024,
+
             elapsed,
             plan);
 

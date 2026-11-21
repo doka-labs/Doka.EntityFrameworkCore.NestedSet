@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore.Infrastructure;
-
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 public sealed partial class BenchmarkEnvironment

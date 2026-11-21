@@ -3,10 +3,9 @@ using System.Linq.Expressions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.UserGroups;
 
 /// <summary>Verifies that shared sample projections retain shape rather than invocation-owned state.</summary>
-[Collection("Allocation measurements")]
 public sealed class SupervisorProjectionCacheTests
 {
-    /// <summary>Bounds actual warm resolution construction without translating or executing a query.</summary>
+    /// <summary>Builds actual resolution queries without translating or executing a database command.</summary>
     /// <param name="engine">The configured Doka dialect whose actual sample model supplies the query roots.</param>
     /// <param name="origins">The benchmark's singleton or sixteen-origin request form.</param>
     /// <param name="fields">The number of real sample metadata fields in the request.</param>
@@ -20,16 +19,13 @@ public sealed class SupervisorProjectionCacheTests
     [InlineData("MariaDb", 1, 4)]
     [InlineData("MariaDb", 16, 1)]
     [InlineData("MariaDb", 16, 4)]
-    public async Task ResolutionRows_WarmResolutionConstruction_KeepsItsAllocationBudget(
+    public async Task ResolutionRows_MetadataConstruction_RemainsDeferred(
         string engine,
         int origins,
         int fields
     )
     {
         // Arrange
-        const int warmup = 32;
-        const int batches = 4;
-        const int operations = 64;
         var boundary = new CompositionIoBoundary();
         var options = new DbContextOptionsBuilder<UserGroupContext>(
                 ModelCompatibilityDatabase.Options<UserGroupContext>(
@@ -43,8 +39,8 @@ public sealed class SupervisorProjectionCacheTests
             extension.ApplyServices(services);
         }
 
-        // WHY: An owned provider graph keeps this no-I/O calibration independent of process-wide
-        // service-cache history. Initial model and selector construction are outside the observation.
+        // WHY: Each disconnected provider graph belongs to this test, keeping its warning policy
+        // independent of unrelated model construction and process-global service-cache history.
         await using var provider = services.BuildServiceProvider();
         await using var context = new UserGroupContext(
             options
@@ -73,60 +69,14 @@ public sealed class SupervisorProjectionCacheTests
             OnDay = new DateOnly(2026, 10, 16),
         };
 
-        // WHY: The actual benchmark selects one explicit group for one origin and leaves StartGroupId
-        // unset for sixteen origins. A deferred builder has no database cardinality to inspect.
-        // Warm this shape before observing its allocation.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < warmup; index++)
-        {
-            GC.KeepAlive(
-                SupervisorQueries.ResolutionRows(
-                    context,
-                    tenantId,
-                    request,
-                    SupervisorSelection.RequireUnique));
-        }
-
-        var allocated = new long[batches];
-        IQueryable<SupervisorQueries.SupervisorReadRow>? last = null;
-
         // Act
-        // WHY: Every fixed batch contributes to the mean; a query projection would alter measured allocations.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var batch = 0; batch < batches; batch++)
-        {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-
-            // WHY: Measure repeated real builds directly, without allocating an intermediate result sequence.
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // ReSharper disable once LoopCanBeConvertedToQuery
-            for (var index = 0; index < operations; index++)
-            {
-                last = SupervisorQueries.ResolutionRows(context, tenantId, request, SupervisorSelection.RequireUnique);
-            }
-
-            allocated[batch] = GC.GetAllocatedBytesForCurrentThread() - before;
-        }
+        var query = SupervisorQueries.ResolutionRows(context, tenantId, request, SupervisorSelection.RequireUnique);
 
         // Assert
-        Assert.NotNull(last);
-        Assert.All(allocated, bytes => Assert.True(bytes > 0));
-
-        // WHY: The eight fixed observations use about 218-220 KB/build after projection reuse. A 224 KiB
-        // ceiling leaves headroom while rejecting the original 242-244 KB path without a timing gate.
-        // Every batch contributes to the mean; no favorable sample or retry chooses the result.
-        Assert.InRange(allocated.Average() / operations, 1, 224 * 1024);
+        Assert.NotNull(query.Expression);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());
-        TestContext.Current.TestOutputHelper?.WriteLine(
-            $"Engine={engine}; benchmark origins={origins}; fields={fields}; warmup={warmup}; "
-            + $"batches={batches}; operations/batch={operations}; "
-            + $"batch bytes=[{string.Join(',', allocated)}]; mean={allocated.Average() / operations:F2} B/build.");
-
-        GC.KeepAlive(last);
     }
 
     /// <summary>Every actual cached selector contains only parameters, members, and literal constants.</summary>

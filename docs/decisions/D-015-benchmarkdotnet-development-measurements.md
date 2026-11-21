@@ -1,7 +1,7 @@
 ---
 id: D-015
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -28,7 +28,9 @@ The bounded question is how to investigate NestedSet cost changes with clear
 measurement boundaries and source/environment provenance while keeping runs
 optional. Statistical measurements and untimed SQL/write observations must not
 become CI, release-candidate, or merge acceptance criteria. Existing deterministic
-regression-test contracts remain owned by their normal test projects.
+regression-test contracts remain owned by their normal test projects. Numerical
+allocation and retained-heap observations, including former byte-budget tests,
+follow the same optional measurement policy.
 
 ## Decision Drivers
 
@@ -138,6 +140,30 @@ runtime/SDK/packages, CPU/OS, provider/database image and version, container
 limits, datasets, and actual jobs and observation counts. Source changes
 require a repeated comparison against stable source before attributing results.
 
+**Numerical observations and required behavior.**
+
+All numerical allocation, retained-heap, and timing investigations belong to
+explicitly selected BenchmarkDotNet workloads. Normal builds, test discovery,
+CI, and RC do not start statistical measurements, including `Dry`. The shared
+`MemoryDiagnoser` and native exports report observations without absolute,
+per-entry, incremental, or comparative byte acceptance thresholds. Retired
+handwritten sampling and calibration helpers are not replaced by another
+measurement framework.
+
+Ordinary tests continue to verify actual workload results and state:
+key-comparer semantics, query provenance, cardinality, no-I/O construction,
+complete rollback, bounded commands and transport, configured admission limits,
+and resource ownership. Collector-sensitive weak-reference controls remain
+required without instrumentation under D-013, with their deliberately held
+opposites. Physical index-byte limits remain schema contracts. These checks
+must still reject broken behavior even when a benchmark reports favorable
+numbers.
+
+The sporadic 3,072-byte observation in RC run 44906220050 is not causally
+attributed. More warmup and passing repetitions do not prove the source of that
+allocation or establish a .NET 10.0.15 defect. Moving numerical observations
+out of acceptance does not claim such a fix or relax a functional contract.
+
 ### Consequences
 
 - Good, because standard measurement machinery replaces custom timing and
@@ -213,7 +239,7 @@ status does not qualify every optional benchmark scenario or timing observation.
 ### Use only structural regression tests and ad hoc application profiling
 
 - Good, because deterministic tests already enforce important tree, query,
-  write-shape, concurrency, and allocation properties without timing gates.
+  write-shape, concurrency, and ownership properties without measurement gates.
 - Bad, because source comparisons would lack a shared measurement lifecycle,
   representative selectable scenarios, and detailed reusable raw exports.
 
@@ -247,6 +273,8 @@ by recording this decision or its run procedures.
 - 2026-11-03: Reconciled status with the existing BenchmarkDotNet implementation and the successful benchmark contract job in RC run 41014625971. Recorded the status correction today without changing the original acceptance date or claiming new benchmark measurements.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-21: The owner explicitly requested complete separation of numerical allocation measurements from CI/RC acceptance, replacement of the proposed warmup-only patch, and preservation of blocking functional and lifetime controls. Updated this decision to require explicitly selected BenchmarkDotNet workloads without numeric gates; no new historical approval or hosted result is inferred.
 
 ### Implementation References
 

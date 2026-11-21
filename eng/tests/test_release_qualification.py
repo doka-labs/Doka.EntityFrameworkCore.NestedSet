@@ -628,8 +628,8 @@ class TestResultTests(unittest.TestCase):
     def test_result_module_entrypoint_verifies_actual_solution_assembly(self):
         """The exact CI module invocation works in a fresh process with real solution inventory."""
         # Arrange
-        unit = qualification.ALLOCATION_PROJECT
-        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        unit = qualification.COLLECTOR_SENSITIVE_PROJECT
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-")
         self.report(unit, name="coverage.trx", identity_prefix="covered-")
         command = [sys.executable, "-m", "eng.release.qualification", "--verify-results", str(self.results),
                    "--project", unit]
@@ -645,7 +645,7 @@ class TestResultTests(unittest.TestCase):
         """The same CLI used by CI retains the mandatory disjoint Unit result contract."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-")
         self.report(unit, name="coverage.trx", identity_prefix="covered-")
         self.plans()
 
@@ -657,7 +657,7 @@ class TestResultTests(unittest.TestCase):
         self.assertEqual(2, json.loads(output)[unit]["passed"])
 
     def test_result_command_rejects_missing_unit_partition(self):
-        """A passing covered suite cannot replace the missing uninstrumented budget results."""
+        """A passing covered suite cannot replace the missing uninstrumented lifetime results."""
         # Arrange
         unit = self.unit_project()
         self.report(unit, name="coverage.trx")
@@ -701,7 +701,7 @@ class TestResultTests(unittest.TestCase):
         """The command cannot count a repeated Unit case as complementary coverage."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx")
+        self.report(unit, name="lifetime.trx")
         self.report(unit, name="coverage.trx")
 
         # Act
@@ -840,7 +840,7 @@ class TestResultTests(unittest.TestCase):
                 getattr(runner, job).assert_called_once_with()
 
     def unit_project(self):
-        """Include the one assembly whose allocation and coverage partitions are complementary."""
+        """Include the one assembly whose collector-sensitive and coverage partitions are complementary."""
         name = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
         path = f"tests/{name}/{name}.csproj"
         text_file(self.repo / path, "<Project />")
@@ -856,7 +856,7 @@ class TestResultTests(unittest.TestCase):
         """Two disjoint fixed Unit partitions retain every result and both artifact hashes."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-")
         self.report(unit, name="coverage.trx", identity_prefix="covered-")
 
         # Act
@@ -864,12 +864,12 @@ class TestResultTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(2, result[unit]["passed"])
-        self.assertEqual({"allocations.trx", "coverage.trx"},
+        self.assertEqual({"lifetime.trx", "coverage.trx"},
                          {report["trx"] for report in result[unit]["reports"]})
         self.assertTrue(all(report["sha256"] for report in result[unit]["reports"]))
 
-    def test_missing_allocation_partition_is_rejected(self):
-        """An instrumented success cannot hide absent uninstrumented budgets."""
+    def test_missing_lifetime_partition_is_rejected(self):
+        """An instrumented success cannot hide absent uninstrumented lifetime checks."""
         # Arrange
         unit = self.unit_project()
         self.report(unit, name="coverage.trx")
@@ -880,11 +880,50 @@ class TestResultTests(unittest.TestCase):
         # Assert
         self.assertEqual("tests_partitions", error.code)
 
-    def test_missing_coverage_partition_is_rejected(self):
-        """Passing budgets cannot replace the instrumented semantic tests."""
+    def test_legacy_allocation_report_cannot_replace_lifetime_controls(self):
+        """A former numeric measurement artifact cannot satisfy the required lifetime partition."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx")
+        self.report(unit, name="allocations.trx", identity_prefix="legacy-")
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_partitions", error.code)
+
+    def test_failed_lifetime_control_is_rejected(self):
+        """Lifetime failures remain blocking even when every covered semantic test succeeds."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-", outcomes=("Failed",))
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_not_passed", error.code)
+
+    def test_skipped_lifetime_control_is_rejected(self):
+        """A skipped collector-sensitive control cannot count as a passing lifetime proof."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-", outcomes=("NotExecuted",))
+        self.report(unit, name="coverage.trx", identity_prefix="covered-")
+
+        # Act
+        error = capture(lambda: qualification.verify_results(self.repo, self.results))
+
+        # Assert
+        self.assertEqual("tests_not_passed", error.code)
+
+    def test_missing_coverage_partition_is_rejected(self):
+        """Passing lifetime checks cannot replace the instrumented semantic tests."""
+        # Arrange
+        unit = self.unit_project()
+        self.report(unit, name="lifetime.trx")
 
         # Act
         error = capture(lambda: qualification.verify_results(self.repo, self.results))
@@ -896,7 +935,7 @@ class TestResultTests(unittest.TestCase):
         """A filtering mistake cannot run the same case in both modes and inflate totals."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx")
+        self.report(unit, name="lifetime.trx")
         self.report(unit, name="coverage.trx")
 
         # Act
@@ -906,10 +945,10 @@ class TestResultTests(unittest.TestCase):
         self.assertEqual("tests_duplicate", error.code)
 
     def test_unknown_unit_partition_is_rejected(self):
-        """Additional or renamed reports cannot satisfy the fixed measurement contract."""
+        """Additional or renamed reports cannot satisfy the fixed lifetime contract."""
         # Arrange
         unit = self.unit_project()
-        self.report(unit, name="allocations.trx", identity_prefix="budget-")
+        self.report(unit, name="lifetime.trx", identity_prefix="lifetime-")
         self.report(unit, name="coverage.trx", identity_prefix="covered-")
         self.report(unit, name="extra.trx", identity_prefix="extra-")
 

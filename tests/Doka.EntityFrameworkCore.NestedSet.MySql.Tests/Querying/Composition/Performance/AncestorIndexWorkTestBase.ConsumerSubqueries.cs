@@ -102,9 +102,7 @@ public abstract partial class AncestorIndexWorkTestBase
                 profile,
                 factRows: decoyFacts + 12,
                 cancellationToken: TestContext.Current.CancellationToken,
-                population: Nodes,
-                readWarmups: 3,
-                measuredReads: 5);
+                population: Nodes);
 
             // Assert
             AssertConsumerFacts(observation, selected.Length);

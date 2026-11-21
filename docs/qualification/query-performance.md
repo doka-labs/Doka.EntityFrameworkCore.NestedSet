@@ -1,8 +1,10 @@
 # Query and consumer performance qualification
 
 This page summarizes measured construction, complete-reader and materializer
-costs. The [performance guide](../performance.md) owns operational guidance and
-fixed regression budgets. These observations identify costs and trade-offs;
+costs. The [performance guide](../performance.md) owns current operational and
+measurement boundaries. Numeric acceptance limits mentioned in dated records
+below belong to their historical checks, not current CI or RC gates.
+These observations identify costs and trade-offs;
 they do not establish universal speedups, peak memory or hosted release results.
 
 Consumer measurements dated 2026-10-25 or earlier below belong to their frozen

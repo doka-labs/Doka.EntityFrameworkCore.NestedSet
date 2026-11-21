@@ -2,27 +2,22 @@ using Doka.EntityFrameworkCore.NestedSet.Execution;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
-/// <summary>Checks clean-context guard allocation and automatic detection using an isolated SQLite boundary.</summary>
-[Collection("Allocation measurements")]
+/// <summary>Checks clean-context guard admission and automatic detection using an isolated SQLite boundary.</summary>
+[Collection("Scale scenarios")]
 public sealed class MutationContextGuardTests : ProviderTest,
     IClassFixture<ProviderFixture<ProviderResources, SqliteEngine>>
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Retains allocation evidence in the actual regression result.</summary>
+    /// <summary>Uses an isolated provider fixture for deterministic tracker and persistence checks.</summary>
     /// <param name="fixture">The immutable SQLite owner; individual tests own their database resources.</param>
-    /// <param name="output">The sink recording measured execution evidence.</param>
     public MutationContextGuardTests(
-        ProviderFixture<ProviderResources, SqliteEngine> fixture,
-        ITestOutputHelper output
+        ProviderFixture<ProviderResources, SqliteEngine> fixture
     ) : base(fixture)
     {
-        _output = output;
     }
 
-    /// <summary>Scans a large clean application tracker without allocating a wrapper for every entry.</summary>
+    /// <summary>Admits a large clean application tracker without enabling automatic detection.</summary>
     [Fact]
-    public async Task ExecuteAsync_Large_CleanPrefixDoesNotAllocateEntryWrappers()
+    public async Task ExecuteAsync_LargeCleanTracker_PreservesManualDetectionBoundary()
     {
         // Arrange
         var options = new DbContextOptionsBuilder()
@@ -71,7 +66,6 @@ public sealed class MutationContextGuardTests : ProviderTest,
                 NestedSetTreeLockMode.Existing),
         };
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var executed = false;
 
         // Act
@@ -85,13 +79,9 @@ public sealed class MutationContextGuardTests : ProviderTest,
             requests,
             CancellationToken.None);
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
         // Assert
-        _output.WriteLine($"Tracked entries=20000; clean boundary allocated bytes={allocated}; detections={detected}");
         Assert.True(executed);
         Assert.Equal(0, detected);
-        Assert.InRange(allocated, 1, 100_000);
         Assert.Null(context.Database.CurrentTransaction);
     }
 

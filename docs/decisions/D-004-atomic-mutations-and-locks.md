@@ -172,8 +172,9 @@ remains appropriate when capturing actual changed vectors. Differing CLR and
 model member types keep EF's object conversion semantics, including sentinels.
 Typed comparer expressions preserve null protection for both operands.
 Dependent-bucket storage is allocated only for a real native membership.
-The initial-root and warmed comparison budgets qualify these isolated paths;
-they do not replace complete-import heap or hosted capacity evidence.
+Initial-root and unchanged-comparison controls verify these isolated paths.
+Their numerical allocation observations belong to optional BenchmarkDotNet
+measurements and do not replace complete-import or hosted capacity evidence.
 
 The same binding owner supplies the read-only save guard with EF's exact
 `StateManager.TryGetEntry(object, IEntityType, bool)` reference lookup. It is
@@ -441,7 +442,8 @@ keeps capture-time incompatibility and rollback-only failure distinct.
 - EF introduces a public typed relationship-snapshot getter or changes its native generic signature, composite key shape, sentinel conversion, or comparer null handling. Revisit the reader seam and rerun signature, allocation, intermediate-key, sidecar, property-bag, and exact cleanup controls.
 - EF introduces an equivalent public reference lookup or changes native reference-map lookup, detached navigation
   fixup, target assignability, or shared-map identity. Requalify ordinary payload saves, tracked/untracked navigation
-  deltas, equal-key principal replacements, and the constant unchanged-path allocation budget.
+  deltas and equal-key principal replacements; measure unchanged-path allocations
+  through optional D-015 BenchmarkDotNet workloads without a numeric test gate.
 - EF changes native relationship snapshot setters, inverse collection baselining, or notification fixup.
   Requalify pending graph rollback, map membership, prepared owners, cross-batch failure and identical retry.
 - EF exposes a public explicit-vector dependent-map repair API or changes the key-only lookup signature, lazy-map
@@ -488,6 +490,8 @@ keeps capture-time incompatibility and rollback-only failure distinct.
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 - 2026-11-21: Distinguished the versioned EF 10.0.14 source/runtime record from the current servicing baseline. Preserved its original source links and recovery contract; a dependency update alone does not qualify every permitted EF patch.
 
+- 2026-11-21: Aligned current unchanged-path allocation guidance with the owner's explicit D-015 measurement separation. Exact transaction, tracker, relationship, and rollback controls remain blocking; earlier dated allocation and approval records remain historical.
+
 ### Implementation References
 
 - [Manual-detection recovery contract](../configuration.md#manual-change-detection)
@@ -507,8 +511,8 @@ keeps capture-time incompatibility and rollback-only failure distinct.
 - [Saved inverse membership journal](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetCollectionBaseline.cs)
 - [Recovery-only notification scope](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetNotificationPause.cs)
 - [Insertion-owned CLR rollback values](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionValues.cs)
-- [Insertion comparison and capture budgets](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Comparisons.cs)
-- [Insertion recovery semantics](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Recovery.cs)
+- [Insertion comparison and capture controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionIdentityTests.Comparisons.cs)
+- [Insertion recovery semantics](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionIdentityTests.Recovery.cs)
 - [Insertion startup and native map contracts](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/InsertionReflectionContractTests.cs)
 - [Provider-result boundary](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetRelationalDatabase.cs)
 - [Single insertion callback regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Insert)

@@ -3,17 +3,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 /// <summary>Checks person-rank semantics and storage proportional to people rather than repeated evidence.</summary>
 public sealed class SupervisorPersonRankScaleTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Receives the measured allocation count outside the measured operation.</param>
-    public SupervisorPersonRankScaleTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>Ranking uses the best nearest priority without replacing the first nearest continuation.</summary>
     /// <param name="reverse">Whether canonical evidence arrives in the opposite order.</param>
     [Theory]
@@ -143,10 +132,9 @@ public sealed class SupervisorPersonRankScaleTests
         Assert.Null(result.Continuation);
     }
 
-    /// <summary>Repeated evidence does not require per-person occurrence buckets or a sorted occurrence copy.</summary>
-    [Trait("Category", "Allocation")]
+    /// <summary>Repeated evidence retains the selected distinct person's complete original occurrence bag.</summary>
     [Fact]
-    public void Select_RankStorage_IsBoundedByDistinctPeopleInsteadOfOccurrenceFanIn()
+    public void Select_LargeOccurrenceFanIn_PreservesDistinctPersonRankAndEvidence()
     {
         // Arrange
         const int people = 1_024;
@@ -154,30 +142,13 @@ public sealed class SupervisorPersonRankScaleTests
         var candidates = RankedEvidence(people, occurrencesPerPerson);
         var selection = SupervisorSelection.NthPerson(513);
 
-        // WHY: Warm ranking before its allocation interval without buffering another occurrence-sized result.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var iteration = 0; iteration < 4; iteration++)
-        {
-            _ = SupervisorSelectionRules.Select(7, candidates, selection);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
         // Act
         var result = SupervisorSelectionRules.Select(7, candidates, selection);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        _output.WriteLine($"People={people}; occurrences={candidates.Length}; rank allocation={allocated} B.");
         Assert.Equal(SupervisorResolutionStatus.Found, result.Status);
         Assert.Equal(occurrencesPerPerson, result.Evidence.Count);
         Assert.Equal(512, result.Continuation!.CandidateUserId);
-
-        // WHY: The budget allows dictionary growth, one rank reference per person, and selected evidence.
-        // A bucket or sorted copy for all 131072 original occurrences cannot fit within this storage bound.
-        Assert.InRange(allocated, 0, people * 128L + 16_384);
-        GC.KeepAlive(result);
     }
 
     /// <summary>Creates reversed person IDs with independently known unique distance/priority rank slots.</summary>

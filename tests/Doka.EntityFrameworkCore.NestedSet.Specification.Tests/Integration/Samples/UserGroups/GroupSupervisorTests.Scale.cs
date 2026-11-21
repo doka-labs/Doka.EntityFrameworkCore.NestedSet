@@ -280,21 +280,13 @@ public abstract partial class GroupSupervisorTests
             "Route");
 
         var request = data.Request() with { Matches = [match, match, match, match] };
-        IQueryable<App.SupervisorCandidate>? query = null;
-        Func<object> build = () => query = App.SupervisorQueries.Candidates(context, data.TenantId, request);
         probe.Enabled = true;
-        for (var warmup = 0; warmup < 10; warmup++)
-        {
-            _ = build();
-        }
 
         // Act
-        var allocated = QueryConstructionAllocation.Measure(build);
+        var query = App.SupervisorQueries.Candidates(context, data.TenantId, request);
 
         // Assert
-        TestContext.Current.TestOutputHelper?.WriteLine($"Engine={Engine}; four criteria={allocated} B/build.");
-        Assert.InRange(allocated, 0, 256 * 1024);
-        Assert.NotNull(query?.Expression);
+        Assert.NotNull(query.Expression);
         Assert.Empty(probe.Commands);
         Assert.Equal(0, probe.Entities);
         Assert.Empty(context.ChangeTracker.Entries());

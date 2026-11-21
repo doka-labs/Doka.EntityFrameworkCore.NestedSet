@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Security.Cryptography;
-using System.Text.Json;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
@@ -10,20 +9,6 @@ public abstract partial class AncestorIndexWorkTestBase
     // preserve valid native JSON plans while making physical rows identical across paired assemblies.
     private static readonly Guid s_consumerScope = new("61616161-6161-6161-6161-616161616161");
     private static readonly Guid s_consumerTree = new("62626262-6262-6262-6262-626262626262");
-
-    /// <summary>Reads the diagnostic runner's opt-in without changing ordinary qualification windows.</summary>
-    private static bool ConsumerAllocationProfilingEnabled()
-    {
-        var value = Environment.GetEnvironmentVariable("DOKA_NESTEDSET_ALLOCATION_PROFILE");
-
-        if (value is not null and not "1")
-        {
-            throw new InvalidOperationException(
-                "Set DOKA_NESTEDSET_ALLOCATION_PROFILE to 1 for diagnostic sampling, or leave it unset.");
-        }
-
-        return value == "1";
-    }
 
     /// <summary>Records native schema and ordered logical row proofs outside every measured read window.</summary>
     /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
@@ -137,93 +122,6 @@ public abstract partial class AncestorIndexWorkTestBase
         }
 
         return new ConsumerLogicalRows(count, Convert.ToHexStringLower(hash.GetHashAndReset()));
-    }
-
-    /// <summary>Separates capture overhead from warm complete reads without replacing qualified observations.</summary>
-    /// <param name="cancellationToken">Cancels this operation without interrupting resource cleanup.</param>
-    /// <param name="observedContext">The context whose materialization and commands are observed.</param>
-    /// <param name="originalCapture">The command capture from the original read.</param>
-    /// <param name="build">The query factory used for construction and execution observations.</param>
-    /// <param name="expected">The independently derived expected results.</param>
-    /// <param name="profile">The selected synthetic workload profile.</param>
-    /// <param name="readWarmups">The fixed number of unmeasured warmup reads.</param>
-    /// <param name="measuredReads">The fixed number of complete reads inside the observation window.</param>
-    private async Task ObserveConsumerReadsWithoutCaptureAsync(
-        AncestorIndexQueryContext observedContext,
-        EnterpriseProbe originalCapture,
-        Func<AncestorIndexQueryContext, IQueryable<ConsumerFactPair>> build,
-        ConsumerFactPair[] expected,
-        string profile,
-        int readWarmups,
-        int measuredReads,
-        CancellationToken cancellationToken
-    )
-    {
-        var connectionString = observedContext.Database.GetConnectionString()!;
-        var options = ModelCompatibilityDatabase.Options<AncestorIndexQueryContext>(Engine, connectionString);
-
-        // WHY: Keep the same mapped database, query and full-result oracle. Removing test capture only
-        // estimates observer overhead; these samples cannot be reported as product allocation improvements.
-        await using var context = new AncestorIndexQueryContext(options);
-        await context.Database.OpenConnectionAsync(cancellationToken);
-        var query = build(context);
-
-        // WHY: Retain the same asynchronous read wrapper in both windows. The original capture is
-        // consulted only on failure; it is never registered on this observer-light context.
-        var lightProfile = profile + "-observer-light";
-
-        for (var warmup = 0; warmup < readWarmups; warmup++)
-        {
-            var actual = await ReadConsumerFactsAsync(
-                context,
-                originalCapture,
-                query,
-                lightProfile,
-                cancellationToken: cancellationToken);
-
-            RequireConsumerOracle(actual, expected);
-        }
-
-        var reads = new ConsumerReadSample[measuredReads];
-        var profileEvents = NativeReadProfileEvents.Log;
-
-        for (var sample = 0; sample < reads.Length; sample++)
-        {
-            profileEvents.BeginRead(Engine, profile, "observer-light", sample);
-            var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
-            var started = Stopwatch.GetTimestamp();
-            var actual = await ReadConsumerFactsAsync(
-                context,
-                originalCapture,
-                query,
-                lightProfile,
-                cancellationToken: cancellationToken);
-
-            var elapsed = Stopwatch.GetElapsedTime(started);
-            var allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
-            profileEvents.EndRead(Engine, profile, "observer-light", sample);
-            RequireConsumerOracle(actual, expected);
-            reads[sample] = new ConsumerReadSample(elapsed.TotalMilliseconds, allocated);
-        }
-
-        var summary = JsonSerializer.Serialize(
-            new
-            {
-                Engine,
-                Profile = profile,
-                Phase = "observer-light",
-                Meaning = "Separate attribution only; not the fully observed qualification or a product gain.",
-                ReadWarmups = readWarmups,
-                MeasuredReads = measuredReads,
-                ExpectedRows = expected.Length,
-                Reads = reads,
-            },
-            s_consumerEvidenceJson);
-
-        await QueryPlanTestSupport.WriteEvidenceAsync(
-            Engine + "-ancestor-consumer-" + profile + "-observer-light",
-            [summary],
-            cancellationToken: cancellationToken);
     }
 
     /// <summary>

@@ -61,8 +61,9 @@ server singleton even inside one test process.
 Server reuse and database reuse have different scopes. A class or collection
 owns its database resources; individual cases isolate their data within that
 contract. A fixture registration is not a request to serialize unrelated cases.
-Independent collections remain parallel. The allocation collection and specific
-64-connection scenarios retain their documented, narrow isolation boundaries.
+Independent collections remain parallel. Collector-sensitive lifetime controls
+and specific 64-connection scenarios retain their documented, narrow isolation
+boundaries. Numeric allocation measurements do not select a blocking test lane.
 
 Model collections register exact engine-bound fixtures. The complete set of
 `ICollectionFixture<>` registrations must match the owner catalog: missing,
@@ -192,11 +193,24 @@ provider/image, actual schema/population, command, filter, and per-project TRX.
 Verify nonzero discovery and complete applicable variants. A source link, an
 old report, or a command in a guide does not establish a new successful run.
 
-The Unit collector-sensitive partition runs without instrumentation; its
-complement runs under the selected collector. Both are required, disjoint, and
-complete. Do not turn a collector-owned root into a product retention failure
+The Unit `Category=CollectorSensitive` partition runs without instrumentation
+and writes `lifetime.trx`; `Category!=CollectorSensitive` runs under the selected
+collector and writes `coverage.trx`. Both are required, disjoint, and complete.
+Their assertions verify ownership and reachability, not numerical allocation
+ceilings. Do not turn a collector-owned root into a product retention failure
 or omit a partition to obtain green output. See the
 [collector boundary](performance.md#coverage-collector-18110-and-unloadability).
+
+Allocation and retained-heap measurement suites, together with performance comparisons, belong to the
+existing [BenchmarkDotNet project](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks).
+Run them explicitly, including `Dry`; normal tests, builds, CI, and RC do not
+start BenchmarkDotNet. `MemoryDiagnoser` observations are informational and do
+not determine acceptance. Functional benchmark workload and configuration
+checks remain ordinary tests. Exact results, rollback, bounded commands and
+transport, admission limits, and live/released reference controls still fail
+when their contracts are broken. Physical index-byte limits are schema
+contracts, not managed-allocation telemetry. A functional test may report its
+operation duration for diagnosis; that observation cannot decide acceptance.
 
 The four focused qualification guides preserve different dated observations:
 [query/native work](qualification/query-composition.md),

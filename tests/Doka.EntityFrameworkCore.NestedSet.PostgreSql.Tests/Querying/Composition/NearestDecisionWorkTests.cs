@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 
 /// <summary>Guards actual broad-payload tuple work independently of database duration or inactive plan costs.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class NearestDecisionWorkTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, PostgreSqlEngine>>
 {

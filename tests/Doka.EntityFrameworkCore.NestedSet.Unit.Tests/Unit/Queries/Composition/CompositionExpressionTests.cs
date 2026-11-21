@@ -6,17 +6,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Checks parameter-identity substitution independently of SQL translation.</summary>
 public sealed class CompositionExpressionTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Records the paired construction allocation observation.</param>
-    public CompositionExpressionTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>Direct substitution reduces an anonymous projection to its selected existing argument.</summary>
     [Fact]
     public void Replace_SingleReplacement_ReducesAnonymousProjectionMembers()
@@ -75,41 +64,22 @@ public sealed class CompositionExpressionTests
         Assert.Equal(expected, actual);
     }
 
-    /// <summary>Replacing a projection binding avoids the former synthetic-lambda allocation overhead.</summary>
-    [Trait("Category", "Allocation")]
+    /// <summary>Direct replacement and synthetic-lambda substitution preserve the same selected argument.</summary>
     [Fact]
-    public void MeasurePaired_SingleReplacement_AllocatesLessThanSyntheticLambdaSubstitution()
+    public void Replace_SingleReplacement_RetainsSyntheticLambdaSubstitutionResult()
     {
         // Arrange
         Expression<Func<int, ProjectionRow>> projection = value => new ProjectionRow { Value = value };
         Expression<Func<ProjectionRow, int>> selector = row => row.Value;
-        Func<object> legacy = () => NestedSetQueryExpressions.Inline(
-            Expression.Lambda(selector.Body, selector.Parameters[0]),
-            projection.Body);
-
-        Func<object> replacement = () => NestedSetQueryExpressions.Replace(
-            selector.Body,
-            selector.Parameters[0],
-            projection.Body);
-
-        // WHY: Warm both expression-substitution paths equally before the paired allocation measurement.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 100; index++)
-        {
-            GC.KeepAlive(legacy());
-            GC.KeepAlive(replacement());
-        }
 
         // Act
-        var allocated = QueryConstructionAllocation.MeasurePaired(legacy, replacement);
+        var synthetic = NestedSetQueryExpressions.Inline(
+            Expression.Lambda(selector.Body, selector.Parameters[0]), projection.Body);
+        var replacement = NestedSetQueryExpressions.Replace(selector.Body, selector.Parameters[0], projection.Body);
 
         // Assert
-        _output.WriteLine(
-            $"Single replacement: legacy={allocated.Baseline} B/op; "
-            + $"replacement={allocated.Expanded} B/op.");
-
-        Assert.InRange(allocated.Expanded, 0, allocated.Baseline - 1);
+        Assert.Same(projection.Parameters[0], synthetic);
+        Assert.Same(synthetic, replacement);
     }
 
     /// <summary>Nested lambdas may reuse parameter names without capturing outer arguments.</summary>

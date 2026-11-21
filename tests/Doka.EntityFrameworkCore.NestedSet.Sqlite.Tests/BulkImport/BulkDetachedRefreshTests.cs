@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies that the final bulk refresh does not retain detached input entities in the context.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class BulkDetachedRefreshTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>,
     IClassFixture<ProviderFixture<BulkGeneratedFixture, SqliteEngine>>

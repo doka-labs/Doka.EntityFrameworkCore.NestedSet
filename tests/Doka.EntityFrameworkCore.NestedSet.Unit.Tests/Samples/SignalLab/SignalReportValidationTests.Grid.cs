@@ -200,11 +200,10 @@ public sealed partial class SignalReportValidationTests
     }
 
     /// <summary>
-    /// A large selected grid allocates the final reference array once rather than growing and copying it.
+    /// A large empty selected grid retains every requested cell as an explicit missing value.
     /// </summary>
-    [Trait("Category", "Allocation")]
     [Fact]
-    public void Measure_Grid_RetainsABoundedPerCellAllocation()
+    public void CreateGrid_EmptyLargeGrain_PreservesEveryMissingCell()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(
@@ -223,19 +222,12 @@ public sealed partial class SignalReportValidationTests
 
         const int cells = 64 * 32 * 3;
 
-        // WHY: Warm grid construction outside the observed per-cell allocation interval.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var warmup = 0; warmup < 10; warmup++)
-        {
-            _ = SignalReportValidation.CreateGrid(snapshot, []);
-        }
-
         // Act
-        var allocated = QueryConstructionAllocation.Measure(() => SignalReportValidation.CreateGrid(snapshot, []));
+        var actual = SignalReportValidation.CreateGrid(snapshot, []);
 
         // Assert
-        _output.WriteLine($"Grid: cells={cells}; bytes/report={allocated}; maximum={cells * 76 + 2048}.");
-        Assert.InRange(allocated, 0, cells * 76 + 2048);
+        Assert.Equal(cells, actual.Length);
+        Assert.All(actual, cell => Assert.False(cell.HasData));
+        Assert.All(actual, cell => Assert.Equal(0, cell.Value));
     }
 }

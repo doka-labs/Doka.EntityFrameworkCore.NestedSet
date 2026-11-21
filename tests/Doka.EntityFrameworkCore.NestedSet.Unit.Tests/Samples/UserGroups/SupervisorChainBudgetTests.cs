@@ -2,9 +2,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples;
 
 /// <summary>Checks independent reader and visited-state counters before any retained chain allocation.</summary>
 
-// WHY: Strict per-thread allocation measurements must run outside the Unit suite's concurrent
-// runtime diagnostics and initialization. The admission and exhaustion assertions remain unchanged.
-[Collection("Allocation measurements")]
 public sealed class SupervisorChainBudgetTests
 {
     /// <summary>Each counter accepts its capacity, then rejects without consuming another budget.</summary>
@@ -57,27 +54,23 @@ public sealed class SupervisorChainBudgetTests
             budget.RemainingReads);
     }
 
-    /// <summary>Counter admission does not allocate while checking and consuming existing request limits.</summary>
+    /// <summary>Repeated admissions consume exactly their independent request allowances before rejecting more work.</summary>
     [Fact]
-    public void Read_CounterAdmissionAndExhaustion_DoNotAllocate()
+    public void Read_RepeatedAdmissionAndExhaustion_PreservesExactLimits()
     {
         // Arrange
         const int operations = 10_000;
         var budget = new SupervisorQueries.ChainBudget(
             Request() with
             {
-                MaxResultRows = operations + 1,
-                MaxVisitedStates = operations + 1,
+                MaxResultRows = operations,
+                MaxVisitedStates = operations,
             });
 
-        // WHY: Warm both methods before measuring; the contract concerns per-admission managed allocations.
-        budget.Read();
-        budget.Visit();
         var admitted = 0;
-        var before = GC.GetAllocatedBytesForCurrentThread();
 
         // Act
-        // WHY: Count every admission directly while measuring the counter's zero-allocation contract.
+        // WHY: Count every admitted pair so neither independent limit can be consumed or rejected early.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < operations; index++)
@@ -91,14 +84,12 @@ public sealed class SupervisorChainBudgetTests
 
         var rejectedRead = budget.Read();
         var rejectedVisit = budget.Visit();
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
         Assert.Equal(operations, admitted);
         Assert.False(rejectedRead);
         Assert.False(rejectedVisit);
         Assert.Equal(0, budget.RemainingReads);
-        Assert.Equal(0, allocated);
     }
 
     /// <summary>Creates explicit independent limits without catalog or database dependencies.</summary>

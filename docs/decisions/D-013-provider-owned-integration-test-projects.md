@@ -364,24 +364,21 @@ cases. Runtime skip handling must never turn a container startup or database
 failure on an eligible platform into a passing or skipped result. The local ARM
 policy supplies development feedback; it cannot satisfy complete qualification.
 
-Each provider's `Allocation measurements` collection retains disabled
-parallelization. The unit project
-owns its local measurement definition as well. A unit metadata guard requires
-exactly one local definition for each used named collection and retains
-measurement isolation. Collection and
-assembly initialization, cleanup, and discovery are not supported contexts for
-the database helper's contextual fixture lookup.
+Provider scale collections retain their existing resource and scheduling
+ownership. A unit metadata guard requires exactly one local definition for
+each used named collection. Collection and assembly initialization, cleanup,
+and discovery are not supported contexts for the database helper's contextual
+fixture lookup.
 
-For Unit instrumentation, use the Test SDK and Code Coverage
-18.12.0 servicing baseline with the existing mandatory uninstrumented measurement
-partition. `Category=Allocation` includes both allocation budgets and the
-registration's GC-lifetime controls; it is an execution partition, not a claim
-that every member measures allocated bytes. Each partition uses a separate
-test invocation. CI and RC run this partition without a collector, then run
-`Category!=Allocation` with coverage. Result validation requires both reports,
-disjoint case identities, and successful execution without skips. The released
-adapter and deliberately retained registration controls keep their original
-weak-reference assertions, protected by actual xUnit metadata guards.
+For Unit instrumentation, retain Test SDK/Code Coverage 18.12.0 and a mandatory
+uninstrumented lifetime partition. `Category=CollectorSensitive` selects actual
+ownership and collectible-lifetime controls, including deliberately retained
+opposites. It writes `lifetime.trx`; `Category!=CollectorSensitive` runs with
+coverage and writes `coverage.trx`. Result validation requires both complete,
+passing, non-skipped reports and disjoint case identities. Actual xUnit metadata
+guards protect lifetime classification. Numerical byte/heap observations no
+longer belong to these acceptance criteria; D-015 owns their explicitly selected
+BenchmarkDotNet boundary.
 
 The collector-specific alternatives are:
 
@@ -519,7 +516,8 @@ filtered run does not establish coverage for a provider introduced later.
   standalone internal helpers directly; private observers remain private.
   For the probe extraction, preserve context/model identities, command
   correlation, observer disposal,
-  measurement warmups, budgets, and allocation collection isolation.
+  functional observation boundaries and required lifetime isolation. Numerical
+  observations use the optional D-015 BenchmarkDotNet workloads.
 - Verify seven independent local MySQL-family base files and explicit existing
   leaf collections. Preserve ScopeAliasRowset class ownership without adding a
   named collection and keep NO PAD cases only on the MySQL leaf. Requalify the
@@ -660,10 +658,12 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
 - 2026-11-21: Updated Test SDK/Code Coverage to 18.12.0 within the authorized dependency refresh. Repeated independent plain, intentionally held, 18.10.1 and candidate-collector unloading controls on SDK 10.0.404/runtime 10.0.15, plus both current NestedSet lifetime controls. The observable unloading failure persists under 18.12.0; uninstrumented controls pass. Both Unit partitions and assertions remain mandatory. Preserved the original 18.11.0 root diagnosis; no identical-root, complete-suite or hosted qualification claim is made.
 
+- 2026-11-21: Following the owner's explicit measurement-separation instruction, renamed the mandatory uninstrumented Unit selection to CollectorSensitive and its report to lifetime.trx. Numerical allocation/heap observations move to optional BenchmarkDotNet workloads under D-015. Complete, disjoint, passing lifetime and coverage reports remain required; no collector root finding or historical execution result is changed.
+
 ### Implementation References
 
 - [Coverage boundary, control matrix and paired Unit commands](../performance.md#coverage-collector-18110-and-unloadability)
-- [Registration identity and opposing GC-lifetime controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Identity.cs)
+- [Registration identity and opposing GC-lifetime controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/AdapterRegistrationLifetimeTests.cs)
 - [Actual xUnit lifetime-partition metadata guards](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/ProviderFixtureIsolationTests.cs)
 - [CI complementary Unit executions](../../.github/workflows/ci.yml)
 - [RC partition execution and result validation](../../eng/release/qualification.py)

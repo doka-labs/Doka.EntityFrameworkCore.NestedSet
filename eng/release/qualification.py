@@ -38,7 +38,7 @@ from eng.release.publication import parse_json
 ROOT = Path(__file__).resolve().parents[2]
 SOLUTION = "Doka.EntityFrameworkCore.NestedSet.slnx"
 TRX = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
-ALLOCATION_PROJECT = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
+COLLECTOR_SENSITIVE_PROJECT = "Doka.EntityFrameworkCore.NestedSet.Unit.Tests"
 PROCESS_BUDGET_SECONDS = 7200
 
 
@@ -180,10 +180,10 @@ def verify_results(repo, directory, expected=None):
                 and int(counters.attrib["passed"]) == count and int(counters.attrib["failed"]) == 0
                 and all(item.attrib.get("outcome") == "Passed" for item in cases),
                 "tests_not_passed", f"Every selected test must pass without skipping: {name}.")
-        if name == ALLOCATION_PROJECT:
-            # WHY: Instrumentation can change allocations; Unit keeps its fixed uninstrumented and covered partitions.
-            require(path.name in {"allocations.trx", "coverage.trx"}, "tests_partitions",
-                    "Unit results must use the fixed allocation and coverage partition names.")
+        if name == COLLECTOR_SENSITIVE_PROJECT:
+            # WHY: The collector can retain collectible modules; Unit must also prove their ordinary lifetime.
+            require(path.name in {"lifetime.trx", "coverage.trx"}, "tests_partitions",
+                    "Unit results must use the fixed lifetime and coverage partition names.")
 
         # WHY: Complementary filters may split one project across cells; a repeated case would inflate the total.
         previous = identities.setdefault(name, set())
@@ -194,10 +194,10 @@ def verify_results(repo, directory, expected=None):
         group["reports"].append({"passed": count, "trx": str(path.relative_to(directory)), "sha256": sha256(path)})
 
     require(set(observed) == expected, "tests_missing", "Not every solution test project supplied a passing result.")
-    if ALLOCATION_PROJECT in expected:
-        require(sorted(Path(report["trx"]).name for report in observed[ALLOCATION_PROJECT]["reports"])
-                == ["allocations.trx", "coverage.trx"], "tests_partitions",
-                "Both uninstrumented allocation budgets and instrumented Unit semantics must pass.")
+    if COLLECTOR_SENSITIVE_PROJECT in expected:
+        require(sorted(Path(report["trx"]).name for report in observed[COLLECTOR_SENSITIVE_PROJECT]["reports"])
+                == ["coverage.trx", "lifetime.trx"], "tests_partitions",
+                "Both uninstrumented lifetime controls and instrumented Unit semantics must pass.")
 
     return observed
 

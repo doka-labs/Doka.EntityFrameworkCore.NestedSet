@@ -766,28 +766,33 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertIn("--provider sqlite --reset", self.gates["samples"])
 
-    def test_shared_matrix_runs_allocation_budgets_before_coverage_with_complementary_filters(self):
-        """Only Unit separates native allocation measurements; no test category is silently skipped."""
+    def test_shared_matrix_runs_collector_sensitive_lifetimes_before_coverage_with_complementary_filters(self):
+        """Only Unit separates collector-sensitive lifetime checks; every functional case stays required."""
         # Arrange
         tests = self.gates["tests"]
 
         # Act
-        allocation = tests.index("name: Measure Unit allocations without instrumentation")
+        lifetime = tests.index("name: Run collector-sensitive lifetime tests without instrumentation")
         coverage = tests.index("name: Run tests with coverage")
         verify = tests.index("name: Verify complementary Unit result partitions")
 
         # Assert
-        self.assertLess(allocation, coverage)
+        self.assertLess(lifetime, coverage)
         self.assertLess(coverage, verify)
-        self.assertIn("if: matrix.id == 'ef-unit'", tests[allocation:coverage])
-        self.assertIn('--filter "Category=Allocation"', tests[allocation:coverage])
-        self.assertIn("            filter: Category!=Allocation\n            docker: false", tests)
+        self.assertIn("if: matrix.id == 'ef-unit'", tests[lifetime:coverage])
+        self.assertIn('--filter "Category=CollectorSensitive"', tests[lifetime:coverage])
+        self.assertIn('LogFileName=lifetime.trx', tests[lifetime:coverage])
+        self.assertIn("            filter: Category!=CollectorSensitive\n            docker: false", tests)
         self.assertIn("TEST_FILTER: ${{ matrix.filter }}", tests[coverage:verify])
         self.assertIn('filter=(--filter "$TEST_FILTER")', tests[coverage:verify])
         self.assertIn("python3 -m eng.release.qualification", tests[verify:])
         self.assertIn("--verify-results artifacts/tests/ef-unit", tests[verify:])
         self.assertIn("--project Doka.EntityFrameworkCore.NestedSet.Unit.Tests", tests[verify:])
         self.assertNotIn("python3 -c", tests[verify:].split("      - name:", 1)[0])
+        self.assertNotIn("Category=Allocation", tests)
+        self.assertNotIn("Category!=Allocation", tests)
+        self.assertNotIn("--job Dry", tests)
+        self.assertNotRegex(tests, r"\bdotnet (?:run|exec)\b.*[Bb]enchmarks")
 
     def test_shared_evidence_waits_for_complete_test_results(self):
         """Results, provider plans, and shipping-module coverage are verified across the current attempt."""

@@ -9,7 +9,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <param name="ConstructionCommands">The commands observed while constructing the warmed query.</param>
 /// <param name="Materialized">The hierarchy entities materialized by the scalar query.</param>
 /// <param name="Tracked">The tracker entries retained after execution.</param>
-/// <param name="BuildBytes">The warmed allocation per query construction, without executing it.</param>
 /// <param name="Elapsed">The observed query duration, which is never a CPU acceptance threshold.</param>
 /// <param name="Plan">The native plan for the command and its original parameter bindings.</param>
 internal sealed record CompositionCapacityObservation(
@@ -21,7 +20,6 @@ internal sealed record CompositionCapacityObservation(
     int ConstructionCommands,
     int Materialized,
     int Tracked,
-    long BuildBytes,
     TimeSpan Elapsed,
     string Plan
 );

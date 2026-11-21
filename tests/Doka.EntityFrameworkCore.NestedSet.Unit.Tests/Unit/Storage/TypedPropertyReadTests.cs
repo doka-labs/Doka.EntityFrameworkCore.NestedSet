@@ -1,9 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Verifies public live typed reads for nullable parents, sidecars and bounded allocation.</summary>
+/// <summary>Verifies live typed reads for nullable parents, structural roles and EF sidecars.</summary>
 
-// WHY: The fixed allocation budget must not include runtime work triggered by concurrent metadata probes.
-[Collection("Allocation measurements")]
 public sealed partial class TypedPropertyReadTests
 {
     /// <summary>A present zero-valued parent remains distinct from an absent integer parent.</summary>
@@ -256,12 +254,12 @@ public sealed partial class TypedPropertyReadTests
                 .State);
     }
 
-    /// <summary>Warm multi-role reads have a fixed allocation budget instead of boxing each parent and bound.</summary>
+    /// <summary>Multi-role reads retain nullable parent presence and every structural scalar value.</summary>
     [Fact]
-    public void ReadSum_RepeatedParentAndStructuralReads_AvoidPerReadAllocation()
+    public void ReadSum_ParentAndStructuralRoles_ReturnTheirLiveValues()
     {
         // Arrange
-        const int iterations = 100_000;
+        const int iterations = 1;
         using var context = new ReadContext();
         var node = new ReadNode
         {
@@ -277,16 +275,12 @@ public sealed partial class TypedPropertyReadTests
         var entry = context.Attach(node);
         var values = entry.CurrentValues;
         var properties = new ReadProperties(entry.Metadata);
-        _ = ReadSum(values, properties, 512);
 
         // Act
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var sum = ReadSum(values, properties, iterations);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
         Assert.Equal(11L * iterations, sum);
-        Assert.InRange(allocated, 0L, 4096L);
         Assert.Equal(EntityState.Unchanged, entry.State);
         Assert.Equal(
             ConnectionState.Closed,
@@ -306,7 +300,7 @@ public sealed partial class TypedPropertyReadTests
         return new ParentProbe(parent.HasValue, parent.BoxedValue);
     }
 
-    /// <summary>Accumulates real typed reads so allocation checks cannot be optimized into unused calls.</summary>
+    /// <summary>Accumulates every live parent and structural role for an independent value oracle.</summary>
     private static long ReadSum(
         PropertyValues values,
         ReadProperties properties,
@@ -315,7 +309,7 @@ public sealed partial class TypedPropertyReadTests
     {
         var sum = 0L;
 
-        // WHY: Read every structural role repeatedly without iterator or delegate allocation in the measured path.
+        // WHY: Visit every mapped role together so the independent sum detects an omitted structural component.
         // ReSharper disable once ForCanBeConvertedToForeach
         // ReSharper disable once LoopCanBeConvertedToQuery
         for (var index = 0; index < iterations; index++)
