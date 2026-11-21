@@ -33,7 +33,7 @@ with `Category=Allocation`. CI and RC run that partition once without a
 collector and the complementary Unit cases once with coverage.
 The same partition includes the registration's collectible-adapter lifetime
 controls. The [D-013 instrumentation decision](decisions/D-013-provider-owned-integration-test-projects.md)
-retains Code Coverage 18.11.0 with this mandatory partition. Lifetime assertions
+retains Code Coverage 18.12.0 with this mandatory partition. Lifetime assertions
 run against uninstrumented application behavior, with a deliberately retained
 registration as a negative control. Actual xUnit metadata tests protect this
 classification; no lifetime assertion is relaxed or skipped.
@@ -81,6 +81,33 @@ ordinary NestedSet ownership without collector-created references. This does
 not repair the collector or qualify unloading in an instrumented host. The two
 GC-lifetime controls contribute no coverage; the complementary Unit cases
 continue to supply instrumented execution evidence.
+
+The 2026-11-21 servicing refresh selects Code Coverage 18.12.0 and retains
+this mandatory partition. Fresh independent controls used the original
+source-only reproduction on macOS 26.5.2 ARM64, SDK 10.0.404 and runtime
+10.0.15, with no diagnostic cleanup or relaxed assertions:
+
+| Independent control | Object and load context after collection |
+| --- | --- |
+| No collector | Both collected |
+| No collector, intentional strong root | Both alive, as required |
+| Code Coverage 18.10.1 | Both collected |
+| Code Coverage 18.12.0 | Both alive; original unload assertion failed |
+
+The freshly rebuilt NestedSet Unit binary also passed both registration-lifetime
+controls without a collector. Under 18.12.0, the intentional-live-registration
+control passed, while the released-registration control failed: the adapter
+and load context remained alive; options and registration did not. Collector
+diagnostics confirmed successful managed instrumentation with the selected
+18.12.0 collector and nonempty coverage output. The diagnostic invocation
+intentionally included these lifetime cases under coverage; CI/RC selection
+remains unchanged.
+
+These controls reproduce the observable unload boundary in 18.12.0 and justify
+the retained uninstrumented partition. They do not establish complete-suite or
+hosted qualification. The 18.11.0 root analysis above remains historical; no
+new GC-root analysis proves an identical mechanism in 18.12.0. Re-evaluation
+follows the criteria below.
 
 To run the existing Unit partition contract from a fresh Release build:
 
@@ -1697,7 +1724,7 @@ provider prerequisite is listed in
 independent selected-key sets back to mapped entities so EF retains identifiers
 for both endpoints' collections. The boundary contains selected keys, not all
 structural pairs. Dated qualification distinguishes the portable-provider
-results from that feature-enabled strategy. The current published Doka 10.6.4
+results from that feature-enabled strategy. The current published Doka 10.7.0
 declaration does not transfer an earlier private build's performance to the
 shipping package; fresh public-binary qualification remains separate.
 

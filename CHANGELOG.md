@@ -9,6 +9,11 @@ including documented exceptions to Semantic Versioning, is defined in
 
 ### Changed
 
+- Refresh Doka to 10.7.0, SafeMigrations Core/all four adapters to 10.7.3,
+  and qualification to MySqlConnector 3.0.0, EF Core 10.0.15, SDK 10.0.404,
+  and current stable test tooling and database images. Keep .NET/EF Core 10
+  and the supported database LTS lines; the MySql adapter requires Doka
+  `[10.7.0,10.8.0)` without adding a direct shipping driver dependency.
 - Align code and test organization, explicit constructors, cancellation
   contracts, and reproducible build/editor configuration with the repository's
   documented engineering decisions. Review every solution project's lockfile.

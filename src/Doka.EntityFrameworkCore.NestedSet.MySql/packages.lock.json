@@ -4,13 +4,13 @@
     "net10.0": {
       "Doka.EntityFrameworkCore.MySql": {
         "type": "Direct",
-        "requested": "[10.6.4, 10.7.0)",
-        "resolved": "10.6.4",
-        "contentHash": "i1RMagcKg9n56HK3m64bF16igJIGY2eunPtcazuxQGXguNfgXAdnnkjQMiDBXZUGixhPEi7+V0AYrs+Daah7fw==",
+        "requested": "[10.7.0, 10.8.0)",
+        "resolved": "10.7.0",
+        "contentHash": "g3tBEhmwc+w28+8Gv4loQoRWBf5AHWja26ss7a+WAOlj/PgiPwC8U64ARCr0+Q2ljhflh8LmgxjAH/GNW0GB7A==",
         "dependencies": {
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.8, 10.1.0)",
-          "MySqlConnector": "[2.6.1, 3.0.0)",
-          "System.IO.Hashing": "10.0.14"
+          "MySqlConnector": "[2.6.1, 4.0.0)",
+          "System.IO.Hashing": "10.0.15"
         }
       },
       "JetBrains.Annotations": {
@@ -108,19 +108,10 @@
         "resolved": "10.0.12",
         "contentHash": "dYfCLR52UA+3DL7C4I/pvSaRPkNqxrUAQmbFL2u0zvYKKzqgrFCJl08Df+F1aYc8leu9JvpC9bsURUdpExcBXQ=="
       },
-      "MySqlConnector": {
-        "type": "Transitive",
-        "resolved": "2.6.1",
-        "contentHash": "MzNSfnHWBc0Mo3zVbYxG+556zuex9obs8NYtwcPCwFahel40e49stH+osjX4k/doEHp4LT/zTtGdax4nlGWhcw==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
-        }
-      },
       "System.IO.Hashing": {
         "type": "Transitive",
-        "resolved": "10.0.14",
-        "contentHash": "lVqovhCt3HlZe7ONG5ydaj6BYwYI004gldVfMMkJl/lR5ueeCtWNpW4nejOX75sPmzm8vXCxB69GqwHaYCnyUQ=="
+        "resolved": "10.0.15",
+        "contentHash": "8dyz8adVemyDILwoEFTCq2NsB6XgqOgVHbnv0XgnttQac76XUR3S5L2qcIkJJqOw97mjQttCTWccyk4DKtfm3Q=="
       },
       "doka.entityframeworkcore.nestedset": {
         "type": "Project",
@@ -135,7 +126,7 @@
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "CentralTransitive",
-        "requested": "[10.0.14, )",
+        "requested": "[10.0.15, )",
         "resolved": "10.0.12",
         "contentHash": "e7OrVN8U5yr4kuwdTHWBHGVQIVsGfMkAr0Ej1/BnrS989Q0XBVANpIzNZ2bc1GvMZ0/XwMt5InTnmKskxGy99Q==",
         "dependencies": {
@@ -147,7 +138,7 @@
       },
       "Microsoft.EntityFrameworkCore.Relational": {
         "type": "CentralTransitive",
-        "requested": "[10.0.14, )",
+        "requested": "[10.0.15, )",
         "resolved": "10.0.12",
         "contentHash": "OiHmr8XzX96dbgMsYGe8qoqg4KxibdZG2r0QUVJBGktFInOp8IrABe8jvcbo5hrqeWfbwpK7fCEBiEPbY/ik4A==",
         "dependencies": {
@@ -155,6 +146,16 @@
           "Microsoft.Extensions.Caching.Memory": "10.0.12",
           "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
           "Microsoft.Extensions.Logging": "10.0.12"
+        }
+      },
+      "MySqlConnector": {
+        "type": "CentralTransitive",
+        "requested": "[3.0.0, )",
+        "resolved": "2.6.1",
+        "contentHash": "MzNSfnHWBc0Mo3zVbYxG+556zuex9obs8NYtwcPCwFahel40e49stH+osjX4k/doEHp4LT/zTtGdax4nlGWhcw==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
         }
       }
     }

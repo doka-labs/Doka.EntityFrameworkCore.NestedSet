@@ -1,7 +1,7 @@
 ---
 id: D-004
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -378,7 +378,9 @@ post-write recovery failure.
 Its native write operations are invoked only during rollback.
 Automatic or explicit DetectChanges would consume the caller's unmarked preimage,
 so it is not a recovery primitive. Versioned source comparison covers EF 10.0.12 and 10.0.14;
-runtime qualification uses 10.0.14 and does not qualify every permitted patch.
+the recorded runtime qualification used 10.0.14 and does not qualify every
+permitted patch. The [support matrix](../support-and-qualification.md) owns
+the current servicing baseline and separates declarations from execution evidence.
 
 The original-buffer binding is necessary for a raw-null complex leaf that
 must retain a distinct original and an unmodified flag. The public false setter
@@ -484,6 +486,7 @@ keeps capture-time incompatibility and rollback-only failure distinct.
 - 2026-11-03: Consolidated public recovery contracts, regression references and resource guidance in their maintained guides. Removed development-stage report dependencies; decision and runtime contracts are unchanged.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+- 2026-11-21: Distinguished the versioned EF 10.0.14 source/runtime record from the current servicing baseline. Preserved its original source links and recovery contract; a dependency update alone does not qualify every permitted EF patch.
 
 ### Implementation References
 

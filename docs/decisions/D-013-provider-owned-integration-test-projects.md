@@ -1,7 +1,7 @@
 ---
 id: D-013
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -372,8 +372,8 @@ measurement isolation. Collection and
 assembly initialization, cleanup, and discovery are not supported contexts for
 the database helper's contextual fixture lookup.
 
-For Unit instrumentation, retain the approved Test SDK and Code Coverage
-18.11.0 baseline with the existing mandatory uninstrumented measurement
+For Unit instrumentation, use the Test SDK and Code Coverage
+18.12.0 servicing baseline with the existing mandatory uninstrumented measurement
 partition. `Category=Allocation` includes both allocation budgets and the
 registration's GC-lifetime controls; it is an execution partition, not a claim
 that every member measures allocated bytes. Each partition uses a separate
@@ -387,7 +387,7 @@ The collector-specific alternatives are:
 
 | Option | Disposition and reason |
 | --- | --- |
-| Keep 18.11.0 and require the uninstrumented partition | Selected: preserves the ordinary application lifetime contract and coverage for the remaining cases, using the existing allocation-measurement boundary. |
+| Keep 18.11.0 and require the uninstrumented partition | Original selection: preserves the ordinary application lifetime contract and coverage for the remaining cases, using the existing allocation-measurement boundary. |
 | Return to 18.10.1 | The independent control unloads there, so this is a valid fallback if instrumented unloading becomes required or further collector effects invalidate the remaining tests. This finding alone does not require the downgrade. Allocation measurements still need isolation from instrumentation. |
 | Skip the lifetime controls or relax their assertions | Rejected: would remove the evidence that a NestedSet registration releases its adapter. |
 
@@ -399,6 +399,20 @@ record the observed strong event-root chain and the separate active thread
 frame. The local diagnosis covers macOS ARM64, .NET 10.0.14 and static
 instrumentation; it establishes neither a vendor confirmation nor equivalent
 Windows, Linux or dynamic-instrumentation behavior.
+
+The 2026-11-21 servicing refresh selects Test SDK and Code Coverage 18.12.0
+without changing either required partition. Fresh independent controls on
+macOS 26.5.2 ARM64, SDK 10.0.404 and runtime 10.0.15 collect the object and
+load context without coverage and with 18.10.1; the intentional strong-root
+control retains both. Under 18.12.0 both remain alive and the original unload
+assertion fails. The fresh NestedSet Unit binary passes both lifetime controls
+without coverage. Under 18.12.0 the intentional-live control passes and the
+released-registration control fails with the adapter and load context alive,
+while options and registration collect. Successful instrumentation and the
+actual selected collector were verified. These results retain the boundary;
+they are not complete-suite or hosted qualification. The original 18.11.0
+diagnosed roots remain historical: no new root analysis establishes an
+identical cause in 18.12.0.
 
 ### Consequences
 
@@ -423,7 +437,7 @@ Windows, Linux or dynamic-instrumentation behavior.
 - Good, because mandatory uninstrumented GC controls preserve product lifetime
   checks without changing assertions to accommodate collector-owned roots.
 - Bad, because those controls do not contribute coverage, and the known
-  collector retention remains relevant to instrumented collectible hosts.
+  18.11.0 collector retention requires re-evaluation for instrumented collectible hosts.
 
 ### Confirmation
 
@@ -611,7 +625,7 @@ optional SafeMigrations adapter retain their own existing test projects.
   successful collection without either diagnostic intervention is required.
 - A consumer or test requires unloading with coverage enabled, or additional
   collector-owned retention/background work invalidates other test results:
-  reassess the 18.11.0 pin and qualify a collector replacement or the verified
+  reassess the selected collector pin and qualify a collector replacement or the verified
   18.10.1 fallback without weakening product assertions.
 - A new test depends on GC reachability, or CI/RC selection and result validation
   change: verify its required execution environment, actual xUnit classification
@@ -644,6 +658,7 @@ optional SafeMigrations adapter retain their own existing test projects.
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 - 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
+- 2026-11-21: Updated Test SDK/Code Coverage to 18.12.0 within the authorized dependency refresh. Repeated independent plain, intentionally held, 18.10.1 and candidate-collector unloading controls on SDK 10.0.404/runtime 10.0.15, plus both current NestedSet lifetime controls. The observable unloading failure persists under 18.12.0; uninstrumented controls pass. Both Unit partitions and assertions remain mandatory. Preserved the original 18.11.0 root diagnosis; no identical-root, complete-suite or hosted qualification claim is made.
 
 ### Implementation References
 

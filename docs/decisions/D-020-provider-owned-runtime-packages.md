@@ -1,7 +1,7 @@
 ---
 id: D-020
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -132,7 +132,7 @@ comparison implementation in release tooling.
 
 The SQL Server adapter declares PKCS 9.0.21 as the first patched 9.x version for
 the two reviewed vendor advisories, without an arbitrary upper bound. The
-qualification graph uses 10.0.14 as a separate .NET 10 baseline. That dependency
+qualification graph selects 10.0.15 as a separate .NET 10 baseline. That dependency
 belongs only to the native SQL Client graph, not the common kernel.
 
 SQL-free rowset capacity and identifier delimiting have virtual defaults in the
@@ -238,6 +238,7 @@ version, source mapping, fresh cache and archive-byte checks.
 - 2026-11-03: Clarified the exact adapter/kernel example as its historical introduction version while preparing stable 10.2.0. The private ABI policy, original approval and compatibility exception are unchanged.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+- 2026-11-21: Updated the qualification-only PKCS baseline to 10.0.15 while retaining the shipping 9.0.21 minimum and original advisory/source evidence. Provider package ownership is unchanged.
 
 ### Implementation References
 

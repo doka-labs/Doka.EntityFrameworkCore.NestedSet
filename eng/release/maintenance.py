@@ -20,10 +20,11 @@ from eng.release.qualification import SOLUTION, solution_projects
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = "release-line-maintenance.yml"
 ECOSYSTEMS = ("dotnet-sdk", "docker", "nuget", "github-actions")
+# WHY: These packages follow the framework line; independent driver, test and analyzer majors stay eligible.
 FRAMEWORK_PACKAGES = ("Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.*",
                       "Doka.EntityFrameworkCore.MySql", "Doka.EntityFrameworkCore.SafeMigrations",
                       "Doka.EntityFrameworkCore.SafeMigrations.*", "Npgsql.EntityFrameworkCore.PostgreSQL",
-                      "Microsoft.Extensions.*")
+                      "Microsoft.Extensions.*", "System.Security.Cryptography.Pkcs", "System.IO.Hashing")
 CORRELATION = re.compile(r"schedule-[1-9][0-9]{0,17}-[1-9][0-9]{0,8}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 

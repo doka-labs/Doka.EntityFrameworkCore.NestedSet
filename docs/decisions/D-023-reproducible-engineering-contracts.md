@@ -1,7 +1,7 @@
 ---
 id: D-023
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: ["Dominic Kalkbrenner"]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -88,8 +88,12 @@ service failures remain warnings, and explicit security audits continue to
 reject missing evidence or vulnerable graphs. This replaces the earlier
 shipping-only lock policy without altering the six package contracts.
 
-The existing VSTest runner and Code Coverage 18.11.0 complementary partition
-remain. A different template's MTP/Coverlet choice does not establish equivalent
+The existing VSTest runner and Code Coverage 18.12.0 complementary partition
+remain. The 2026-11-21 independent and current NestedSet lifetime controls
+reproduce the observable unloading failure under 18.12.0 while both product
+controls pass uninstrumented; D-013 retains the required boundary. This does
+not attribute the original 18.11.0 roots to 18.12.0. A different template's
+MTP/Coverlet choice does not establish equivalent
 Rider discovery, collectible lifetime, coverage, or result selection. Public and
 reflection roles receive conditional IDE annotations from a private build-only
 reference; the attributes and package do not become runtime payload.
@@ -170,6 +174,7 @@ adds no new Python framework or automatic hardware-dependent performance gate.
 - 2026-11-19: The maintainer authorized the complete scoped maintenance plan, including all-project locks, the retained runner/collector boundary, and private build-only IDE annotations. Implementation verification remains open.
 - 2026-11-19: Status changed from accepted to implemented.
 - 2026-11-19: Local implementation verification completed, including full diagnostic before/after measurements on MariaDB and MySQL. Native x64 SQL Server and hosted qualification are not claimed.
+- 2026-11-21: Updated the collector reference to 18.12.0 and recorded the repeated unloading controls under D-013. The observable failure persists with instrumentation; the uninstrumented product controls pass. Complementary partitions, original implementation evidence and re-evaluation requirements remain unchanged; no new GC-root diagnosis or hosted qualification is claimed.
 
 ### Implementation References
 

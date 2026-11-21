@@ -66,6 +66,10 @@ updates:
         versions: [">=11.0.0-0", ">=11.0.0--"]
       - dependency-name: "Microsoft.Extensions.*"
         versions: [">=11.0.0-0", ">=11.0.0--"]
+      - dependency-name: "System.Security.Cryptography.Pkcs"
+        versions: [">=11.0.0-0", ">=11.0.0--"]
+      - dependency-name: "System.IO.Hashing"
+        versions: [">=11.0.0-0", ">=11.0.0--"]
   - package-ecosystem: github-actions
     target-branch: main
     directory: /

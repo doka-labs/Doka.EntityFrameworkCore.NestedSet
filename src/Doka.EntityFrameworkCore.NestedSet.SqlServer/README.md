@@ -29,7 +29,7 @@ remains in the native provider callback; the default registry schema is unchange
 The shipping dependency graph explicitly raises `System.Security.Cryptography.Pkcs`
 to a minimum of `9.0.21`, without an upper bound, for the native SQL Client path.
 That security floor is a SQL Server adapter dependency, not a dependency of
-the common kernel. Repository qualification uses PKCS 10.0.14 for .NET 10;
+the common kernel. Repository qualification uses PKCS 10.0.15 for .NET 10;
 applications already using the patched 9.0.21 need no forced update.
 Native SQL Server qualification requires supported Linux x86-64 hosts; ARM emulation
 is not the supported qualification environment.

@@ -300,8 +300,11 @@ Other test projects keep one instrumented run. This keeps instrumentation
 allocations out of product budgets without running the full native suites twice.
 It also keeps collector-owned roots out of registration-lifetime observations.
 [D-013](../docs/decisions/D-013-provider-owned-integration-test-projects.md)
-retains Code Coverage 18.11.0 with this split; the known static-instrumentation
-unloading defect remains open. The
+retains the mandatory split with the selected Code Coverage 18.12.0 servicing
+baseline. Fresh 2026-11-21 independent and current NestedSet lifetime controls
+reproduce the observable unloading failure with 18.12.0 on macOS ARM64; both
+product controls pass uninstrumented. The historical 18.11.0 GC-root diagnosis
+is preserved without claiming an identical mechanism in 18.12.0. The
 [collector boundary and re-evaluation criteria](../docs/performance.md#coverage-collector-18110-and-unloadability)
 do not authorize dropping either partition or claiming instrumented unloading
 support. No additional runner, gate or diagnostic cleanup is introduced.

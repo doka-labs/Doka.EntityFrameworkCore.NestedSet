@@ -264,8 +264,8 @@ intact. Account for index-build locks and extra disk space in the application's
 deployment policy. The optional SafeMigrations regression cases require replay
 and drift support for both Parent predicates and the TreeId predicates. Their
 creation, preflight, replay and drift outcomes belong to the updated adapter
-contract. Repository qualification now declares published Doka 10.6.4 and
-SafeMigrations 10.7.0. No legacy test contract or compatibility skip is retained.
+contract. Repository qualification now declares published Doka 10.7.0 and
+SafeMigrations 10.7.3. No legacy test contract or compatibility skip is retained.
 See the [provider qualification](qualification/provider-migrations.md) for the
 declared public graph, the earlier 2026-10-25 local scope and the separate dated
 local evidence. SafeMigrations remains optional.
@@ -304,7 +304,7 @@ The [corrected private provider acceptance](qualification/query-composition.md#o
 created the complete implicit-string schema on both engines without index
 prefixes. Its lengths remain convention-owned and parent-key compatible.
 That dated local result is separate from fresh qualification of the currently
-declared published Doka 10.6.4; review new column-length operations when adopting
+declared published Doka 10.7.0; review new column-length operations when adopting
 the provider correction.
 
 | Provider | Generated value | Storage |
@@ -391,7 +391,7 @@ table must still be rejected; accepting the expression is not permission to
 repair externally different schema. Index drift and invalid existing
 coordinate rows remain independent rejection contracts.
 
-Use the declared published Doka 10.6.4 and SafeMigrations Core/adapters 10.7.0
+Use the declared published Doka 10.7.0 and SafeMigrations Core/adapters 10.7.3
 graph. Do not mix a new Core with older adapters or infer published-package
 qualification from an earlier local run. See
 [provider qualification](qualification/provider-migrations.md) for the executed
@@ -490,7 +490,7 @@ Pomelo is outside the supported provider contract.
 Install the adapter explicitly in the application or migration project:
 
 ```sh
-dotnet add package Doka.EntityFrameworkCore.SafeMigrations.SqlServer --version 10.7.0
+dotnet add package Doka.EntityFrameworkCore.SafeMigrations.SqlServer --version 10.7.3
 ```
 
 Keep a direct `Microsoft.EntityFrameworkCore.Design` reference in the project
@@ -542,7 +542,7 @@ and the [consumer regression coverage](migrations.md#optional-sql-server-safemig
 
 ## MySQL and MariaDB runtime rejection diagnostics
 
-SafeMigrations 10.7.0 represents positively attributed MySQL/MariaDB runtime
+Since 10.7.0, SafeMigrations represents positively attributed MySQL/MariaDB runtime
 guards with `SafeMigrationExecutionException`. Consumers can inspect its
 `GuardCode`, for example `doka_sm_different` or `doka_sm_unsupported`,
 and retain the original native database exception through `InnerException`.

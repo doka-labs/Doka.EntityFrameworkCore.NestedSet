@@ -52,7 +52,7 @@ class DependencyTargetsTests(unittest.TestCase):
         packages = ("Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.*",
                     "Doka.EntityFrameworkCore.MySql", "Doka.EntityFrameworkCore.SafeMigrations",
                     "Doka.EntityFrameworkCore.SafeMigrations.*", "Npgsql.EntityFrameworkCore.PostgreSQL",
-                    "Microsoft.Extensions.*")
+                    "Microsoft.Extensions.*", "System.Security.Cryptography.Pkcs", "System.IO.Hashing")
 
         # Act
         rendered = maintenance.render_dependencies(self.policy, self.template)
@@ -71,7 +71,32 @@ class DependencyTargetsTests(unittest.TestCase):
             self.assertEqual(len(packages), body.count(f'>={next_major}.0.0--'))
             self.assertNotIn('dependency-name: "Microsoft.Data.SqlClient"', body)
             self.assertNotIn('dependency-name: "Microsoft.NET.Test.Sdk"', body)
+            self.assertNotIn('dependency-name: "Microsoft.CodeCoverage"', body)
+            self.assertNotIn('dependency-name: "MySqlConnector"', body)
+            self.assertNotIn('dependency-name: "xunit.*"', body)
+            self.assertNotIn('dependency-name: "Microsoft.CodeAnalysis.PublicApiAnalyzers"', body)
             self.assertNotIn('dependency-name: "BenchmarkDotNet"', body)
+
+    def test_missing_or_weakened_system_framework_guards_are_rejected(self):
+        """Both active lines retain each System ceiling without restricting independent tool majors."""
+        for package in ("System.Security.Cryptography.Pkcs", "System.IO.Hashing"):
+            for branch, next_major in (("main", 12), ("maintenance/10.x", 11)):
+                for remove in (False, True):
+                    with self.subTest(package=package, branch=branch, remove=remove):
+                        # Arrange
+                        rendered = maintenance.render_dependencies(self.policy, self.template)
+                        guard = (f'      - dependency-name: "{package}"\n'
+                                 f'        versions: [">={next_major}.0.0-0", ">={next_major}.0.0--"]\n')
+                        replacement = "" if remove else guard.replace(str(next_major), str(next_major + 1))
+                        changed = rendered.replace(guard, replacement, 1)
+
+                        # Act
+                        with self.assertRaises(ReleaseError) as caught:
+                            maintenance.check_dependencies(self.policy, changed, self.template)
+
+                        # Assert
+                        self.assertNotEqual(rendered, changed)
+                        self.assertEqual("dependency-targets", caught.exception.code)
 
     def test_inactive_and_prepared_lines_receive_no_update_targets(self):
         """Preparation states cannot silently start ongoing dependency work."""
