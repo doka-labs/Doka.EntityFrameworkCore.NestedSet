@@ -1,12 +1,11 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Qualifies persisted capacity, public bulk atomicity, and bounded repair memory on each engine.</summary>
+/// <summary>Qualifies persisted capacity, public bulk atomicity, and bounded repair work on each engine.</summary>
 
 // WHY: Fresh case-owned databases isolate statistics and avoid deleting preceding capacity datasets during setup.
 public abstract partial class CapacityTests : ProviderTest
 {
     private const int Million = 1_000_000;
-    private const long AdditionalHeapBudget = 512L * 1024 * 1024;
     private static readonly Guid s_inputTreeId = new("11111111-1111-1111-1111-111111111111");
     private readonly ITestOutputHelper _output;
 
@@ -50,30 +49,18 @@ public abstract partial class CapacityTests : ProviderTest
             setup,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         var tree = context
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty);
 
-        probe.Start();
-
         // Act
-        try
-        {
-            await tree.RebuildAsync(TestContext.Current.CancellationToken);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            WriteMeasurement("observer qualification", 129, probe);
-        }
+        await tree.RebuildAsync(TestContext.Current.CancellationToken);
+
 
         // Assert
-        Assert.True(probe.Samples > 0);
-        Assert.True(probe.TotalAllocatedBytes > 0);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal(3, probe.RepairCommands);
         Assert.Equal(3, probe.CompletedRepairs);
         Assert.Equal(129, probe.RepairedRows);

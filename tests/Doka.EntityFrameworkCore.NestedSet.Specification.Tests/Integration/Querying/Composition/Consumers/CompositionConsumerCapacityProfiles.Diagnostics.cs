@@ -102,7 +102,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             [
                 $"{observation.Profile}; commands={observation.Commands}; rows={observation.Actual.Length}; "
                 + $"parameters={observation.MaximumParameters}; "
-                + $"entities={observation.Materialized}; construction={observation.BuildBytes} B; "
+                + $"entities={observation.Materialized}; "
                 + FormattableString.Invariant($"elapsed={observation.Elapsed.TotalMilliseconds:F3} ms"),
                 ModelBoundary,
                 command,

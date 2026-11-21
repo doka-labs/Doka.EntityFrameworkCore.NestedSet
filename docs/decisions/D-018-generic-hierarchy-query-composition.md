@@ -1,7 +1,7 @@
 ---
 id: D-018
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -445,8 +445,9 @@ A malformed existing API fails clearly instead of guessing a server family.
   compare selective/broad, wide/balanced and deep acceptance/rejection cases
   using actual row counts, loops, parameters and allocations. Correct the
   physical expression without weakening semantics, budgets or populations.
-- **Consumer and compatibility boundaries:** an actual builder exceeds its
-  allocation/transport budget, another maintained consumer needs a shared
+- **Consumer and compatibility boundaries:** diagnostic allocation comparisons
+  regress, an actual builder exceeds its configured transport budget, another
+  maintained consumer needs a shared
   orchestration policy, or trimming, NativeAOT or compiled queries are
   requested. Measure the complete existing consumer and make a separate
   compatibility or boundary decision with independent semantic tests and
@@ -471,6 +472,8 @@ A malformed existing API fails clearly instead of guessing a server family.
 - 2026-11-03: Reconciled status with the implemented compositors and successful native-provider qualification in RC run 41014625971 for version 10.1.0. Recorded the correction today; the original acceptance date, historical failures and qualification boundaries remain unchanged.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-21: Distinguished diagnostic allocation comparisons from configured transport/admission contracts following the owner's D-015 measurement-separation instruction. Functional query and lifetime controls remain blocking; numerical observations do not gate CI or RC. Earlier qualification and approval records are unchanged.
 
 ### Implementation References
 

@@ -1,34 +1,31 @@
-using System.Text.Json;
 using Xunit.Runner.InProc.SystemConsole;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Runs an isolated calibration before runner initialization, or the ordinary xUnit console runner.</summary>
+/// <summary>Runs exact private lifecycle controls before runner initialization, or the ordinary xUnit runner.</summary>
 internal static class UnitTestProgram
 {
-    /// <summary>Routes only the exact private calibration command outside the normal test runner.</summary>
-    /// <param name="args">The calibration arguments or unchanged xUnit command-line arguments.</param>
-    /// <returns>The calibration or xUnit process exit code.</returns>
+    /// <summary>Routes only the two owned-process controls outside the normal test runner.</summary>
+    /// <param name="args">The lifecycle arguments or unchanged xUnit command-line arguments.</param>
+    /// <returns>The deliberate control status or ordinary xUnit process exit code.</returns>
     public static async Task<int> Main(
         string[] args
     )
     {
-        if (args is [ManagedHeapProbe.CancellationCommand, "wait"])
+        if (args is [OwnedChildProbe.CancellationCommand, "wait"])
         {
-            // WHY: This private lifecycle control cannot finish ahead of cancellation on a faster machine.
-            // Its parent owns termination, observes exit and drains the streams before releasing the process.
+            // WHY: This control cannot finish before cancellation on a faster machine. Its parent owns
+            // termination, exit observation and stream draining before releasing the native process handle.
             await Task.Delay(Timeout.InfiniteTimeSpan, CancellationToken.None);
 
             return 0;
         }
 
-        if (args is [ManagedHeapProbe.Command, var shape])
+        if (args is [OwnedChildProbe.FailureCommand, var marker])
         {
-            var measurement = ManagedHeapProbe.Measure(shape);
-            var json = JsonSerializer.Serialize(measurement);
-            await Console.Out.WriteLineAsync(json.AsMemory(), CancellationToken.None);
+            await Console.Error.WriteLineAsync(marker.AsMemory(), CancellationToken.None);
 
-            return 0;
+            return 7;
         }
 
         return await ConsoleRunner.Run(args);

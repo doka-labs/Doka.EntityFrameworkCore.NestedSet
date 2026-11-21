@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.PostgreSql;
 /// <summary>Runs the shared NativeTrackedIdentityGuardTests contract on this project's database provider.</summary>
 public sealed class NativeTrackedIdentityGuardTests : Specifications.NativeTrackedIdentityGuardTests
 {
-    /// <summary>Uses the provider assembly's isolated fixtures and test output.</summary>
+    /// <summary>Uses the provider assembly's isolated fixture.</summary>
     /// <param name="fixture">The fixture owned by this suite or its test collection.</param>
     public NativeTrackedIdentityGuardTests(
         ProviderFixture<ModelCompatibilityDatabase, PostgreSqlEngine> fixture
@@ -13,12 +13,10 @@ public sealed class NativeTrackedIdentityGuardTests : Specifications.NativeTrack
     public new sealed class Scale : Specifications.NativeTrackedIdentityGuardTests.Scale,
         IClassFixture<ProviderFixture<ModelCompatibilityDatabase, PostgreSqlEngine>>
     {
-        /// <summary>Uses the provider assembly's isolated fixtures and test output.</summary>
+        /// <summary>Uses the provider assembly's isolated fixture.</summary>
         /// <param name="fixture">The fixture owned by this suite or its test collection.</param>
-        /// <param name="output">The test output sink.</param>
         public Scale(
-            ProviderFixture<ModelCompatibilityDatabase, PostgreSqlEngine> fixture,
-            ITestOutputHelper output
-        ) : base(fixture, output) { }
+            ProviderFixture<ModelCompatibilityDatabase, PostgreSqlEngine> fixture
+        ) : base(fixture) { }
     }
 }

@@ -1,7 +1,7 @@
 ---
 id: D-012
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -415,8 +415,9 @@ filtered run does not establish coverage for a provider introduced later.
 - Run transaction, concurrency, and managed-save regressions. Failures must
   restore definitive rollback state, concurrent moves must be revalidated
   under locks, and read-only inspection must preserve pending tracked writes.
-- Run allocation and statement-count regressions without relaxing their
-  budgets. Large imports must retain bounded batches and iterative traversal.
+- Run statement-count regressions without relaxing their work contracts.
+  Investigate allocations through explicitly selected D-015 BenchmarkDotNet
+  workloads. Large imports retain bounded batches and iterative traversal.
 - Run scalar collection comparisons and sorted bulk refresh with global
   Constant and Parameter modes. Per-query policy must preserve native binary,
   string, and supported scalar equality without hidden collection transport.
@@ -426,8 +427,8 @@ filtered run does not establish coverage for a provider introduced later.
   without assuming that every EF getter or wrapper is allocation-free.
   Qualify live nullable and reference Parent reads, including misleading domain
   operators, an already nullable CLR key, and temporary sidecars created after
-  capturing the values wrapper. Repeated warmed multi-role reads must retain
-  the fixed fixture's allocation budget.
+  capturing the values wrapper. Repeated multi-role reads retain exact values and snapshot semantics; their
+  numerical allocation costs are optional BenchmarkDotNet observations.
 - Qualify exact-pair capture against crossed Scope/TreeId combinations and
   provider aliases, then packed scalar membership across candidate 769 and
   requested tree 65. Inspect actual command parameters including padding;
@@ -513,8 +514,8 @@ an unexecuted qualification result.
   contract and qualify an alternative before changing the boundary.
 - A new feature needs a real cross-tree store abstraction rather than several
   exact stores; document its identity and locking invariants before adding it.
-- Allocation or statement-count regressions exceed existing budgets; trace
-  actual consumers before adding another shared execution layer.
+- Diagnostic allocation comparisons regress or statement counts violate their
+  work contracts; trace actual consumers before adding another shared execution layer.
 - EF changes nullable Parent property translation, collection parameter
   translation, or typed equality for converted values; rerun the Parent and
   native/fallback guard matrix before changing these capability boundaries.
@@ -571,6 +572,8 @@ an unexecuted qualification result.
 - 2026-10-26: The MySql translator implementation reference follows its native adapter owner in D-020; the typed hierarchy contracts remain shared.
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
+
+- 2026-11-21: Updated current confirmation and observation guidance to the owner's explicit numerical-measurement separation under D-015. Functional, lifetime, and structural work contracts remain blocking; previous dated measurement and approval records are unchanged.
 
 ### Implementation References
 

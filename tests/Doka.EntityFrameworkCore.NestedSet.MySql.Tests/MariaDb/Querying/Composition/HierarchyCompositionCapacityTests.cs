@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql.MariaDb;
 
 /// <summary>Runs persisted composition capacity contracts on MariaDb.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class HierarchyCompositionCapacityTests : Specifications.HierarchyCompositionCapacityTests,
     IClassFixture<ProviderFixture<RelationalFixture, MariaDbEngine>>
 {

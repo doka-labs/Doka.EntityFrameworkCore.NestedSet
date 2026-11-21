@@ -7,16 +7,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 /// <summary>Protects compact owned bindings without merging caller filters or replacing earlier identities.</summary>
 public sealed partial class CompositionBindingExpressionTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    public CompositionBindingExpressionTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>Gets the second seeded tree without allocating mutable shared identity state.</summary>
     private static Guid OtherTree => new("d74a68e0-0000-4000-8000-000000000002");
 
@@ -129,10 +119,9 @@ public sealed partial class CompositionBindingExpressionTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>One fewer visited binding call reduces actual warm EF parameter/SQL work.</summary>
-    [Trait("Category", "Allocation")]
+    /// <summary>One fewer owned binding call preserves SQL and does not perform database I/O.</summary>
     [Fact]
-    public void MeasurePaired_FusedBinding_ReducesWarmSqlWorkAllocations()
+    public void ToQueryString_FusedBinding_RetainsSeparateBindingSqlAndDeferredIo()
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
@@ -163,28 +152,13 @@ public sealed partial class CompositionBindingExpressionTests
 
         var current = BoundRoot(tree);
 
-        // WHY: Warm both prepared SQL shapes equally before the paired allocation measurement.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 100; index++)
-        {
-            GC.KeepAlive(baseline.ToQueryString());
-            GC.KeepAlive(current.ToQueryString());
-        }
-
         // Act
-        var allocated = QueryConstructionAllocation.MeasurePaired(
-            () => baseline.ToQueryString(),
-            () => current.ToQueryString());
-
         var baselineSql = baseline.ToQueryString();
         var currentSql = current.ToQueryString();
 
         // Assert
-        _output.WriteLine($"Warm SQL work: separate={allocated.Baseline} B/op; fused={allocated.Expanded} B/op.");
         Assert.Equal(baselineSql, currentSql);
         Assert.Equal(MethodCalls(baseline.Expression) - 1, MethodCalls(current.Expression));
-        Assert.InRange(allocated.Expanded, 0, allocated.Baseline - 24);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
         Assert.Empty(context.ChangeTracker.Entries());

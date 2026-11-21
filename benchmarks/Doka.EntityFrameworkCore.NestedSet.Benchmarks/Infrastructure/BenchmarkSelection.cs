@@ -1,3 +1,5 @@
+using NativeTypeFilter = BenchmarkDotNet.Running.TypeFilter;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Benchmarks;
 
 /// <summary>Owns native case discovery shared by resource preflight and untimed diagnostics.</summary>
@@ -61,7 +63,7 @@ internal sealed class BenchmarkSelection : IDisposable
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var (allTypesValid, runnable) = TypeFilter.GetTypesWithRunnableBenchmarks(
+        var (allTypesValid, runnable) = NativeTypeFilter.GetTypesWithRunnableBenchmarks(
             [],
             [typeof(Program).Assembly],
             ConsoleLogger.Default);
@@ -71,7 +73,7 @@ internal sealed class BenchmarkSelection : IDisposable
             throw new ArgumentException("The benchmark assembly contains an invalid runnable type.");
         }
 
-        var selection = new BenchmarkSelection(TypeFilter.Filter(configuration, runnable));
+        var selection = new BenchmarkSelection(NativeTypeFilter.Filter(configuration, runnable));
 
         try
         {
@@ -96,7 +98,25 @@ internal sealed class BenchmarkSelection : IDisposable
 
                 try
                 {
-                    scenario.Validate();
+                    if (benchmarkCase.Descriptor.Type == typeof(NativeGuardBenchmarks))
+                    {
+                        // WHY: Guard baselines contain fewer than ten nodes and protect independent root trees.
+                        NativeGuardBenchmarks.ValidateCase((NativeGuardCase)benchmarkCase.Parameters[nameof(NativeGuardBenchmarks.Case)]);
+                    }
+                    else if (benchmarkCase.Descriptor.Type == typeof(CleanMutationBoundaryBenchmarks))
+                    {
+                        // WHY: This workload reserves an empty tree and contains only unrelated payload entries.
+                        ArgumentOutOfRangeException.ThrowIfNegative(scenario.Tracked);
+                    }
+                    else if (benchmarkCase.Descriptor.Type == typeof(NativeTrackerWriteBenchmarks))
+                    {
+                        // WHY: These original workloads contain one existing root, not a ten-node forest.
+                        ArgumentOutOfRangeException.ThrowIfNegative(scenario.Tracked);
+                    }
+                    else
+                    {
+                        scenario.Validate();
+                    }
                 }
                 catch (ArgumentException exception)
                 {
@@ -133,9 +153,51 @@ internal sealed class BenchmarkSelection : IDisposable
     /// <returns>The exact scenario that the database fixture will prepare.</returns>
     internal static BenchmarkScenario CreateScenario(
         BenchmarkCase benchmarkCase
-    ) => new(
-        (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Nodes)],
-        (BenchmarkShape)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Shape)],
-        (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Trees)],
-        (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Tracked)]);
+    )
+    {
+        if (benchmarkCase.Descriptor.Type == typeof(NativeGuardBenchmarks))
+        {
+            var value = (NativeGuardCase)benchmarkCase.Parameters[nameof(NativeGuardBenchmarks.Case)];
+
+            var wholeTree = value.Keys is NativeGuardKeyKind.NativeNumber or NativeGuardKeyKind.NativeIdentifier || value.Delete;
+            var otherNodes = value.Candidates + (wholeTree ? 0 : 1);
+            var affectedNodes = value.Requests + (value.Delete ? 1 : 0);
+
+            return new BenchmarkScenario(otherNodes + affectedNodes, BenchmarkShape.Wide,
+                value.Requests + 1, value.Candidates);
+        }
+
+        if (benchmarkCase.Descriptor.Type == typeof(NativeTrackerWriteBenchmarks))
+        {
+            var value = (NativeTrackerWriteCase)benchmarkCase.Parameters[nameof(NativeTrackerWriteBenchmarks.Case)];
+
+            return new BenchmarkScenario(1, BenchmarkShape.Wide, 1, value.Tracked);
+        }
+
+        if (benchmarkCase.Descriptor.Type == typeof(CleanMutationBoundaryBenchmarks))
+        {
+            return new BenchmarkScenario(0, BenchmarkShape.Wide, 1,
+                (int)benchmarkCase.Parameters[nameof(CleanMutationBoundaryBenchmarks.Tracked)]);
+        }
+
+        if (benchmarkCase.Descriptor.Type == typeof(NativeRefreshBenchmarks))
+        {
+            var value = (NativeRefreshCase)benchmarkCase.Parameters[nameof(NativeRefreshBenchmarks.Case)];
+
+            return new BenchmarkScenario(value.Children + 1, BenchmarkShape.Wide, 1, 0);
+        }
+
+        if (benchmarkCase.Descriptor.Type == typeof(AncestorFactReadBenchmarks))
+        {
+            var value = (NativeFactCase)benchmarkCase.Parameters[nameof(AncestorFactReadBenchmarks.Case)];
+
+            return new BenchmarkScenario(value.Nodes, value.Chain ? BenchmarkShape.Deep : BenchmarkShape.Wide, 1, 0);
+        }
+
+        return new BenchmarkScenario(
+            (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Nodes)],
+            (BenchmarkShape)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Shape)],
+            (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Trees)],
+            (int)benchmarkCase.Parameters[nameof(DatabaseBenchmark.Tracked)]);
+    }
 }

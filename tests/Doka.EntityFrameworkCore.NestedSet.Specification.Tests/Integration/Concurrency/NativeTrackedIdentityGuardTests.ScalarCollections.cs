@@ -65,32 +65,10 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 cancellationToken: TestContext.Current.CancellationToken);
 
             var before = ScalarSnapshots(context, convertedKeys);
-            await using var baseline = await CreateScalarContextAsync(
-                Engine,
-                convertedKeys,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            await ExecuteScalarRequestsAsync(
-                baseline,
-                convertedKeys,
-                requestedTrees,
-                static _ => Task.CompletedTask,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            var baselineBefore = GC.GetTotalAllocatedBytes(precise: true);
-            await ExecuteScalarRequestsAsync(
-                baseline,
-                convertedKeys,
-                requestedTrees,
-                static _ => Task.CompletedTask,
-                cancellationToken: TestContext.Current.CancellationToken);
-
-            var baselineAllocated = GC.GetTotalAllocatedBytes(precise: true) - baselineBefore;
             var calls = 0;
             probe.Armed = true;
 
             // Act
-            var crowdedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var failure = await Record.ExceptionAsync(() => ExecuteScalarRequestsAsync(
                 context,
                 convertedKeys,
@@ -103,15 +81,8 @@ public abstract partial class NativeTrackedIdentityGuardTests
                 },
                 cancellationToken: TestContext.Current.CancellationToken));
 
-            var crowdedAllocated = GC.GetTotalAllocatedBytes(precise: true) - crowdedBefore;
 
             // Assert
-            _output.WriteLine(
-                $"Scalar candidates={candidates}; converted={convertedKeys}; requests={requests}; "
-                + $"baseline bytes={baselineAllocated}; crowded bytes={crowdedAllocated}; "
-                + $"additional bytes per entry={(crowdedAllocated - baselineAllocated) / candidates}; "
-                + $"native reads={probe.NativeReads}; native parameters={probe.MaximumNativeParameters}");
-
             Assert.Null(failure);
             Assert.Equal(1, calls);
             Assert.Equal((candidates + 767) / 768 * ((requests + 63) / 64), probe.NativeReads);

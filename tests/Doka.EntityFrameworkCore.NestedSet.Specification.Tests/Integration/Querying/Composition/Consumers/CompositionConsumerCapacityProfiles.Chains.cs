@@ -62,10 +62,10 @@ internal static partial class CompositionConsumerCapacityProfiles
 
         // WHY: Expression construction and finite chain execution are separate costs. This number measures
         // the actual initial query, while command/output assertions cover the complete 2/4/8-hop operation.
-        var buildBytes = Construction(() => App.SupervisorQueries.Candidates(
+        _ = App.SupervisorQueries.Candidates(
             context,
             CompositionConsumerModel.Tenant,
-            first));
+            first);
 
         var constructionCommands = commands.CommandCount;
         var started = Stopwatch.GetTimestamp();
@@ -116,8 +116,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             constructionCommands,
             materialized,
             tracked,
-            buildBytes,
-            256 * 1_024,
+
             elapsed,
             plan);
 

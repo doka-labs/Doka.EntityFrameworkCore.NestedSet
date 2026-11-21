@@ -307,7 +307,7 @@ public abstract class ProviderAnnotationTests : ProviderTest
             type => type.GetCustomAttribute<CollectionDefinitionAttribute>() is not null);
 
         Assert.Empty(registrationErrors);
-        var allocation = Assert.Single(definitions, entry => entry.Definition!.Name == "Allocation measurements");
-        Assert.True(allocation.Definition!.DisableParallelization);
+        var scale = Assert.Single(definitions, entry => entry.Definition!.Name == "Scale scenarios");
+        Assert.True(scale.Definition!.DisableParallelization);
     }
 }

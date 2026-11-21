@@ -22,14 +22,6 @@ public abstract partial class DensePathWorkTestBase
         var probe = new EnterpriseProbe(captureParameterBindings: true);
         var commands = new CompositionCommandProbe();
         await using var context = database.CreateContext(probe, commands);
-        Func<object> build = () => Build(context, scenario);
-
-        for (var warmup = 0; warmup < 8; warmup++)
-        {
-            GC.KeepAlive(build());
-        }
-
-        var allocation = QueryConstructionAllocation.Measure(build);
         var query = Build(context, scenario);
         var constructionCommands = commands.CommandCount;
         var profile = $"{scenario.Name}-nodes-{scenario.Nodes}-forest-{scenario.Forest}";
@@ -74,7 +66,6 @@ public abstract partial class DensePathWorkTestBase
             [
                 $"Profile={profile}; visiblePopulation={scenario.VisibleNodes}; storedPopulation={
                     scenario.StoredNodes}; "
-                + $"construction={allocation} B/op; "
                 + $"commandBytes={commandBytes}; planBytes={planBytes}; resultRows={actual.Length}",
                 probe.Commands[0],
                 plan,
@@ -98,12 +89,11 @@ public abstract partial class DensePathWorkTestBase
             parameters,
             materialized,
             tracked,
-            allocation,
             commandBytes,
             planBytes);
     }
 
-    /// <summary>Applies unchanged work/allocation budgets and the materialization population invariant.</summary>
+    /// <summary>Applies unchanged native work budgets and the materialization population invariant.</summary>
     private void AssertObservation(
         Observation observation
     )
@@ -119,7 +109,7 @@ public abstract partial class DensePathWorkTestBase
             + $"fullPrefixLoops={observation.Work.FullPrefixLoops?.ToString(CultureInfo.InvariantCulture)
                 ?? "not exposed"}; "
             + $"visiblePopulation={observation.VisiblePopulation}; storedPopulation={observation.StoredPopulation}; "
-            + $"construction={observation.Allocation} B/op; commandBytes={observation.CommandBytes}; "
+            + $"commandBytes={observation.CommandBytes}; "
             + $"planBytes={observation.PlanBytes}; operatorBudget={observation.Budget.OperatorTuples}; "
             + $"materializedOutputBudget={observation.Budget.MaterializedTuples}");
 
@@ -129,7 +119,6 @@ public abstract partial class DensePathWorkTestBase
         Assert.InRange(observation.Parameters, 0, 999);
         Assert.Equal(0, observation.Materialized);
         Assert.Equal(0, observation.Tracked);
-        Assert.InRange(observation.Allocation, 1, 256 * 1_024);
         Assert.True(observation.CommandBytes > 0);
         Assert.True(observation.PlanBytes > 0);
         Assert.True(observation.Work.ExecutedOperators > 0);
@@ -169,7 +158,6 @@ public abstract partial class DensePathWorkTestBase
         int Parameters,
         int Materialized,
         int Tracked,
-        long Allocation,
         int CommandBytes,
         int PlanBytes
     );

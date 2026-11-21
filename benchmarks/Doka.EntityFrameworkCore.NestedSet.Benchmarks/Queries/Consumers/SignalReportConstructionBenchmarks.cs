@@ -7,6 +7,15 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
 {
     private SignalLabContext? _context;
     private ValidatedSignalReport? _request;
+    private ConsumerMetadataServices<SignalLabContext>? _services;
+
+    /// <summary>Gets or sets the actual provider dialect used for disconnected expression construction.</summary>
+    [Params("MySql", "MariaDb", "PostgreSql", "SqlServer", "Sqlite")]
+    public string Engine { get; set; } = "Sqlite";
+
+    /// <summary>Gets or sets the four-criterion baseline or one added same-owner criterion.</summary>
+    [Params(4, 5)]
+    public int Criteria { get; set; } = 4;
 
     /// <summary>Gets or sets the logical anchor-selection length; no persisted population is implied.</summary>
     [Params(1, 4, 16)]
@@ -27,10 +36,17 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        if (_context is not null)
+        var context = _context;
+        var services = _services;
+        _context = null;
+        _services = null;
+        if (services is not null)
         {
-            await _context.DisposeAsync();
-            _context = null;
+            await services.DisposeContextAsync(context);
+        }
+        else if (context is not null)
+        {
+            await context.DisposeAsync();
         }
 
         GC.SuppressFinalize(this);
@@ -40,10 +56,13 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
     [GlobalSetup]
     public void Initialize()
     {
-        _context = new SignalLabContext(
-            new DbContextOptionsBuilder()
-                .UseSqlite("Data Source=:memory:", provider => provider.UseNestedSets())
-                .Options);
+        if (Anchors < 1 || Criteria is not (4 or 5))
+        {
+            throw new ArgumentOutOfRangeException(nameof(Criteria), "Select positive anchors and four or five criteria.");
+        }
+
+        _services = ConsumerMetadataServices<SignalLabContext>.Create(Engine);
+        _context = new SignalLabContext(_services.Options);
 
         GC.KeepAlive(_context.Model);
 
@@ -61,6 +80,22 @@ public class SignalReportConstructionBenchmarks : IAsyncDisposable
                 NearestMetadata
                     ? TagOwnerMode.Nearest
                     : TagOwnerMode.Any));
+
+        if (Criteria == 5)
+        {
+            var groups = _request.Groups.ToArray();
+            var sensor = groups[^1];
+            groups[^1] = sensor with
+            {
+                Criteria =
+                [
+                    .. sensor.Criteria,
+                    new TagCriterion(SignalReportDataset.SensorKind, "CaptureMode", "Continuous", sensor.Mode),
+                ],
+            };
+
+            _request = _request with { Groups = groups };
+        }
 
         GC.KeepAlive(Api());
         GC.KeepAlive(Reference());

@@ -23,24 +23,42 @@ materializer cohorts, three MariaDB 1,000-node pairs and one prespecified
 construction repeat for the redesigned acquisition model. Timings are mixed;
 original adverse observations and additional allocations remain visible. The
 four original-before deep-work controls and their current-source counterparts
-pass with unchanged work and allocation budgets.
+retain independent work and result oracles. The byte limits used for that
+dated qualification are historical; current allocation observations do not gate
+functional acceptance.
 
 ## Allocation measurement and Unicode counting
 
-The Unit suite's deterministic allocation budgets run without coverage instrumentation. The
-suite marks its isolated allocation collections and standalone budget controls
-with `Category=Allocation`. CI and RC run that partition once without a
-collector and the complementary Unit cases once with coverage.
-The same partition includes the registration's collectible-adapter lifetime
-controls. The [D-013 instrumentation decision](decisions/D-013-provider-owned-integration-test-projects.md)
-retains Code Coverage 18.12.0 with this mandatory partition. Lifetime assertions
-run against uninstrumented application behavior, with a deliberately retained
-registration as a negative control. Actual xUnit metadata tests protect this
-classification; no lifetime assertion is relaxed or skipped.
-Both partitions are mandatory; result validation rejects missing partitions,
-duplicate case identities, failed cases, and skipped cases. Other provider
-suites retain their ordinary coverage run. Budgets are unchanged, and no
-product behavior depends on whether a collector is present.
+Numerical allocation, retained-heap, and timing observations are optional
+BenchmarkDotNet measurements. They do not determine the success of ordinary
+tests, builds, CI, or release qualification. This includes former absolute,
+per-entry, incremental, and warm-baseline byte allowances. A larger warmup,
+changed limit, or favorable retry does not establish the cause of a sporadic
+measurement difference.
+
+Functional and structural checks remain blocking: exact results, hierarchy
+invariants, rollback state, command/parameter cardinality, configured admission
+limits, resource ownership, and actual live/released reference controls.
+Physical index-byte limits remain provider/schema contracts. Benchmark workload
+and configuration checks verify meaningful execution without accepting or
+rejecting a numerical measurement. `MemoryDiagnoser` reports allocation and GC
+observations; it does not reproduce the retired retained/peak-heap estimator.
+
+Only actual collector-sensitive Unit lifetime cases use
+`Category=CollectorSensitive`. CI and RC run these without instrumentation as
+`lifetime.trx`, then run `Category!=CollectorSensitive` under Code Coverage as
+`coverage.trx`. Both reports are mandatory, complete, disjoint, and free of
+failures or skips. The [D-013 instrumentation decision](decisions/D-013-provider-owned-integration-test-projects.md)
+retains Code Coverage 18.12.0 with this lifetime boundary. It does not make
+numerical measurements release requirements.
+
+The dated measurements below retain their original sources, runtimes,
+workloads, and historical acceptance conditions. Their former byte ceilings
+are not current test or release gates. Use the
+[BenchmarkDotNet guide](../benchmarks/Doka.EntityFrameworkCore.NestedSet.Benchmarks/README.md)
+for explicitly selected current measurements. The 3,072-byte observation in RC
+run 44906220050 has not been causally attributed; this policy does not blame
+.NET 10.0.15 or claim that additional warmup repaired a runtime defect.
 
 ### Coverage collector 18.11.0 and unloadability
 
@@ -114,10 +132,10 @@ To run the existing Unit partition contract from a fresh Release build:
 ```bash
 dotnet build tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release --no-build --no-restore \
-  --filter "Category=Allocation" --logger "trx;LogFileName=allocations.trx" \
+  --filter "Category=CollectorSensitive" --logger "trx;LogFileName=lifetime.trx" \
   --results-directory artifacts/unit-instrumentation-review
 dotnet test tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests -c Release --no-build --no-restore \
-  --filter "Category!=Allocation" --settings eng/coverage.runsettings --collect:"Code Coverage" \
+  --filter "Category!=CollectorSensitive" --settings eng/coverage.runsettings --collect:"Code Coverage" \
   --logger "trx;LogFileName=coverage.trx" --results-directory artifacts/unit-instrumentation-review
 python3 -m eng.release.qualification --verify-results artifacts/unit-instrumentation-review \
   --project Doka.EntityFrameworkCore.NestedSet.Unit.Tests
@@ -147,9 +165,10 @@ and malformed-surrogate controls retain its scalar-counting contract.
 On 2026-10-28, an ordinary uninstrumented Debug run reproduced 96 bytes per
 call in the generic `IndexOfAnyInRange<char>` helper. This was therefore not
 limited to coverage instrumentation. The cached search preserves the exact
-zero-byte warm contract in both build configurations. The historical comparison
+observed warm counting behavior in both build configurations. The historical comparison
 below retains its latency tradeoff; this change does not establish a universal
-speedup. Allocation budgets still run without profiler instrumentation.
+speedup. Current counting correctness remains a blocking functional contract;
+allocation observations run only through explicitly selected BenchmarkDotNet cases.
 
 ### Unicode counting and allocation measurement, 2026-10-26
 
@@ -665,8 +684,8 @@ The guard does not retain entry wrappers for unrelated entity types or another
 full entity graph. Converted key fallback keeps each query expression bounded
 even when the captured tracked set is large.
 
-The native 20,000-candidate regression caps additional allocation at 2,600
-bytes per candidate after subtracting a warm baseline operation. This covers
+The historical 20,000-candidate measurement used an allowance of 2,600
+bytes per candidate after subtracting a warm baseline operation. It covered
 EF guard work and provider collection transport, including serialization;
 it measures allocated bytes, not retained heap, CPU speed, or database latency.
 The baseline difference is normalized by the 20,000 captured candidates.
@@ -684,17 +703,20 @@ additional bytes per candidate, rounded down as reported by the test:
 
 Each of these ten cases used one native membership probe. The 2,600-byte
 ceiling leaves about 16% headroom above the highest observed value, 2,237.
-These values qualify the fixed budget; they do not show a net reduction in
+These values supported that historical allowance; they do not show a net reduction in
 total guard allocation relative to the preceding targeted qualification.
 These are dated local measurements of the targeted cases; they do not establish
 a full-suite release qualification or a minimum allocation for every workload.
 The [scale regression](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Concurrency/NativeTrackedIdentityGuardTests.Scale.cs)
-owns the assertion and warm-baseline setup. Existing unrelated-tracker and
-forest-insertion allocation ceilings remain separate contracts.
+retains functional membership, transport, and rejection assertions. Numerical
+guard, unrelated-tracker, and forest-import observations belong to optional
+BenchmarkDotNet workloads rather than fixed byte acceptance ceilings.
 
 Bulk planning and full rebuild use iterative compact buffers and bounded
-64-entity write batches. The qualification target is at most 512 MiB additional
-managed heap for one million operated nodes above the existing caller inputs.
+64-entity write batches. The documented engineering target is at most 512 MiB additional managed heap
+for one million operated nodes above the existing caller inputs. This is a
+fixture-specific investigation target, not a current qualification gate or a
+universal application-memory guarantee.
 Provider and framework allocations during the operation remain included;
 pre-existing application payload and an already populated change tracker are
 outside that additional-heap budget.
@@ -714,9 +736,10 @@ hierarchy saves. See
 [EF Core SaveChanges](https://learn.microsoft.com/en-us/ef/core/saving/),
 [save events](https://learn.microsoft.com/en-us/ef/core/logging-events-diagnostics/events),
 and [tracked entry state](https://learn.microsoft.com/en-us/ef/core/change-tracking/entity-entries).
-The `TrackerSnapshotAllocationTests` isolate this cost: 20,000 tracked entities
-with 15 scalar properties must remain below 60 million bytes of warm
-allocation, and mutable values must restore after a failed save.
+The 20,000-entry, 15-scalar-property snapshot workload keeps its exact mutable
+value and failed-save restoration controls. Its former 60-million-byte warm
+allowance is historical; numerical capture costs are optional BenchmarkDotNet
+observations, not functional test thresholds.
 
 Library-owned insertions validate their plan once at EF's relational persistence
 step. That check reads only EF's pending write set and snapshots only ordinary
@@ -727,8 +750,9 @@ interception work beyond one weak-table lookup per save.
 with 20,000 clean, unrelated tracked rows. The current-source local .NET 10.0.12
 SQLite run on 2026-10-04 observed 427 additional allocated bytes per tracked row:
 752,192 baseline bytes and 9,300,416 bytes with the unrelated tracked set.
-The unchanged 500-byte regression ceiling detects substantial tracker-wide
-allocation growth. The earlier 2026-09-24 observation was 419 bytes per row;
+The former 500-byte-per-entry ceiling belonged to that numerical test.
+Current scale tests retain exact native, tracker, and rollback assertions;
+allocation scaling is measured separately through BenchmarkDotNet. The earlier 2026-09-24 observation was 419 bytes per row;
 these dated observations do not establish a throughput comparison or an
 allocation reduction for the complete insertion.
 
@@ -822,8 +846,8 @@ the tracked graph. A small inverse-addition receipt is bookkeeping, not the
 complete capture/recovery cost. An earlier implementation that loses required
 state is a correctness-cost control, not an equivalent-result speed baseline.
 
-Ordinary FK, shared-table peer and complex graph resource controls retain
-separate intervals and budgets. Complex journals are allocated only for complex
+Ordinary FK, shared-table peer and complex graph scenarios retain separate
+functional controls and optional BenchmarkDotNet measurement boundaries. Complex journals are allocated only for complex
 state. Complete capture, same-lane restoration and detected native rebinding
 are measured independently at their declared widths, including 20,000-row
 capture/restore controls and 128/2,048-row detected-rebind controls. The large
@@ -877,9 +901,10 @@ allocate their own enumerators even when no new batch buffer is created. The
 navigation-only timing observation was slower despite nearly identical bytes;
 other timing ranges overlapped under recorded background load. These are scoped
 allocation observations, not an elapsed-time or throughput guarantee.
-`CollectionBaselineCompletionAllocationTests` reproduces the bounded-buffer
-contract across materialized and lazy producers; the fixed paired observations
-do not substitute for fresh measurements of a later source.
+The collection-baseline controls retain correct materialized/lazy producer
+behavior, owner identity, and complete rollback. Optional BenchmarkDotNet cases
+measure their numerical costs; these historical paired observations do not
+substitute for fresh measurements of a later source.
 
 Table resolution retains its required-property snapshot while avoiding an outer
 copy. Source/target identity selection scans the existing result list and keeps
@@ -910,30 +935,32 @@ They do not assert an allocation-free insertion or import. Mutable identities
 retain independent snapshots and native reinstallation. Differing member/model
 types retain EF's sentinel-aware getter; the integer property-bag control
 observes 48 bytes per refresh at that framework boundary. The
-[refresh regression controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.cs)
-protect allocation and semantic behavior together. Million-node measurements
-below independently qualify occupied heap and complete-operation traffic.
+[refresh regression controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionIdentityTests.cs)
+preserve semantic behavior. Numerical allocation costs are optional
+BenchmarkDotNet observations. The dated million-node measurements below
+separately describe their original occupied-heap and operation-traffic scope.
 
 On 2026-10-08, warmed controls separately measured 10,000 unchanged `Matches`
 and `PrepareDetach` calls on .NET 10.0.12. Integer, Guid, compound, generated,
 shadow, string, and backing-field keys allocated zero bytes in both paths.
 The integer property-bag control retained the native object getter: 48 bytes
-per `Matches` call and 72 bytes per `PrepareDetach` call. Regression ceilings
-allow 2,048 fixed bytes per measurement in addition to these fallback costs.
+per `Matches` call and 72 bytes per `PrepareDetach` call. The historical regression ceilings
+allowed 2,048 fixed bytes per measurement in addition to these fallback costs;
+they are not current test or release gates.
 This includes the additional installed-relationship-key comparison; current
 values alone cannot reveal an intermediate key registered by change detection.
 
 Initial lifecycle capture is a separate control: 10,000 already-tracked,
 independent integer roots allocated 2,720,000 bytes, or 272 bytes per root,
-excluding model initialization, EF tracking, and the result array. Its ceiling
-is 280 bytes per root plus 2,048 fixed bytes. A mutation control that eagerly
+excluding model initialization, EF tracking, and the result array. Its historical ceiling
+was 280 bytes per root plus 2,048 fixed bytes. A mutation control that eagerly
 created the unused dependent-bucket list allocated 304 bytes per root and
 failed this test. Bucket storage is now allocated only for a real membership.
 These measurements do not update the million-node occupied-heap observations
 or establish hosted-runner capacity headroom.
 
-Sources: [comparison and capture budgets](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Comparisons.cs)
-and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionRefreshAllocationTests.Recovery.cs).
+Historical comparison source: [comparison and capture controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionIdentityTests.Comparisons.cs)
+and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/BulkImport/InsertionIdentityTests.Recovery.cs).
 
 ### Capacity targets
 
@@ -943,7 +970,7 @@ and [identity recovery controls](../tests/Doka.EntityFrameworkCore.NestedSet.Uni
 | Width | 1 million direct children without recursive client traversal |
 | Depth | 100,000 levels without call-stack recursion |
 | Bulk import | 1 million nodes in one atomic batched operation |
-| Bulk/rebuild heap | At most 512 MiB additional managed heap for 1 million nodes |
+| Bulk/rebuild memory | Engineering target for the documented fixture: 512 MiB additional managed heap for 1 million nodes; diagnostic, not a CI/RC ceiling |
 | Anchor query | One SQL command without loading the anchor entity first |
 | Single-table structural mutation | Command count independent of node count, width, and depth |
 | Independent writers | At least 64 writers on different trees without a global library lock |
@@ -1007,7 +1034,14 @@ the measured forest or changing command timeouts. It is a fixture control,
 not a production throughput measurement. The [seeding regressions](testing.md#fixture-and-evidence-ownership)
 verify stored values, command counts and early/late failure rollback.
 
-Heap measurements warm the provider and model first, then collect a baseline
+#### Historical heap observation protocol
+
+The following retired handwritten protocol explains the dated capacity numbers
+below. Current tests do not execute its sampler, calibration, or numerical
+heap assertions. Current allocation measurements use BenchmarkDotNet; they do
+not claim to reproduce the old retained/peak-heap estimator.
+
+The earlier heap measurements warmed the provider and model first, then collected a baseline
 after the caller-owned entities, topology, and payload exist. The inputs stay
 alive throughout the operation. Provider and framework allocations above that
 baseline remain included. A five-millisecond timer and command-boundary
@@ -1032,7 +1066,7 @@ understate the observed occupied heap. Local elapsed times include this
 instrumentation; they do not establish a GitHub runner time budget or a
 production latency guarantee. The separate total-allocation measurement uses
 precise counters at the operation boundaries.
-The 512 MiB assertion applies to the documented integer-key, Guid-TreeId,
+The historical 512 MiB assertion applied to the documented integer-key, Guid-TreeId,
 integer-Scope fixture and its fresh operation context. It cannot bound
 arbitrarily large binary keys, application callbacks, or a million independent
 root plans. Full validation of ten million nodes retains linear structural
@@ -1053,14 +1087,15 @@ keys. On 2026-10-09, the isolated 20,000-node preparation regression measured
 2,523,904 additional allocated bytes above standalone planning before the fix,
 and 3,448 bytes afterward. It stops before connection opening and measures
 allocation rather than occupied heap. Cross-tree rejection remains checked
-before the write boundary. These measurements do not establish the revised
-SQL Server hosted capacity result; the 512 MiB assertion remains unchanged.
+before the write boundary. These measurements did not establish the revised
+SQL Server hosted capacity result. The former 512 MiB assertion is historical,
+not part of current release acceptance.
 
-The [heap observer](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
-has [held-allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
-The independent calibration runs the actual helper in the existing Unit
-executable before xUnit initializes. It holds 100,000 objects or small arrays,
-counts their allocation bytes independently and retains the original +/-10%
+The retired [heap observer](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/dee2172acba533499921964890c1c6bd8b8e682d/tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Infrastructure/Observation/ManagedHeapObservation.cs)
+had [held-allocation controls](https://github.com/doka-labs/Doka.EntityFrameworkCore.NestedSet/blob/dee2172acba533499921964890c1c6bd8b8e682d/tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Observation/ManagedHeapObservationTests.cs).
+The earlier independent calibration ran the helper in the then-existing Unit
+executable before xUnit initialized. It held 100,000 objects or small arrays,
+counted their allocation bytes independently, and enforced the original +/-10%
 accuracy bound. Runner-state reclamation cannot be hidden by a wider tolerance;
 ordinary test invocations still use xUnit's public console runner.
 The same controls include a captured native scalar tuple, qualified-anchor
@@ -1090,8 +1125,9 @@ provider and framework traffic across the whole operation.
 | SQL Server | 487.7 | 16.44 | 229.7 | 4.37 |
 | SQLite | 483.2 | 19.06 | 161.4 | 3.89 |
 
-MiB and GiB use binary units. The unchanged limit is 512 MiB of additional
+MiB and GiB use binary units. The historical limit was 512 MiB of additional
 occupied heap for these operations, not 512 MiB of lifetime allocation traffic.
+It is not a current CI or RC gate.
 Deep public rebuilds on the 100,001-node chain observed 53.7-71.7 additional
 occupied MiB. These are observations of the documented fixtures, including
 their sampling overhead; they are neither exact peaks nor allocation or
@@ -1165,26 +1201,29 @@ all engines. A canceled server contender retains both callers' earlier
 application writes. SQLite cannot hold independent write transactions
 simultaneously because its database-wide writer boundary precedes tree locks.
 
-## Deterministic CI and RC measurements
+## Deterministic CI and RC contracts
 
-Shared integration measurements live in the non-runnable specification library
-and execute through concrete suites in the owning provider projects. Exclusive
-measurements, such as `SingleInsertScaleTests`, remain in their provider project.
-Each provider assembly registers its own `Allocation measurements` collection
-with parallelization disabled. Containers remain shared per engine within that
-assembly, while databases keep their existing class or collection ownership.
-See [test project ownership](testing.md#test-project-ownership).
-The source layout does not change measurement methods, budgets, or dated results.
+Shared integration contracts live in the non-runnable specification library
+and execute through concrete suites in the owning provider projects.
+Provider-exclusive checks retain their actual engine and fixture ownership.
+Functional capacity/scale cells remain required; numerical observations do not
+select a blocking lane. Collector-sensitive lifetime cases retain narrow
+uninstrumented isolation. See [test project ownership](testing.md#test-project-ownership).
 
-GitHub CI does not gate on elapsed time, throughput, process working set, or CPU
-model. Hosted runners can change hardware and load. CI instead verifies:
+CI and RC do not gate on numerical timing, throughput, allocation, retained heap,
+working set, or CPU observations. They verify:
 
-- final structure and payload state;
-- SQL command and hierarchy-update counts;
-- affected-row formulas and absence of N+1 work;
-- query shapes and index paths where provider plans are stable;
-- iterative wide and deep planning; and
-- bounded allocation form.
+- final structure, scalar results, and payload state;
+- SQL command, hierarchy-update, affected-row, and parameter cardinality;
+- independent geometry, membership, provenance, and rollback oracles;
+- query shapes and eligible index paths with explicit provider boundaries;
+- iterative wide/deep work and configured admission/transport limits; and
+- ownership, release, and deliberately retained lifetime controls.
+
+The existing benchmark contract project checks workload validity, native case
+selection, fixture restoration, and error handling without launching statistical
+measurements. BenchmarkDotNet execution, including `Dry`, is explicitly selected
+outside these mandatory test runs. Numeric measurements remain informational.
 
 ## Development benchmarks
 
@@ -1487,7 +1526,7 @@ Named mappings, independent paths and mutable query carriers cannot borrow a
 visibility proof. Opaque object-typed query carriers do not gain provenance by
 casts, `as` or `AsQueryable`, and no application getter runs to recover it.
 
-The [endpoint allocation controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.Scaling.cs)
+The [endpoint proof controls](../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Queries/Composition/CompositionSourceBindingEndpointTests.Scaling.cs)
 retain fixed 64/128/256 KiB limits at shared-source depths 12/24/48 and a 256 KiB
 ceiling for alternating depth-24 paths. The historical lexical-memo repair
 reduced that accepted/rejected depth-24 fixture from approximately 19.6 GB to
@@ -1497,43 +1536,31 @@ foreign-mapping rejection 87,440-87,480 bytes. Those are different measurement
 boundaries, not another before/after ratio. All require zero construction I/O
 and retain adversarial mapping/capture rejection.
 
-### Deterministic construction and transport budgets
+### Construction observations and transport contracts
 
-Measure a warmed, finalized EF model and the complete actual builder, including
-the endpoint checks and expression substitution. Context/model creation and
-database setup are separate costs. Scalar criteria must remain parameters;
-adding one criterion must not copy a stored hierarchy or build a new compiler.
+Query construction allocations are diagnostic BenchmarkDotNet observations.
+They cover the actual SignalLab and UserGroups builders and their request,
+criterion, metadata, snapshot, grid, and ranking variants. A simpler generic
+query is not a substitute for a selected consumer workload. Former absolute
+and incremental byte allowances and their handwritten sampling loops are not
+current CI or RC acceptance criteria.
 
-| Boundary | Fixed contract |
+The independent functional boundaries remain blocking:
+
+| Boundary | Required behavior |
 | --- | --- |
-| SignalLab fixed four-criterion builder | At most 128 KiB for Any; 160 KiB for Nearest; 232 KiB for Doka MySQL/MariaDB Nearest |
-| Added signal scalar criterion of the same pattern | At most 4 KiB additional allocation |
-| SignalLab request snapshot fixture | At most 24 KiB for 20 types, 80 unique criteria and 160 requested criteria |
-| SignalLab empty-total grid fixture | At most 76 bytes per cell plus 2,048 bytes for 6,144 selected cells |
-| Supervisor four-match builder | At most 256 KiB allocated per complete build |
-| Added supervisor scalar match | At most 4 KiB additional allocation |
 | Scalar hierarchy/report projection | No hierarchy entity materialization or tracker growth |
-| Scalar or aggregate composed query terminal | One async reader command, with its caller token |
+| Scalar or aggregate composed query terminal | One async reader command with its caller token |
 | SignalLab validated report | One catalog read and one grouped report read in the same snapshot |
+| SignalLab request, snapshot, and grid | Exact selected grain, identity, duplicate rejection, and complete results |
 | Supervisor selection | Server-side ranking/uniqueness and bounded status/evidence transport |
-| Chain frontier | Bounded batch, transport, path-copy and cycle budgets before allocation |
+| Chain frontier | Configured batch, visit, result, continuation, and cycle admission limits |
 
-The sample builder tests use the actual sample assemblies. A generic query
-with fewer predicates is not a substitute for these consumer budgets.
-Snapshot and grid allowances describe their fixed unit fixtures, including
-owned buffers and the final result cells. Nonempty SQL totals also require
-their duplicate-detecting lookup; the empty-total grid allowance does not
-claim to include that population. These checks are independent of the complete
-read's process-wide allocation measurements.
-Additional collection includes and EF's `AsSplitQuery()` policy can produce
-multiple statements; the single-reader budget above applies to the qualified
-scalar and aggregate shapes, not arbitrary entity loading.
-Both use the shared C# allocation protocol after ten warmup builds per shape:
-100 complete builds for the absolute mean, or 1,000 adjacent alternating
-baseline/expanded pairs for the incremental mean. Every sample contributes;
-there is no trimming, favorable-sample retry, or changed budget. Independent
-protocol tests verify exact call/order counts and retain a continuous 8 KiB
-regression above the 4 KiB limit.
+These contracts use real sample assemblies. They preserve rejection, ambiguity,
+rank, and reader-failure cases independently of numerical measurements.
+Additional includes and EF's `AsSplitQuery()` policy can produce multiple
+statements; the single-reader boundary applies to the qualified scalar and
+aggregate shapes, not arbitrary entity loading.
 
 The chain reader applies its overflow probe in SQL after semantic selection
 and before async enumeration. EF can internally buffer when a retry strategy
@@ -1640,8 +1667,8 @@ strict forms exclude self and use 100 facts at each depth: acceptance requires
 the actual direct parent, and rejection requires the root instead and must
 not fall back to it. SQL, parameters and native plans accompany
 the observations. Statement count, exact result bags, DTO/entity counts,
-construction allocation and tracker state are assertions. Elapsed times are
-diagnostic observations, not hardware-dependent release thresholds.
+and tracker state remain assertions. Construction allocation and elapsed times
+are diagnostic BenchmarkDotNet observations, not release thresholds.
 
 The [consumer capacity adapter](../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/Querying/Composition/Consumers/CompositionConsumerCapacityProfiles.cs)
 uses the actual signal and UserGroups query builders over read-only structural

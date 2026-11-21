@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Doka.EntityFrameworkCore.NestedSet.Features.Queries;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
@@ -51,24 +50,4 @@ public sealed partial class CompositionVisibilityTraversalTests
             Expression.Quote(Expression.Lambda<Func<CompositionGuardNode, bool>>(predicate, node)));
     }
 
-    /// <summary>Measures synchronous construction after both shapes and metadata paths are warm.</summary>
-    private static long Allocated(
-        IQueryable<CompositionGuardNode> source,
-        Expression<Func<CompositionGuardNode, CompositionGuardNode>> selector,
-        IEntityType entityType,
-        Expression bound
-    )
-    {
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Repeat the same proof operation within one fixed allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 128; index++)
-        {
-            NestedSetQueryEndpoint.Require(source, selector, entityType, bound, "node");
-        }
-
-        return GC.GetAllocatedBytesForCurrentThread() - before;
-    }
 }

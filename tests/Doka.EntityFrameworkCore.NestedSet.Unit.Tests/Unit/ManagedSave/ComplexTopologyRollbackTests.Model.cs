@@ -11,6 +11,15 @@ public sealed partial class ComplexTopologyRollbackTests
             ChangeTracker.AutoDetectChangesEnabled = false;
         }
 
+        /// <summary>Uses the caller-owned provider graph for isolated functional and benchmark fixtures.</summary>
+        /// <param name="options">The completed SQLite options and explicitly owned provider services.</param>
+        internal TopologyContext(
+            DbContextOptions<TopologyContext> options
+        ) : base(options)
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
+
         /// <summary>Gets whether the payload is a required peer of a principal sharing its row.</summary>
         protected virtual bool Sharing => false;
 

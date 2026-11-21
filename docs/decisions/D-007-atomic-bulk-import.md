@@ -232,7 +232,7 @@ configured comparer is still evaluated on each probe.
 ### Implementation References
 
 - [Prepared-import resource model and scoped observations](../performance.md#prepared-imports-and-recovery-costs)
-- [Guard scaling and adversarial collection controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyChangeDetectionTests.ImportAllocations.cs)
+- [Guard scaling and adversarial collection controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/ManagedSave/HierarchyImportCollectionScaleTests.cs)
 - [Shared insertion-owned CLR snapshots](../../src/Doka.EntityFrameworkCore.NestedSet/Execution/NestedSetInsertionValues.cs)
 - [Bulk coordinator](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkInsert.cs)
 - [Bulk plan](../../src/Doka.EntityFrameworkCore.NestedSet/Features/BulkImport/NestedSetBulkPlan.cs)

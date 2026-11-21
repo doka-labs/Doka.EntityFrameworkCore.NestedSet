@@ -2,25 +2,11 @@ using Doka.EntityFrameworkCore.NestedSet.Samples.SignalLab;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
-/// <summary>Measures only the warmed actual sample builder, including every owned expression component.</summary>
-
-// WHY: Unrelated collections can perturb current-thread allocation measurements during forced GC
-// and large graph tests. Reuse the existing measurement collection without changing any budget.
-[Collection("Allocation measurements")]
+/// <summary>Checks actual report expression construction without database I/O.</summary>
 public sealed partial class SignalReportConstructionTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    public SignalReportConstructionTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
     /// <summary>
-    /// Bounds fixed four-criterion construction independently from database size and EF cold-model initialization.
+    /// Builds the fixed four-criterion report without database access on every provider dialect.
     /// </summary>
     /// <param name="engine">The actual provider dialect, configured without server discovery.</param>
     /// <param name="nearest">Whether each metadata group selects the nearest owner rather than any owner.</param>
@@ -35,7 +21,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task Measure_WarmReportConstruction_StaysWithinItsManagedAllocationBudget(
+    public async Task Build_FourCriterionReport_RemainsDeferred(
         string engine,
         bool nearest
     )
@@ -51,38 +37,17 @@ public sealed partial class SignalReportConstructionTests
 
         var request = Request(nearest);
 
-        // WHY: Doka's nearest-owner shape includes coordinate-group expressions. Fixed per-shape ceilings
-        // guard the measured savings with headroom instead of letting Any regress to that larger allowance.
-        var maximumBytes = (engine, nearest) switch
-        {
-            ("MySql" or "MariaDb", true) => 232 * 1024,
-            (_, true) => 160 * 1024,
-            _ => 128 * 1024,
-        };
-
-        // WHY: Warm the actual builder before measuring its complete per-construction allocation.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var warmup = 0; warmup < 10; warmup++)
-        {
-            _ = SignalReportBuilder.Build(context, request);
-        }
-
         // Act
-        var allocated = QueryConstructionAllocation.Measure(() => SignalReportBuilder.Build(context, request));
+        var query = SignalReportBuilder.Build(context, request);
 
         // Assert
-        _output.WriteLine(
-            $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
-            + $"criteria=4; bytes/build={allocated}; maximum={maximumBytes}.");
-
-        Assert.InRange(allocated, 0, maximumBytes);
+        Assert.NotNull(query.Expression);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
 
     /// <summary>
-    /// Adding one scalar criterion on the same owner does not reconstruct an additional hierarchy query layer.
+    /// Adding one scalar criterion on the same owner preserves deferred report composition.
     /// </summary>
     /// <param name="engine">The actual provider dialect, configured without server discovery.</param>
     /// <param name="nearest">Whether each metadata group selects the nearest owner rather than any owner.</param>
@@ -97,7 +62,7 @@ public sealed partial class SignalReportConstructionTests
     [InlineData("SqlServer", true)]
     [InlineData("Sqlite", false)]
     [InlineData("Sqlite", true)]
-    public async Task MeasurePaired_AdditionalSameOwnerCriterion_HasABoundedAllocationDelta(
+    public async Task Build_AdditionalSameOwnerCriterion_RemainsDeferred(
         string engine,
         bool nearest
     )
@@ -125,36 +90,17 @@ public sealed partial class SignalReportConstructionTests
 
         var expanded = baseline with { Groups = groups };
 
-        // WHY: Warm both shapes equally before measuring their paired allocation difference.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var warmup = 0; warmup < 10; warmup++)
-        {
-            _ = SignalReportBuilder.Build(context, baseline);
-            _ = SignalReportBuilder.Build(context, expanded);
-        }
-
         // Act
-        var allocations = QueryConstructionAllocation.MeasurePaired(
-            () => SignalReportBuilder.Build(context, baseline),
-            () => SignalReportBuilder.Build(context, expanded));
-
-        var delta = allocations.Expanded - allocations.Baseline;
+        var first = SignalReportBuilder.Build(context, baseline);
+        var second = SignalReportBuilder.Build(context, expanded);
 
         // Assert
-        _output.WriteLine(
-            $"Engine={engine}; mode={(nearest ? "Nearest" : "Any")}; "
-            + $"baseline={allocations.Baseline} B/build; "
-            + $"expanded={allocations.Expanded} B/build; additional criterion={delta} B/build.");
-
-        Assert.InRange(allocations.Baseline, 0, 256 * 1024);
-        Assert.InRange(allocations.Expanded, 0, 256 * 1024);
+        Assert.NotNull(first.Expression);
+        Assert.NotNull(second.Expression);
+        Assert.NotSame(first.Expression, second.Expression);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
 
-        // WHY: Runtime cache and tier transitions can lower the signed difference. The contract limits extra
-        // allocations, not monotonicity; both complete query constructions retain their absolute budget above.
-        Assert.True(delta <= 4 * 1024, $"One additional criterion allocated {delta} B/build; the limit is 4096.");
     }
 
     /// <summary>

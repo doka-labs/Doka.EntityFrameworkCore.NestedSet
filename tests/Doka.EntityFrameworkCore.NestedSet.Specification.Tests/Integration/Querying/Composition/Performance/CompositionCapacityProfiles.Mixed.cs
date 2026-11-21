@@ -19,7 +19,7 @@ internal static partial class CompositionCapacityProfiles
             var commandProbe = new CompositionCommandProbe();
             await using var context = database.CreateContext(planProbe, commandProbe);
             var firstOrigin = nodes - origins + 1;
-            var buildBytes = MeasureConstruction(() => BuildMixed(context, firstOrigin, nodes));
+
             var query = BuildMixed(context, firstOrigin, nodes);
             var constructionCommands = commandProbe.CommandCount;
             var profile = $"mixed-{(balanced ? "balanced" : "wide")}-{nodes}-origins-{origins}-target-1";
@@ -90,7 +90,6 @@ internal static partial class CompositionCapacityProfiles
                 constructionCommands,
                 materialized,
                 tracked,
-                buildBytes,
                 elapsed,
                 plan);
 

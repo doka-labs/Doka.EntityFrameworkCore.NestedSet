@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Runs real relational capacity contracts with isolated occupied-heap measurement.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class CapacityTests : Specifications.CapacityTests,
     IClassFixture<ProviderFixture<RelationalFixture, MySqlEngine>>
 {

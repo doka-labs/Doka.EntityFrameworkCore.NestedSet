@@ -84,13 +84,9 @@ public abstract class DokaCacheTestBase : ProviderTest
 
         probe.Observe(context);
         probe.Reset();
-        var before = GC.GetTotalAllocatedBytes(precise: true);
-        var timer = Stopwatch.StartNew();
 
         // Act
         var saved = await context.SaveChangesAsync(false, CancellationToken.None);
-        var elapsed = timer.Elapsed;
-        var allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
 
         // Assert
         var lastWrite = probe.Commands.FindLastIndex(command => command
@@ -110,8 +106,7 @@ public abstract class DokaCacheTestBase : ProviderTest
         _output.WriteLine(
             $"Engine={Engine}; sample={sample}; tracked=5000; adjacent={adjacent}; "
             + $"refresh commands={refresh.Length}; read calls={refresh.Sum(command => command.ReadCalls)}; "
-            + $"compilations={probe.Compilations}; allocated process bytes={allocated}; "
-            + $"elapsed ms={elapsed.TotalMilliseconds:F2}");
+            + $"compilations={probe.Compilations}");
 
         Assert.Equal(1, saved);
         Assert.Equal(

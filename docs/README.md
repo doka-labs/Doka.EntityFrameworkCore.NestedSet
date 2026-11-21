@@ -58,7 +58,8 @@ See the [upgrade guide](upgrading-provider-packages.md) and
 - [Import Resource Model](bulk-import.md#resource-model) explains bounded active
   tracking, retained plans and prepared external-owner collections.
 - [Save and Recovery Costs](performance.md#prepared-imports-and-recovery-costs)
-  separates deterministic budgets, scoped allocation observations and native work.
+  separates required functional/lifetime contracts, optional BenchmarkDotNet
+  allocation observations, and native work.
 - [Provider and Migration Qualification](qualification/provider-migrations.md)
   records exact local package inputs, actual migrations/replay, retained negatives
   and the published-package/native SQL Server boundaries.

@@ -1,7 +1,7 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.MySql;
 
 /// <summary>Runs the Doka family's reseeded refresh-cache measurements on MySQL.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class DokaCacheTests : DokaCacheTestBase, IClassFixture<ProviderFixture<OrderingFixture, MySqlEngine>>
 {
     /// <summary>Uses this suite's isolated ordering database and measurement output.</summary>

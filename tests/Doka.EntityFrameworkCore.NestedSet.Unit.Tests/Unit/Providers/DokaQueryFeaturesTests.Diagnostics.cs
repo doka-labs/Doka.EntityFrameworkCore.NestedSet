@@ -192,46 +192,22 @@ public sealed partial class DokaQueryFeaturesTests
         }
     }
 
-    /// <summary>Already reported fallback checks allocate no per-query objects.</summary>
-    [Trait("Category", "Allocation")]
+    /// <summary>Repeated checks retain the once-per-context event contract.</summary>
     [Fact]
-    public void MeasureFallbackChecks_RepeatedAncestorFallbackChecks_DoNotAllocate()
+    public void AncestorIndexWithoutReader_RepeatedChecks_RetainOneEvent()
     {
         // Arrange
-        var options = DiagnosticOptions(new List<EventData>());
+        List<EventData> events = [];
+        var options = DiagnosticOptions(events);
         using var provider = NestedSetTestAdapters.BuildServices(options);
         using var context = new CompositionGuardContext(IsolateDiagnosticOptions(options, provider));
         NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
 
-        // WHY: Warm the exact fallback-check measurement method before opening the asserted allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var repetition = 0; repetition < 8; repetition++)
-        {
-            MeasureFallbackChecks(context);
-        }
-
         // Act
-        var allocated = MeasureFallbackChecks(context);
+        NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
 
         // Assert
-        Assert.Equal(0, allocated);
-    }
-
-    /// <summary>The weak once-marker cannot extend the lifetime of its disposed context.</summary>
-    [Fact]
-    public void AncestorIndexWithoutReader_DisposedContext_IsNotRetained()
-    {
-        // Arrange
-        var released = ReportAndReleaseContext();
-
-        // Act
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-
-        // Assert
-        Assert.False(released.IsAlive);
+        Assert.Equal(AncestorFallbackName, Assert.Single(events).EventId.Name);
     }
 
     /// <summary>Creates metadata-only SQLite options observed through EF's ordinary LogTo dispatch.</summary>
@@ -267,28 +243,9 @@ public sealed partial class DokaQueryFeaturesTests
         .UseInternalServiceProvider(provider)
         .Options;
 
-    /// <summary>Measures only the already reported context's classification lookup.</summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureFallbackChecks(
-        DbContext context
-    )
-    {
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Repeat the same disabled diagnostic path within one fixed allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 10_000; index++)
-        {
-            NestedSetQueryDiagnostics.AncestorIndexWithoutReader(context);
-        }
-
-        return GC.GetAllocatedBytesForCurrentThread() - before;
-    }
-
     /// <summary>Ends the context's strong JIT lifetime before observing weak state collection.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference ReportAndReleaseContext()
+    internal static WeakReference ReportAndReleaseContext()
     {
         var options = DiagnosticOptions(new List<EventData>());
         using var provider = NestedSetTestAdapters.BuildServices(options);

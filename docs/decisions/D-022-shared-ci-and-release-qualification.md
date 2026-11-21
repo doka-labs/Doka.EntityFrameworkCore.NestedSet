@@ -1,7 +1,7 @@
 ---
 id: D-022
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -69,7 +69,11 @@ consumers and SBOM generation download that immutable package artifact in every
 run. Test and sample cells restore and build their own projects from the same
 commit with locked restores. The shared MySQL/MariaDB project keeps its
 complementary filtered cells; a contract test proves that the filters partition
-the project.
+the project. Functional capacity/scale cases remain required, while numerical
+allocation measurements are absent from the job matrix. Unit qualification
+keeps mandatory `CollectorSensitive` lifetime and covered complementary reports.
+The same shared definition applies to PRs and RCs; neither caller launches
+BenchmarkDotNet or applies numerical memory/timing thresholds.
 
 [D-023](D-023-reproducible-engineering-contracts.md) extends reviewed lockfiles
 to every solution project, including nonshipping qualification graphs. The
@@ -156,6 +160,8 @@ timeouts and the per-process budget.
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
 - 2026-11-19: D-023 amended current maintenance rules; existing decision and approval history are preserved.
+
+- 2026-11-21: Applied the owner's complete numerical-measurement separation to the shared caller contract. Functional provider capacity/scale cells and required lifetime/coverage completeness remain blocking; explicitly selected BenchmarkDotNet observations do not gate PRs or RCs. This records the current contract, not a new hosted qualification.
 
 ### Implementation References
 

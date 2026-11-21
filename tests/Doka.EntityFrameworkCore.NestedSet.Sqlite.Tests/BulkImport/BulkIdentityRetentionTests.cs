@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Verifies rejected import callbacks release native identities without clearing unrelated tracking.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed partial class BulkIdentityRetentionTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>
 {

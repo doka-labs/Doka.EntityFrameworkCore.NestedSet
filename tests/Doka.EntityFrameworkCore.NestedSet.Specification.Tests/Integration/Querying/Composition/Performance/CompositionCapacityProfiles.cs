@@ -54,7 +54,7 @@ internal static partial class CompositionCapacityProfiles
                 : Math.Max(1, nodes - 99);
 
             var firstAnchor = nodes - anchors + 2;
-            var buildBytes = MeasureConstruction(context, firstAnchor, firstFact);
+
             var query = Build(context, firstAnchor, firstFact);
             var profile = $"{(balanced ? "balanced" : "wide")}-{nodes}-anchors-{anchors}-"
                 + (broad
@@ -125,7 +125,6 @@ internal static partial class CompositionCapacityProfiles
                 commandsBefore,
                 materialized,
                 tracked,
-                buildBytes,
                 elapsed,
                 plan);
 
@@ -164,7 +163,7 @@ internal static partial class CompositionCapacityProfiles
             output.WriteLine(
                 $"{observation.Profile}; commands={observation.Commands}; parameters={observation.Parameters}; "
                 + $"rows={observation.Rows.Length}; "
-                + $"entities={observation.Materialized}; construction={observation.BuildBytes}B; "
+                + $"entities={observation.Materialized}; "
                 + FormattableString.Invariant($"elapsed={observation.Elapsed.TotalMilliseconds:F3}ms"));
 
             Assert.Equal(observation.Expected, observation.Rows);
@@ -173,16 +172,10 @@ internal static partial class CompositionCapacityProfiles
             Assert.InRange(observation.Parameters, 0, 999);
             Assert.Equal(0, observation.Materialized);
             Assert.Equal(0, observation.Tracked);
-            Assert.True(observation.BuildBytes > 0);
             Assert.False(string.IsNullOrWhiteSpace(observation.Plan));
         }
 
-        // WHY: Scalar parameter changes must not allocate a tree-sized buffer. The common expression shape
-        // permits a small fixed diagnostic variance, independent of selected anchor or persisted node counts.
-        foreach (var shape in observations.GroupBy(row => row.Profile.StartsWith("mixed-", StringComparison.Ordinal)))
-        {
-            Assert.InRange(shape.Max(row => row.BuildBytes) - shape.Min(row => row.BuildBytes), 0, 4_096);
-        }
+
     }
 
     /// <summary>Derives contributions from the independent parent plan, without consulting stored bounds.</summary>
@@ -234,8 +227,7 @@ internal static partial class CompositionCapacityProfiles
             FormattableString.Invariant(
                 $"Profile={observation.Profile}; elapsed={observation.Elapsed.TotalMilliseconds:F3}ms; ")
             + $"commands={observation.Commands}; parameters={observation.Parameters}; rows={observation.Rows.Length}; "
-            + $"materialized={observation.Materialized}; tracked={observation.Tracked}; "
-            + $"construction={observation.BuildBytes} B/op",
+            + $"materialized={observation.Materialized}; tracked={observation.Tracked}",
             command,
             observation.Plan,
         ],

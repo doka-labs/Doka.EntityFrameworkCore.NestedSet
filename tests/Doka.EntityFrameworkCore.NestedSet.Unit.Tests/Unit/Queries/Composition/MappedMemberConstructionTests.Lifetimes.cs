@@ -8,7 +8,7 @@ public sealed partial class MappedMemberConstructionTests
 {
     /// <summary>Builds the mapped read on detached runtime metadata before dropping its construction frames.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] PopulateWeakMembers(
+    internal static WeakReference[] PopulateWeakMembers(
         bool retainModel,
         out IModel? retained
     )
@@ -68,7 +68,7 @@ public sealed partial class MappedMemberConstructionTests
     /// Separates garbage collection from weak-target observation to avoid extending JIT local lifetimes.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void CollectGarbage()
+    internal static void CollectGarbage()
     {
         // WHY: Complete repeated collect/finalizer passes before observing collectible model and member witnesses.
         // ReSharper disable once ForCanBeConvertedToForeach
@@ -81,30 +81,4 @@ public sealed partial class MappedMemberConstructionTests
         }
     }
 
-    /// <summary>Measures only warm construction with preexisting alias and metadata objects.</summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureAllocations(
-        ParameterExpression alias,
-        IProperty property,
-        bool mapped
-    )
-    {
-        Expression? last = null;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Count repeated construction over the same prepared alias and property within one allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 1_024; index++)
-        {
-            last = mapped
-                ? NestedSetExpressions.QueryProperty(alias, property)
-                : Expression.MakeMemberAccess(alias, property.PropertyInfo!);
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        GC.KeepAlive(last);
-
-        return allocated;
-    }
 }

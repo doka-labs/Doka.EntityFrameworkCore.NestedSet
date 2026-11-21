@@ -104,7 +104,7 @@ internal static partial class CompositionConsumerCapacityProfiles
         TestMaterializationObserver.Instance.Register(context, _ => materialized++);
         var request = CompositionConsumerDataset.Supervisors(1, 1) with { Groups = rule };
         var tenant = CompositionConsumerModel.Tenant;
-        var buildBytes = Construction(() => App.SupervisorQueries.Candidates(context, tenant, request));
+        _ = App.SupervisorQueries.Candidates(context, tenant, request);
         var constructionCommands = commands.CommandCount;
         var profile = $"groups-chain-{data.Nodes}-ordinal-{name}-initial-build";
         SqliteInstructionBudget? instructionBudget = null;
@@ -186,8 +186,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             constructionCommands,
             materialized,
             tracked,
-            buildBytes,
-            256 * 1_024,
+
             elapsed,
             plan);
 

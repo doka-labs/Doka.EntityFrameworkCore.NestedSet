@@ -85,8 +85,6 @@ public abstract partial class AncestorIndexWorkTestBase
             profile,
             cancellationToken: TestContext.Current.CancellationToken,
             population: Nodes,
-            readWarmups: 3,
-            measuredReads: 5,
             factRows: 12);
 
         // Assert
@@ -212,9 +210,7 @@ public abstract partial class AncestorIndexWorkTestBase
             profile,
             factRows: 14,
             cancellationToken: TestContext.Current.CancellationToken,
-            population: Nodes,
-            readWarmups: 3,
-            measuredReads: 5);
+            population: Nodes);
 
         // Assert
         AssertConsumerFacts(observation, selected.Length);
@@ -329,8 +325,6 @@ public abstract partial class AncestorIndexWorkTestBase
             expected,
             profile,
             population: nodes,
-            readWarmups: 0,
-            measuredReads: 1,
             factRows: 4 * sources + 4,
             cancellationToken: TestContext.Current.CancellationToken);
 

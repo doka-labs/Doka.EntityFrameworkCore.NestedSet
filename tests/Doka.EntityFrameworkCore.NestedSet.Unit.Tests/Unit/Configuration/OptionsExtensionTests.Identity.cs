@@ -100,43 +100,9 @@ public sealed partial class OptionsExtensionTests
         Assert.Equal(0, boundary.Commands.Created);
     }
 
-    /// <summary>The immutable registration does not globally retain a collectible adapter or its options.</summary>
 
-    // WHY: Coverage 18.11.0 prevents collectible-module unloading even in an independent control.
-    // The required uninstrumented measurement partition observes the application's actual GC lifetime.
-    [Trait("Category", "Allocation")]
-    [Fact]
-    public void UseNestedSets_CollectibleAdapterRegistration_DoesNotRetainAdapter()
-    {
-        // Arrange
-        var released = RegisterAndReleaseForeignAdapter();
 
-        // Act
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
 
-        // Assert
-        Assert.All(released, reference => Assert.False(reference.IsAlive));
-    }
-
-    /// <summary>A deliberately live registration keeps its adapter reachable, validating the lifetime probe.</summary>
-    [Trait("Category", "Allocation")]
-    [Fact]
-    public void UseNestedSets_LiveCollectibleAdapterRegistration_RetainsAdapter()
-    {
-        // Arrange
-        var registration = RegisterForeignAdapter(out var retained);
-
-        // Act
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-
-        // Assert
-        Assert.All(retained, reference => Assert.True(reference.IsAlive));
-        GC.KeepAlive(registration);
-    }
 
     /// <summary>Exact native assembly identity is checked even when a foreign provider has the same name.</summary>
     [Fact]
@@ -184,7 +150,7 @@ public sealed partial class OptionsExtensionTests
 
     /// <summary>Releases all strong registration inputs outside the caller's collection window.</summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static WeakReference[] RegisterAndReleaseForeignAdapter()
+    internal static WeakReference[] RegisterAndReleaseForeignAdapter()
     {
         _ = RegisterForeignAdapter(out var released);
 
@@ -195,7 +161,7 @@ public sealed partial class OptionsExtensionTests
     /// <param name="references">Weak observers of the adapter, load context, builder, and extension.</param>
     /// <returns>The sole deliberately retained registration root for the negative control.</returns>
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static DbContextOptionsBuilder RegisterForeignAdapter(
+    internal static DbContextOptionsBuilder RegisterForeignAdapter(
         out WeakReference[] references
     )
     {

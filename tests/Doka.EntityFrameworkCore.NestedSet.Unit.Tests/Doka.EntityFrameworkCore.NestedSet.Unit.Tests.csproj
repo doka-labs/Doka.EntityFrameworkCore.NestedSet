@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup Label="Isolated heap calibration">
-    <!-- WHY: The existing executable can calibrate the actual helper before xUnit creates runner state.
+  <PropertyGroup Label="Owned child lifecycle controls">
+    <!-- WHY: Functional process-cleanup controls need a real child that waits for caller-owned termination.
          Normal invocations still delegate to xUnit's public console runner; generated code stays enabled. -->
     <StartupObject>Doka.EntityFrameworkCore.NestedSet.Tests.UnitTestProgram</StartupObject>
   </PropertyGroup>
@@ -14,9 +14,6 @@
   </ItemGroup>
 
   <ItemGroup Label="IDE file nesting">
-    <Compile Update="Unit/Observation/ManagedHeapObservationTests.*.cs">
-      <DependentUpon>ManagedHeapObservationTests.cs</DependentUpon>
-    </Compile>
     <Compile Update="Samples/UserSupervisorCommandTests.*.cs">
       <DependentUpon>UserSupervisorCommandTests.cs</DependentUpon>
     </Compile>
@@ -80,8 +77,8 @@
     <Compile Update="Unit/ManagedSave/ComplexRecoveryCompositionTests.*.cs">
       <DependentUpon>ComplexRecoveryCompositionTests.cs</DependentUpon>
     </Compile>
-    <Compile Update="Unit/ManagedSave/ComplexTopologyRollbackAllocationTests.*.cs">
-      <DependentUpon>ComplexTopologyRollbackAllocationTests.cs</DependentUpon>
+    <Compile Update="Unit/ManagedSave/ComplexTopologyGraphRecoveryTests.*.cs">
+      <DependentUpon>ComplexTopologyGraphRecoveryTests.cs</DependentUpon>
     </Compile>
     <Compile Update="Unit/ManagedSave/ComplexTopologyRollbackTests.*.cs">
       <DependentUpon>ComplexTopologyRollbackTests.cs</DependentUpon>
@@ -161,8 +158,8 @@
     <Compile Update="Unit/Providers/IndexConventionTests.*.cs">
       <DependentUpon>../Configuration/IndexConventionTests.cs</DependentUpon>
     </Compile>
-    <Compile Update="Unit/BulkImport/InsertionRefreshAllocationTests.*.cs">
-      <DependentUpon>InsertionRefreshAllocationTests.cs</DependentUpon>
+    <Compile Update="Unit/BulkImport/InsertionIdentityTests.*.cs">
+      <DependentUpon>InsertionIdentityTests.cs</DependentUpon>
     </Compile>
     <Compile Update="Samples/SignalLab/SignalReportConstructionTests.*.cs">
       <DependentUpon>SignalReportConstructionTests.cs</DependentUpon>
@@ -182,8 +179,8 @@
     <Compile Update="Samples/SampleReadSnapshotTests.*.cs">
       <DependentUpon>SampleReadSnapshotTests.cs</DependentUpon>
     </Compile>
-    <Compile Update="Unit/Execution/TrackerSnapshotAllocationTests.*.cs">
-      <DependentUpon>TrackerSnapshotAllocationTests.cs</DependentUpon>
+    <Compile Update="Unit/Execution/TrackerSnapshotTests.*.cs">
+      <DependentUpon>TrackerSnapshotTests.cs</DependentUpon>
     </Compile>
     <Compile Update="Unit/Storage/TypedPropertyReadTests.*.cs">
       <DependentUpon>TypedPropertyReadTests.cs</DependentUpon>

@@ -5,9 +5,6 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks immutable structural selector reuse without sharing model, query, or request identities.</summary>
 
-// WHY: Concurrent model-cache lookups and resizing can temporarily root weak keys from another suite.
-// Observe lifetime only after those mutators finish; the collection leaves unrelated tests parallel.
-[Collection("Allocation measurements")]
 public sealed partial class CompositionCoordinateProjectionTests
 {
     /// <summary>Repeated roots of one exact finalized mapping share only their immutable selector.</summary>
@@ -161,36 +158,7 @@ public sealed partial class CompositionCoordinateProjectionTests
         Assert.Empty(context.ChangeTracker.Entries());
     }
 
-    /// <summary>A cached expression must not retain its caller's disposed context or finalized model.</summary>
-    [Fact]
-    public void CollectCoordinateGarbage_CoordinateCache_DoesNotRootContextOrModel()
-    {
-        // Arrange
-        var weak = BuildCollectibleCoordinates();
 
-        // Act
-        CollectCoordinateGarbage();
-
-        // Assert
-        Assert.All(weak, reference => Assert.False(reference.IsAlive));
-    }
-
-    /// <summary>The lifetime probe still detects a deliberately retained model and its entity metadata.</summary>
-    [Fact]
-    public void CollectCoordinateGarbage_CoordinateCacheLifetimeProbe_DetectsRetainedModel()
-    {
-        // Arrange
-        var weak = BuildCollectibleCoordinates(out var retainedModel);
-
-        // Act
-        CollectCoordinateGarbage();
-
-        // Assert
-        Assert.False(weak[0].IsAlive);
-        Assert.True(weak[1].IsAlive);
-        Assert.True(weak[2].IsAlive);
-        GC.KeepAlive(retainedModel);
-    }
 
     /// <summary>Concurrent first access publishes a single immutable selector for the exact mapping.</summary>
     [Fact]

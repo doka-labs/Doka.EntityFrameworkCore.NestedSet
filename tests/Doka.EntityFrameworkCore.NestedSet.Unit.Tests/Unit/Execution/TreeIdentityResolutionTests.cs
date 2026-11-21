@@ -6,20 +6,8 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Protects ordered anchor resolution and its missing-before-ambiguous error contract.</summary>
 
-// WHY: Allocation observations share the existing isolated collection rather than competing with other tests.
-[Collection("Allocation measurements")]
 public sealed class TreeIdentityResolutionTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Captures allocation observations without logging inside the measured interval.</summary>
-    /// <param name="output">The current test's output sink.</param>
-    public TreeIdentityResolutionTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
 
     /// <summary>Provides absent, duplicate and mixed invalid source/target rows.</summary>
     public static TheoryData<int[], NestedSetErrorCode> InvalidRows =>
@@ -116,13 +104,13 @@ public sealed class TreeIdentityResolutionTests
         Assert.Equal(ordinals.Length, rows.Count);
     }
 
-    /// <summary>Does not recreate filtered row arrays during repeated successful resolution.</summary>
+    /// <summary>Unrelated row ordinals do not change requested source and destination identities.</summary>
     /// <param name="ignoredRows">Additional unrelated ordinals surrounding the two requested anchors.</param>
     [Theory]
     [InlineData(0)]
     [InlineData(63)]
     [InlineData(2_048)]
-    public void Resolve_SuccessfulResolution_AvoidsPerCallBuffers(
+    public void Resolve_UnrelatedOrdinals_DoNotChangeRequestedAnchors(
         int ignoredRows
     )
     {
@@ -138,40 +126,14 @@ public sealed class TreeIdentityResolutionTests
             (0, source),
         ]);
 
-        const int repetitions = 1_024;
-
-        // WHY: Warm the exact prepared delegate before the allocation interval; reflection and row setup are excluded.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 128; index++)
-        {
-            _ = Probe<Guid>.Resolve(rows);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var resolved = default((Guid Source, Guid Target));
-
         // Act
-        // WHY: Repeated calls expose per-resolution buffers over one unchanged materialized row list.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            resolved = Probe<Guid>.Resolve(rows);
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var resolved = Probe<Guid>.Resolve(rows);
 
         // Assert
-        _output.WriteLine(
-            $"Tree identity resolution: ignored={ignoredRows}; operations={repetitions}; "
-            + $"allocated={allocated} B.");
-
         Assert.Equal(source, resolved.Source);
         Assert.Equal(target, resolved.Target);
 
-        // WHY: A fixed noise allowance still rejects the former two filtered arrays on every invocation.
-        Assert.InRange(allocated, 0, 4_096);
+
     }
 
     /// <summary>
@@ -224,7 +186,7 @@ public sealed class TreeIdentityResolutionTests
                 .Compile();
         }
 
-        /// <summary>Constructs the exact private row list before any semantic or allocation observation.</summary>
+        /// <summary>Constructs the exact private row list for the independent ordinal controls.</summary>
         /// <param name="values">Requested row ordinals and typed tree identities.</param>
         /// <returns>The production selector's actual list, exposed only for count verification.</returns>
         internal static IList Rows(

@@ -1,25 +1,21 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests.Sqlite;
 
 /// <summary>Bounds unrelated tracker work across globally batched imports of independent trees.</summary>
-[Collection("Allocation measurements")]
+[Collection("Scale scenarios")]
 public sealed class BulkForestTrackerScaleTests : ProviderTest,
     IClassFixture<ProviderFixture<RelationalFixture, SqliteEngine>>
 {
     private const int RootCount = 131;
     private const int TrackedCount = 20_000;
     private readonly RelationalFixture _fixture;
-    private readonly ITestOutputHelper _output;
 
-    /// <summary>Uses the qualified SQLite fixture and records the measured tracker allocation delta.</summary>
+    /// <summary>Uses the qualified SQLite fixture and checks the tracker work boundary.</summary>
     /// <param name="fixture">The SQLite fixture owning the relational database resource.</param>
-    /// <param name="output">The sink recording measured allocation evidence.</param>
     public BulkForestTrackerScaleTests(
-        ProviderFixture<RelationalFixture, SqliteEngine> fixture,
-        ITestOutputHelper output
+        ProviderFixture<RelationalFixture, SqliteEngine> fixture
     ) : base(fixture)
     {
         _fixture = fixture.Value;
-        _output = output;
     }
 
     /// <summary>Independent trees share three payload waves without multiplying full tracker scans.</summary>
@@ -68,27 +64,13 @@ public sealed class BulkForestTrackerScaleTests : ProviderTest,
         context.SavedChanges += (_, _) => saves++;
 
         // Act
-        var baselineBefore = GC.GetTotalAllocatedBytes(precise: true);
         await baselineHierarchy.InsertForestAsync(baselineTrees, CancellationToken.None);
-        var baselineAllocated = GC.GetTotalAllocatedBytes(precise: true) - baselineBefore;
-        var crowdedBefore = GC.GetTotalAllocatedBytes(precise: true);
         await hierarchy.InsertForestAsync(trees, CancellationToken.None);
-        var crowdedAllocated = GC.GetTotalAllocatedBytes(precise: true) - crowdedBefore;
-        var additionalPerEntry = (crowdedAllocated - baselineAllocated) / markers.Length;
 
         // Assert
-        _output.WriteLine(
-            $"Independent roots={RootCount}; unrelated tracked entities={TrackedCount}; "
-            + $"detections={detections}; saves={saves}; baseline bytes={baselineAllocated}; "
-            + $"crowded bytes={crowdedAllocated}; additional bytes per entry={additionalPerEntry}");
-
         Assert.Equal(3, saves);
         Assert.Equal(4, detections);
 
-        // WHY: Four mandatory detections comprise one executor guard and three EF payload saves. The existing
-        // single-insert ceiling allows 500 bytes per entry for two detections, so this bounds the same per-scan
-        // cost without permitting additional scans or tracker snapshots for each independently imported tree.
-        Assert.InRange(additionalPerEntry, 0, 1_000);
         Assert.All(
             trees,
             tree =>

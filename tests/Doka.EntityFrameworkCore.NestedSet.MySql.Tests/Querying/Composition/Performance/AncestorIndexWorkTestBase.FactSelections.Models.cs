@@ -30,19 +30,12 @@ public abstract partial class AncestorIndexWorkTestBase
         public int Node { get; init; }
     }
 
-    /// <summary>Retains one complete asynchronous read's elapsed time and process-wide managed allocation.</summary>
-    private sealed record ConsumerReadSample(
-        double Milliseconds,
-        long ProcessAllocatedBytes
-    );
-
     /// <summary>Retains deterministic observations until the test's single assertion phase.</summary>
     private sealed record ConsumerFactObservation(
         string Profile,
         ConsumerFactPair[] Actual,
         ConsumerFactPair[] Expected,
         bool BoundedPathRequired,
-        long ConstructionBytes,
         int ConstructionCommands,
         int Commands,
         long Traversals,

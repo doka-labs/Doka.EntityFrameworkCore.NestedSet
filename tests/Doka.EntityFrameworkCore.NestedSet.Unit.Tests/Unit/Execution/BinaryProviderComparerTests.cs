@@ -2,8 +2,7 @@ using System.Collections;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Protects binary provider equality and bounded structural hashing without boxed bytes.</summary>
-[Collection("Allocation measurements")]
+/// <summary>Protects binary provider equality and the framework-compatible structural hash window.</summary>
 public sealed class BinaryProviderComparerTests
 {
     /// <summary>Distinct model values compare and hash through their complete binary provider representation.</summary>
@@ -32,6 +31,7 @@ public sealed class BinaryProviderComparerTests
         Assert.NotSame(first, second);
         Assert.True(equal);
         Assert.Equal(firstHash, secondHash);
+        Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
     }
 
     /// <summary>Equality examines prefix, suffix and length even when bounded structural hashes collide.</summary>
@@ -226,72 +226,6 @@ public sealed class BinaryProviderComparerTests
 
         // Assert
         Assert.IsType<InvalidCastException>(error);
-    }
-
-    /// <summary>Repeated equal-content checks and bounded hashes do not allocate boxed bytes.</summary>
-    /// <param name="shape">The warmed native, converted or erased comparer route.</param>
-    [Theory]
-    [InlineData("native")]
-    [InlineData("erased")]
-    [InlineData("converted")]
-    [InlineData("converted-erased")]
-    public void Compare_BinaryComparisonsAndHashes_AvoidPerByteAllocation(
-        string shape
-    )
-    {
-        // Arrange
-        using var context = new BinaryContext();
-        var operations = Operations(context, shape);
-        var first = operations.Model(
-            Enumerable
-                .Repeat((byte)7, 32)
-                .ToArray(),
-            10)!;
-
-        var second = operations.Model(
-            Enumerable
-                .Repeat((byte)7, 32)
-                .ToArray(),
-            20)!;
-
-        const int repetitions = 1000;
-        var expectedHash = operations.Hash(first);
-
-        // WHY: Warm both prepared comparer operations before counting allocations on unchanged binary identities.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            _ = operations.Compare(first, second);
-            _ = operations.Hash(first);
-        }
-
-        var correct = true;
-        var hashSum = 0;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        // Act
-        // WHY: Accumulate equality and hash observations over the same fixed allocation window.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < repetitions; index++)
-        {
-            correct &= operations.Compare(first, second);
-            hashSum = unchecked(hashSum + operations.Hash(first));
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        // Assert
-        Assert.True(correct);
-        Assert.Equal(unchecked(expectedHash * repetitions), hashSum);
-
-        // WHY: A fixed allowance tolerates runtime setup but excludes even one boxed byte per operation.
-        Assert.InRange(allocated, 0, 4096);
-        Assert.Equal(
-            ConnectionState.Closed,
-            context.Database.GetDbConnection()
-                .State);
     }
 
     /// <summary>Builds delegates once so measurements include the real comparer but no new model wrappers.</summary>

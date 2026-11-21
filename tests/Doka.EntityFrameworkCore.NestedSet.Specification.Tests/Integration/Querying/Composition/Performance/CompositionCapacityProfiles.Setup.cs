@@ -78,7 +78,7 @@ internal static partial class CompositionCapacityProfiles
         return changed;
     }
 
-    /// <summary>Restores wide adjacency and the original repair corruption before its heap observer starts.</summary>
+    /// <summary>Restores wide adjacency and the original repair corruption before its actual repair begins.</summary>
     /// <param name="cancellationToken">The caller's token for setup, queries and verification.</param>
     /// <param name="context">The existing fixture context outside the measured repair operation.</param>
     /// <param name="nodes">The complete existing population; no additional tree is seeded.</param>
@@ -92,7 +92,7 @@ internal static partial class CompositionCapacityProfiles
         var changed = 0;
 
         // WHY: Index maintenance for a million-row fixture reset must stay bounded just like native seeding.
-        // This occurs before measurement and does not relax the public rebuild's original command or heap limits.
+        // This occurs before the public rebuild and preserves its original command and state contracts.
         for (var first = 1; first <= nodes; first += NativeMutationBatchSize)
         {
             var last = Math.Min(nodes, first + NativeMutationBatchSize - 1);

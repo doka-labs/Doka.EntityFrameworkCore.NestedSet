@@ -4,10 +4,9 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests.Samples.SignalLab;
 
 public sealed partial class SignalReportValidationTests
 {
-    /// <summary>A failed sparse reader does not reserve its 786432-cell grain before successful completion.</summary>
-    [Trait("Category", "Allocation")]
+    /// <summary>A late failure in a large sparse grain preserves the original error and disposes the reader.</summary>
     [Fact]
-    public async Task CreateGridAsync_SparseReaderFailure_DoesNotReserveTheCartesianGrid()
+    public async Task CreateGridAsync_SparseReaderFailure_PreservesFailureAndDisposesReader()
     {
         // Arrange
         var snapshot = SignalReportValidation.Snapshot(Request()) with
@@ -31,25 +30,17 @@ public sealed partial class SignalReportValidationTests
 
         var failure = new InvalidOperationException("late sparse reader failure");
         var rows = new SparseFailureReader(totals, failure);
-        var thread = Environment.CurrentManagedThreadId;
 
         // Act
-        // WHY: This source offers only completed ValueTasks. Current-thread bytes isolate this operation
-        // from parallel tests without blocking async execution; the thread assertion guards that premise.
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var error = await Record.ExceptionAsync(() => SignalReportValidation.CreateGridAsync(
             snapshot,
             rows,
             CancellationToken.None));
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         // Assert
-        _output.WriteLine($"Sparse late failure: cells={512 * 512 * 3}; rows=2; allocated={allocated} B.");
         Assert.Same(failure, error);
         Assert.True(rows.Disposed);
-        Assert.Equal(thread, Environment.CurrentManagedThreadId);
-        Assert.InRange(allocated, 0, 256 * 1024);
     }
 
     /// <summary>

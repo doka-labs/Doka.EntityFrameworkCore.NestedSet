@@ -10,15 +10,12 @@ public sealed partial class CompositionSourceBindingEndpointTests
     /// Repeated lexical references retain linear-sized metadata work instead of expanding their logical bag.
     /// </summary>
     /// <param name="depth">The number of nested statement-local source definitions.</param>
-    /// <param name="maximumBytes">The metadata-allocation budget; result rows are not enumerated.</param>
-    [Trait("Category", "Allocation")]
     [Theory]
-    [InlineData(12, 65_536)]
-    [InlineData(24, 131_072)]
-    [InlineData(48, 262_144)]
-    public void Require_SharedSourceDag_DoesNotExpandEndpointResolution(
-        int depth,
-        long maximumBytes
+    [InlineData(12)]
+    [InlineData(24)]
+    [InlineData(48)]
+    public void Require_SharedSourceDag_RetainsExactMapping(
+        int depth
     )
     {
         // Arrange
@@ -38,25 +35,19 @@ public sealed partial class CompositionSourceBindingEndpointTests
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
-        _ = NestedSetQueryEndpoint.Require(query, node => node, mapping, nodes.Expression, "node", s_binding);
 
         // Act
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var actual = NestedSetQueryEndpoint.Require(query, node => node, mapping, nodes.Expression, "node", s_binding);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        _output.WriteLine($"Shared-source depth={depth}; allocated={allocated} B; budget={maximumBytes} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
         Assert.True(actual.IsVisible);
-        Assert.InRange(allocated, 0, maximumBytes);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
 
     /// <summary>Equivalent member paths through different lambda parameters do not expand a shared input.</summary>
     /// <param name="projected">Whether a member path, rather than the whole row, identifies the endpoint.</param>
-    [Trait("Category", "Allocation")]
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -91,27 +82,20 @@ public sealed partial class CompositionSourceBindingEndpointTests
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
-        _ = NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
 
         // Act
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var actual =
             NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        _output.WriteLine($"Independent selectors projected={projected}; depth=24; allocated={allocated} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
         Assert.True(actual.IsVisible);
-        Assert.InRange(allocated, 0, 262_144);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
 
     /// <summary>Alternating endpoint members remain separately memoized and cannot borrow a named mapping.</summary>
     /// <param name="foreignMapping">Whether the second endpoint belongs to an independently named hierarchy.</param>
-    [Trait("Category", "Allocation")]
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -158,21 +142,7 @@ public sealed partial class CompositionSourceBindingEndpointTests
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
         NestedSetQueryEndpoint.Resolution? result = null;
 
-        // WHY: This budget measures steady-state construction like the other shared-source guards.
-        // One complete call warms CLR metadata; the measured call still owns a fresh memo and proof.
-        var firstCallBefore = GC.GetAllocatedBytesForCurrentThread();
-        _ = Record.Exception(() => NestedSetQueryEndpoint.Require(
-            query,
-            row => row.Upper,
-            mapping,
-            first.Expression,
-            "node",
-            s_binding));
-
-        var firstCallAllocated = GC.GetAllocatedBytesForCurrentThread() - firstCallBefore;
-
         // Act
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var error = Record.Exception(() => result = NestedSetQueryEndpoint.Require(
             query,
             row => row.Upper,
@@ -180,11 +150,6 @@ public sealed partial class CompositionSourceBindingEndpointTests
             first.Expression,
             "node",
             s_binding));
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        _output.WriteLine($"Alternating endpoints foreignMapping={foreignMapping}; depth=24; allocated={allocated} B.");
-        _output.WriteLine(
-            $"First complete guard call allocated={firstCallAllocated} B; measurement owns a fresh operation cache.");
 
         // Assert
         if (foreignMapping)
@@ -197,7 +162,6 @@ public sealed partial class CompositionSourceBindingEndpointTests
             Assert.Same(mapping, result?.EntityType);
         }
 
-        Assert.InRange(allocated, 0, 262_144);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }
@@ -291,20 +255,14 @@ public sealed partial class CompositionSourceBindingEndpointTests
         }
 
         var mapping = context.Model.FindEntityType(CompositionGuardContext.FirstMapping)!;
-        _ = NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
 
         // Act
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var actual =
             NestedSetQueryEndpoint.Require(query, row => row.Node, mapping, nodes.Expression, "node", s_binding);
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        _output.WriteLine($"Stable object payload; shared-source depth=16; allocated={allocated} B.");
 
         // Assert
         Assert.Same(mapping, actual.EntityType);
         Assert.True(actual.IsVisible);
-        Assert.InRange(allocated, 0, 196_608);
         Assert.Equal(0, boundary.ConnectionStarts);
         Assert.Equal(0, boundary.Commands.Created);
     }

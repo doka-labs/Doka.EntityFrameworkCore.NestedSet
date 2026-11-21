@@ -115,8 +115,9 @@ assemblies are bound by the same source, locked graph, and archive inspection.
 Packages produced before the tests finish are qualification inputs until every
 required check passes and `qualify` seals them.
 
-CPU time, wall-clock benchmark results, working set, and process-wide
-allocation are not release gates. Deterministic command, row, plan, memory-
+CPU time, wall-clock benchmark results, working set, allocated bytes, and
+retained-heap measurements are not release gates. BenchmarkDotNet execution,
+including `Dry`, is explicitly selected outside normal CI and RC. Deterministic command, row, plan, memory-
 ownership, and correctness regressions belong in the test suites.
 Decision-record validation is a separate maintainer check, not a CI or RC qualification gate.
 

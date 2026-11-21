@@ -3,10 +3,10 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class CapacityTests
 {
     /// <summary>Atomically imports one million direct children through the public forest API.</summary>
-    /// <returns>A task that completes after measured import and independent full persisted validation.</returns>
+    /// <returns>A task that completes after public import and independent full persisted validation.</returns>
     [Fact]
     [Trait("Category", "Capacity")]
-    public async Task InsertForestAsync_MillionDirectChildren_StayWithinAdditionalHeapBudget()
+    public async Task InsertForestAsync_MillionDirectChildren_PreserveCompleteGeometry()
     {
         // Arrange
         const int count = Million + 1;
@@ -15,7 +15,7 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         context.SavedChanges += (_, _) => probe.Saved();
         var branch = CreateWide(count);
@@ -24,19 +24,9 @@ public abstract partial class CapacityTests
             .NestedSet<TreeNode>()
             .ForScope(1);
 
-        probe.Start();
-
         // Act
-        try
-        {
-            await hierarchy.InsertForestAsync(imports, TestContext.Current.CancellationToken);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            GC.KeepAlive(imports);
-            WriteMeasurement("public forest import", count, probe);
-        }
+        await hierarchy.InsertForestAsync(imports, TestContext.Current.CancellationToken);
+
 
         var composition = await CompositionCapacityProfiles.MeasureAsync(
             database,
@@ -57,7 +47,6 @@ public abstract partial class CapacityTests
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
         CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal((count + 63) / 64, probe.CompletedSaves);
         Assert.Equal(0, probe.RepairCommands);
         Assert.InRange(probe.MaximumCommandParameters, 1, 999);
@@ -98,7 +87,7 @@ public abstract partial class CapacityTests
 
         await WarmAsync(database, cancellationToken: TestContext.Current.CancellationToken);
         using var cancellation = new CancellationTokenSource();
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         probe.FailBulkRefresh = true;
         probe.Cancellation = cancel
             ? cancellation

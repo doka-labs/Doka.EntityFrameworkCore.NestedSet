@@ -65,31 +65,4 @@ internal static partial class CompositionCapacityProfiles
                 group.Sum(row => (long)row.FactKey)));
     }
 
-    /// <summary>Measures warmed construction only; database population never becomes a CLR collection.</summary>
-    private static long MeasureConstruction(
-        TreeContext context,
-        int firstAnchor,
-        int firstFact
-    ) => MeasureConstruction(() => Build(context, firstAnchor, firstFact));
-
-    /// <summary>Measures a warmed query factory without translation, I/O, or row-dependent work.</summary>
-    private static long MeasureConstruction(
-        Func<IQueryable> build
-    )
-    {
-        for (var iteration = 0; iteration < 8; iteration++)
-        {
-            GC.KeepAlive(build());
-        }
-
-        const int operations = 32;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
-        for (var iteration = 0; iteration < operations; iteration++)
-        {
-            GC.KeepAlive(build());
-        }
-
-        return (GC.GetAllocatedBytesForCurrentThread() - before) / operations;
-    }
 }

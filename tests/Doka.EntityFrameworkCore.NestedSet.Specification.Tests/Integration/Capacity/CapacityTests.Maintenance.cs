@@ -3,7 +3,7 @@ namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 public abstract partial class CapacityTests
 {
     /// <summary>Fully validates and rebuilds a real depth-100000 chain without recursive traversal.</summary>
-    /// <returns>A task that completes after persisted deep-chain validation and measured public rebuild.</returns>
+    /// <returns>A task that completes after persisted deep-chain validation and public rebuild.</returns>
     [Fact]
     [Trait("Category", "Capacity")]
     public async Task RebuildAsync_DepthOneHundredThousand_ValidatesAndRebuilds()
@@ -38,25 +38,16 @@ public abstract partial class CapacityTests
                     .SetProperty(node => node.Depth, 9),
                 TestContext.Current.CancellationToken);
 
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         var selected = context
             .NestedSet<TreeNode>()
             .ForScope(1)
             .InTree(Guid.Empty);
 
-        probe.Start();
-
         // Act
-        try
-        {
-            await selected.RebuildAsync(TestContext.Current.CancellationToken);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            WriteMeasurement("deep public rebuild", count, probe);
-        }
+        await selected.RebuildAsync(TestContext.Current.CancellationToken);
+
 
         var composition = await CompositionCapacityProfiles.MeasureDeepAsync(
             database,
@@ -76,7 +67,6 @@ public abstract partial class CapacityTests
         CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         Assert.True(before.IsValid);
         Assert.Equal(count, before.NodeCount);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal((count + 63) / 64, probe.CompletedRepairs);
         Assert.Equal(count, probe.RepairedRows);
         Assert.InRange(probe.MaximumRepairParameters, 1, 322);
@@ -94,11 +84,11 @@ public abstract partial class CapacityTests
                 .MaxAsync(node => node.Depth, TestContext.Current.CancellationToken));
     }
 
-    /// <summary>Rebuilds one million corrupted nodes within the additional occupied-heap budget.</summary>
-    /// <returns>A task that completes after measured public repair and full persisted validation.</returns>
+    /// <summary>Rebuilds one million corrupted nodes through bounded repair commands.</summary>
+    /// <returns>A task that completes after public repair and full persisted validation.</returns>
     [Fact]
     [Trait("Category", "Capacity")]
-    public async Task RebuildAsync_MillionNodeTree_StaysWithinAdditionalHeapBudget()
+    public async Task RebuildAsync_MillionNodeTree_RestoresCanonicalGeometry()
     {
         // Arrange
         await using var database = await TestDatabase.CreateAsync(
@@ -122,7 +112,7 @@ public abstract partial class CapacityTests
             setup,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         await using var context = CreateCapacityContext(database, probe);
         var tree = context
             .NestedSet<TreeNode>()
@@ -159,24 +149,14 @@ public abstract partial class CapacityTests
             Million,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        probe.Start();
+        await tree.RebuildAsync(TestContext.Current.CancellationToken);
 
-        try
-        {
-            await tree.RebuildAsync(TestContext.Current.CancellationToken);
-        }
-        finally
-        {
-            await probe.StopAsync();
-            WriteMeasurement("million-node public rebuild", Million, probe);
-        }
 
         // Assert
         CompositionCapacityProfiles.AssertAll(composition, _output);
         CompositionConsumerCapacityProfiles.AssertAll(consumers, _output);
         Assert.True(balancedValidation.IsValid);
         Assert.Equal(Million, balancedValidation.NodeCount);
-        Assert.InRange(probe.AdditionalOccupiedBytes, 0, AdditionalHeapBudget);
         Assert.Equal(15_625, probe.RepairCommands);
         Assert.Equal(15_625, probe.CompletedRepairs);
         Assert.Equal(Million, probe.RepairedRows);
@@ -229,7 +209,7 @@ public abstract partial class CapacityTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         using var cancellation = new CancellationTokenSource();
-        await using var probe = new CapacityProbe();
+        var probe = new CapacityProbe();
         probe.FailRepairCommand = (count + 63) / 64;
         probe.Cancellation = cancel
             ? cancellation

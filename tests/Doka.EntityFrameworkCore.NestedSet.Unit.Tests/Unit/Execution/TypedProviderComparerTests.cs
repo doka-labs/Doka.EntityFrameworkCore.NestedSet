@@ -1,28 +1,16 @@
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
-/// <summary>Protects typed identity comparisons from unnecessary per-pair allocations.</summary>
-[Collection("Allocation measurements")]
+/// <summary>Preserves native, nullable and converted provider identity comparison semantics.</summary>
 public sealed class TypedProviderComparerTests
 {
-    /// <summary>Receives isolated allocation evidence for the current test.</summary>
-    private readonly ITestOutputHelper _output;
 
-    /// <summary>Creates the comparer regression fixture.</summary>
-    /// <param name="output">The current test's allocation evidence sink.</param>
-    public TypedProviderComparerTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
-
-    /// <summary>Retains native equality and hashing without boxing every identity comparison.</summary>
+    /// <summary>Retains native equality, inequality and consistent hashing.</summary>
     /// <param name="role">The native scalar or present nullable-parent representation.</param>
     [Theory]
     [InlineData("Int")]
     [InlineData("Guid")]
     [InlineData("NullableParent")]
-    public void Compare_NativeComparisons_DoNotAllocatePerPair(
+    public void Compare_NativeScalars_RetainEqualityAndHashSemantics(
         string role
     )
     {
@@ -41,33 +29,17 @@ public sealed class TypedProviderComparerTests
             _ => throw new ArgumentOutOfRangeException(nameof(role)),
         };
 
-        _ = compare();
-        var correct = true;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-
         // Act
-        // WHY: Accumulate every comparison result within one allocation window over the prepared scalar identities.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 20000; index++)
-        {
-            correct &= compare();
-        }
-
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var correct = compare();
 
         // Assert
         Assert.True(correct);
-
-        // WHY: Model construction and cold comparer creation are outside the measurement. This small fixed
-        // allowance tolerates runtime setup, while even one 24-byte box per pair exceeds it by an order of magnitude.
-        Assert.InRange(allocated, 0, 16384);
         Assert.Equal(integer.GetHashCode(0), parent.GetHashCode(0));
     }
 
-    /// <summary>Preserves converted equality without boxing twice before the required converter boundary.</summary>
+    /// <summary>Preserves both typed and erased equality at the configured converter boundary.</summary>
     [Fact]
-    public void Matches_ConvertedComparisons_AllocateOnlyTheNecessaryConverterBoundary()
+    public void Matches_ConvertedComparisons_RetainProviderEquality()
     {
         // Arrange
         using var context = new ComparerContext();
@@ -78,49 +50,18 @@ public sealed class TypedProviderComparerTests
         var first = new ConvertedIdentity(17);
         var equalProvider = new ConvertedIdentity(27);
         var differentProvider = new ConvertedIdentity(18);
-        const int iterations = 20000;
-
-        _ = comparer.Matches(first, equalProvider);
-        _ = comparer.Matches(first, differentProvider);
-        _ = comparer.Equals(first, equalProvider);
-        _ = comparer.Equals(first, differentProvider);
-        var baselineCorrect = true;
-        var typedCorrect = true;
 
         // Act
-        var baselineBefore = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Measure the erased comparison baseline for the same fixed pair count as the typed path.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < iterations; index++)
-        {
-            baselineCorrect &= comparer.Matches(first, equalProvider) && !comparer.Matches(first, differentProvider);
-        }
-
-        var baselineAllocated = GC.GetAllocatedBytesForCurrentThread() - baselineBefore;
-        var typedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-        // WHY: Measure the typed path for the identical fixed pair count after the baseline window closes.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < iterations; index++)
-        {
-            typedCorrect &= comparer.Equals(first, equalProvider) && !comparer.Equals(first, differentProvider);
-        }
-
-        var typedAllocated = GC.GetAllocatedBytesForCurrentThread() - typedBefore;
+        var baselineCorrect = comparer.Matches(first, equalProvider) && !comparer.Matches(first, differentProvider);
+        var typedCorrect = comparer.Equals(first, equalProvider) && !comparer.Equals(first, differentProvider);
 
         // Assert
-        _output.WriteLine($"Converted comparer: baseline={baselineAllocated} B; typed={typedAllocated} B.");
         Assert.True(baselineCorrect);
         Assert.True(typedCorrect);
         Assert.NotEqual(first, equalProvider);
         Assert.Equal(comparer.GetHashCode(first), comparer.GetHashCode(equalProvider));
 
-        // WHY: Direct Matches includes both required input boxes and the identical configured converter work.
-        // A fixed setup allowance avoids object-layout assumptions while rejecting redundant boxes per pair.
-        Assert.InRange(typedAllocated, 0, baselineAllocated + 16384);
+
     }
 
     /// <summary>Supplies actual native and nullable relational property metadata without opening a database.</summary>
@@ -144,7 +85,7 @@ public sealed class TypedProviderComparerTests
                 .ValueGeneratedNever();
 
             // WHY: Distinct model values intentionally share a normalized provider representation, so skipping
-            // the actual configured converter would fail the equality control as well as the allocation budget.
+            // the actual configured converter would fail the independent equality controls.
             node
                 .Property(entity => entity.ConvertedId)
                 .HasConversion(value => value.Value % 10, value => new ConvertedIdentity(value));

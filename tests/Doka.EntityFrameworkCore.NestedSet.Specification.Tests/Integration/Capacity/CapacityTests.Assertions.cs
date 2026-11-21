@@ -127,16 +127,4 @@ public abstract partial class CapacityTests
         }
     }
 
-    /// <summary>Reports sampled occupied heap separately from total allocation without claiming exact peaks.</summary>
-    private void WriteMeasurement(
-        string operation,
-        int count,
-        CapacityProbe probe
-    ) => _output.WriteLine(
-        $"Engine={Engine}; operation={operation}; nodes={count}; "
-        + $"maximum observed additional occupied heap bytes={probe.AdditionalOccupiedBytes}; "
-        + $"total allocated bytes={probe.TotalAllocatedBytes}; samples={probe.Samples}; "
-        + $"completed saves={probe.CompletedSaves}; completed repairs={probe.CompletedRepairs}; "
-        + "baseline excludes pre-existing caller input; provider/framework allocations are included; "
-        + "5ms and command-boundary sampling is not an exact peak");
 }

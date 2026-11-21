@@ -1,7 +1,7 @@
 ---
 id: D-005
 status: implemented
-date: 2026-11-19
+date: 2026-11-21
 decision-makers: [Dominic Kalkbrenner]
 consulted: []
 informed: ["@doka-labs/core-maintainers"]
@@ -190,9 +190,9 @@ The coordinated save snapshots every tracked entry when hierarchy candidates are
 pending entries together, and save callbacks can change entries that were unchanged when planning began. A later
 hierarchy failure must restore their original tracker state as well as the database transaction. Selecting only the
 currently affected trees would therefore lose unrelated pending or callback changes. This cost is explicit and
-bounded by the [tracker allocation regression](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs);
+observed through optional BenchmarkDotNet measurements while [tracker recovery controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution) retain exact rollback semantics;
 applications should keep the context's tracked graph small for latency-sensitive hierarchy saves. See the
-[performance contract](../../docs/performance.md) for the measured threshold.
+[performance guide](../../docs/performance.md) for diagnostic measurement boundaries.
 
 Library-owned insertions save through EF's ordinary pipeline, so application save callbacks still run.
 `UseNestedSets()` replaces the provider's standard `RelationalDatabase` service with a subclass. Each actual
@@ -304,6 +304,8 @@ all supported providers. This internal EF contract must be checked when upgradin
 
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 
+- 2026-11-21: Updated current confirmation and observation guidance to the owner's explicit numerical-measurement separation under D-015. Functional, lifetime, and structural work contracts remain blocking; previous dated measurement and approval records are unchanged.
+
 ### Implementation References
 
 - [Manual-detection and callback recovery contract](../configuration.md#manual-change-detection)
@@ -327,7 +329,7 @@ all supported providers. This internal EF contract must be checked when upgradin
 - [Mixed inheritance managed-save regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.Specification.Tests/Integration/ModelCompatibility/Inheritance/InheritanceTests.ManagedSave.cs)
 - [Derived rowversion regressions](../../tests/Doka.EntityFrameworkCore.NestedSet.SqlServer.Tests/Ordering/Tracking/RowVersion/DerivedRowVersionTests.cs)
 - [Subtype-aware scalar refresh](../../src/Doka.EntityFrameworkCore.NestedSet/Features/ManagedSave/NestedSetRefreshProperties.cs)
-- [Tracker snapshot allocation regression](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotAllocationTests.cs)
+- [Tracker snapshot allocation regression](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Execution/TrackerSnapshotTests.cs)
 - [Ordering contract](../../docs/ordering.md)
 
 ### Sources

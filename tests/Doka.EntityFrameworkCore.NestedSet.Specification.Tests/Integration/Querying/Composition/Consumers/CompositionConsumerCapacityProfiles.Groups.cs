@@ -39,7 +39,7 @@ internal static partial class CompositionConsumerCapacityProfiles
                 : "wide";
 
         var profile = $"groups-{topology}-{data.Nodes}-origins-{origins}-matches-{fields}-unique";
-        var buildBytes = Construction(() => GroupApp.SupervisorQueries.Candidates(context, tenant, request));
+        _ = GroupApp.SupervisorQueries.Candidates(context, tenant, request);
         var constructionCommands = commands.CommandCount;
         var started = Stopwatch.GetTimestamp();
         GroupApp.SupervisorResolutionBatch batch;
@@ -105,7 +105,6 @@ internal static partial class CompositionConsumerCapacityProfiles
             engine,
             cancellationToken: cancellationToken);
 
-        var budget = 256 * 1_024 + Math.Max(0, fields - 4) * 4_096;
         var observation = new CompositionConsumerCapacityObservation(
             profile,
             actual,
@@ -116,8 +115,7 @@ internal static partial class CompositionConsumerCapacityProfiles
             constructionCommands,
             materialized,
             tracked,
-            buildBytes,
-            budget,
+
             elapsed,
             plan);
 

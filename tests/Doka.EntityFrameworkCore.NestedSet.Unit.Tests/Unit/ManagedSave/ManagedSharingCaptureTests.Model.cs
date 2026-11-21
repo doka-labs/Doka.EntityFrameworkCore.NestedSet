@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore.Update;
+using IUpdateEntry = Microsoft.EntityFrameworkCore.Update.IUpdateEntry;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
@@ -65,6 +65,15 @@ public sealed partial class ManagedSharingCaptureTests
     {
         /// <summary>Leaves all changes explicit so closure discovery cannot hide an EF detection pass.</summary>
         internal SharingContext()
+        {
+            ChangeTracker.AutoDetectChangesEnabled = false;
+        }
+
+        /// <summary>Uses the caller-owned provider graph for isolated functional and benchmark fixtures.</summary>
+        /// <param name="options">The completed SQLite options and explicitly owned provider services.</param>
+        internal SharingContext(
+            DbContextOptions<SharingContext> options
+        ) : base(options)
         {
             ChangeTracker.AutoDetectChangesEnabled = false;
         }

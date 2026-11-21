@@ -4,19 +4,8 @@ using System.Linq.Expressions;
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Preserves native and converted equality while binding reflection once per mapped type.</summary>
-[Collection("Allocation measurements")]
 public sealed partial class TypedEqualityConstructionTests
 {
-    private readonly ITestOutputHelper _output;
-
-    /// <summary>Uses the test runner's output sink.</summary>
-    /// <param name="output">Records paired construction allocation evidence.</param>
-    public TypedEqualityConstructionTests(
-        ITestOutputHelper output
-    )
-    {
-        _output = output;
-    }
 
     /// <summary>Cached operator metadata retains the framework's native and nullable binary expression shape.</summary>
     /// <param name="shape">The native or operator-free mapped expression type.</param>
@@ -142,49 +131,6 @@ public sealed partial class TypedEqualityConstructionTests
         Assert.Equal("op_Equality", binary.Method?.Name);
         Assert.Equal(nullable, binary.IsLifted);
         Assert.False(binary.IsLiftedToNull);
-    }
-
-    /// <summary>Retained methods preserve measured savings and do not penalize unchanged native factories.</summary>
-    /// <param name="shape">The native, lifted or operator-free construction path.</param>
-    /// <param name="minimumSavedBytes">The conservative required saving for optimized metadata paths.</param>
-    [Theory]
-    [InlineData("Guid", 32)]
-    [InlineData("NullableGuid", 32)]
-    [InlineData("String", 32)]
-    [InlineData("Int", 0)]
-    [InlineData("NullableInt", 0)]
-    [InlineData("Typed", 0)]
-    [InlineData("NullableTyped", 32)]
-    [InlineData("Object", 32)]
-    [InlineData("NullableObject", 32)]
-    public void MeasurePaired_ConstructionAllocation_DoesNotRegress(
-        string shape,
-        int minimumSavedBytes
-    )
-    {
-        // Arrange
-        var prepared = Shape(shape);
-
-        // WHY: Warm both expression factories equally before measuring their steady-state allocation difference.
-        // ReSharper disable once ForCanBeConvertedToForeach
-        // ReSharper disable once LoopCanBeConvertedToQuery
-        for (var index = 0; index < 1000; index++)
-        {
-            GC.KeepAlive(prepared.Reference());
-            GC.KeepAlive(prepared.Current());
-        }
-
-        // Act
-        var allocated = QueryConstructionAllocation.MeasurePaired(prepared.Reference, prepared.Current);
-
-        // Assert
-        _output.WriteLine(
-            $"Equality shape={shape}; reference={allocated.Baseline} B/op; "
-            + $"cached={allocated.Expanded} B/op.");
-
-        // WHY: Native nodes remain necessary. Optimized cases must also reject restoration of operator/overload
-        // discovery, with a conservative saving below the observed 144-448 bytes rather than exact runtime sizes.
-        Assert.InRange(allocated.Expanded, 0, allocated.Baseline - minimumSavedBytes + 8);
     }
 
     /// <summary>Prepares framework-reference factories for native and explicitly operator-free shapes.</summary>

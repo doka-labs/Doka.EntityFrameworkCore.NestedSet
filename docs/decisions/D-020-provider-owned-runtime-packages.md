@@ -155,7 +155,7 @@ JSON parameter capacity and validates its distinct collation token grammar.
 - Run SDK package validation against `10.0.0` for the two existing IDs; expect only the approved registration removal to be suppressed, with other missing APIs and unnecessary suppressions rejected.
 - Run options/adapter regressions; expect repeated registration to remain stable and missing, wrong, conflicting, or mismatched load-context identities to reject before hierarchy I/O, including compiled and external service graphs.
 - Run shared provider specifications and native query/lock/model/migration tests; expect unchanged source occurrence, visibility, collation, lifecycle, rollback, and finalizer ordering behavior.
-- Run the existing deterministic allocation and deep/wide query-work controls on MariaDB/MySQL without relaxing budgets; retain actual before/after evidence separately from architecture claims.
+- Run the existing deterministic deep/wide query-work controls on MariaDB/MySQL without relaxing their contracts; use explicitly selected D-015 BenchmarkDotNet workloads for numerical allocation observations and retain actual before/after evidence separately from architecture claims.
 - Run the existing package consumer, archive inspection, SBOM, and offline release-tooling checks; expect six independently verified package roots plus actual FileSystem sample execution, no foreign-provider closure, and complete primary-before-symbol publication ordering.
 - Review the upgrade guide and all sample provider callbacks; expect one matching adapter selection while model-level configuration remains common.
 
@@ -240,6 +240,8 @@ version, source mapping, fresh cache and archive-byte checks.
 - 2026-11-19: Adopted last-update metadata dates; the original recording, acceptance, and implementation events remain unchanged.
 - 2026-11-21: Updated the qualification-only PKCS baseline to 10.0.15 while retaining the shipping 9.0.21 minimum and original advisory/source evidence. Provider package ownership is unchanged.
 
+- 2026-11-21: Updated current confirmation and observation guidance to the owner's explicit numerical-measurement separation under D-015. Functional, lifetime, and structural work contracts remain blocking; previous dated measurement and approval records are unchanged.
+
 ### Implementation References
 
 - [Common EF kernel](../../src/Doka.EntityFrameworkCore.NestedSet/Doka.EntityFrameworkCore.NestedSet.csproj)
@@ -258,7 +260,7 @@ version, source mapping, fresh cache and archive-byte checks.
 - [Native callback and configuration rejection controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Providers.cs)
 - [Exact load-context identity and registration lifetime controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Identity.cs)
 - [Scope validation, singleton reuse, and conflicting binding controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Configuration/OptionsExtensionTests.Bindings.cs)
-- [Actual selected-adapter warm allocation controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/SelectedAdapterAllocationTests.cs)
+- [Selected-adapter functional controls](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers)
 - [Typed source composition](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaSourceBindingTests.cs)
 - [Typed ordered joins and failure behavior](../../tests/Doka.EntityFrameworkCore.NestedSet.Unit.Tests/Unit/Providers/DokaStraightJoinTests.cs)
 - [Package consumers](../../eng/verify-package-consumer.sh)
