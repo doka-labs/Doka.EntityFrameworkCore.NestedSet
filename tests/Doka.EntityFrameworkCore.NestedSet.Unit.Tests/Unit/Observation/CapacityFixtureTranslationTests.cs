@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>
@@ -11,7 +13,8 @@ public sealed class CapacityFixtureTranslationTests
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        await using var context = new TreeContext(SqlServerOptions(boundary));
+        await using var services = CreateSqlServerServices(boundary);
+        await using var context = new TreeContext(services.Options);
 
         // Act
         var failure =
@@ -22,6 +25,11 @@ public sealed class CapacityFixtureTranslationTests
                     cancellationToken: TestContext.Current.CancellationToken));
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal("Query construction attempted asynchronous database I/O.", failure.Message);
         Assert.Equal(1, boundary.ConnectionStarts);
     }
@@ -32,7 +40,8 @@ public sealed class CapacityFixtureTranslationTests
     {
         // Arrange
         var boundary = new CompositionIoBoundary();
-        await using var context = new TreeContext(SqlServerOptions(boundary));
+        await using var services = CreateSqlServerServices(boundary);
+        await using var context = new TreeContext(services.Options);
         const int nodes = 100_001;
 
         // Act
@@ -48,6 +57,11 @@ public sealed class CapacityFixtureTranslationTests
                 CancellationToken.None));
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Contains("could not be translated", failure.Message, StringComparison.Ordinal);
         Assert.Equal(0, boundary.ConnectionStarts);
     }
@@ -119,14 +133,16 @@ public sealed class CapacityFixtureTranslationTests
     }
 
     /// <summary>Uses the actual provider default without retaining a process-global provider graph.</summary>
-    private static DbContextOptions<TreeContext> SqlServerOptions(
+    private static OwnedModelTestServices<TreeContext> CreateSqlServerServices(
         CompositionIoBoundary boundary
     )
-        => new DbContextOptionsBuilder<TreeContext>()
+    {
+        // WHY: An owned provider avoids EF's global count heuristic even after many other test models.
+        return OwnedModelTestServices<TreeContext>.Create(new DbContextOptionsBuilder<TreeContext>()
             .UseSqlServer(
                 "Server=localhost;Database=capacity_translation;Integrated Security=true",
                 provider => provider.UseNestedSets())
-            .EnableServiceProviderCaching(false)
             .AddInterceptors(boundary)
-            .Options;
+            .Options);
+    }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
@@ -12,7 +13,10 @@ public sealed class CapacityContextTimeoutTests
         // Arrange
         await using var connection = new SqliteConnection("Data Source=:memory:;Default Timeout=17");
         await connection.OpenAsync(TestContext.Current.CancellationToken);
-        await using var context = new DbContext(new DbContextOptionsBuilder().UseSqlite(connection).Options);
+        await using var services = OwnedModelTestServices<DbContext>.Create(
+            new DbContextOptionsBuilder<DbContext>().UseSqlite(connection).Options);
+
+        await using var context = new DbContext(services.Options);
         await context.Database.ExecuteSqlRawAsync(
             "CREATE TABLE RetainedSchema (Id INTEGER PRIMARY KEY)",
             TestContext.Current.CancellationToken);
@@ -85,7 +89,8 @@ public sealed class CapacityContextTimeoutTests
     )
     {
         // Arrange
-        using var context = new TreeContext(Options(engine));
+        using var services = CreateServices(engine);
+        using var context = new TreeContext(services.Options);
         context.Database.SetCommandTimeout(configured);
 
         // Act
@@ -97,6 +102,11 @@ public sealed class CapacityContextTimeoutTests
 
         // Assert
         var connection = context.Database.GetDbConnection();
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal(0, context.Database.GetCommandTimeout());
         Assert.Equal(0, command.CommandTimeout);
         Assert.Equal(ConnectionState.Closed, connection.State);
@@ -125,7 +135,8 @@ public sealed class CapacityContextTimeoutTests
     )
     {
         // Arrange
-        var options = Options(engine);
+        using var services = CreateServices(engine);
+        var options = services.Options;
         using var capacity = new TreeContext(options);
         using var ordinary = new TreeContext(options);
         ordinary.Database.SetCommandTimeout(7);
@@ -140,6 +151,11 @@ public sealed class CapacityContextTimeoutTests
             .CreateDbCommand();
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal(
             original,
             ordinary.Database.GetDbConnection()
@@ -159,11 +175,11 @@ public sealed class CapacityContextTimeoutTests
     }
 
     /// <summary>Uses nondefault native limits to expose latency gates and cross-context changes.</summary>
-    private static DbContextOptions<TreeContext> Options(
+    private static OwnedModelTestServices<TreeContext> CreateServices(
         string engine
     )
     {
-        var builder = new DbContextOptionsBuilder<TreeContext>().EnableServiceProviderCaching(false);
+        var builder = new DbContextOptionsBuilder<TreeContext>();
         switch (engine)
         {
             case "MySql":
@@ -196,6 +212,8 @@ public sealed class CapacityContextTimeoutTests
                 throw new ArgumentOutOfRangeException(nameof(engine));
         }
 
-        return builder.Options;
+        // WHY: Disabling EF caching still checks the process-global provider count. Own these intentional
+        // provider variants explicitly so unrelated test order cannot trip that application warning.
+        return OwnedModelTestServices<TreeContext>.Create(builder.Options);
     }
 }

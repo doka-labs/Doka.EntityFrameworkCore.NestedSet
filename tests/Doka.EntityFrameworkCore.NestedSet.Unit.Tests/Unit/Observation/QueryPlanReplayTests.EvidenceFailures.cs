@@ -13,7 +13,8 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(Plan("unused")));
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         Exception original = canceled
             ? new OperationCanceledException("Original canceled read.")
             : new InvalidOperationException("Original failed read.");

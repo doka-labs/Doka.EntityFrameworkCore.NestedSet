@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 public sealed partial class QueryPlanReplayTests
@@ -27,7 +29,8 @@ public sealed partial class QueryPlanReplayTests
             () => Results(Statistics("z-primary", "a-stat]edge", "middle statistic")),
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
         context.Database.SetCommandTimeout(configured);
 
         // Act
@@ -37,6 +40,11 @@ public sealed partial class QueryPlanReplayTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal(4, connection.Commands.Count);
         var catalog = connection.Commands[0];
         Assert.Equal(1, catalog.ReaderExecutions);
@@ -81,7 +89,8 @@ public sealed partial class QueryPlanReplayTests
             () => 0);
 
         await using var owned = connection;
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
@@ -122,7 +131,8 @@ public sealed partial class QueryPlanReplayTests
             () => throw new InvalidOperationException("No catalog query is expected."),
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         await QueryPlanTestSupport.RefreshStatisticsAsync<StatisticsNode>(
@@ -157,12 +167,11 @@ public sealed partial class QueryPlanReplayTests
     }
 
     /// <summary>Uses SQL Server's actual identifier delimiter while substituting only raw command execution.</summary>
-    private static StatisticsContext CreateStatisticsContext(
+    private static OwnedModelTestServices<StatisticsContext> CreateStatisticsServices(
         PlanReplayConnection connection
-    ) => new(
+    ) => OwnedModelTestServices<StatisticsContext>.Create(
         new DbContextOptionsBuilder<StatisticsContext>()
             .UseSqlServer(connection)
-            .EnableServiceProviderCaching(false)
             .Options);
 
     /// <summary>Maps an explicitly owned table with identifiers that require provider escaping.</summary>

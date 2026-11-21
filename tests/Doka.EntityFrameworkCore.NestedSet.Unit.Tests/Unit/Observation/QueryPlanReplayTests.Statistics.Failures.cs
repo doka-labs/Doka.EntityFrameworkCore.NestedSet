@@ -9,7 +9,8 @@ public sealed partial class QueryPlanReplayTests
         // Arrange
         var failure = new InvalidOperationException("Catalog lookup failed.");
         await using var connection = new PlanReplayConnection(() => throw failure, () => 0);
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -40,7 +41,8 @@ public sealed partial class QueryPlanReplayTests
             },
             () => 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -62,7 +64,8 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(Statistics()), () => 0);
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>
@@ -93,7 +96,8 @@ public sealed partial class QueryPlanReplayTests
                 ? throw failure
                 : 0);
 
-        await using var context = CreateStatisticsContext(connection);
+        await using var services = CreateStatisticsServices(connection);
+        await using var context = new StatisticsContext(services.Options);
 
         // Act
         var error = await Record.ExceptionAsync(() =>

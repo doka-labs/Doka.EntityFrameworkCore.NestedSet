@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
 
 /// <summary>Checks diagnostic command ownership and complete plan result handling without a database server.</summary>
@@ -19,7 +21,8 @@ public sealed partial class QueryPlanReplayTests
     {
         // Arrange
         await using var connection = new PlanReplayConnection(() => Results(Plan("complete plan")));
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         context.Database.SetCommandTimeout(configured);
         var probe = Probe();
 
@@ -32,6 +35,11 @@ public sealed partial class QueryPlanReplayTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Contains("complete plan", plan, StringComparison.Ordinal);
         Assert.NotNull(connection.Command);
         Assert.Equal(expected, connection.Command.CommandTimeout);
@@ -48,7 +56,8 @@ public sealed partial class QueryPlanReplayTests
             Plan("-> Filter (actual time=1..2 rows=5 loops=1)"),
             Warnings(1003, "optimizer note")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -78,7 +87,8 @@ public sealed partial class QueryPlanReplayTests
             Plan("-> Filter (actual time=1..2 rows=3 loops=1)"),
             Warnings(1317, "Query execution was interrupted")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -106,7 +116,8 @@ public sealed partial class QueryPlanReplayTests
             ScalarRows(),
             Plan("<ShowPlanXML />", "Microsoft SQL Server 2005 XML Showplan")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
 
         // Act
@@ -121,13 +132,12 @@ public sealed partial class QueryPlanReplayTests
         Assert.Equal("<ShowPlanXML />" + Environment.NewLine, plan);
     }
 
-    /// <summary>Creates a small provider graph owned entirely by the test's context.</summary>
-    private static DbContext CreateContext(
+    /// <summary>Owns the real replay provider without involving EF's process-global provider cache.</summary>
+    private static OwnedModelTestServices<DbContext> CreateServices(
         PlanReplayConnection connection
-    ) => new(
-        new DbContextOptionsBuilder()
+    ) => OwnedModelTestServices<DbContext>.Create(
+        new DbContextOptionsBuilder<DbContext>()
             .UseSqlite(connection)
-            .EnableServiceProviderCaching(false)
             .Options);
 
     /// <summary>Supplies an exact recorded statement without creating an unrelated EF command.</summary>

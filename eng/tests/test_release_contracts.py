@@ -378,10 +378,55 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/dependency-review.yml").read_text(encoding="ascii")
         step = workflow.split("- name: Require exact license-exception versions", 1)[1]
         command = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        command = command.replace("${{ toJSON(steps.review.outputs.dependency-changes) }}",
+                                  json.dumps(json.dumps(payload)))
 
-        return subprocess.run(["bash", "-eo", "pipefail", "-c", command],
-                              env={**os.environ, "DEPENDENCY_CHANGES": json.dumps(payload)},
-                              capture_output=True, text=True, check=False)
+        # WHY: GitHub writes run steps to script files; passing a large fixture through bash -c repeats E2BIG.
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "guard.sh"
+            script.write_text(command, encoding="utf-8")
+
+            return subprocess.run(["bash", "-eo", "pipefail", str(script)],
+                                  env={**os.environ, "DEPENDENCY_CHANGES_FILE": str(Path(directory) / "delta.json")},
+                                  cwd=directory, capture_output=True, text=True, check=False)
+
+    def test_large_complete_delta_accepts_reviewed_versions(self):
+        """A multi-megabyte comparison reaches the guard without argument or environment size limits."""
+        # Arrange
+        entries = [self.dependency("Synthetic.Package", "1.0.0")] * 16_384
+        entries.append(self.dependency("Microsoft.Data.SqlClient.SNI.runtime", "6.0.3"))
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_large_complete_delta_rejects_unapproved_final_version(self):
+        """The file handoff neither truncates the comparison nor omits its final unapproved exception."""
+        # Arrange
+        entries = [self.dependency("Synthetic.Package", "1.0.0")] * 16_384
+        entries.append(self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.7"))
+
+        # Act
+        result = self.run_guard(entries)
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Review license files", result.stderr)
+
+    def test_serialized_metadata_cannot_terminate_heredoc_or_execute_commands(self):
+        """Quotes, Unicode and literal heredoc delimiters stay data through both JSON decoders."""
+        # Arrange
+        entry = self.dependency("Microsoft.Identity.Client.NativeInterop", "0.20.6")
+        entry["version"] = '\nDEPENDENCY_REVIEW_OUTPUT\nPY\n"; exit 0; # $(exit 0) `exit 0` \U0001F600'
+
+        # Act
+        result = self.run_guard([entry])
+
+        # Assert
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Review license files", result.stderr)
 
     def test_accepts_reviewed_versions_across_manifests(self):
         """The two approved packages retain narrow exceptions even when several manifests use them."""
@@ -558,7 +603,9 @@ class DependencyLicenseExceptionTests(unittest.TestCase):
         self.assertEqual(["pkg:nuget/Microsoft.Data.SqlClient.SNI.runtime@6.0.3",
                           "pkg:nuget/Microsoft.Identity.Client.NativeInterop@0.20.6"],
                          [line.strip().rstrip(",") for line in exceptions.splitlines() if line.strip()])
-        self.assertIn("${{ steps.review.outputs.dependency-changes }}", workflow)
+        self.assertIn("${{ toJSON(steps.review.outputs.dependency-changes) }}", workflow)
+        self.assertIn("DEPENDENCY_CHANGES_FILE: ${{ runner.temp }}/dependency-review-output.json", workflow)
+        self.assertNotIn("DEPENDENCY_CHANGES:", workflow)
         self.assertIn("fail-on-severity: high", workflow)
         self.assertIn("allow-licenses:", workflow)
         self.assertNotIn("LicenseRef-scancode-unknown", workflow)

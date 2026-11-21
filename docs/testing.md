@@ -45,6 +45,13 @@ time just to decide eligibility.
 
 ## Fixture and evidence ownership
 
+Disconnected observation tests own their provider services through
+`OwnedModelTestServices<TContext>` and dispose their contexts before those
+services. `EnableServiceProviderCaching(false)` alone does not isolate EF's
+global provider-count warning, so it must not substitute for explicit ownership.
+Timeout, translation, and plan-replay checks retain their actual provider
+configuration and warning policy regardless of other tests' execution order.
+
 Each executable owns its assembly fixture. It starts at most one container per
 owned server engine, lazily, and releases it when that assembly's collections
 finish. SQL Server, PostgreSQL, MySQL, and MariaDB use their respective shared

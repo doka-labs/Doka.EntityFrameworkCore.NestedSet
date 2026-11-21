@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using ProviderGuidFormat = Doka.EntityFrameworkCore.MySql.MySqlGuidFormat;
 
 namespace Doka.EntityFrameworkCore.NestedSet.Tests;
@@ -64,12 +65,19 @@ public sealed class FunctionalTestContextPolicyTests
         // Act
         FunctionalTestContextPolicy.ConfigureOptions(builder);
         var clone = new DbContextOptionsBuilder<TreeContext>(builder.Options).Options;
-        using var context = new TreeContext(clone);
+        // WHY: GUID-format variants belong to this option-copy test, not EF's process-global provider cache.
+        using var services = OwnedModelTestServices<TreeContext>.Create(clone);
+        using var context = new TreeContext(services.Options);
         var mapping = context.Model.FindEntityType(typeof(TreeNode))!
             .FindProperty(nameof(TreeNode.TreeId))!
             .GetRelationalTypeMapping();
 
         // Assert
+        var core = Assert.IsType<CoreOptionsExtension>(services.Options.FindExtension<CoreOptionsExtension>());
+        Assert.NotNull(core.InternalServiceProvider);
+        Assert.Equal(WarningBehavior.Throw, core.WarningsConfiguration.GetBehavior(
+            CoreEventId.ManyServiceProvidersCreatedWarning));
+
         Assert.Equal("char(36)", mapping.StoreType);
         Assert.Equal(0, context.Database.GetCommandTimeout());
         Assert.Equal(17, RelationalOptionsExtension.Extract(original).CommandTimeout);

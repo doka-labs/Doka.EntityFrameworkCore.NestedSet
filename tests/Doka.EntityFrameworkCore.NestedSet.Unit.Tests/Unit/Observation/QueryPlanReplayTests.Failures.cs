@@ -18,7 +18,8 @@ public sealed partial class QueryPlanReplayTests
             ? throw new InvalidOperationException("Estimated plan unavailable.")
             : Results(Plan("estimated target plan")));
 
-        await using var context = CreateContext(connection);
+        await using var services = CreateServices(connection);
+        await using var context = new DbContext(services.Options);
         var probe = Probe();
         probe.Commands.Add("SELECT 2");
         probe.ParameterBindings.Add([]);

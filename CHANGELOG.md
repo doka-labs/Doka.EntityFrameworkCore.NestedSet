@@ -29,6 +29,10 @@ See the [compatible upgrade](docs/upgrading-provider-packages.md#upgrade-from-10
 
 ### Fixed
 
+- Process complete Dependency Review comparisons without process argument-size
+  limits while retaining exact license-exception version checks.
+- Own independent observation-test provider variants so EF's global provider
+  count cannot make their checks or sample-factory checks depend on test order.
 - Preserve original query errors when diagnostic output fails, protect owned
   cleanup from cancellation, and propagate runner cancellation through forward
   capacity work.
